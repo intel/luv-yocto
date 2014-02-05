@@ -10,11 +10,7 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=ea5bed2f60d357618ca161ad539f7c0a \
                     file://kexec/kexec.c;beginline=1;endline=20;md5=af10f6ae4a8715965e648aa687ad3e09"
 DEPENDS = "zlib xz"
 
-SRC_URI = "git://git.kernel.org/pub/scm/utils/kernel/kexec/kexec-tools.git;protocol=git \
-	  file://0001-build-fix.patch \
-	  file://0002-add-function-getbootparam.patch \
-	  file://0003-add-efi-info.patch \
-	  file://0004-passing-efi-related-data.patch"
+SRC_URI = "git://git.kernel.org/pub/scm/utils/kernel/kexec/kexec-tools.git;protocol=git"
 
 SRCREV="${AUTOREV}"
 
