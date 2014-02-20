@@ -3,8 +3,7 @@ HOMEPAGE = "http://sourceforge.net/apps/mediawiki/tianocore/index.php?title=OVMF
 LICENSE = "BSD"
 LIC_FILES_CHKSUM = "file://OvmfPkg/License.txt;md5=ffd52cf9a8e0e036b9a61a0de2dc87ed"
 
-#SRC_URI = "git://github.com/tianocore/edk2.git;protocol=efi;nocheckout=1"
-SRC_URI = "git:///home/matt/src/3rd-party/efi/edk2.git;protocol=file"
+SRC_URI = "git://github.com/tianocore/edk2.git;branch=master"
 SRCREV="${AUTOREV}"
 
 BBCLASSEXTEND = "native nativesdk"
