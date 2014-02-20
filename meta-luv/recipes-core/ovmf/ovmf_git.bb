@@ -24,6 +24,6 @@ do_compile() {
 
 do_install() {
     install -d ${D}${datadir}/ovmf
-    install -m 0755 ${S}/Build/OvmfX64/DEBUG_GCC47/FV/OVMF.fd \
+    install -m 0755 `find ${S}/Build -name OVMF.fd` \
 	${D}${datadir}/ovmf/bios.bin
 }
