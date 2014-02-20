@@ -11,6 +11,9 @@ BBCLASSEXTEND = "native nativesdk"
 
 S = "${WORKDIR}/git"
 
+# OVMF has trouble building with the default optimization of -O2.
+BUILD_OPTIMIZATION="-pipe"
+
 do_compile() {
     ${S}/OvmfPkg/build.sh -a X64 -b RELEASE
 }
