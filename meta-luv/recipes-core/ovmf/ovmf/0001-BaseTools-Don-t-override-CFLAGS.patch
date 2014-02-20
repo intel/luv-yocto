@@ -1,0 +1,31 @@
+From 178e4cdbdab49fbf82bc59c6d99bf8a41f0f34ca Mon Sep 17 00:00:00 2001
+From: Matt Fleming <matt.fleming@intel.com>
+Date: Thu, 20 Feb 2014 12:51:05 +0000
+Subject: [PATCH] BaseTools: Don't override CFLAGS
+
+It's generally useful for $(CFLAGS) to be set on the command line or by other
+Makefiles, and trashing the existing value is bad practice.
+
+Insted append necessary flags to $(CFLAGS).
+
+Signed-off-by: Matt Fleming <matt.fleming@intel.com>
+---
+ BaseTools/Source/C/Makefiles/header.makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/BaseTools/Source/C/Makefiles/header.makefile b/BaseTools/Source/C/Makefiles/header.makefile
+index 6895f98..df79d40 100644
+--- a/BaseTools/Source/C/Makefiles/header.makefile
++++ b/BaseTools/Source/C/Makefiles/header.makefile
+@@ -41,7 +41,7 @@ endif
+ 
+ INCLUDE = $(TOOL_INCLUDE) -I $(MAKEROOT) -I $(MAKEROOT)/Include/Common -I $(MAKEROOT)/Include/ -I $(MAKEROOT)/Include/IndustryStandard -I $(MAKEROOT)/Common/ -I .. -I . $(ARCH_INCLUDE) 
+ CPPFLAGS = $(INCLUDE)
+-CFLAGS = -MD -fshort-wchar -fno-strict-aliasing -fno-merge-constants -nostdlib -Wall -Werror -c -g
++CFLAGS += -MD -fshort-wchar -fno-strict-aliasing -fno-merge-constants -nostdlib -Wall -Werror -c -g
+ LFLAGS =
+ 
+ ifeq ($(ARCH), IA32)
+-- 
+1.8.3.2
+

@@ -3,7 +3,10 @@ HOMEPAGE = "http://sourceforge.net/apps/mediawiki/tianocore/index.php?title=OVMF
 LICENSE = "BSD"
 LIC_FILES_CHKSUM = "file://OvmfPkg/License.txt;md5=ffd52cf9a8e0e036b9a61a0de2dc87ed"
 
-SRC_URI = "git://github.com/tianocore/edk2.git;branch=master"
+SRC_URI = "git://github.com/tianocore/edk2.git;branch=master \
+	file://0001-BaseTools-Don-t-override-CFLAGS.patch \
+	file://0002-BaseTools-Don-t-override-LFLAGS.patch"
+
 SRCREV="${AUTOREV}"
 
 inherit native
@@ -15,6 +18,7 @@ S = "${WORKDIR}/git"
 BUILD_OPTIMIZATION="-pipe"
 
 do_compile() {
+    export LFLAGS="${LDFLAGS}"
     ${S}/OvmfPkg/build.sh -a X64 -b RELEASE
 }
 
