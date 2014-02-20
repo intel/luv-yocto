@@ -6,9 +6,8 @@ LIC_FILES_CHKSUM = "file://OvmfPkg/License.txt;md5=ffd52cf9a8e0e036b9a61a0de2dc8
 SRC_URI = "git://github.com/tianocore/edk2.git;branch=master"
 SRCREV="${AUTOREV}"
 
+inherit native
 BBCLASSEXTEND = "native nativesdk"
-
-DEPENDS_class-native += "qemu-native"
 
 S = "${WORKDIR}/git"
 
