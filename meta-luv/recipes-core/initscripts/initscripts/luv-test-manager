@@ -1,0 +1,26 @@
+#
+# Copyright 2014 Intel Corporation; author Matt Fleming
+#
+
+cat <<EOF
+Welcome to the Linux UEFI Validation Project
+
+Running tests...
+EOF
+
+#
+# Every test must create a runner script and place it in $LUV_TESTS_DIR.
+# See meta-luv/classes/luv-test.bbclass for details.
+#
+LUV_TESTS_DIR=/etc/luv-tests/
+
+runner_list=`ls -A ${LUV_TESTS_DIR}`
+for r in $runner_list; do
+    runner="${LUV_TESTS_DIR}$r"
+
+    [ -f "$runner" ] || continue
+
+    $runner
+done
+
+echo "Ran $(echo $runner_list | wc -w) tests"
