@@ -1,6 +1,6 @@
 DESCRIPTION = "A minimal image with essential EFI and kernel tools"
 
-IMAGE_INSTALL = "packagegroup-core-boot kexec-tools kernel-image"
+IMAGE_INSTALL = "packagegroup-core-boot kexec-tools kernel-image fwts "
 
 inherit core-image
 
