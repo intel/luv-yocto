@@ -1,0 +1,213 @@
+#!/usr/bin/env python
+
+# OpenEmbedded pkgdata utility
+#
+# Written by: Paul Eggleton <paul.eggleton@linux.intel.com>
+#
+# Copyright 2012 Intel Corporation
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+#
+# Currently only has two functions:
+# 1) glob - mapping of packages to their dev/dbg/doc/locale etc. counterparts.
+# 2) read-value - mapping of packagenames to their location in
+#    pkgdata and then returns value of selected variable (e.g. PKGSIZE)
+# Could be extended in future to perform other useful querying functions on the
+# pkgdata though.
+#
+
+import sys
+import os
+import os.path
+import fnmatch
+import re
+
+def usage():
+    print("syntax: oe-pkgdata-util glob [-d] <pkgdatadir> <vendor-os> <pkglist> \"<globs>\"\n \
+                    read-value [-d] <pkgdatadir> <vendor-os> <value-name> \"<package-name>_<package_architecture>\"");
+
+
+
+def glob(args):
+    if len(args) < 3:
+        usage()
+        sys.exit(1)
+
+    pkgdata_dir = args[0]
+    pkglist_file = args[1]
+    globs = args[2].split()
+
+    skipregex = re.compile("-locale-|^locale-base-|-dev$|-doc$|-dbg$|-staticdev$|^kernel-module-")
+
+    mappedpkgs = set()
+    with open(pkglist_file, 'r') as f:
+        for line in f:
+            fields = line.rstrip().split()
+            if len(fields) < 2:
+                continue
+            pkg = fields[0]
+            arch = fields[1]
+
+            # Skip packages for which there is no point applying globs
+            if skipregex.search(pkg):
+                if debug:
+                    print("%s -> !!" % pkg)
+                continue
+
+            # Skip packages that already match the globs, so if e.g. a dev package
+            # is already installed and thus in the list, we don't process it any further
+            # Most of these will be caught by skipregex already, but just in case...
+            already = False
+            for g in globs:
+                if fnmatch.fnmatchcase(pkg, g):
+                    already = True
+                    break
+            if already:
+                if debug:
+                    print("%s -> !" % pkg)
+                continue
+
+            # Define some functions
+            def revpkgdata(pkgn):
+                return os.path.join(pkgdata_dir, "runtime-reverse", pkgn)
+            def fwdpkgdata(pkgn):
+                return os.path.join(pkgdata_dir, "runtime", pkgn)
+            def readpn(pkgdata_file):
+                pn = ""
+                with open(pkgdata_file, 'r') as f:
+                    for line in f:
+                        if line.startswith("PN:"):
+                            pn = line.split(': ')[1].rstrip()
+                return pn
+            def readrenamed(pkgdata_file):
+                renamed = ""
+                pn = os.path.basename(pkgdata_file)
+                with open(pkgdata_file, 'r') as f:
+                    for line in f:
+                        if line.startswith("PKG_%s:" % pn):
+                            renamed = line.split(': ')[1].rstrip()
+                return renamed
+
+            # Main processing loop
+            for g in globs:
+                mappedpkg = ""
+                # First just try substitution (i.e. packagename -> packagename-dev)
+                newpkg = g.replace("*", pkg)
+                revlink = revpkgdata(newpkg)
+                if os.path.exists(revlink):
+                    mappedpkg = os.path.basename(os.readlink(revlink))
+                    fwdfile = fwdpkgdata(mappedpkg)
+                    if os.path.exists(fwdfile):
+                        mappedpkg = readrenamed(fwdfile)
+                    if not os.path.exists(fwdfile + ".packaged"):
+                        mappedpkg = ""
+                else:
+                    revlink = revpkgdata(pkg)
+                    if os.path.exists(revlink):
+                        # Check if we can map after undoing the package renaming (by resolving the symlink)
+                        origpkg = os.path.basename(os.readlink(revlink))
+                        newpkg = g.replace("*", origpkg)
+                        fwdfile = fwdpkgdata(newpkg)
+                        if os.path.exists(fwdfile):
+                            mappedpkg = readrenamed(fwdfile)
+                        else:
+                            # That didn't work, so now get the PN, substitute that, then map in the other direction
+                            pn = readpn(revlink)
+                            newpkg = g.replace("*", pn)
+                            fwdfile = fwdpkgdata(newpkg)
+                            if os.path.exists(fwdfile):
+                                mappedpkg = readrenamed(fwdfile)
+                        if not os.path.exists(fwdfile + ".packaged"):
+                            mappedpkg = ""
+                    else:
+                        # Package doesn't even exist...
+                        if debug:
+                            print "%s is not a valid package!" % (pkg)
+                        break
+
+                if mappedpkg:
+                    if debug:
+                        print "%s (%s) -> %s" % (pkg, g, mappedpkg)
+                    mappedpkgs.add(mappedpkg)
+                else:
+                    if debug:
+                        print "%s (%s) -> ?" % (pkg, g)
+
+    if debug:
+        print "------"
+
+    print("\n".join(mappedpkgs))
+
+def read_value(args):
+    if len(args) < 3:
+        usage()
+        sys.exit(1)
+
+    pkgdata_dir = args[0]
+    var = args[1]
+    packages = args[2].split()
+
+    def readvar(pkgdata_file, var):
+        val = ""
+        with open(pkgdata_file, 'r') as f:
+            for line in f:
+                if line.startswith(var + ":"):
+                    val = line.split(': ')[1].rstrip()
+        return val
+
+    if debug:
+        print "read-value('%s', '%s' '%s'" % (pkgdata_dir, var, packages)
+    for package in packages:
+        pkg_split = package.split('_')
+        pkg_name = pkg_split[0]
+        pkg_arch = '_'.join(pkg_split[1:])
+        if debug:
+            print "package: name: '%s', arch: '%s'" % (pkg_name, pkg_arch)
+        revlink = os.path.join(pkgdata_dir, "runtime-reverse", pkg_name)
+        if debug:
+            print(revlink)
+        if os.path.exists(revlink):
+            mappedpkg = os.path.basename(os.readlink(revlink))
+            qvar = var
+            if qvar == "PKGSIZE":
+                # append packagename
+                qvar = "%s_%s" % (var, mappedpkg)
+            print(readvar(revlink, qvar))
+
+# Too lazy to use getopt
+debug = False
+noopt = False
+args = []
+for arg in sys.argv[1:]:
+    if arg == "--":
+        noopt = True
+    else:
+        if not noopt:
+            if arg == "-d":
+                debug = True
+                continue
+        args.append(arg)
+
+if len(args) < 1:
+    usage()
+    sys.exit(1)
+
+if args[0] == "glob":
+    glob(args[1:])
+elif args[0] == "read-value":
+    read_value(args[1:])
+else:
+    usage()
+    sys.exit(1)

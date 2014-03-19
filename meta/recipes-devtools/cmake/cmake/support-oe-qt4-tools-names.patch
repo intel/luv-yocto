@@ -1,0 +1,58 @@
+cmake: support OpenEmbedded Qt4 tool binary names
+
+The FindQt4 module looks for Qt4 binaries to be able to gather the
+paths used for compilation and also to be using during other processes
+(translation update, translation binary generating and like) however
+OpenEmbedded has renamed those to allow old QMake to be used in
+parallel with the current one. This patch adds support for the
+OpenEmbedded specific binary names.
+
+Upstream-Status: Inappropriate [embedded specific]
+
+Signed-off-by: Otavio Salvador <otavio@ossystems.com.br>
+
+Index: cmake-2.8.11/Modules/FindQt4.cmake
+===================================================================
+--- cmake-2.8.11.orig/Modules/FindQt4.cmake
++++ cmake-2.8.11/Modules/FindQt4.cmake
+@@ -569,7 +569,7 @@ endfunction()
+ 
+ set(QT4_INSTALLED_VERSION_TOO_OLD FALSE)
+ 
+-set(_QT4_QMAKE_NAMES qmake qmake4 qmake-qt4 qmake-mac)
++set(_QT4_QMAKE_NAMES qmake qmake2 qmake4 qmake-qt4 qmake-mac)
+ _qt4_find_qmake("${_QT4_QMAKE_NAMES}" QT_QMAKE_EXECUTABLE QTVERSION)
+ 
+ if (QT_QMAKE_EXECUTABLE AND QTVERSION)
+@@ -1157,19 +1157,19 @@ if (QT_QMAKE_EXECUTABLE AND QTVERSION)
+     )
+ 
+   find_program(QT_RCC_EXECUTABLE
+-    NAMES rcc
++    NAMES rcc4 rcc
+     PATHS ${QT_BINARY_DIR}
+     NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH
+     )
+ 
+   find_program(QT_DBUSCPP2XML_EXECUTABLE
+-    NAMES qdbuscpp2xml
++    NAMES qdbuscpp2xml4 qdbuscpp2xml
+     PATHS ${QT_BINARY_DIR}
+     NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH
+     )
+ 
+   find_program(QT_DBUSXML2CPP_EXECUTABLE
+-    NAMES qdbusxml2cpp
++    NAMES qdbusxml2cp4 qdbusxml2cpp
+     PATHS ${QT_BINARY_DIR}
+     NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH
+     )
+@@ -1187,7 +1187,7 @@ if (QT_QMAKE_EXECUTABLE AND QTVERSION)
+     )
+ 
+   find_program(QT_QCOLLECTIONGENERATOR_EXECUTABLE
+-    NAMES qcollectiongenerator-qt4 qcollectiongenerator
++    NAMES qcollectiongenerator-qt4 qcollectiongenerator qcollectiongenerator4
+     PATHS ${QT_BINARY_DIR}
+     NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH
+     )

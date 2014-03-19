@@ -1,0 +1,598 @@
+#!/usr/bin/env python
+# ex:ts=4:sw=4:sts=4:et
+# -*- tab-width: 4; c-basic-offset: 4; indent-tabs-mode: nil -*-
+#
+# Copyright 2011 Intel Corporation
+# Authored-by:  Yu Ke <ke.yu@intel.com>
+#               Paul Eggleton <paul.eggleton@intel.com>
+#               Richard Purdie <richard.purdie@intel.com>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+import os, sys
+import optparse
+import logging
+import subprocess
+import ConfigParser
+import re
+
+__version__ = "0.2.1"
+
+def logger_create():
+    logger = logging.getLogger("")
+    loggerhandler = logging.StreamHandler()
+    loggerhandler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s","%H:%M:%S"))
+    logger.addHandler(loggerhandler)
+    logger.setLevel(logging.INFO)
+    return logger
+
+logger = logger_create()
+
+def get_current_branch(repodir=None):
+    try:
+        if not os.path.exists(os.path.join(repodir if repodir else '', ".git")):
+            # Repo not created yet (i.e. during init) so just assume master
+            return "master"
+        branchname = runcmd("git symbolic-ref HEAD 2>/dev/null", repodir).strip()
+        if branchname.startswith("refs/heads/"):
+            branchname = branchname[11:]
+        return branchname
+    except subprocess.CalledProcessError:
+        return ""
+
+class Configuration(object):
+    """
+    Manages the configuration
+
+    For an example config file, see combo-layer.conf.example
+
+    """
+    def __init__(self, options):
+        for key, val in options.__dict__.items():
+            setattr(self, key, val)
+
+        def readsection(parser, section, repo):
+            for (name, value) in parser.items(section):
+                if value.startswith("@"):
+                    self.repos[repo][name] = eval(value.strip("@"))
+                else:
+                    self.repos[repo][name] = value
+
+        logger.debug("Loading config file %s" % self.conffile)
+        self.parser = ConfigParser.ConfigParser()
+        with open(self.conffile) as f:
+            self.parser.readfp(f)
+
+        self.repos = {}
+        for repo in self.parser.sections():
+            self.repos[repo] = {}
+            readsection(self.parser, repo, repo)
+
+        # Load local configuration, if available
+        self.localconffile = None
+        self.localparser = None
+        self.combobranch = None
+        if self.conffile.endswith('.conf'):
+            lcfile = self.conffile.replace('.conf', '-local.conf')
+            if os.path.exists(lcfile):
+                # Read combo layer branch
+                self.combobranch = get_current_branch()
+                logger.debug("Combo layer branch is %s" % self.combobranch)
+
+                self.localconffile = lcfile
+                logger.debug("Loading local config file %s" % self.localconffile)
+                self.localparser = ConfigParser.ConfigParser()
+                with open(self.localconffile) as f:
+                    self.localparser.readfp(f)
+
+                for section in self.localparser.sections():
+                    if '|' in section:
+                        sectionvals = section.split('|')
+                        repo = sectionvals[0]
+                        if sectionvals[1] != self.combobranch:
+                            continue
+                    else:
+                        repo = section
+                    if repo in self.repos:
+                        readsection(self.localparser, section, repo)
+
+    def update(self, repo, option, value, initmode=False):
+        if self.localparser:
+            parser = self.localparser
+            section = "%s|%s" % (repo, self.combobranch)
+            conffile = self.localconffile
+            if initmode and not parser.has_section(section):
+                parser.add_section(section)
+        else:
+            parser = self.parser
+            section = repo
+            conffile = self.conffile
+        parser.set(section, option, value)
+        with open(conffile, "w") as f:
+            parser.write(f)
+
+    def sanity_check(self, initmode=False):
+        required_options=["src_uri", "local_repo_dir", "dest_dir", "last_revision"]
+        if initmode:
+            required_options.remove("last_revision")
+        msg = ""
+        missing_options = []
+        for name in self.repos:
+            for option in required_options:
+                if option not in self.repos[name]:
+                    msg = "%s\nOption %s is not defined for component %s" %(msg, option, name)
+                    missing_options.append(option)
+        if msg != "":
+            logger.error("configuration file %s has the following error: %s" % (self.conffile,msg))
+            if self.localconffile and 'last_revision' in missing_options:
+                logger.error("local configuration file %s may be missing configuration for combo branch %s" % (self.localconffile, self.combobranch))
+            sys.exit(1)
+
+        # filterdiff is required by action_splitpatch, so check its availability
+        if subprocess.call("which filterdiff > /dev/null 2>&1", shell=True) != 0:
+            logger.error("ERROR: patchutils package is missing, please install it (e.g. # apt-get install patchutils)")
+            sys.exit(1)
+
+def runcmd(cmd,destdir=None,printerr=True):
+    """
+        execute command, raise CalledProcessError if fail
+        return output if succeed
+    """
+    logger.debug("run cmd '%s' in %s" % (cmd, os.getcwd() if destdir is None else destdir))
+    out = os.tmpfile()
+    try:
+        subprocess.check_call(cmd, stdout=out, stderr=out, cwd=destdir, shell=True)
+    except subprocess.CalledProcessError,e:
+        out.seek(0)
+        if printerr:
+            logger.error("%s" % out.read())
+        raise e
+
+    out.seek(0)
+    output = out.read()
+    logger.debug("output: %s" % output )
+    return output
+
+def action_init(conf, args):
+    """
+        Clone component repositories
+        Check git is initialised; if not, copy initial data from component repos
+    """
+    for name in conf.repos:
+        ldir = conf.repos[name]['local_repo_dir']
+        if not os.path.exists(ldir):
+            logger.info("cloning %s to %s" %(conf.repos[name]['src_uri'], ldir))
+            subprocess.check_call("git clone %s %s" % (conf.repos[name]['src_uri'], ldir), shell=True)
+    if not os.path.exists(".git"):
+        runcmd("git init")
+        for name in conf.repos:
+            repo = conf.repos[name]
+            ldir = repo['local_repo_dir']
+            branch = repo.get('branch', "master")
+            lastrev = repo.get('last_revision', None)
+            if lastrev and lastrev != "HEAD":
+                initialrev = lastrev
+                if branch:
+                    if not check_rev_branch(name, ldir, lastrev, branch):
+                        sys.exit(1)
+                logger.info("Copying data from %s at specified revision %s..." % (name, lastrev))
+            else:
+                lastrev = None
+                initialrev = branch
+                logger.info("Copying data from %s..." % name)
+            dest_dir = repo['dest_dir']
+            if dest_dir and dest_dir != ".":
+                extract_dir = os.path.join(os.getcwd(), dest_dir)
+                os.makedirs(extract_dir)
+            else:
+                extract_dir = os.getcwd()
+            file_filter = repo.get('file_filter', "")
+            runcmd("git archive %s | tar -x -C %s %s" % (initialrev, extract_dir, file_filter), ldir)
+            if not lastrev:
+                lastrev = runcmd("git rev-parse %s" % initialrev, ldir).strip()
+                conf.update(name, "last_revision", lastrev, initmode=True)
+        runcmd("git add .")
+        if conf.localconffile:
+            localadded = True
+            try:
+                runcmd("git rm --cached %s" % conf.localconffile, printerr=False)
+            except subprocess.CalledProcessError:
+                localadded = False
+            if localadded:
+                localrelpath = os.path.relpath(conf.localconffile)
+                runcmd("grep -q %s .gitignore || echo %s >> .gitignore" % (localrelpath, localrelpath))
+                runcmd("git add .gitignore")
+                logger.info("Added local configuration file %s to .gitignore", localrelpath)
+        logger.info("Initial combo layer repository data has been created; please make any changes if desired and then use 'git commit' to make the initial commit.")
+    else:
+        logger.info("Repository already initialised, nothing to do.")
+
+
+def check_repo_clean(repodir):
+    """
+        check if the repo is clean
+        exit if repo is dirty
+    """
+    output=runcmd("git status --porcelain", repodir)
+    r = re.compile('\?\? patch-.*/')
+    dirtyout = [item for item in output.splitlines() if not r.match(item)]
+    if dirtyout:
+        logger.error("git repo %s is dirty, please fix it first", repodir)
+        sys.exit(1)
+
+def check_patch(patchfile):
+    f = open(patchfile)
+    ln = f.readline()
+    of = None
+    in_patch = False
+    beyond_msg = False
+    pre_buf = ''
+    while ln:
+        if not beyond_msg:
+            if ln == '---\n':
+                if not of:
+                    break
+                in_patch = False
+                beyond_msg = True
+            elif ln.startswith('--- '):
+                # We have a diff in the commit message
+                in_patch = True
+                if not of:
+                    print('WARNING: %s contains a diff in its commit message, indenting to avoid failure during apply' % patchfile)
+                    of = open(patchfile + '.tmp', 'w')
+                    of.write(pre_buf)
+                    pre_buf = ''
+            elif in_patch and not ln[0] in '+-@ \n\r':
+                in_patch = False
+        if of:
+            if in_patch:
+                of.write(' ' + ln)
+            else:
+                of.write(ln)
+        else:
+            pre_buf += ln
+        ln = f.readline()
+    f.close()
+    if of:
+        of.close()
+        os.rename(patchfile + '.tmp', patchfile)
+
+def drop_to_shell(workdir=None):
+    shell = os.environ.get('SHELL', 'bash')
+    print('Dropping to shell "%s"\n' \
+          'When you are finished, run the following to continue:\n' \
+          '       exit    -- continue to apply the patches\n' \
+          '       exit 1  -- abort\n' % shell);
+    ret = subprocess.call([shell], cwd=workdir)
+    if ret != 0:
+        print "Aborting"
+        return False
+    else:
+        return True
+
+def check_rev_branch(component, repodir, rev, branch):
+    try:
+        actualbranch = runcmd("git branch --contains %s" % rev, repodir, printerr=False)
+    except subprocess.CalledProcessError as e:
+        if e.returncode == 129:
+            actualbranch = ""
+        else:
+            raise
+
+    if not actualbranch:
+        logger.error("%s: specified revision %s is invalid!" % (component, rev))
+        return False
+
+    branches = []
+    branchlist = actualbranch.split("\n")
+    for b in branchlist:
+        branches.append(b.strip().split(' ')[-1])
+
+    if branch not in branches:
+        logger.error("%s: specified revision %s is not on specified branch %s!" % (component, rev, branch))
+        return False
+    return True
+
+def get_repos(conf, args):
+    repos = []
+    if len(args) > 1:
+        for arg in args[1:]:
+            if arg.startswith('-'):
+                break
+            else:
+                repos.append(arg)
+        for repo in repos:
+            if not repo in conf.repos:
+                logger.error("Specified component '%s' not found in configuration" % repo)
+                sys.exit(0)
+
+    if not repos:
+        repos = conf.repos
+
+    return repos
+
+def action_pull(conf, args):
+    """
+        update the component repos only
+    """
+    repos = get_repos(conf, args)
+
+    # make sure all repos are clean
+    for name in repos:
+        check_repo_clean(conf.repos[name]['local_repo_dir'])
+
+    for name in repos:
+        repo = conf.repos[name]
+        ldir = repo['local_repo_dir']
+        branch = repo.get('branch', "master")
+        runcmd("git checkout %s" % branch, ldir)
+        logger.info("git pull for component repo %s in %s ..." % (name, ldir))
+        output=runcmd("git pull", ldir)
+        logger.info(output)
+
+def action_update(conf, args):
+    """
+        update the component repos
+        generate the patch list
+        apply the generated patches
+    """
+    repos = get_repos(conf, args)
+
+    # make sure combo repo is clean
+    check_repo_clean(os.getcwd())
+
+    import uuid
+    patch_dir = "patch-%s" % uuid.uuid4()
+    os.mkdir(patch_dir)
+
+    # Step 1: update the component repos
+    if conf.nopull:
+        logger.info("Skipping pull (-n)")
+    else:
+        action_pull(conf, args)
+
+    for name in repos:
+        repo = conf.repos[name]
+        ldir = repo['local_repo_dir']
+        dest_dir = repo['dest_dir']
+        branch = repo.get('branch', "master")
+        repo_patch_dir = os.path.join(os.getcwd(), patch_dir, name)
+
+        # Step 2: generate the patch list and store to patch dir
+        logger.info("Generating patches from %s..." % name)
+        if dest_dir != ".":
+            prefix = "--src-prefix=a/%s/ --dst-prefix=b/%s/" % (dest_dir, dest_dir)
+        else:
+            prefix = ""
+        if repo['last_revision'] == "":
+            logger.info("Warning: last_revision of component %s is not set, starting from the first commit" % name)
+            patch_cmd_range = "--root %s" % branch
+            rev_cmd_range = branch
+        else:
+            if not check_rev_branch(name, ldir, repo['last_revision'], branch):
+                sys.exit(1)
+            patch_cmd_range = "%s..%s" % (repo['last_revision'], branch)
+            rev_cmd_range = patch_cmd_range
+
+        file_filter = repo.get('file_filter',"")
+
+        patch_cmd = "git format-patch -N %s --output-directory %s %s -- %s" % \
+            (prefix,repo_patch_dir, patch_cmd_range, file_filter)
+        output = runcmd(patch_cmd, ldir)
+        logger.debug("generated patch set:\n%s" % output)
+        patchlist = output.splitlines()
+
+        rev_cmd = 'git rev-list --no-merges ' + rev_cmd_range
+        revlist = runcmd(rev_cmd, ldir).splitlines()
+
+        # Step 3: Call repo specific hook to adjust patch
+        if 'hook' in repo:
+            # hook parameter is: ./hook patchpath revision reponame
+            count=len(revlist)-1
+            for patch in patchlist:
+                runcmd("%s %s %s %s" % (repo['hook'], patch, revlist[count], name))
+                count=count-1
+
+        # Step 4: write patch list and revision list to file, for user to edit later
+        patchlist_file = os.path.join(os.getcwd(), patch_dir, "patchlist-%s" % name)
+        repo['patchlist'] = patchlist_file
+        f = open(patchlist_file, 'w')
+        count=len(revlist)-1
+        for patch in patchlist:
+            f.write("%s %s\n" % (patch, revlist[count]))
+            check_patch(os.path.join(patch_dir, patch))
+            count=count-1
+        f.close()
+
+    # Step 5: invoke bash for user to edit patch and patch list
+    if conf.interactive:
+        print('You may now edit the patch and patch list in %s\n' \
+              'For example, you can remove unwanted patch entries from patchlist-*, so that they will be not applied later' % patch_dir);
+        if not drop_to_shell(patch_dir):
+            sys.exit(0)
+
+    # Step 6: apply the generated and revised patch
+    apply_patchlist(conf, repos)
+    runcmd("rm -rf %s" % patch_dir)
+
+    # Step 7: commit the updated config file if it's being tracked
+    relpath = os.path.relpath(conf.conffile)
+    try:
+        output = runcmd("git status --porcelain %s" % relpath, printerr=False)
+    except:
+        # Outside the repository
+        output = None
+    if output:
+        logger.info("Committing updated configuration file")
+        if output.lstrip().startswith("M"):
+            runcmd('git commit -m "Automatic commit to update last_revision" %s' % relpath)
+
+def apply_patchlist(conf, repos):
+    """
+        apply the generated patch list to combo repo
+    """
+    for name in repos:
+        repo = conf.repos[name]
+        lastrev = repo["last_revision"]
+        prevrev = lastrev
+
+        # Get non-blank lines from patch list file
+        patchlist = []
+        if os.path.exists(repo['patchlist']) or not conf.interactive:
+            # Note: we want this to fail here if the file doesn't exist and we're not in
+            # interactive mode since the file should exist in this case
+            with open(repo['patchlist']) as f:
+                for line in f:
+                    line = line.rstrip()
+                    if line:
+                        patchlist.append(line)
+
+        if patchlist:
+            logger.info("Applying patches from %s..." % name)
+            linecount = len(patchlist)
+            i = 1
+            for line in patchlist:
+                patchfile = line.split()[0]
+                lastrev = line.split()[1]
+                patchdisp = os.path.relpath(patchfile)
+                if os.path.getsize(patchfile) == 0:
+                    logger.info("(skipping %d/%d %s - no changes)" % (i, linecount, patchdisp))
+                else:
+                    cmd = "git am --keep-cr -s -p1 %s" % patchfile
+                    logger.info("Applying %d/%d: %s" % (i, linecount, patchdisp))
+                    try:
+                        runcmd(cmd)
+                    except subprocess.CalledProcessError:
+                        logger.info('Running "git am --abort" to cleanup repo')
+                        runcmd("git am --abort")
+                        logger.error('"%s" failed' % cmd)
+                        logger.info("Please manually apply patch %s" % patchdisp)
+                        logger.info("Note: if you exit and continue applying without manually applying the patch, it will be skipped")
+                        if not drop_to_shell():
+                            if prevrev != repo['last_revision']:
+                                conf.update(name, "last_revision", prevrev)
+                            sys.exit(0)
+                prevrev = lastrev
+                i += 1
+        else:
+            logger.info("No patches to apply from %s" % name)
+            ldir = conf.repos[name]['local_repo_dir']
+            branch = conf.repos[name].get('branch', "master")
+            lastrev = runcmd("git rev-parse %s" % branch, ldir).strip()
+
+        if lastrev != repo['last_revision']:
+            conf.update(name, "last_revision", lastrev)
+
+def action_splitpatch(conf, args):
+    """
+        generate the commit patch and
+        split the patch per repo
+    """
+    logger.debug("action_splitpatch")
+    if len(args) > 1:
+        commit = args[1]
+    else:
+        commit = "HEAD"
+    patchdir = "splitpatch-%s" % commit
+    if not os.path.exists(patchdir):
+        os.mkdir(patchdir)
+
+    # filerange_root is for the repo whose dest_dir is root "."
+    # and it should be specified by excluding all other repo dest dir
+    # like "-x repo1 -x repo2 -x repo3 ..."
+    filerange_root = ""
+    for name in conf.repos:
+        dest_dir = conf.repos[name]['dest_dir']
+        if dest_dir != ".":
+            filerange_root = '%s -x "%s/*"' % (filerange_root, dest_dir)
+
+    for name in conf.repos:
+        dest_dir = conf.repos[name]['dest_dir']
+        patch_filename = "%s/%s.patch" % (patchdir, name)
+        if dest_dir == ".":
+            cmd = "git format-patch -n1 --stdout %s^..%s | filterdiff -p1 %s > %s" % (commit, commit, filerange_root, patch_filename)
+        else:
+            cmd = "git format-patch --no-prefix -n1 --stdout %s^..%s -- %s > %s" % (commit, commit, dest_dir, patch_filename)
+        runcmd(cmd)
+        # Detect empty patches (including those produced by filterdiff above
+        # that contain only preamble text)
+        if os.path.getsize(patch_filename) == 0 or runcmd("filterdiff %s" % patch_filename) == "":
+            os.remove(patch_filename)
+            logger.info("(skipping %s - no changes)", name)
+        else:
+            logger.info(patch_filename)
+
+def action_error(conf, args):
+    logger.info("invalid action %s" % args[0])
+
+actions = {
+    "init": action_init,
+    "update": action_update,
+    "pull": action_pull,
+    "splitpatch": action_splitpatch,
+}
+
+def main():
+    parser = optparse.OptionParser(
+        version = "Combo Layer Repo Tool version %s" % __version__,
+        usage = """%prog [options] action
+
+Create and update a combination layer repository from multiple component repositories.
+
+Action:
+  init                 initialise the combo layer repo
+  update [components]  get patches from component repos and apply them to the combo repo
+  pull [components]    just pull component repos only
+  splitpatch [commit]  generate commit patch and split per component, default commit is HEAD""")
+
+    parser.add_option("-c", "--conf", help = "specify the config file (conf/combo-layer.conf is the default).",
+               action = "store", dest = "conffile", default = "conf/combo-layer.conf")
+
+    parser.add_option("-i", "--interactive", help = "interactive mode, user can edit the patch list and patches",
+               action = "store_true", dest = "interactive", default = False)
+
+    parser.add_option("-D", "--debug", help = "output debug information",
+               action = "store_true", dest = "debug", default = False)
+
+    parser.add_option("-n", "--no-pull", help = "skip pulling component repos during update",
+               action = "store_true", dest = "nopull", default = False)
+
+    options, args = parser.parse_args(sys.argv)
+
+    # Dispatch to action handler
+    if len(args) == 1:
+        logger.error("No action specified, exiting")
+        parser.print_help()
+    elif args[1] not in actions:
+        logger.error("Unsupported action %s, exiting\n" % (args[1]))
+        parser.print_help()
+    elif not os.path.exists(options.conffile):
+        logger.error("No valid config file, exiting\n")
+        parser.print_help()
+    else:
+        if options.debug:
+            logger.setLevel(logging.DEBUG)
+        confdata = Configuration(options)
+        initmode = (args[1] == 'init')
+        confdata.sanity_check(initmode)
+        actions.get(args[1], action_error)(confdata, args[1:])
+
+if __name__ == "__main__":
+    try:
+        ret = main()
+    except Exception:
+        ret = 1
+        import traceback
+        traceback.print_exc(5)
+    sys.exit(ret)
