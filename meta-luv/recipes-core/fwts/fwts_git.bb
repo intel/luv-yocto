@@ -15,6 +15,7 @@ SRC_URI = "git://kernel.ubuntu.com/hwe/fwts.git \
 S = "${WORKDIR}/git"
 DEPENDS = "autoconf automake libtool libpcre libjson flex bison "
 
-inherit autotools
+inherit autotools luv-test
+
 FILES_${PN} += "${libdir}/fwts/lib*${SOLIBS}"
 FILES_${PN}-dev += "${libdir}/fwts/lib*${SOLIBSDEV} ${libdir}/fwts/lib*.la"
