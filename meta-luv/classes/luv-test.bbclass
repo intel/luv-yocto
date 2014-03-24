@@ -6,21 +6,38 @@
 LUV_TEST_ARGS = ""
 LUV_TEST = "${PN}"
 
-# The installation directory of test runner scripts
-RUNNER_PATH = "${sysconfdir}/luv-tests"
+LUV_TEST_LOG_PARSER = ""
 
-FILES_${PN}-luv = "${RUNNER_PATH}/${PN}"
+# The installation directory of test runner scripts and log parsers
+RUNNER_PATH = "${sysconfdir}/luv/tests"
+PARSER_PATH = "${sysconfdir}/luv/parsers"
+
+FILES_${PN}-luv = "${RUNNER_PATH}/${PN} ${PARSER_PATH}/${PN}"
 
 do_install_runner() {
-    install -d ${D}${RUNNER_PATH}
-cat > ${D}${RUNNER_PATH}/${PN} <<EOF
+    runner_dir="${D}${RUNNER_PATH}"
+    install -d $runner_dir
+
+    log_dir="${D}${PARSER_PATH}"
+    install -d $log_dir
+
+    if [ ! -z ${LUV_TEST_LOG_PARSER} ]; then
+        parser="${PARSER_PATH}/${PN}"
+        install -m 755 ${WORKDIR}/${LUV_TEST_LOG_PARSER} ${D}${parser}
+    fi
+
+    cat > ${runner_dir}/${PN} <<EOF
 #!/bin/sh
 #
-# This is an automatically generated test runner script
+# This is an automatically generated test runner script that is invoked
+# by luv-test-manager.
+#
+# Anything we write to stdout must be in the standard luv-test log
+# format.
 
 ${LUV_TEST} ${LUV_TEST_ARGS}
 EOF
-    chmod +x ${D}${RUNNER_PATH}/${PN}
+    chmod +x ${runner_dir}/${PN}
 }
 
 addtask install_runner after do_install before do_package
