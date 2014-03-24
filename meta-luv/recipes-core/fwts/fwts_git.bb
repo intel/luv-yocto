@@ -10,12 +10,17 @@ SRCREV = "fef72314787d7b029d932ef56b4a117538cf69e3"
 SRC_URI = "git://kernel.ubuntu.com/hwe/fwts.git \
            file://subdir.patch \
            file://jsonc.patch \
+           file://luv-parser-fwts \
           "
 
 S = "${WORKDIR}/git"
 DEPENDS = "autoconf automake libtool libpcre libjson flex bison "
 
 inherit autotools luv-test
+
+LUV_TEST_LOG_PARSER="luv-parser-fwts"
+LUV_TEST_ARGS="-r stdout -q --uefi --log-filter='SUM,INF' \
+	--log-format='%owner;%field '"
 
 FILES_${PN} += "${libdir}/fwts/lib*${SOLIBS}"
 FILES_${PN}-dev += "${libdir}/fwts/lib*${SOLIBSDEV} ${libdir}/fwts/lib*.la"
