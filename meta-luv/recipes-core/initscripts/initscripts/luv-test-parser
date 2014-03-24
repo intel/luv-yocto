@@ -1,0 +1,65 @@
+#!/bin/sh
+#
+# Copyright (C) 2014 Intel Corporation; author Matt Fleming
+#
+# The schema for the luv test manager looks like this,
+#
+#  <version> <testsuite> <unittest> <tag> <tag data>
+#
+# where <tag> and <tag data> are one of,
+#
+# <tag> ::= RESULT <passes> <fails> <warns> <aborts> <skips>
+#         | INFO <string>
+#
+# This is the format that all data on stdin must have.
+
+awk '
+
+#
+# This is the only schema version we support.
+#
+/^1.0/ {
+	if (!b) {
+		b = 1;
+		printf ("    [-] %s\n", $2);
+	}
+
+	# New test?
+	if (!tests[$3]) {
+		tests[$3] = 1;
+		printf("      [+] %s... ", $3);
+	}
+
+	#
+	# Parse tags
+	#
+	if ($4 == "RESULT") {
+		passes=$5
+		fails=$6
+		aborts=$7
+		skips=$8
+
+		#
+		# Instead of reporting all results to the user lets only
+		# report the most urgent/highest priority result.
+		#
+		# Failures are obviously bad and we report them above
+		# everything else.
+		#
+		# Skips/aborts are not necesarily serious but rather
+		# indicate potential gaps in the testing coverage (or
+		# maybe we ran tests that are not supported by the
+		# hardware). Only report if the entire unittest was
+		# skipped/aborted.
+		#
+		# Passes indicate everything is fine.
+		if (fails > 0)
+			printf("%d failures!\n", fails);
+		else if ((aborts > 0 || skips > 0) && !passes)
+			printf("skipped\n");
+		else
+			printf("passed\n");
+	} else if ($4 == "INFO") {
+		# Do nothing for now.
+	}
+}'

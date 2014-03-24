@@ -12,7 +12,12 @@ EOF
 # Every test must create a runner script and place it in $LUV_TESTS_DIR.
 # See meta-luv/classes/luv-test.bbclass for details.
 #
-LUV_TESTS_DIR=/etc/luv-tests/
+# Most also want to provide a testsuite log parser that converts the
+# testsuite-specific output into the log schema defined in
+# luv-test-parser.
+#
+LUV_TESTS_DIR=/etc/luv/tests/
+LUV_PARSER_DIR=/etc/luv/parsers/
 
 runner_list=`ls -A ${LUV_TESTS_DIR}`
 for r in $runner_list; do
@@ -20,7 +25,16 @@ for r in $runner_list; do
 
     [ -f "$runner" ] || continue
 
-    $runner
-done
+    parser="${LUV_PARSER_DIR}/$r"
+    [ -e ${parser} ] || {
+        parser="/bin/cat"
+    }
 
-echo "Ran $(echo $runner_list | wc -w) tests"
+    $runner | $parser | ${LUV_PARSER_DIR}/test-manager
+done | awk '/      \[\+/ { units += 1 }
+    /    \[\-/ { suites += 1 }
+    END {
+	printf("\nRan %d testsuites and %d unittests\n", suites, units)
+    }
+
+    { print $0 }'
