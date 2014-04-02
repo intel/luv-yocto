@@ -1,3 +1,5 @@
+FILES_${PN} += "/init"
+
 do_install () {
 	oe_runmake 'ROOT=${D}' install
 
@@ -14,4 +16,6 @@ do_install () {
 
 	chown root.shutdown ${D}${base_sbindir}/halt ${D}${base_sbindir}/shutdown
 	chmod o-x,u+s ${D}${base_sbindir}/halt ${D}${base_sbindir}/shutdown
+
+	ln -s $(ROOT)${base_sbindir}/init ${D}/init
 }
