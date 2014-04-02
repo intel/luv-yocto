@@ -524,7 +524,7 @@ if [ "$MACHINE" = "qemuzynq" ]; then
 fi
 
 if [ "x$RAMFS" = "xtrue" ]; then
-    QEMUOPTIONS="-initrd $ROOTFS -nographic"
+    QEMUOPTIONS="-initrd $ROOTFS"
     KERNCMDLINE="root=/dev/ram0 debugshell"
 fi
 
