@@ -9,6 +9,10 @@ PV = "14.03.01+git${SRCPV}"
 SRCREV = "8ec44dc1e55ecf334f4afa8eed8795ed5776c396"
 SRC_URI = "git://kernel.ubuntu.com/hwe/fwts.git \
            file://luv-parser-fwts \
+           file://0001-efi_runtime-Set-default-value-for-KVER.patch \
+           file://0002-efi_runtime-Refactor-ioctl-code-into-helper-function.patch \
+           file://0003-efi_runtime-Group-kernel-version-dependent-functions.patch \
+           file://0004-efi_runtime-Do-not-pass-user-addresses-to-firmware.patch \
           "
 
 S = "${WORKDIR}/git"
