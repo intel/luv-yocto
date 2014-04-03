@@ -14,11 +14,33 @@ SRC_URI = "git://kernel.ubuntu.com/hwe/fwts.git \
 S = "${WORKDIR}/git"
 DEPENDS = "autoconf automake libtool libpcre libjson flex bison "
 
-inherit autotools luv-test
+inherit autotools luv-test module-base
+
+do_compile_append() {
+	unset CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
+	oe_runmake KERNEL_PATH=${STAGING_KERNEL_DIR}   \
+		KERNEL_SRC=${STAGING_KERNEL_DIR}    \
+		KERNEL_VERSION=${KERNEL_VERSION}    \
+		CC="${KERNEL_CC}" LD="${KERNEL_LD}" \
+		AR="${KERNEL_AR}" -C ${STAGING_KERNEL_DIR} \
+		M="${S}/efi_runtime" \
+		${MAKE_TARGETS}
+}
+
+do_install_append() {
+	unset CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
+	oe_runmake DEPMOD=echo INSTALL_MOD_PATH="${D}" \
+		KERNEL_SRC=${STAGING_KERNEL_DIR} \
+		CC="${KERNEL_CC}" LD="${KERNEL_LD}" \
+		-C ${STAGING_KERNEL_DIR} \
+		M="${S}/efi_runtime" \
+		modules_install
+}
 
 LUV_TEST_LOG_PARSER="luv-parser-fwts"
 LUV_TEST_ARGS="-r stdout -q --uefi --log-filter='SUM,INF' \
 	--log-format='%owner;%field '"
 
 FILES_${PN} += "${libdir}/fwts/lib*${SOLIBS}"
+FILES_${PN} += "/lib/modules/${KERNEL_VERSION}/extra/efi_runtime.ko"
 FILES_${PN}-dev += "${libdir}/fwts/lib*${SOLIBSDEV} ${libdir}/fwts/lib*.la"
