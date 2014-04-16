@@ -29,8 +29,15 @@ do_compile_append() {
 		KERNEL_VERSION=${KERNEL_VERSION}    \
 		CC="${KERNEL_CC}" LD="${KERNEL_LD}" \
 		AR="${KERNEL_AR}" -C ${STAGING_KERNEL_DIR} \
+		scripts
+
+	oe_runmake KERNEL_PATH=${STAGING_KERNEL_DIR}   \
+		KERNEL_SRC=${STAGING_KERNEL_DIR}    \
+		KERNEL_VERSION=${KERNEL_VERSION}    \
+		CC="${KERNEL_CC}" LD="${KERNEL_LD}" \
+		AR="${KERNEL_AR}" -C ${STAGING_KERNEL_DIR} \
 		M="${S}/efi_runtime" \
-		${MAKE_TARGETS}
+		modules
 }
 
 do_install_append() {
