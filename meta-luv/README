@@ -1,5 +1,6 @@
-This README file contains information on the contents of the
-efi-test-distro layer.
+This README file contains information on the contents of the meta-luv
+layer, which is the layer containing all the components necessary to
+build the Linux UEFI Validation distribution.
 
 Please see the corresponding sections below for details.
 
@@ -16,49 +17,44 @@ This layer depends on:
   layers: meta
   branch: master
 
-  URI: git://git.yoctoproject.org/xxxx
-  layers: xxxx
+  URI: git://git.yoctoproject.org/poky
   branch: master
 
 
 Patches
 =======
 
-Please submit any patches against the efi-test-distro layer to the
+Please submit any patches against the meta-luv layer to the
 xxxx mailing list (xxxx@zzzz.org) and cc: the maintainer:
 
-Maintainer: XXX YYYYYY <xxx.yyyyyy@zzzzz.com>
+Maintainer: Matt Fleming <matt.fleming@intel.com>
 
 
 Table of Contents
 =================
 
-  I. Adding the efi-test-distro layer to your build
- II. Misc
+  I. Adding the meta-luv layer to your build
 
 
-I. Adding the efi-test-distro layer to your build
+I. Adding the meta-luv layer to your build
 =================================================
-
---- replace with specific instructions for the efi-test-distro layer ---
 
 In order to use this layer, you need to make the build system aware of
 it.
 
-Assuming the efi-test-distro layer exists at the top-level of your
+Assuming the meta-luv layer exists at the top-level of your
 yocto build tree, you can add it to the build system by adding the
-location of the efi-test-distro layer to bblayers.conf, along with any
+location of the meta-luv layer to bblayers.conf, along with any
 other layers needed. e.g.:
 
   BBLAYERS ?= " \
     /path/to/yocto/meta \
     /path/to/yocto/meta-yocto \
     /path/to/yocto/meta-yocto-bsp \
-    /path/to/yocto/meta-efi-test-distro \
+    /path/to/yocto/meta-luv \
     "
 
+Then it is necessary to specify the luv distribution in local.conf.
+e.g.:
 
-II. Misc
-========
-
---- replace with specific information about the efi-test-distro layer ---
+  DISTRO = "luv"
