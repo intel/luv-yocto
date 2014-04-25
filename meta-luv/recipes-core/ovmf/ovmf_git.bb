@@ -7,12 +7,14 @@ SRC_URI = "git://github.com/tianocore/edk2.git;branch=master \
 	file://0001-BaseTools-Don-t-override-CFLAGS.patch \
 	file://0002-BaseTools-Don-t-override-LFLAGS.patch"
 
-SRCREV="${AUTOREV}"
+SRCREV="cd9944d72a2b51004efecdcf024a173721f1b3d1"
 
 inherit native
 BBCLASSEXTEND = "native nativesdk"
 
 S = "${WORKDIR}/git"
+
+DEPENDS="util-linux"
 
 # OVMF has trouble building with the default optimization of -O2.
 BUILD_OPTIMIZATION="-pipe"
