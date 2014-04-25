@@ -1,3 +1,14 @@
+Linux UEFI Validation Distribution
+==================================
+
+This is a fork of Poky that also includes the meta-luv layer which is
+the layer containing all recipes for the Linux UEFI Validation (luv)
+distribution. The intention of this fork is to make it simple to build
+the luv distribution by integrating everything into a single git
+repository.
+
+See meta-luv/README for more details on the luv distribution.
+
 Poky
 ====
 
