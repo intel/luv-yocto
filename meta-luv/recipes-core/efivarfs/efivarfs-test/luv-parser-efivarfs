@@ -1,0 +1,17 @@
+#!/bin/sh
+#
+# Parse the output of the Linux kernel efivarfs selftests and write to
+# stdout in a luv-test-manager compatible log.
+
+awk '/running/ {
+	test=$2
+	printf ("1.0 efivarfs %s INFO\n", test);
+    }
+
+    /\[PASS\]/ {
+	printf ("1.0 efivarfs %s RESULT 1 0 0 0\n", test);
+    }
+
+    /\[FAIL\]/ {
+	printf ("1.0 efivarfs %s RESULT 0 1 0 0\n", test);
+    }'

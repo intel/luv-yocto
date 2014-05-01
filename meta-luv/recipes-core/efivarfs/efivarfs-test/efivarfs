@@ -1,0 +1,15 @@
+#!/bin/sh
+#
+# Copyright (C) 2014 Intel Corporation
+#
+# Executing the efivarfs tests is not straight forward as they make lots
+# of assumptions about their environment - namely that they're being
+# executed from within the kernel source tree.
+
+TEST_DIR="/usr/share/efivarfs-test/"
+
+pushd ${TEST_DIR} > /dev/null
+
+./efivarfs.sh
+
+popd > /dev/null
