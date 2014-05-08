@@ -16,9 +16,12 @@ SRC_URI = "git://kernel.ubuntu.com/hwe/fwts.git \
           "
 
 S = "${WORKDIR}/git"
-DEPENDS = "autoconf automake libtool libpcre libjson flex bison "
+DEPENDS = "autoconf automake libtool libpcre libjson flex bison \
+	virtual/kernel "
 
 inherit autotools luv-test module-base
+
+do_unpack[depends] += "virtual/kernel:do_populate_sysroot"
 
 do_compile_append() {
 	unset CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
