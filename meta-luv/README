@@ -24,8 +24,8 @@ This layer depends on:
 Patches
 =======
 
-Please submit any patches against the meta-luv layer to the
-xxxx mailing list (xxxx@zzzz.org) and cc: the maintainer:
+Please submit any patches against the meta-luv layer to the luv mailing
+list (luv@lists.01.org) and cc: the maintainer:
 
 Maintainer: Matt Fleming <matt.fleming@intel.com>
 
