@@ -2,6 +2,15 @@
 # Copyright 2014 Intel Corporation; author Matt Fleming
 #
 
+FIFO="/mnt/.psplash/psplash_fifo"
+psplash_write() {
+    if [ -e $FIFO ]; then
+	echo $1 > $FIFO
+    fi
+}
+
+psplash_write "MSG Running tests..."
+
 cat <<EOF
 Welcome to the Linux UEFI Validation Project
 
@@ -19,11 +28,23 @@ EOF
 LUV_TESTS_DIR=/etc/luv/tests/
 LUV_PARSER_DIR=/etc/luv/parsers/
 
+#
+# We can't get very accurate progress because we've no way of knowing
+# how many unit tests each test suite includes. Use a coarse-grained
+# progress step based on the number of test suites.
+#
+psplash_write "PROGRESS 0"
+
 runner_list=`ls -A ${LUV_TESTS_DIR}`
+
+progress_step="$((100/$(echo $runner_list | wc -w)))"
 for r in $runner_list; do
     runner="${LUV_TESTS_DIR}$r"
 
     [ -f "$runner" ] || continue
+
+    psplash_write "PROGRESS $progress_step"
+    psplash_write "MSG Running $r"
 
     parser="${LUV_PARSER_DIR}/$r"
     [ -e ${parser} ] || {
@@ -40,4 +61,11 @@ done | awk '/      \[\+/ { units += 1 }
 	printf("\nRan %d testsuites and %d unittests, %d passes, %d fails, %d skipped\n", suites, units, passes, fails, skips)
     }
 
-    { print $0 }'
+    { print $0 }' | tee /tmp/luv.results
+
+[ -e $FIFO ] && {
+    echo "DONE" > $FIFO
+    grep "Ran" /tmp/luv.results | awk '{printf "MSG %s\n", $0}' > $FIFO
+
+    umount -l /mnt/.psplash
+}
