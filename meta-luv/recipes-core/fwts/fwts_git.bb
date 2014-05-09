@@ -46,7 +46,7 @@ do_install_append() {
 
 LUV_TEST_LOG_PARSER="luv-parser-fwts"
 LUV_TEST_ARGS="-r stdout -q --uefi --log-filter='SUM,INF' \
-	--log-format='%owner;%field '"
+	--log-format='%owner;%field ' --batch"
 
 FILES_${PN} += "${libdir}/fwts/lib*${SOLIBS}"
 FILES_${PN} += "/lib/modules/${KERNEL_VERSION}/extra/efi_runtime.ko"
