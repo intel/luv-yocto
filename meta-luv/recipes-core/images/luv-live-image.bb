@@ -9,6 +9,9 @@ LABELS = "luv"
 INITRD_IMAGE = "core-image-efi-initramfs"
 INITRD = "${DEPLOY_DIR_IMAGE}/${INITRD_IMAGE}-${MACHINE}.cpio.gz"
 MACHINE_FEATURES += "efi"
+APPEND = "quiet"
+
+GRUB_TIMEOUT = "2"
 
 inherit bootimg
 
