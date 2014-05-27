@@ -14,10 +14,18 @@ BBCLASSEXTEND = "native nativesdk"
 
 S = "${WORKDIR}/git"
 
-DEPENDS="util-linux"
+DEPENDS="util-linux-native iasl-native"
 
 # OVMF has trouble building with the default optimization of -O2.
 BUILD_OPTIMIZATION="-pipe"
+
+do_patch_append() {
+    bb.build.exec_func('do_fix_iasl', d)
+}
+
+do_fix_iasl() {
+    sed -i -e 's#/usr/bin/iasl#${STAGING_BINDIR_NATIVE}/iasl#' ${S}/BaseTools/Conf/tools_def.template
+}
 
 do_compile() {
     export LFLAGS="${LDFLAGS}"
