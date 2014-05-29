@@ -1,0 +1,30 @@
+From 5f5b13a803e5092cc03ff59eddeb795ecaf5a6a9 Mon Sep 17 00:00:00 2001
+From: Matt Fleming <matt.fleming@intel.com>
+Date: Mon, 2 Jun 2014 11:22:01 +0100
+Subject: [PATCH 5/5] tool/setup.py: Delete Windows drivers in data_files
+
+We obviously don't build those drivers on Linux, so remove them. To fix
+this properly would require some means of telling setup.py which
+platform we're building for, not which platform we're currently running
+on.
+
+Signed-off-by: Matt Fleming <matt.fleming@intel.com>
+---
+ source/tool/setup.py | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/source/tool/setup.py b/source/tool/setup.py
+index f4087ce..f1e2c47 100644
+--- a/source/tool/setup.py
++++ b/source/tool/setup.py
+@@ -74,7 +74,6 @@ setup(
+         author_email    = '',
+         url             = 'https://github.com/chipsec/chipsec',
+ 
+-        data_files      = data_files,
+         packages        = mypackages 
+ 
+ ) 
+-- 
+1.9.0
+
