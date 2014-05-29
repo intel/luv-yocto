@@ -1,0 +1,26 @@
+From eaf6db2d55bb1b404bcf8ad5bbbe8e145195bf6b Mon Sep 17 00:00:00 2001
+From: Matt Fleming <matt.fleming@intel.com>
+Date: Wed, 28 May 2014 15:08:39 +0100
+Subject: [PATCH 2/5] helper/linux: Allow $INC to be overidden
+
+When compiling chipsec for a target other than the host on which we're
+doing the compiling we need to be able to override $INC.
+
+Signed-off-by: Matt Fleming <matt.fleming@intel.com>
+---
+ source/tool/chipsec/helper/linux/Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/source/tool/chipsec/helper/linux/Makefile b/source/tool/chipsec/helper/linux/Makefile
+index 3a5ed1c..5d925d6 100644
+--- a/source/tool/chipsec/helper/linux/Makefile
++++ b/source/tool/chipsec/helper/linux/Makefile
+@@ -1,4 +1,4 @@
+-INC=-I/usr/include/python2.7
++INC ?= -I/usr/include/python2.7
+ 
+ cores: 	
+ 	$(CC) $(INC) -c -fPIC cores.c -o cores.o
+-- 
+1.9.0
+
