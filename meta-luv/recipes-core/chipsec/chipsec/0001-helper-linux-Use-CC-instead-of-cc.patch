@@ -1,0 +1,35 @@
+From f9632b03227ad8d5bd3ce6545ad44f7ea31dccd2 Mon Sep 17 00:00:00 2001
+From: Matt Fleming <matt.fleming@intel.com>
+Date: Wed, 28 May 2014 14:48:01 +0100
+Subject: [PATCH 1/5] helper/linux: Use $(CC) instead of 'cc'
+
+In order to compile chipsec for a non-native toolchain we need to use a
+level of indirection and reference $(CC) instead of 'cc'.
+
+By default there's no change, and things should work as before. But now
+it's also possible for users to specify CC= on the command line to point
+to a non-native compiler.
+
+Signed-off-by: Matt Fleming <matt.fleming@intel.com>
+---
+ source/tool/chipsec/helper/linux/Makefile | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/source/tool/chipsec/helper/linux/Makefile b/source/tool/chipsec/helper/linux/Makefile
+index 2987d02..3a5ed1c 100644
+--- a/source/tool/chipsec/helper/linux/Makefile
++++ b/source/tool/chipsec/helper/linux/Makefile
+@@ -1,8 +1,8 @@
+ INC=-I/usr/include/python2.7
+ 
+ cores: 	
+-	cc $(INC) -c -fPIC cores.c -o cores.o
+-	cc cores.o -shared -o cores.so
++	$(CC) $(INC) -c -fPIC cores.c -o cores.o
++	$(CC) cores.o -shared -o cores.so
+ 
+ clean:
+ 	rm -f *.o *.so
+-- 
+1.9.0
+
