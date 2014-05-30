@@ -14,6 +14,41 @@ psplash_write() {
     fi
 }
 
+# Save test results to a disk. In order to reliable identify the
+# correct partition, mount using the disk's UUID. If the partition
+# cannot be mounted, test results are not saved.
+
+LUV_SAVE_RAW_DIR=/dev/null
+LUV_SAVE_PARSED_DIR=/dev/null
+LUV_SAVE_RESULTS_DIR=/dev/null
+
+LUV_STORAGE=/mnt/luv-storage/
+LUV_PARTITION_UUID=05D6-1523
+LUV_DISK_DEVICE=/dev/disk/by-uuid/${LUV_PARTITION_UUID}
+
+mkdir -p ${LUV_STORAGE}
+if [ $? -eq 0 ]; then
+    # Not all disks may be ready to mount at this moment.
+    # Thus, we need to wait for them.
+    psplash_write "MSG Preparing test setup..."
+    for n in 0 25 50 75 100
+    do
+        psplash_write "PROGRESS $n"
+        sleep 1
+    done
+
+    mount ${LUV_DISK_DEVICE} ${LUV_STORAGE}
+    if [ $? -eq 0 ]; then
+        LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}luv-results/
+
+        mkdir -p ${LUV_SAVE_RESULTS_DIR}raw/
+        [ $? -eq 0 ] && LUV_SAVE_RAW_DIR=${LUV_SAVE_RESULTS_DIR}raw/
+
+        mkdir -p ${LUV_SAVE_RESULTS_DIR}parsed/
+        [ $? -eq 0 ] && LUV_SAVE_PARSED_DIR=${LUV_SAVE_RESULTS_DIR}parsed
+    fi
+fi
+
 psplash_write "MSG Running tests..."
 
 cat <<EOF
@@ -59,21 +94,31 @@ for r in $runner_list; do
         parser="/bin/cat"
     }
 
-    $runner | tee ${LUV_LOG_DIR}/$r | $parser | ${LUV_PARSER_DIR}/test-manager
+    $runner | tee ${LUV_LOG_DIR}/$r | tee ${LUV_SAVE_RAW_DIR}/$r | $parser | \
+              tee ${LUV_SAVE_PARSED_DIR}/$r | ${LUV_PARSER_DIR}/test-manager
+    sync
 done | awk '/      \[\+/ { units += 1 }
     /    \[\-/ { suites += 1 }
     /pass/ { passes += 1 }
     /fail/ { fails += $3 }
     /skip/ { skips += 1 }
     END {
-	printf("\nRan %d testsuites and %d unittests, %d passes, %d fails, %d skipped\n", suites, units, passes, fails, skips)
+	printf("\nRan %d testsuites and %d unittests, %d passes, %d fails, %d skipped.\n", suites, units, passes, fails, skips)
     }
 
-    { print $0 }' | tee /tmp/luv.results
+    { print $0 }' | tee /tmp/luv.results | tee ${LUV_SAVE_RESULTS_DIR}/luv.results
+
+mountpoint -q ${LUV_STORAGE}
+if [ $? -eq 0 ]; then
+    umount ${LUV_STORAGE}
+    SAVE_STATUS="You may remove the storage media."
+else
+    SAVE_STATUS="Results were not saved in storage media."
+fi
 
 [ -e $FIFO ] && {
     echo "DONE" > $FIFO
-    grep "Ran" /tmp/luv.results | awk '{printf "MSG %s\n", $0}' > $FIFO
+    grep "Ran" /tmp/luv.results | awk '{printf "MSG %s\n%s\n", $0, "'"$SAVE_STATUS"'"}' > $FIFO
 
     umount -l /mnt/.psplash
 }
