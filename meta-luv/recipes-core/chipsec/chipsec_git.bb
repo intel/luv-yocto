@@ -10,7 +10,8 @@ SRC_URI = "git://github.com/chipsec/chipsec.git \
     file://0001-helper-linux-Use-CC-instead-of-cc.patch \
     file://0002-helper-linux-Allow-INC-to-be-overidden.patch \
     file://0003-chipsec_main.py-Remove-absolute-reference-to-python-.patch \
-    file://0005-tool-setup.py-Delete-Windows-drivers-from-data_files.patch"
+    file://0005-tool-setup.py-Delete-Windows-drivers-from-data_files.patch \
+    file://chipsec file://luv-parser-chipsec"
 
 SRCREV="v1.1.0"
 
@@ -21,6 +22,7 @@ RDEPENDS_${PN} = "python python-shell python-stringold python-xml \
 inherit module-base
 inherit python-dir
 inherit distutils
+inherit luv-test
 
 S = "${WORKDIR}/git"
 
@@ -28,6 +30,7 @@ export INC = "-I${STAGING_INCDIR}/${PYTHON_DIR}"
 
 fix_mod_path() {
     sed -i -e "s:^INSTALL_MOD_PATH_PREFIX = .*:INSTALL_MOD_PATH_PREFIX = \"${PYTHON_SITEPACKAGES_DIR}\":" ${S}/source/tool/chipsec_main.py
+    sed -i -e "s:PYTHONPATH:${PYTHON_SITEPACKAGES_DIR}:" ${WORKDIR}/chipsec
 }
 
 do_patch_append() {
@@ -60,10 +63,8 @@ do_install_prepend() {
 do_install_append() {
     unset CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
-    # Install the main python script
     install -d ${D}${bindir}
-    install -m 0755 ${S}/source/tool/chipsec_main.py \
-        ${D}${bindir}/chipsec
+    install -m 0755 ${WORKDIR}/chipsec ${D}${bindir}
 
     # Install the kernel driver
     oe_runmake DEPMOD=echo INSTALL_MOD_PATH="${D}" \
@@ -73,5 +74,7 @@ do_install_append() {
         M="${S}/source/drivers/linux" \
         modules_install
 }
+
+LUV_TEST_LOG_PARSER="luv-parser-chipsec"
 
 FILES_${PN} += "/lib/modules/${KERNEL_VERSION}/extra/chipsec.ko"
