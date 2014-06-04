@@ -12,7 +12,7 @@ LUV_TEST_LOG_PARSER = ""
 RUNNER_PATH = "${sysconfdir}/luv/tests"
 PARSER_PATH = "${sysconfdir}/luv/parsers"
 
-FILES_${PN}-luv = "${RUNNER_PATH}/${PN} ${PARSER_PATH}/${PN}"
+FILES_${PN} += "${RUNNER_PATH}/${PN} ${PARSER_PATH}/${PN}"
 
 do_install_runner() {
     runner_dir="${D}${RUNNER_PATH}"
