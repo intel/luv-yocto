@@ -10,7 +10,7 @@ LABELS = "luv"
 INITRD_IMAGE = "core-image-efi-initramfs"
 INITRD = "${DEPLOY_DIR_IMAGE}/${INITRD_IMAGE}-${MACHINE}.cpio.gz"
 MACHINE_FEATURES += "efi"
-APPEND = "quiet"
+APPEND = "quiet crashkernel=256M"
 
 GRUB_TIMEOUT = "2"
 
