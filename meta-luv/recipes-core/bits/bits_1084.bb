@@ -13,13 +13,12 @@ HOMEPAGE = "http://biosbits.org/"
 SECTION = "bootloaders"
 
 LICENSE = "GPLv2"
-LIC_FILES_CHKSUM = "file://COPYING;md5=49c88c1789686b7f387cd5bba3f4b428"
+LIC_FILES_CHKSUM = "file://boot/COPYING;md5=71a9ec458a3c65c2bfb461b227ef3049"
 
 
 DEPENDS = "autogen-native flex-native"
 RDEPENDS_${PN} = "diffutils freetype xz"
 PR = "r1"
-PV = "1084"
 
 SRC_URI = "http://biosbits.org/downloads/bits-${PV}.zip \
            file://bits-cfg.txt \
