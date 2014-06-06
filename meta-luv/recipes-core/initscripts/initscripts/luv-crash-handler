@@ -1,0 +1,52 @@
+#
+# Copyright 2014 Intel Corporation; author Ricardo Neri
+#
+# The crash handler provides a safety net to LuvOS in case there is a kernel
+# crash while running the tests. It will make preparations to reboot the
+# system with kexec and dump all the available crash information in the
+# recovery boot.
+
+# In regular boot, we prepare the recovery kernel and initrd image. These images
+# are obtained from a disk partition identified by its UUID. Behavior changes
+# according to the runlevel.
+
+FIFO="/mnt/.psplash/psplash_fifo"
+psplash_write() {
+    if [ -e $FIFO ]; then
+	echo $1 > $FIFO
+    fi
+}
+
+runl=`runlevel`
+# If we are in runlevel 5, we are on a regular boot and we only have to
+# prepare everything in case there is a kernel crash in the future.
+if [[ $runl == *5* ]]; then
+    # Not all disks may be ready to mount at this moment.
+    # Thus, we need to wait for them.
+    psplash_write "MSG Preparing crash handler..."
+    for n in 0 25 50 75 100
+    do
+        psplash_write "PROGRESS $n"
+    sleep 1
+    done
+
+    LUV_BOOT_PARTITION=/mnt/boot/
+    LUV_BOOT_PARTITION_UUID=423C-C2C8
+    LUV_DISK_DEVICE=/dev/disk/by-uuid/${LUV_BOOT_PARTITION_UUID}
+
+    mkdir -p ${LUV_BOOT_PARTITION}
+    if [ $? -eq 0 ]; then
+        mount ${LUV_DISK_DEVICE} ${LUV_BOOT_PARTITION}
+        if [ $? -eq 0 ]; then
+            kexec -p --initrd=${LUV_BOOT_PARTITION}initrd --append="noluv 3 \
+                  irqpoll maxcpus=1 reset_devices" ${LUV_BOOT_PARTITION}vmlinuz
+            umount ${LUV_BOOT_PARTITION}
+        fi
+    fi
+fi
+
+# If we are in runlevel 3, we just recovered from a crash. We need to dump
+# the /proc/vmcore file.
+if [[ $runl == *3* ]]; then
+   echo Please copy the file /proc/vmcore to your non-volatile media.
+fi
