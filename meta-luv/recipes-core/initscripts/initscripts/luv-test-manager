@@ -28,15 +28,6 @@ LUV_DISK_DEVICE=/dev/disk/by-uuid/${LUV_PARTITION_UUID}
 
 mkdir -p ${LUV_STORAGE}
 if [ $? -eq 0 ]; then
-    # Not all disks may be ready to mount at this moment.
-    # Thus, we need to wait for them.
-    psplash_write "MSG Preparing test setup..."
-    for n in 0 25 50 75 100
-    do
-        psplash_write "PROGRESS $n"
-        sleep 1
-    done
-
     mount ${LUV_DISK_DEVICE} ${LUV_STORAGE}
     if [ $? -eq 0 ]; then
         LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}luv-results/
