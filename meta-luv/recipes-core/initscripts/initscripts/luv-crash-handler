@@ -48,5 +48,50 @@ fi
 # If we are in runlevel 3, we just recovered from a crash. We need to dump
 # the /proc/vmcore file.
 if [[ $runl == *3* ]]; then
-   echo Please copy the file /proc/vmcore to your non-volatile media.
+
+    LUV_STORAGE=/mnt/luv-storage/
+    LUV_PARTITION_UUID=05D6-1523
+    LUV_DISK_DEVICE=/dev/disk/by-uuid/${LUV_PARTITION_UUID}
+    LUV_DEBUG_DIR=${LUV_STORAGE}luv-debug/
+    LUV_DEBUG_FILE=luv-debug.log
+    LUV_README_FILE=README.txt
+
+    LUV_DEBUG_README="
+    Oops. It looks like the system crashed while running the tests. We can
+    help to determine what went wrong. Along with this file, you will see a
+    ${LUV_DEBUG_FILE} file. Please report your crash to luv@lists.01.org or
+    submit a bug report on https://github.com/01org/luv-yocto/issues. In either
+    case, please submit the contents of ${LUV_DEBUG_FILE}."
+
+    psplash_write "MSG Recovery Boot. Saving debug info..."
+
+    mkdir -p ${LUV_STORAGE}
+    if [ $? -eq 0 ]; then
+
+        mount ${LUV_DISK_DEVICE} ${LUV_STORAGE}
+        if [ $? -eq 0 ]; then
+
+            mkdir -p ${LUV_DEBUG_DIR}
+            if [ $? -eq 0 ]; then
+                vmcore-dmesg /proc/vmcore > ${LUV_DEBUG_DIR}${LUV_DEBUG_FILE}
+                echo ${LUV_DEBUG_README} > ${LUV_DEBUG_DIR}${LUV_README_FILE}
+            fi
+        fi
+    fi
+
+    if [ -f ${LUV_DEBUG_DIR}${LUV_DEBUG_FILE} ]; then
+        psplash_write "MSG Recovery boot. Debug info saved on your non-volatile media.
+                       You may safely remove it."
+    else
+        psplash_write "MSG Recovery boot. Could not save debug info."
+    fi
+
+    mountpoint -q ${LUV_STORAGE}
+    [ $? -eq 0 ] && umount ${LUV_STORAGE}
+
+    psplash_write "DONE"
+
+    # umount to prevent rc from quitting psplash
+    umount -l /mnt/.psplash
+
 fi
