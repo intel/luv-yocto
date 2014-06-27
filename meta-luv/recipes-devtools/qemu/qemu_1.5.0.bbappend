@@ -1,1 +1,1 @@
-DEPENDS_append_class-native = " ovmf-native"
+DEPENDS_append_class-native = " ovmf"
