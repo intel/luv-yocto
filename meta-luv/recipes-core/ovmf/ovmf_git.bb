@@ -33,13 +33,16 @@ do_fix_toolchain(){
     sed -i -e "s#^LINKER\(.*\)#LINKER\1\nCFLAGS += ${BUILD_CFLAGS}#" ${S}/BaseTools/Source/C/VfrCompile/GNUmakefile
 }
 
+GCC_VER="$(${CC} -v 2>&1 | tail -n1 | awk '{print $3}' | awk -F. '{print $1$2}')"
+
 do_compile() {
     export LFLAGS="${LDFLAGS}"
-    ${S}/OvmfPkg/build.sh -a X64 -b RELEASE
+    ${S}/OvmfPkg/build.sh -a X64 -b RELEASE -t GCC${GCC_VER}
 }
 
 do_install() {
     install -d ${D}${datadir}/ovmf
-    install -m 0755 `find ${S}/Build -name OVMF.fd` \
+    build_dir="${S}/Build/OvmfX64/RELEASE_GCC${GCC_VER}"
+    install -m 0755 ${build_dir}/FV/OVMF.fd \
 	${D}${datadir}/ovmf/bios.bin
 }
