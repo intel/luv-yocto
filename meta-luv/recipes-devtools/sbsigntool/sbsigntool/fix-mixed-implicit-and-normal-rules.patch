@@ -1,0 +1,15 @@
+diff --git a/lib/ccan.git/Makefile b/lib/ccan.git/Makefile
+index 13aa195..701ad60 100644
+--- a/lib/ccan.git/Makefile
++++ b/lib/ccan.git/Makefile
+@@ -82,10 +82,6 @@ $(SCOREDIR)/SUMMARY: $(patsubst ccan/%/_info, $(SCOREDIR)/score-%, $(wildcard cc
+ 	$(CC) -v >> $@
+ 	cat $^ | grep 'Total score:' >> $@
+ 
+-$(SCOREDIR)/score-%: ccan/%/_info tools/ccanlint/ccanlint $(OBJFILES)
+-	mkdir -p $(SCOREDIR)
+-	tools/ccanlint/ccanlint -v -s ccan/$* > $@ || true
+-
+ $(ALL_DEPENDS): %/.depends: %/_info tools/ccan_depends
+ 	tools/ccan_depends $* > $@ || ( rm -f $@; exit 1 )
+ 
