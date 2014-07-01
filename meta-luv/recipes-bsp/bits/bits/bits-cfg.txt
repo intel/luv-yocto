@@ -1,0 +1,3 @@
+
+#Enabling auto mode
+batch = test acpi smbios
