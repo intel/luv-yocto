@@ -1,0 +1,173 @@
+diff -Naurp grub-2.00.orig/grub-core/net/drivers/efi/efinet.c grub-2.00/grub-core/net/drivers/efi/efinet.c
+--- grub-2.00.orig/grub-core/net/drivers/efi/efinet.c	2012-06-19 02:27:47.000000000 -0700
++++ grub-2.00/grub-core/net/drivers/efi/efinet.c	2014-07-03 22:37:24.648094324 -0700
+@@ -36,38 +36,55 @@ send_card_buffer (struct grub_net_card *
+ {
+   grub_efi_status_t st;
+   grub_efi_simple_network_t *net = dev->efi_net;
+-  grub_uint64_t limit_time = grub_get_time_ms () + 4000;
+-  grub_size_t len;
++  grub_uint32_t int_status;
++  int i;
+ 
+-  if (dev->txbusy)
+-    while (1)
+-      {
+-	void *txbuf = NULL;
+-	st = efi_call_3 (net->get_status, net, 0, &txbuf);
+-	if (st != GRUB_EFI_SUCCESS)
+-	  return grub_error (GRUB_ERR_IO,
+-			     N_("couldn't send network packet"));
+-	if (txbuf == dev->txbuf)
+-	  {
+-	    dev->txbusy = 0;
+-	    break;
+-	  }
+-	if (limit_time < grub_get_time_ms ())
+-	  return grub_error (GRUB_ERR_TIMEOUT, N_("couldn't send network packet"));
+-      }
+-
+-  len = (pack->tail - pack->data);
+-  if (len > dev->mtu)
+-    len = dev->mtu;
+-
+-  grub_memcpy (dev->txbuf, pack->data, len);
+-
+-  st = efi_call_7 (net->transmit, net, 0, len,
+-		   dev->txbuf, NULL, NULL, NULL);
+-  if (st != GRUB_EFI_SUCCESS)
+-    return grub_error (GRUB_ERR_IO, N_("couldn't send network packet"));
+-  dev->txbusy = 1;
+-  return GRUB_ERR_NONE;
++  for (i = 0; i < 3; i++)
++     {
++      grub_uint64_t limit_time;      
++      
++      efi_call_3 (net->get_status, net, &int_status, 0);
++
++      limit_time = grub_get_time_ms () + 5;
++      for (;;)
++       {
++         st = efi_call_7 (net->transmit, net, 0, (pack->tail - pack->data),
++                          pack->data, NULL, NULL, NULL);
++         if (st != GRUB_EFI_NOT_READY)
++           break;
++
++         if (limit_time < grub_get_time_ms ())
++           {
++             st = GRUB_EFI_TIMEOUT;
++             break;
++           }
++       }
++
++      if (st)
++       goto quit;
++
++       void *txbuf = NULL;
++      limit_time = grub_get_time_ms () + 5;
++      for (;;)
++       {                 
++         st = efi_call_3 (net->get_status, net, &int_status, &txbuf);
++
++         if (txbuf != NULL)
++           break;
++
++         if (limit_time < grub_get_time_ms ())
++           {
++             st = GRUB_EFI_TIMEOUT;
++             break;
++           }
++       }
++
++    quit:
++      if (st != GRUB_EFI_TIMEOUT)
++       break;
++     }
++
++   return st;
+ }
+ 
+ static struct grub_net_buff *
+diff -Naurp grub-2.00.orig/grub-core/net/tftp.c grub-2.00/grub-core/net/tftp.c
+--- grub-2.00.orig/grub-core/net/tftp.c	2012-06-22 08:42:07.000000000 -0700
++++ grub-2.00/grub-core/net/tftp.c	2014-07-03 22:34:35.000085875 -0700
+@@ -27,6 +27,7 @@
+ #include <grub/file.h>
+ #include <grub/priority_queue.h>
+ #include <grub/i18n.h>
++#include <grub/env.h>
+ 
+ GRUB_MOD_LICENSE ("GPLv3+");
+ 
+@@ -143,7 +144,7 @@ ack (tftp_data_t data, grub_uint16_t blo
+ 
+   tftph_ack = (struct tftphdr *) nb_ack.data;
+   tftph_ack->opcode = grub_cpu_to_be16 (TFTP_ACK);
+-  tftph_ack->u.ack.block = block;
++  tftph_ack->u.ack.block = grub_cpu_to_be16 (block);
+ 
+   err = grub_net_send_udp_packet (data->sock, &nb_ack);
+   if (err)
+@@ -162,8 +163,8 @@ tftp_receive (grub_net_udp_socket_t sock
+   tftp_data_t data = file->data;
+   grub_err_t err;
+   grub_uint8_t *ptr;
+-
+-  if (nb->tail - nb->data < (grub_ssize_t) sizeof (tftph->opcode))
++  
++if (nb->tail - nb->data < (grub_ssize_t) sizeof (tftph->opcode))
+     {
+       grub_dprintf ("tftp", "TFTP packet too small\n");
+       return GRUB_ERR_NONE;
+@@ -223,9 +224,9 @@ tftp_receive (grub_net_udp_socket_t sock
+ 	    unsigned size;
+ 
+ 	    grub_priority_queue_pop (data->pq);
+-
+-	    if (file->device->net->packs.count < 50)
+-	      err = ack (data, tftph->u.data.block);
++	    
++		if (file->device->net->packs.count < 50)
++	    	err = ack (data, data->block + 1);
+ 	    else
+ 	      {
+ 		file->device->net->stall = 1;
+@@ -304,6 +305,7 @@ tftp_open (struct grub_file *file, const
+   grub_err_t err;
+   grub_uint8_t *nbd;
+   grub_net_network_level_address_t addr;
++  const char *block_size;
+ 
+   data = grub_zalloc (sizeof (*data));
+   if (!data)
+@@ -335,11 +337,14 @@ tftp_open (struct grub_file *file, const
+   grub_strcpy (rrq, "blksize");
+   rrqlen += grub_strlen ("blksize") + 1;
+   rrq += grub_strlen ("blksize") + 1;
+-
+-  grub_strcpy (rrq, "1024");
+-  rrqlen += grub_strlen ("1024") + 1;
+-  rrq += grub_strlen ("1024") + 1;
+-
++  
++  block_size = grub_env_get ("tftp_block_size");
++  if (block_size == NULL)
++    block_size = "8192";
++  grub_strcpy (rrq, block_size);
++  rrqlen += grub_strlen (block_size) + 1;
++  rrq += grub_strlen (block_size) + 1;
++  
+   grub_strcpy (rrq, "tsize");
+   rrqlen += grub_strlen ("tsize") + 1;
+   rrq += grub_strlen ("tsize") + 1;
+diff -Naurp grub-2.00.orig/include/grub/net.h grub-2.00/include/grub/net.h
+--- grub-2.00.orig/include/grub/net.h	2012-06-22 04:46:25.000000000 -0700
++++ grub-2.00/include/grub/net.h	2014-06-07 00:32:42.000000000 -0700
+@@ -139,6 +139,7 @@ struct grub_net_card
+     {
+       struct grub_efi_simple_network *efi_net;
+       grub_efi_handle_t efi_handle;
++      grub_size_t last_pkt_size;
+     };
+ #endif
+     void *data;
