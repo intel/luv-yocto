@@ -4,5 +4,5 @@ do_mkimage() {
     ./grub-mkimage -c ../cfg -p /EFI/BOOT -d ./grub-core/ \
 	-O ${GRUB_TARGET}-efi -o ./${GRUB_IMAGE} \
 	boot linux ext2 fat serial part_msdos part_gpt \
-	normal efi_gop iso9660 search all_video
+	normal efi_gop iso9660 search efinet tftp all_video
 }
