@@ -494,13 +494,13 @@ fi
 
 # Specify directory for BIOS, VGA BIOS and keymaps
 if [ ! -z "$CUSTOMBIOSDIR" ]; then
-    if [ -d "$OECORE_NATIVE_SYSROOT/$CUSTOMBIOSDIR" ]; then
-        echo "Assuming biosdir is $OECORE_NATIVE_SYSROOT/$CUSTOMBIOSDIR"
-        SCRIPT_QEMU_OPT="$SCRIPT_QEMU_OPT -L $OECORE_NATIVE_SYSROOT/$CUSTOMBIOSDIR"
+    if [ -d "$OE_TMPDIR/sysroots/$MACHINE/$CUSTOMBIOSDIR" ]; then
+        echo "Assuming biosdir is $OE_TMPDIR/sysroots/$MACHINE/$CUSTOMBIOSDIR"
+        SCRIPT_QEMU_OPT="$SCRIPT_QEMU_OPT -L $OE_TMPDIR/sysroots/$MACHINE/$CUSTOMBIOSDIR"
     else
         if [ ! -d "$CUSTOMBIOSDIR" ]; then
             echo "Custom BIOS directory not found. Tried: $CUSTOMBIOSDIR"
-            echo "and $OECORE_NATIVE_SYSROOT/$CUSTOMBIOSDIR"
+            echo "and $OE_TMPDIR/sysroots/$MACHINE/$CUSTOMBIOSDIR"
             exit 1;
         fi
         echo "Assuming biosdir is $CUSTOMBIOSDIR"
