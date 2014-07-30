@@ -15,6 +15,9 @@ DEPENDS="util-linux-native iasl-native"
 # OVMF has trouble building with the default optimization of -O2.
 BUILD_OPTIMIZATION="-pipe"
 
+# OVMF supports IA only, although it could conceivably support ARM someday.
+COMPATIBLE_HOST='(i.86|x86_64).*'
+
 do_patch_append() {
     bb.build.exec_func('do_fix_iasl', d)
     bb.build.exec_func('do_fix_toolchain', d)
