@@ -40,12 +40,20 @@ GCC_VER="$(${CC} -v 2>&1 | tail -n1 | awk '{print $3}' | awk -F. '{print $1$2}')
 
 do_compile() {
     export LFLAGS="${LDFLAGS}"
-    ${S}/OvmfPkg/build.sh -a X64 -b RELEASE -t GCC${GCC_VER}
+    OVMF_ARCH="X64"
+    if [ "${TARGET_ARCH}" != "x86_64" ] ; then
+        OVMF_ARCH="IA32"
+    fi
+    ${S}/OvmfPkg/build.sh -a $OVMF_ARCH -b RELEASE -t GCC${GCC_VER}
 }
 
 do_install() {
+    OVMF_DIR_SUFFIX="X64"
+    if [ "${TARGET_ARCH}" != "x86_64" ] ; then
+        OVMF_DIR_SUFFIX="Ia32" # Note the different capitalization
+    fi
     install -d ${D}${datadir}/ovmf
-    build_dir="${S}/Build/OvmfX64/RELEASE_GCC${GCC_VER}"
+    build_dir="${S}/Build/Ovmf$OVMF_DIR_SUFFIX/RELEASE_GCC${GCC_VER}"
     install -m 0755 ${build_dir}/FV/OVMF.fd \
 	${D}${datadir}/ovmf/bios.bin
 }
