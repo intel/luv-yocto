@@ -494,6 +494,8 @@ if [ ! -f "$INTERNAL_SCRIPT" -o ! -r "$INTERNAL_SCRIPT" ]; then
 INTERNAL_SCRIPT=`which runqemu-internal`
 fi
 
+OVERRIDE_VGA="true"
+
 # Specify directory for BIOS, VGA BIOS and keymaps
 if [ ! -z "$CUSTOMBIOSDIR" ]; then
     if [ -d "$OECORE_MACHINE_SYSROOT/$CUSTOMBIOSDIR" ]; then
@@ -507,6 +509,11 @@ if [ ! -z "$CUSTOMBIOSDIR" ]; then
         fi
         echo "Assuming biosdir is $CUSTOMBIOSDIR"
         SCRIPT_QEMU_OPT="$SCRIPT_QEMU_OPT -L $CUSTOMBIOSDIR"
+    fi
+    # HACK: OVMF + -vga vmware = blank screen
+    if echo $CUSTOMBIOSDIR | grep -i ovmf > /dev/null; then 
+        echo "OVMF BIOS detected, default VGA adapter forced."
+        OVERRIDE_VGA="false"
     fi
 fi
 

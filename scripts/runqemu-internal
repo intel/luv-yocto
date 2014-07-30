@@ -357,7 +357,9 @@ fi
 
 if [ "$MACHINE" = "qemux86" ]; then
     QEMU=qemu-system-i386
-    QEMU_UI_OPTIONS="$QEMU_UI_OPTIONS -vga vmware"
+    if $OVERRIDE_VGA; then
+        QEMU_UI_OPTIONS="$QEMU_UI_OPTIONS -vga vmware"
+    fi
     if [ "${FSTYPE:0:3}" = "ext" -o "$FSTYPE" = "btrfs" ]; then
         KERNCMDLINE="vga=0 uvesafb.mode_option=640x480-32 root=$DROOT rw mem=$QEMU_MEMORY $KERNEL_NETWORK_CMD"
         QEMUOPTIONS="$QEMU_NETWORK_CMD $ROOTFS_OPTIONS $QEMU_UI_OPTIONS"
@@ -381,7 +383,9 @@ fi
 
 if [ "$MACHINE" = "qemux86-64" ]; then
     QEMU=qemu-system-x86_64
-    QEMU_UI_OPTIONS="$QEMU_UI_OPTIONS -vga vmware"
+    if $OVERRIDE_VGA; then
+        QEMU_UI_OPTIONS="$QEMU_UI_OPTIONS -vga vmware"
+    fi
     if [ "${FSTYPE:0:3}" = "ext" -o "$FSTYPE" = "btrfs" ]; then
         KERNCMDLINE="vga=0 uvesafb.mode_option=640x480-32 root=$DROOT rw mem=$QEMU_MEMORY $KERNEL_NETWORK_CMD"
         QEMUOPTIONS="$QEMU_NETWORK_CMD $ROOTFS_OPTIONS $QEMU_UI_OPTIONS"
@@ -427,7 +431,9 @@ if [ "$MACHINE" = "qemumips" -o "$MACHINE" = "qemumipsel" -o "$MACHINE" = "qemum
        qemumips64) QEMU=qemu-system-mips64 ;;
     esac
     MACHINE_SUBTYPE=malta
-    QEMU_UI_OPTIONS="-vga cirrus $QEMU_UI_OPTIONS"
+    if $OVERRIDE_VGA; then
+        QEMU_UI_OPTIONS="-vga cirrus $QEMU_UI_OPTIONS"
+    fi
     if [ "${FSTYPE:0:3}" = "ext" -o "$FSTYPE" = "btrfs" ]; then
         #KERNCMDLINE="root=/dev/hda console=ttyS0 console=tty0 $KERNEL_NETWORK_CMD mem=$QEMU_MEMORY"
         KERNCMDLINE="root=/dev/hda rw console=ttyS0 console=tty $KERNEL_NETWORK_CMD mem=$QEMU_MEMORY"
