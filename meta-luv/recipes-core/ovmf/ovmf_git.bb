@@ -6,7 +6,7 @@ LIC_FILES_CHKSUM = "file://OvmfPkg/License.txt;md5=ffd52cf9a8e0e036b9a61a0de2dc8
 SRC_URI = "git://github.com/tianocore/edk2.git;branch=master \
 	file://0001-BaseTools-Force-tools-variables-to-host-toolchain.patch"
 
-SRCREV="cd9944d72a2b51004efecdcf024a173721f1b3d1"
+SRCREV="dc4ad1532e59fd1a185d6b90d1c2a92cf8713f40"
 
 S = "${WORKDIR}/git"
 
