@@ -1,0 +1,22 @@
+#!/bin/sh
+#
+# Parse the output of the BITS tests and write a luv-test-manager
+# compatible version to stdout.
+#
+awk '/\=\=\=/ {
+	if (test) {
+		printf "1.0 bits %s RESULT %d %d %d 0\n", test, passes,
+fails, skips;
+		passes = 0; fails = 0; skips =0;
+	}
+
+	test=$2
+}
+
+/^Summary/ {
+	passes += $2
+	fails += $4
+
+	if (!passes && !fails)
+		skips += 1
+}'

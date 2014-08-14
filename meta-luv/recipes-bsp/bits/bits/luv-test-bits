@@ -1,0 +1,15 @@
+#!/bin/sh
+#
+# Check to see whether the BITS tests were run as part of this boot.
+#
+
+EFI_PATH="/mnt/luv-efi"
+bits_log=${EFI_PATH}/boot/bits-log.txt
+
+if [ ! -e $bits_log ]; then
+    # Nothing to do, no test results.
+    exit 0
+fi
+
+cat $bits_log
+#rm $bits_log

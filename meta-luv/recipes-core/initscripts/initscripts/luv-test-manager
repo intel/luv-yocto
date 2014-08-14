@@ -40,6 +40,14 @@ if [ $? -eq 0 ]; then
     fi
 fi
 
+LUV_EFI_UUID=423C-C2C8
+LUV_EFI=/mnt/luv-efi/
+
+mkdir -p ${LUV_EFI}
+if [ $? -eq 0 ]; then
+    mount /dev/disk/by-uuid/${LUV_EFI_UUID} ${LUV_EFI}
+fi
+
 psplash_write "MSG Running tests..."
 
 cat <<EOF
@@ -98,6 +106,11 @@ done | awk '/      \[\+/ { units += 1 }
     }
 
     { print $0 }' | tee /tmp/luv.results | tee ${LUV_SAVE_RESULTS_DIR}/luv.results
+
+mountpoint -q ${LUV_EFI}
+if [ $? -eq 0 ]; then
+    umount ${LUV_EFI}
+fi
 
 mountpoint -q ${LUV_STORAGE}
 if [ $? -eq 0 ]; then
