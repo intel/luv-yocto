@@ -58,6 +58,11 @@ python __anonymous () {
 
 LUV_TEST_LOG_PARSER = "luv-parser-bits"
 
+do_configure_prepend() {
+    # Return control to the main bootloader once complete.
+    echo "exit" >> ${S}/boot/cfg/init.cfg
+}
+
 do_install() {
     install -d ${D}/${bindir}
     install -m 0755 ${WORKDIR}/luv-test-bits ${D}/${bindir}/bits
