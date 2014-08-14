@@ -19,10 +19,13 @@ PV="1084"
 
 inherit autotools
 inherit deploy
+inherit luv-test
 
 #Pointing to the source bios bits
 SRC_URI = "http://biosbits.org/downloads/${BPN}-${PV}.zip  \
            file://bits-cfg.txt \
+           file://luv-test-bits \
+           file://luv-parser-bits \
           "
 
 SRC_URI[md5sum] = "57e1b689264ea80f78353519eece0c92"
@@ -53,15 +56,22 @@ python __anonymous () {
 
 }
 
+LUV_TEST_LOG_PARSER = "luv-parser-bits"
+
+do_install() {
+    install -d ${D}/${bindir}
+    install -m 0755 ${WORKDIR}/luv-test-bits ${D}/${bindir}/bits
+}
+
 do_deploy() {
 
        install -d ${DEPLOYDIR}/bits
 
        cp -r ${B}/boot/ ${DEPLOYDIR}/bits/
+       cp -r ${B}/efi ${DEPLOYDIR}/bits/
 }
 
 
 addtask deploy before do_build after do_compile
 
-do_install[noexec] = "1"
 do_populate_sysroot[noexec] = "1"

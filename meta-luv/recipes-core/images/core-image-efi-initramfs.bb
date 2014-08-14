@@ -7,7 +7,7 @@ IMAGE_INSTALL = "\
     kernel-image fwts bash coreutils gawk grep util-linux-agetty \
     util-linux-mount util-linux-umount kmod sed tar net-tools \
     shadow util-linux procps efivarfs-test \
-    psplash kexec vmcore-dmesg kernel-efi-warnings \
+    psplash kexec vmcore-dmesg kernel-efi-warnings bits \
     "
 
 export IMAGE_BASENAME = "core-image-efi-initramfs"
