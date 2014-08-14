@@ -68,6 +68,7 @@ do_deploy() {
        install -d ${DEPLOYDIR}/bits
 
        cp -r ${B}/boot/ ${DEPLOYDIR}/bits/
+       cp ${WORKDIR}/bits-cfg.txt ${DEPLOYDIR}/bits/boot/
        cp -r ${B}/efi ${DEPLOYDIR}/bits/
 }
 
