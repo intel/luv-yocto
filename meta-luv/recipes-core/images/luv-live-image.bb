@@ -1,7 +1,7 @@
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=3f40d7994397109285ec7b81fdeb3b58"
 
-DEPENDS_${PN} = "grub-efi"
+DEPENDS_${PN} = "grub-efi bits"
 
 HDDDIR = "${S}/hddimg"
 HDDIMG_ID = "423cc2c8"
