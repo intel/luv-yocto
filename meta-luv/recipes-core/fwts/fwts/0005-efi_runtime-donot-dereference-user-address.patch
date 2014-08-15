@@ -1,0 +1,145 @@
+diff -Nurp a/efi_runtime/efi_runtime.c b/efi_runtime/efi_runtime.c
+--- a/efi_runtime/efi_runtime.c	2014-07-27 00:43:39.263763036 -0700
++++ b/efi_runtime/efi_runtime.c	2014-08-14 23:12:47.746531304 -0700
+@@ -304,52 +304,60 @@ static long efi_runtime_set_variable(uns
+ static long efi_runtime_get_time(unsigned long arg)
+ {
+ 	struct efi_gettime __user *pgettime;
++	struct efi_gettime  pgettime_local;
++	EFI_TIME_CAPABILITIES __user *cap_local;
+ 	efi_status_t status;
+ 	efi_time_cap_t cap;
+ 	efi_time_t eft;
+ 
+ 	status = efi.get_time(&eft, &cap);
+ 	pgettime = (struct efi_gettime __user *)arg;
+-	if (put_user(status, pgettime->status))
++	if (copy_from_user(&pgettime_local, pgettime, sizeof(pgettime_local)))
++		return -EFAULT;
++
++	cap_local = (EFI_TIME_CAPABILITIES *)pgettime_local.Capabilities;
++	if (put_user(status, pgettime_local.status))
+ 		return -EFAULT;
+ 	if (status != EFI_SUCCESS) {
+ 		printk(KERN_ERR "efitime: can't read time\n");
+ 		return -EINVAL;
+ 	}
+-	if (put_user(cap.resolution,
+-				&pgettime->Capabilities->Resolution) ||
+-				put_user(cap.accuracy,
+-				&pgettime->Capabilities->Accuracy) ||
+-				put_user(cap.sets_to_zero,
+-				&pgettime->Capabilities->SetsToZero))
++	if (put_user(cap.resolution, 
++				&(cap_local->Resolution)) || 
++				put_user(cap.accuracy, &(cap_local->Accuracy)) || 
++				put_user(cap.sets_to_zero,&(cap_local->SetsToZero)))
+ 		return -EFAULT;
+-	return copy_to_user(pgettime->Time, &eft,
++	return copy_to_user(pgettime_local.Time, &eft,
+ 			sizeof(EFI_TIME)) ? -EFAULT : 0;
+ }
+ 
+ static long efi_runtime_set_time(unsigned long arg)
+ {
+ 	struct efi_settime __user *psettime;
++	struct efi_settime psettime_local;
+ 	efi_status_t status;
+ 	EFI_TIME efi_time;
+ 	efi_time_t eft;
+ 
+ 	psettime = (struct efi_settime __user *)arg;
+-	if (copy_from_user(&efi_time, psettime->Time,
++	if (copy_from_user(&psettime_local, psettime, sizeof(psettime_local)))
++		return -EFAULT;
++	if (copy_from_user(&efi_time, psettime_local.Time,
+ 					sizeof(EFI_TIME)))
+ 		return -EFAULT;
+ 	convert_to_efi_time(&eft, &efi_time);
+ 	status = efi.set_time(&eft);
+ 
+-	if (put_user(status, psettime->status))
++	if (put_user(status, psettime_local.status))
+ 		return -EFAULT;
+-
+-	return status == EFI_SUCCESS ? 0 : -EINVAL;
++	
++	return status == EFI_SUCCESS ? 0 : -EINVAL;  
+ }
+ 
+ static long efi_runtime_get_waketime(unsigned long arg)
+ {
+ 	struct efi_getwakeuptime __user *pgetwakeuptime;
++	struct efi_getwakeuptime pgetwakeuptime_local;
+ 	unsigned char enabled, pending;
+ 	efi_status_t status;
+ 	EFI_TIME efi_time;
+@@ -357,47 +365,49 @@ static long efi_runtime_get_waketime(uns
+ 
+ 	status = efi.get_wakeup_time((efi_bool_t *)&enabled,
+ 					(efi_bool_t *)&pending, &eft);
+-
++	
+ 	pgetwakeuptime = (struct efi_getwakeuptime __user *)arg;
+-
+-	if (put_user(status, pgetwakeuptime->status))
++	
++	if (copy_from_user(&pgetwakeuptime_local, pgetwakeuptime, sizeof(pgetwakeuptime_local)))
++		return -EFAULT;
++	if (put_user(status, pgetwakeuptime_local.status))
+ 		return -EFAULT;
+ 	if (status != EFI_SUCCESS)
+ 		return -EINVAL;
+-
+-	if (put_user(enabled, pgetwakeuptime->Enabled) ||
+-			put_user(pending, pgetwakeuptime->Pending))
++	if (put_user(enabled, pgetwakeuptime_local.Enabled) ||
++				put_user(pending, pgetwakeuptime_local.Pending))
+ 		return -EFAULT;
+-
+ 	convert_from_efi_time(&eft, &efi_time);
+-
+-	return copy_to_user(pgetwakeuptime->Time, &efi_time,
++	
++	return copy_to_user(pgetwakeuptime_local.Time, &efi_time,
+ 			sizeof(EFI_TIME)) ? -EFAULT : 0;
+ }
+ 
+ static long efi_runtime_set_waketime(unsigned long arg)
+ {
+ 	struct efi_setwakeuptime __user *psetwakeuptime;
++	struct efi_setwakeuptime psetwakeuptime_local;
+ 	unsigned char enabled;
+ 	efi_status_t status;
+ 	EFI_TIME efi_time;
+ 	efi_time_t eft;
+ 
+ 	psetwakeuptime = (struct efi_setwakeuptime __user *)arg;
+-
+-	if (get_user(enabled, &psetwakeuptime->Enabled) ||
+-				copy_from_user(&efi_time,
+-				psetwakeuptime->Time,
+-				sizeof(EFI_TIME)))
++	
++	if (copy_from_user(&psetwakeuptime_local, psetwakeuptime, sizeof(psetwakeuptime_local)))
+ 		return -EFAULT;
+-
++	
++	if (get_user(enabled, &(psetwakeuptime_local.Enabled)) || 
++				copy_from_user(&efi_time, psetwakeuptime_local.Time, sizeof(EFI_TIME)))
++		return -EFAULT;
++	
+ 	convert_to_efi_time(&eft, &efi_time);
+-
++	
+ 	status = efi.set_wakeup_time(enabled, &eft);
+-
+-	if (put_user(status, psetwakeuptime->status))
++	
++	if (put_user(status, psetwakeuptime_local.status))
+ 		return -EFAULT;
+-
++	
+ 	return status == EFI_SUCCESS ? 0 : -EINVAL;
+ }
+ 
