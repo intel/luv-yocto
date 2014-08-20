@@ -1,0 +1,17 @@
+#!/bin/sh
+#
+# Parse the output of kernel-efi-warnings and write a luv-test-manager
+# compatible log to stdout.
+awk '/Test:/ {
+	test=$2
+	printf ("1.0 kernel-efi-warnings %s INFO\n", test);
+    }
+
+    /PASS/ {
+	printf ("1.0 kernel-efi-warnings %s RESULT 1 0 0 0\n", test);
+    }
+
+    /FAIL/ {
+	printf ("1.0 kernel-efi-warnings %s RESULT 0 1 0 0\n", test);
+    }
+'
