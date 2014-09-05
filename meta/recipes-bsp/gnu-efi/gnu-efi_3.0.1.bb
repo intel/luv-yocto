@@ -37,4 +37,10 @@ do_install() {
         oe_runmake install INSTALLROOT="${D}"
 }
 
+do_install_class-native() {
+        oe_runmake install
+}
+
 FILES_${PN} += "${libdir}/*.lds"
+
+BBCLASSEXTEND = "native"
