@@ -28,8 +28,8 @@ SRC_URI = "http://biosbits.org/downloads/${BPN}-${PV}.zip  \
            file://luv-parser-bits \
           "
 
-SRC_URI[md5sum] = "57e1b689264ea80f78353519eece0c92"
-SRC_URI[sha256sum] = "7905ff96be93d725544d0040e425c42f9c05580db3c272f11cff75b9aa89d430"
+SRC_URI[md5sum] = "49c88c1789686b7f387cd5bba3f4b428"
+SRC_URI[sha256sum] = "a3b3cd4462384893dcb8692b3e87d60739882d247c5550120487e48ea8d4f3db"
 
 S = "${WORKDIR}/bits-1084"
 
