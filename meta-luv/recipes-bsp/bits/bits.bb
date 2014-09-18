@@ -26,6 +26,7 @@ SRC_URI = "http://biosbits.org/downloads/${BPN}-${PV}.zip  \
            file://bits-cfg.txt \
            file://luv-test-bits \
            file://luv-parser-bits \
+           file://0001-only-output-to-log.patch;apply=no \
           "
 
 SRC_URI[md5sum] = "49c88c1789686b7f387cd5bba3f4b428"
@@ -61,6 +62,13 @@ LUV_TEST_LOG_PARSER = "luv-parser-bits"
 do_configure_prepend() {
     # Return control to the main bootloader once complete.
     echo "exit" >> ${S}/boot/cfg/init.cfg
+
+    # Allowing the python modules to write to stdout/stderr will corrupt
+    # the graphics image setup by the bootloader. Instead, redirect
+    # everything to the log file. The alternative would be to rebuild
+    # BITS from source and include the gfxmenu and gfxterm grub modules.
+
+    patch -d ${S} -p1 < ${WORKDIR}/0001-only-output-to-log.patch
 }
 
 do_install() {
@@ -71,6 +79,14 @@ do_install() {
 do_deploy() {
 
        install -d ${DEPLOYDIR}/bits
+
+       python -m compileall ${B}/boot/python
+
+       # Set the mtime to zero in all bytecode files, since GRUB2 (and thus
+       # the BITS implementation of fstat) doesn't support mtime.
+       find ${B}/boot/python -name '*.pyc' | while read bytecode ; do
+           dd if=/dev/zero of=$bytecode bs=4 count=1 seek=1 conv=notrunc
+       done
 
        cp -r ${B}/boot/ ${DEPLOYDIR}/bits/
        cp ${WORKDIR}/bits-cfg.txt ${DEPLOYDIR}/bits/boot/

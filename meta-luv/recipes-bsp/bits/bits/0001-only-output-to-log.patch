@@ -1,0 +1,47 @@
+diff --git a/python/redirect.py b/python/redirect.py
+index 6b224a4..98deb26 100644
+--- a/boot/python/redirect.py
++++ b/boot/python/redirect.py
+@@ -75,8 +75,10 @@ def redirect():
+     _log_header()
+     _orig_stdout = _sys.stdout
+     _orig_stderr = _sys.stderr
+-    _sys.stdout = Tee(_orig_stdout, _log)
+-    _sys.stderr = Tee(_orig_stderr, _log)
++    #_sys.stdout = Tee(_orig_stdout, _log)
++    #_sys.stderr = Tee(_orig_stderr, _log)
++    _sys.stdout = _log
++    _sys.stderr = _log
+ 
+ def clear():
+     """Clear the log file."""
+@@ -107,8 +109,8 @@ def log():
+     global state
+     saved_state = state
+     state = LOG_STATE
+-    with _redirect_stdout(Tee(_orig_stdout, _log)):
+-        with _redirect_stderr(Tee(_orig_stderr, _log)):
++    with _redirect_stdout(_log):
++        with _redirect_stderr(_log):
+             yield
+     state = saved_state
+ 
+@@ -119,7 +121,7 @@ def logonly():
+     saved_state = state
+     state = LOGONLY_STATE
+     with _redirect_stdout(_log):
+-        with _redirect_stderr(Tee(_orig_stderr, _log)):
++        with _redirect_stderr(_log):
+             yield
+     state = saved_state
+ 
+@@ -129,7 +131,7 @@ def nolog():
+     global state
+     saved_state = state
+     state = NOLOG_STATE
+-    with _redirect_stdout(_orig_stdout):
+-        with _redirect_stderr(_orig_stderr):
++    with _redirect_stdout(_log):
++        with _redirect_stderr(_log):
+             yield
+     state = saved_state
