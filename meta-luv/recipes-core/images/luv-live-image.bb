@@ -12,9 +12,13 @@ INITRD = "${DEPLOY_DIR_IMAGE}/${INITRD_IMAGE}-${MACHINE}.cpio.gz"
 MACHINE_FEATURES += "efi"
 APPEND = "quiet crashkernel=256M"
 
+SPLASH_IMAGE = "blue-luv.jpg"
+
 GRUB_TIMEOUT = "2"
 
 inherit bootimg
+
+SRC_URI = "file://blue-luv.jpg"
 
 build_img() {
     IMG="${DEPLOY_DIR_IMAGE}/${PN}.img"
@@ -67,3 +71,4 @@ do_bootimg[depends] += "${INITRD_IMAGE}:do_rootfs"
 do_bootimg[depends] += "virtual/kernel:do_populate_sysroot"
 
 addtask create_img after do_bootimg before do_build
+addtask do_unpack before do_build
