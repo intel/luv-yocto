@@ -115,7 +115,7 @@ fi
 mountpoint -q ${LUV_STORAGE}
 if [ $? -eq 0 ]; then
     umount ${LUV_STORAGE}
-    SAVE_STATUS="You may remove the storage media."
+    SAVE_STATUS="Results were saved in your boot media. You may now turn off the system and remove it."
 else
     SAVE_STATUS="Results were not saved in storage media."
 fi
