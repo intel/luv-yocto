@@ -1,0 +1,13 @@
+diff --git a/docs/Makefile.am b/docs/Makefile.am
+index 1b5a588..6918dd8 100644
+--- a/docs/Makefile.am
++++ b/docs/Makefile.am
+@@ -1,8 +1,4 @@
+ 
+-man1_MANS = sbsign.1 sbverify.1 sbattach.1 sbvarsign.1 sbsiglist.1
+-
+-EXTRA_DIST = sbsign.1.in sbverify.1.in sbattach.1.in \
+-		sbvarsign.1.in sbsiglist.1.in
+ CLEANFILES = $(man1_MANS)
+ 
+ $(builddir)/%.1: $(srcdir)/%.1.in $(top_builddir)/src/%

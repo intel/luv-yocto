@@ -5,7 +5,7 @@ LIC_FILES_CHKSUM = "file://LICENSE.GPLv3;md5=9eef91148a9b14ec7f9df333daebc746"
 
 SRC_URI = "git://kernel.ubuntu.com/jk/sbsigntool \
     file://fix-mixed-implicit-and-normal-rules.patch;apply=0 \
-    file://0001-Disable-man-page-generation.patch"
+    file://disable-man-page-creation.patch"
 
 SRCREV="${AUTOREV}"
 
