@@ -14,6 +14,7 @@ SRC_URI = "git://kernel.ubuntu.com/hwe/fwts.git \
            file://0003-efi_runtime-Group-kernel-version-dependent-functions.patch \
            file://0004-efi_runtime-Do-not-pass-user-addresses-to-firmware.patch \
 	   file://0005-efi_runtime-donot-dereference-user-address.patch \
+           file://0006-cpu-microcode-remove-failures-when-kernel-does-not-h.patch \ 
           "
 
 S = "${WORKDIR}/git"
