@@ -63,13 +63,6 @@ python build_efi_cfg() {
     cfgfile.write('timeout=0\n')
     cfgfile.write('fallback=0\n')
 
-    cfgfile.write('insmod gfxterm\n')
-    cfgfile.write('set gfxmode="1024x768x32"\n')
-    cfgfile.write('terminal_output gfxterm\n')
-
-    cfgfile.write('insmod jpeg\n')
-    cfgfile.write('background_image %s/%s\n' % (d.getVar('EFIDIR', True), d.getVar('SPLASH_IMAGE', True)))
-
     cfgfile.write('menuentry \'luv\' {\n')
     cfgfile.write('linux /vmlinuz')
 
