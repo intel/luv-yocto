@@ -32,7 +32,7 @@ SRC_URI = "http://biosbits.org/downloads/${BPN}-${PV}.zip  \
 SRC_URI[md5sum] = "49c88c1789686b7f387cd5bba3f4b428"
 SRC_URI[sha256sum] = "a3b3cd4462384893dcb8692b3e87d60739882d247c5550120487e48ea8d4f3db"
 
-S = "${WORKDIR}/bits-1084"
+S = "${WORKDIR}/bits-${PV}"
 
 EXTRA_OECONF = "--disable-manpages --with-efi-includedir=${STAGING_INCDIR} \
                 --with-efi-ldsdir=${STAGING_LIBDIR} \
