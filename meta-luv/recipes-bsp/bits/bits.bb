@@ -62,13 +62,6 @@ LUV_TEST_LOG_PARSER = "luv-parser-bits"
 do_configure_prepend() {
     # Return control to the main bootloader once complete.
     echo "exit" >> ${S}/boot/cfg/init.cfg
-
-    # Allowing the python modules to write to stdout/stderr will corrupt
-    # the graphics image setup by the bootloader. Instead, redirect
-    # everything to the log file. The alternative would be to rebuild
-    # BITS from source and include the gfxmenu and gfxterm grub modules.
-
-    patch -d ${S} -p1 < ${WORKDIR}/0001-only-output-to-log.patch
 }
 
 do_install() {
