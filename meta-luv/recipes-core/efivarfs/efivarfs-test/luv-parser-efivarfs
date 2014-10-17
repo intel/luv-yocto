@@ -6,12 +6,15 @@
 awk '/running/ {
 	test=$2
 	printf ("1.0 efivarfs %s INFO\n", test);
+	fflush("");
     }
 
     /\[PASS\]/ {
 	printf ("1.0 efivarfs %s RESULT 1 0 0 0\n", test);
+	fflush("");
     }
 
     /\[FAIL\]/ {
 	printf ("1.0 efivarfs %s RESULT 0 1 0 0\n", test);
+	fflush("");
     }'
