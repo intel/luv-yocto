@@ -7,6 +7,7 @@ awk '/\=\=\=/ {
 	if (test) {
 		printf "1.0 bits %s RESULT %d %d %d 0\n", test, passes,
 fails, skips;
+		fflush("");
 		passes = 0; fails = 0; skips =0;
 	}
 
