@@ -94,7 +94,9 @@ for r in $runner_list; do
     }
 
     $runner | tee ${LUV_LOG_DIR}/$r | tee ${LUV_SAVE_RAW_DIR}/$r | $parser | \
-              tee ${LUV_SAVE_PARSED_DIR}/$r | ${LUV_PARSER_DIR}/test-manager
+              tee ${LUV_SAVE_PARSED_DIR}/$r | ${LUV_PARSER_DIR}/test-manager | \
+              tee /dev/console | \
+              tee -a /tmp/luv.results | tee -a ${LUV_SAVE_RESULTS_DIR}/luv.results
     sync
 done | awk '/      \[\+/ { units += 1 }
     /    \[\-/ { suites += 1 }
@@ -103,9 +105,7 @@ done | awk '/      \[\+/ { units += 1 }
     /skip/ { skips += 1 }
     END {
 	printf("\nRan %d testsuites and %d unittests, %d passes, %d fails, %d skipped.\n", suites, units, passes, fails, skips)
-    }
-
-    { print $0 }' | tee /tmp/luv.results | tee ${LUV_SAVE_RESULTS_DIR}/luv.results
+    }' | tee -a /tmp/luv.results | tee -a ${LUV_SAVE_RESULTS_DIR}/luv.results
 
 mountpoint -q ${LUV_EFI}
 if [ $? -eq 0 ]; then
