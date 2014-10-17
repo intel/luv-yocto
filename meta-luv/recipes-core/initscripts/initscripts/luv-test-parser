@@ -22,12 +22,14 @@ awk '
 	if (!b) {
 		b = 1;
 		printf ("    [-] %s\n", $2);
+		fflush("");
 	}
 
 	# New test?
 	if (!tests[$3]) {
 		tests[$3] = 1;
 		printf("      [+] %s... ", $3);
+		fflush("");
 	}
 
 	#
@@ -59,6 +61,7 @@ awk '
 			printf("skipped\n");
 		else
 			printf("passed\n");
+		fflush("");
 	} else if ($4 == "INFO") {
 		# Do nothing for now.
 	}
