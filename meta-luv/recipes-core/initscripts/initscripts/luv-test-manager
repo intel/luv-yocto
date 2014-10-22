@@ -50,8 +50,10 @@ fi
 
 psplash_write "MSG Running tests..."
 
+luv_version=$(cut -d\\ -f1 /etc/issue)
+
 cat <<EOF
-Welcome to the Linux UEFI Validation Project
+Welcome to ${luv_version}
 
 Running tests...
 EOF
@@ -76,6 +78,14 @@ mkdir -p ${LUV_LOG_DIR}
 # progress step based on the number of test suites.
 #
 psplash_write "PROGRESS 0"
+
+# Begin the results files by stating the version of luv
+cat <<EOF | tee ${LUV_SAVE_RESULTS_DIR}/luv.results > /tmp/luv.results
+$luv_version
+
+Test results summary:
+
+EOF
 
 runner_list=`ls -A ${LUV_TESTS_DIR}`
 
