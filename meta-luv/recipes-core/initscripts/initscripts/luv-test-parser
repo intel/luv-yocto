@@ -15,32 +15,50 @@
 
 awk '
 
-#
-# This is the only schema version we support.
-#
+/^1.1/ {
+	testsuite=$3
+	unittest=$4
+	tag=$5
+
+	if (tag == "RESULT") {
+		passes=$6
+		fails=$7
+		aborts=$8
+		skips=$9
+	}
+}
+
 /^1.0/ {
+	testsuite=$2
+	unittest=$3
+	tag=$4
+
+	if (tag == "RESULT") {
+		passes=$5
+		fails=$6
+		aborts=$7
+		skips=$8
+	}
+}
+
+{
 	if (!b) {
 		b = 1;
-		printf ("    [-] %s\n", $2);
+		printf ("    [-] %s\n", testsuite);
 		fflush("");
 	}
 
 	# New test?
-	if (!tests[$3]) {
-		tests[$3] = 1;
-		printf("      [+] %s... ", $3);
+	if (!tests[unittest]) {
+		tests[unittest] = 1;
+		printf("      [+] %s... ", unittest);
 		fflush("");
 	}
 
 	#
 	# Parse tags
 	#
-	if ($4 == "RESULT") {
-		passes=$5
-		fails=$6
-		aborts=$7
-		skips=$8
-
+	if (tag == "RESULT") {
 		#
 		# Instead of reporting all results to the user lets only
 		# report the most urgent/highest priority result.
@@ -62,7 +80,7 @@ awk '
 		else
 			printf("passed\n");
 		fflush("");
-	} else if ($4 == "INFO") {
+	} else if (tag == "INFO") {
 		# Do nothing for now.
 	}
 }'
