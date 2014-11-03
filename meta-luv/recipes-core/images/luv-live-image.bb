@@ -51,16 +51,17 @@ build_img() {
 
     parted $IMG mklabel msdos
 
-    parted $IMG mkpart primary 0% "${VFAT_SIZE}B"
-    parted $IMG set 1 boot on
+    parted $IMG mkpart primary 0% "${VFAT_RESULTS_SIZE}B"
 
     # start second partition on the first sector after the first partition
-    parted $IMG mkpart primary "$(expr $VFAT_SIZE + 512)B" \
+    parted $IMG mkpart primary "$(expr $VFAT_RESULTS_SIZE + 512)B" \
            "$(expr $VFAT_SIZE + $VFAT_RESULTS_SIZE)B"
 
-    dd conv=notrunc if=${VFAT} of=$IMG seek=1 bs=512
+    parted $IMG set 2 boot on
 
-    dd if=${VFAT_RESULTS} of=$IMG seek=$(expr $VFAT_SIZE + 512) bs=1
+    dd conv=notrunc if=${VFAT_RESULTS} of=$IMG seek=1 bs=512
+    dd if=${VFAT} of=$IMG seek=$(expr $(expr $VFAT_RESULTS_SIZE / 512) + 1) bs=512
+
 }
 
 python do_create_img() {
