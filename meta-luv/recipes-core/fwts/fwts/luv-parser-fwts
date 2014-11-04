@@ -9,12 +9,14 @@
 # - print in luv-test-manager format
 
 awk '!/^summary/ && !/^fwts/ && /\;SUM.*passed|\;INF/ {
+	"date +%H:%M:%S:%N" | getline current_time;
+	close ("date +%H:%M:%S:%N")
 	if ($2 == ";SUM") {
-		printf ("1.0 fwts %s RESULT %d %d %d %d\n",
-			$1, $3, $5, $7, $9);
+		printf ("1.1 %s fwts %s RESULT %d %d %d %d\n",
+			current_time, $1, $3, $5, $7, $9);
 		fflush("");
 	} else if ($2 == ";INF") {
-		printf ("1.0 fwts %s INFO %s\n", $1, substr($0, index($0, $8)));
+		printf ("1.1 %s fwts %s INFO %s\n", current_time, $1, substr($0, index($0, $8)));
 		fflush("");
 	}
 }'
