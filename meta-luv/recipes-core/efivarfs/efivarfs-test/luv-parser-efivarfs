@@ -4,17 +4,23 @@
 # stdout in a luv-test-manager compatible log.
 
 awk '/running/ {
+	"date +%H:%M:%S:%N" | getline current_time;
+	close ("date +%H:%M:%S:%N")
 	test=$2
-	printf ("1.0 efivarfs %s INFO\n", test);
+	printf ("1.1 %s efivarfs %s INFO \n", current_time, test);
 	fflush("");
     }
 
     /\[PASS\]/ {
-	printf ("1.0 efivarfs %s RESULT 1 0 0 0\n", test);
+	"date +%H:%M:%S:%N" | getline current_time;
+	close ("date +%H:%M:%S:%N")
+	printf ("1.1 %s efivarfs %s RESULT 1 0 0 0 \n", current_time, test);
 	fflush("");
     }
 
     /\[FAIL\]/ {
-	printf ("1.0 efivarfs %s RESULT 0 1 0 0\n", test);
+	"date +%H:%M:%S:%N" | getline current_time;
+	close ("date +%H:%M:%S:%N")
+	printf ("1.1 %s efivarfs %s RESULT 0 1 0 0 \n", current_time, test);
 	fflush("");
     }'
