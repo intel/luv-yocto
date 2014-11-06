@@ -51,10 +51,10 @@ build_img() {
 
     parted $IMG mklabel msdos
 
-    parted $IMG mkpart primary 0% "${VFAT_RESULTS_SIZE}B"
+    parted $IMG mkpart primary fat32 0% "${VFAT_RESULTS_SIZE}B"
 
     # start second partition on the first sector after the first partition
-    parted $IMG mkpart primary "$(expr $VFAT_RESULTS_SIZE + 512)B" \
+    parted $IMG mkpart primary fat32 "$(expr $VFAT_RESULTS_SIZE + 512)B" \
            "$(expr $VFAT_SIZE + $VFAT_RESULTS_SIZE)B"
 
     parted $IMG set 2 boot on
