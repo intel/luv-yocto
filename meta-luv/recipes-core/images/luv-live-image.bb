@@ -59,8 +59,19 @@ build_img() {
 
     parted $IMG set 2 boot on
 
+    # Mark the second partition OSType field as EFI System Partition as
+    # specified in the UEFI specification.
+    fdisk $IMG<<EOF
+t
+2
+ef
+w
+EOF
+
     dd conv=notrunc if=${VFAT_RESULTS} of=$IMG seek=1 bs=512
     dd if=${VFAT} of=$IMG seek=$(expr $(expr $VFAT_RESULTS_SIZE / 512) + 1) bs=512
+
+    dd conv=notrunc if=${VFAT} of=$IMG seek=1 bs=512
 
 }
 
