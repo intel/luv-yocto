@@ -1016,17 +1016,17 @@ body .markdown-body
 }
 </style><title>getting-started</title></head><body><article class="markdown-body"><h1 id="formatting-a-usb-drive-for-linux-uefi-validation-project"><a name="user-content-formatting-a-usb-drive-for-linux-uefi-validation-project" href="#formatting-a-usb-drive-for-linux-uefi-validation-project" class="headeranchor-link" aria-hidden="true"><span class="headeranchor"></span></a>Formatting a USB Drive for Linux UEFI Validation Project</h1>
 <h3 id="luv-project"><a href="https://01.org/linux-uefi-validation">LUV Project</a></h3>
-<p>The following steps explain how to prepare a USB drive for the Linux UEFI <br />
-Validation (LUV) Project. While some operating system tools require formatting <br />
+<p>The following steps explains <em>one way</em> of preparing a USB drive for the Linux UEFI <br />
+Validation (LUV) Project. While some operating system components require formatting <br />
 or pre-formatting, the LUV Project does not. There is no need to pre-format <br />
 your USB drive. But do be aware that <strong>the operations in this tutorial will erase<br />
 all data from the USB drive</strong>; be sure any important data on the drive is <br />
-backed up elsewhere as needed.  </p>
+backed up elsewhere as needed before proceeding.  </p>
 <h2 id="format-the-usb"><a name="user-content-format-the-usb" href="#format-the-usb" class="headeranchor-link" aria-hidden="true"><span class="headeranchor"></span></a>Format the USB</h2>
 <p>Command-line directions are as follows:  </p>
 <ol>
 <li>
-<p>Check this link for the latest version and modify as needed.<br />
+<p>Check this link for the available downloads / current release and select the one you wish to test.<br />
     <pre><code>https://01.org/linux-uefi-validation/downloads
 </code></pre></p>
 </li>
@@ -1052,7 +1052,7 @@ drwxr-xr-x 3 lsc lsc     4096 Nov 18 14:13 ..
 </code></pre></p>
 </li>
 <li>
-<p>Insert the USB drive (for the following example, we&rsquo;re using a 4GB USB stick) and confirm the block ID letter of the USB disk with the <code>lsblk</code> command. Here the USB shows up under <code>/media</code>, as the following example shows:<br />
+<p>Insert the USB drive (for the following example, we&rsquo;re using a 4GB USB stick) and confirm the block ID letter of the USB disk with the <code>lsblk</code> command. The USB will most likely show up <code>/media</code>, or <code>/run</code>:<br />
     <pre><code>$ lsblk
 NAME   MAJ:MIN RM   SIZE RO TYPE MOUNTPOINT
 sda      8:0    0 223.6G  0 disk 
@@ -1063,33 +1063,35 @@ sdc      8:32   1   3.7G  0 disk
 └─sdc1   8:33   1   3.6G  0 part /media/lsc/UUI
 sr0     11:0    1  1024M  0 rom
 </code></pre></p>
-<p>In the above example, the USB drive is detected at <code>/media</code> and is called <code>sdc</code>. Be very careful to correctly identify this. The sdc is less than 4GB, so we can be pretty sure we&rsquo;ve identified the location;  and confirm that it&rsquo;s not mounted:<br />
+<p>In the above example, the USB drive is detected at <code>/media</code> and is called <code>sdc</code>. Be very careful to correctly identify this. The sdc is less than 4GB, so we can be pretty sure we&rsquo;ve identified the location; confirm that it&rsquo;s not mounted:<br />
 <pre><code>$ umount /dev/sdc
     umount: /dev/sdc is not mounted (according to mtab)
 </code></pre></p>
 </li>
 <li>
-<p>Use the <code>dd</code> command to convert and copy; specify block size, if necessary:<br />
-<pre><code>$ sudo dd bs=4M if=/some/local/luv-live-v1.2-rc1/luv-live-v1.2-rc1.img of=/dev/sdc &amp;&amp; sync
+<p>Use the <code>dd</code> command to convert and copy; you may need root privileges, or to specify block size.  For more info on the <code>dd</code> command parameters please see <a href="https://en.wikipedia.org/wiki/Dd_">https://en.wikipedia.org/wiki/Dd_</a>(Unix)<br />
+<pre><code>$ sudo dd bs=4M if=/someplace/local/luv-live-v1.2-rc1/luv-live-v1.2-rc1.img of=/dev/sdc &amp;&amp; sync
 [sudo] password: 
 18+1 records in
 18+1 records out
 78955008 bytes (79 MB) copied, 17.8973 s, 4.4 MB/s
-*for more info on the dd command parameters please see https://en.wikipedia.org/wiki/Dd_(Unix)
+
 </code></pre></p>
 </li>
 <li>
-<p>The USB drive should now be ready to go!  If you insert the drive on a live operating system, there will be two partitions named <code>'boot'</code> and <code>'luv-results'</code> respectively:</p>
-<ul>
-<li><code>boot/</code> &ndash; contains all the files needed to boot the system</li>
-<li><code>luv-results/</code> &ndash; contains two directories: <br />
-1. <code>luv_results/parsed</code> &ndash; contains the results (pass/fail) of the live tests<br />
-2. <code>luv_results/raw</code> &ndash; contains data useful for debugging</li>
+<p>The USB drive should now be ready to go!  If you insert the drive on a test system, there will be two partitions named <code>'boot'</code> and <code>'luv-results'</code> respectively:</p>
+<ol>
+<li><code>luv-results/</code> &ndash; contains two directories:<ul>
+<li><code>luv_results/parsed</code> contains the results (pass/fail) of the live tests</li>
+<li><code>luv_results/raw</code> contains data useful for debugging</li>
 </ul>
 </li>
+<li><code>boot/</code> &ndash; contains all the files needed to boot the system </li>
 </ol>
-<h2 id="miscellaneous-info"><a name="user-content-miscellaneous-info" href="#miscellaneous-info" class="headeranchor-link" aria-hidden="true"><span class="headeranchor"></span></a>Miscellaneous Info</h2>
-<p>UEFI is Unified Extensible Firmware Interface, a BIOS-like bootloader environment with advanced platform-agnostic capabilities for testing and diagnostic reporting.</p>
+</li>
+</ol>
+<h2 id="about"><a name="user-content-about" href="#about" class="headeranchor-link" aria-hidden="true"><span class="headeranchor"></span></a>About</h2>
+<p>Linux <a href="http://www.uefi.org/about">UEFI</a> Validation is a BIOS-like bootloader environment with advanced platform-agnostic capabilities for testing and diagnostic reporting.</p>
 <h2 id="features"><a name="user-content-features" href="#features" class="headeranchor-link" aria-hidden="true"><span class="headeranchor"></span></a>Features</h2>
 <ol>
 <li>
