@@ -1,17 +1,17 @@
 # Formatting a USB Drive for Linux UEFI Validation Project  
 ### [LUV Project](https://01.org/linux-uefi-validation) 
 
-The following steps explain how to prepare a USB drive for the Linux UEFI 
-Validation (LUV) Project. While some operating system tools require formatting 
+The following steps explains *one way* of preparing a USB drive for the Linux UEFI 
+Validation (LUV) Project. While some operating system components require formatting 
 or pre-formatting, the LUV Project does not. There is no need to pre-format 
 your USB drive. But do be aware that **the operations in this tutorial will erase
 all data from the USB drive**; be sure any important data on the drive is 
-backed up elsewhere as needed.  
+backed up elsewhere as needed before proceeding.  
 
 ## Format the USB
 Command-line directions are as follows:  
 
-1. Check this link for the latest version and modify as needed.  
+1. Check this link for the available downloads / current release and select the one you wish to test.  
 	``` 
 	https://01.org/linux-uefi-validation/downloads
 	```
@@ -41,7 +41,7 @@ Command-line directions are as follows:
 	```
 
 
-5. Insert the USB drive (for the following example, we're using a 4GB USB stick) and confirm the block ID letter of the USB disk with the `lsblk` command. Here the USB shows up under `/media`, as the following example shows:
+5. Insert the USB drive (for the following example, we're using a 4GB USB stick) and confirm the block ID letter of the USB disk with the `lsblk` command. The USB will most likely show up `/media`, or `/run`:
 	```
 	$ lsblk
   	NAME   MAJ:MIN RM   SIZE RO TYPE MOUNTPOINT
@@ -54,33 +54,34 @@ Command-line directions are as follows:
 	sr0     11:0    1  1024M  0 rom
   	```
 
-	In the above example, the USB drive is detected at `/media` and is called `sdc`. Be very careful to correctly identify this. The sdc is less than 4GB, so we can be pretty sure we've identified the location;  and confirm that it's not mounted:
+	In the above example, the USB drive is detected at `/media` and is called `sdc`. Be very careful to correctly identify this. The sdc is less than 4GB, so we can be pretty sure we've identified the location; confirm that it's not mounted:
 	```
 	$ umount /dev/sdc
 		umount: /dev/sdc is not mounted (according to mtab)
 	```	
 
 		
-6. Use the `dd` command to convert and copy; specify block size, if necessary:
+6. Use the `dd` command to convert and copy; you may need root privileges, or to specify block size.  For more info on the `dd` command parameters please see https://en.wikipedia.org/wiki/Dd_(Unix)
 ```
-$ sudo dd bs=4M if=/some/local/luv-live-v1.2-rc1/luv-live-v1.2-rc1.img of=/dev/sdc && sync
+$ sudo dd bs=4M if=/someplace/local/luv-live-v1.2-rc1/luv-live-v1.2-rc1.img of=/dev/sdc && sync
 [sudo] password: 
 18+1 records in
 18+1 records out
 78955008 bytes (79 MB) copied, 17.8973 s, 4.4 MB/s
-*for more info on the dd command parameters please see https://en.wikipedia.org/wiki/Dd_(Unix)
+
 ```
 
 
-7. The USB drive should now be ready to go!  If you insert the drive on a live operating system, there will be two partitions named `'boot'` and `'luv-results'` respectively:
-	* `boot/` -- contains all the files needed to boot the system
-	* `luv-results/` -- contains two directories: 
-	1. `luv_results/parsed` -- contains the results (pass/fail) of the live tests
-	2. `luv_results/raw` -- contains data useful for debugging
+7. The USB drive should now be ready to go!  If you insert the drive on a test system, there will be two partitions named `'boot'` and `'luv-results'` respectively:
+	1. `luv-results/` -- contains two directories:
+		*  `luv_results/parsed` contains the results (pass/fail) of the live tests
+		*  `luv_results/raw` contains data useful for debugging
+	2. `boot/` -- contains all the files needed to boot the system 
+  
 
 
-## Miscellaneous Info 
-UEFI is Unified Extensible Firmware Interface, a BIOS-like bootloader environment with advanced platform-agnostic capabilities for testing and diagnostic reporting.
+## About 
+Linux [UEFI](http://www.uefi.org/about) Validation is a BIOS-like bootloader environment with advanced platform-agnostic capabilities for testing and diagnostic reporting.
 
 
 ## Features 
