@@ -1,0 +1,95 @@
+From 86f893d46049c2fc684856f7e13018b4bde4ad4e Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Wed, 31 Dec 2014 12:05:20 -0800
+Subject: [PATCH] efi_runtime: limit the amount of data copied to userspace
+
+The memory used to copy the variable name/data from userspace and back is
+supplied by the userspace. Thus, we must not write beyond the boundaries
+of the supplied memory. Otherwise, problems may arise (e.g., segmentation
+faults). However, the UEFI runtime service functions GetNextVariableName/
+GetVariable can change the size of the memory if, for instance, the
+buffer is too small. The firmware could also be defective.
+
+Hence, only copy to the userspace the variable name/data if the UEFI
+functions return successfully. Also, in case there is a defect in the
+firmware, only copy to the userspace the variable name/data if the needed
+memory is less or equal to what the userspace provide.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ efi_runtime/efi_runtime.c | 18 +++++++++++-------
+ 1 file changed, 11 insertions(+), 7 deletions(-)
+
+diff --git a/efi_runtime/efi_runtime.c b/efi_runtime/efi_runtime.c
+index 86fb449..e92a082 100644
+--- a/efi_runtime/efi_runtime.c
++++ b/efi_runtime/efi_runtime.c
+@@ -217,7 +217,7 @@ static long efi_runtime_get_variable(unsigned long arg)
+ {
+ 	struct efi_getvariable __user *pgetvariable;
+ 	struct efi_getvariable pgetvariable_local;
+-	unsigned long datasize;
++	unsigned long datasize, prev_datasize;
+ 	EFI_GUID vendor_guid;
+ 	efi_guid_t vendor;
+ 	efi_status_t status;
+@@ -249,11 +249,13 @@ static long efi_runtime_get_variable(unsigned long arg)
+ 		return -ENOMEM;
+ 	}
+ 
++	prev_datasize = datasize;
+ 	status = efi.get_variable(name, &vendor, &attr, &datasize, data);
+ 
+ 	kfree(name);
+ 
+-	rv = copy_to_user(pgetvariable_local.Data, data, datasize);
++	if (status == EFI_SUCCESS && prev_datasize >= datasize)
++		rv = copy_to_user(pgetvariable_local.Data, data, datasize);
+ 	kfree(data);
+ 
+ 	if (rv)
+@@ -261,7 +263,7 @@ static long efi_runtime_get_variable(unsigned long arg)
+ 
+ 	if (put_user(status, pgetvariable_local.status))
+ 		return -EFAULT;
+-	if (status == EFI_SUCCESS) {
++	if (status == EFI_SUCCESS && prev_datasize >= datasize) {
+ 		if (put_user(attr, pgetvariable_local.Attributes) ||
+ 		    put_user(datasize, pgetvariable_local.DataSize))
+ 			return -EFAULT;
+@@ -435,7 +437,7 @@ static long efi_runtime_get_nextvariablename(unsigned long arg)
+ {
+ 	struct efi_getnextvariablename __user *pgetnextvariablename;
+ 	struct efi_getnextvariablename pgetnextvariablename_local;
+-	unsigned long name_size;
++	unsigned long name_size, prev_name_size;
+ 	efi_status_t status;
+ 	efi_guid_t vendor;
+ 	EFI_GUID vendor_guid;
+@@ -462,10 +464,12 @@ static long efi_runtime_get_nextvariablename(unsigned long arg)
+ 	if (rv)
+ 		return rv;
+ 
++	prev_name_size = name_size;
+ 	status = efi.get_next_variable(&name_size, name, &vendor);
+ 
+-	rv = put_ucs2_len(name, pgetnextvariablename_local.VariableName,
+-			  name_size);
++	if (status == EFI_SUCCESS && prev_name_size >= name_size)
++		rv = put_ucs2_len(name, pgetnextvariablename_local.VariableName,
++				  name_size);
+ 	kfree(name);
+ 
+ 	if (rv)
+@@ -481,7 +485,7 @@ static long efi_runtime_get_nextvariablename(unsigned long arg)
+ 	if (copy_to_user(pgetnextvariablename_local.VendorGuid,
+ 			 &vendor_guid, sizeof(EFI_GUID)))
+ 		return -EFAULT;
+-	if (status != EFI_SUCCESS)
++	if (status != EFI_SUCCESS || name_size > prev_name_size)
+ 		return -EINVAL;
+ 	return 0;
+ }
+-- 
+1.9.1
+
