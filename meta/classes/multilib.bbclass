@@ -21,6 +21,9 @@ python multilib_virtclass_handler () {
     if bb.data.inherits_class('image', e.data):
         e.data.setVar("MLPREFIX", variant + "-")
         e.data.setVar("PN", variant + "-" + e.data.getVar("PN", False))
+        target_vendor = e.data.getVar("TARGET_VENDOR_" + "virtclass-multilib-" + variant, False)
+        if target_vendor:
+            e.data.setVar("TARGET_VENDOR", target_vendor)
         return
 
     if bb.data.inherits_class('cross-canadian', e.data):
@@ -50,7 +53,7 @@ python multilib_virtclass_handler () {
     e.data.setVar("OVERRIDES", e.data.getVar("OVERRIDES", False) + override)
 
     # Expand the WHITELISTs with multilib prefix
-    for whitelist in ["HOSTTOOLS_WHITELIST_GPLv3", "WHITELIST_GPLv3", "LGPLv2_WHITELIST_GPLv3"]:
+    for whitelist in ["HOSTTOOLS_WHITELIST_GPL-3.0", "WHITELIST_GPL-3.0", "LGPLv2_WHITELIST_GPL-3.0"]:
         pkgs = e.data.getVar(whitelist, True)
         for pkg in pkgs.split():
             pkgs += " " + variant + "-" + pkg
@@ -60,6 +63,7 @@ python multilib_virtclass_handler () {
     newtune = e.data.getVar("DEFAULTTUNE_" + "virtclass-multilib-" + variant, False)
     if newtune:
         e.data.setVar("DEFAULTTUNE", newtune)
+        e.data.setVar('DEFAULTTUNE_ML_%s' % variant, newtune)
 }
 
 addhandler multilib_virtclass_handler
@@ -105,6 +109,7 @@ python __anonymous () {
     clsextend.map_variable("PACKAGE_INSTALL")
     clsextend.map_variable("INITSCRIPT_PACKAGES")
     clsextend.map_variable("USERADD_PACKAGES")
+    clsextend.map_variable("SYSTEMD_PACKAGES")
 }
 
 PACKAGEFUNCS_append = " do_package_qa_multilib"
@@ -119,7 +124,7 @@ python do_package_qa_multilib() {
                 i = i[len('virtual/'):]
             if (not i.startswith('kernel-module')) and (not i.startswith(mlprefix)) and \
                 (not 'cross-canadian' in i) and (not i.startswith("nativesdk-")) and \
-                (not i.startswith("rtld")):
+                (not i.startswith("rtld")) and (not i.startswith('kernel-vmlinux')):
                 candidates.append(i)
         if len(candidates) > 0:
             bb.warn("Multilib QA Issue: %s package %s - suspicious values '%s' in %s" 

@@ -1,4 +1,4 @@
-DESCRIPTION = "A general purpose cryptographic library based on the code from GnuPG"
+SUMMARY = "General purpose cryptographic library based on the code from GnuPG"
 HOMEPAGE = "http://directory.fsf.org/project/libgcrypt/"
 BUGTRACKER = "https://bugs.g10code.com/gnupg/index"
 SECTION = "libs"
@@ -11,11 +11,21 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=94d55d512a9ba36caa9b7df079bae19f \
 DEPENDS = "libgpg-error libcap"
 
 SRC_URI = "ftp://ftp.gnupg.org/gcrypt/libgcrypt/libgcrypt-${PV}.tar.gz \
-           file://add-pkgconfig-support.patch"
+           file://add-pkgconfig-support.patch \
+           file://libgcrypt-fix-building-error-with-O2-in-sysroot-path.patch \
+           file://fix-ICE-failure-on-mips-with-option-O-and-g.patch \
+"
 
-inherit autotools binconfig pkgconfig
+BINCONFIG = "${bindir}/libgcrypt-config"
 
-EXTRA_OECONF = "--without-pth --disable-asm --with-capabilities"
+inherit autotools-brokensep texinfo binconfig-disabled pkgconfig
+
+EXTRA_OECONF = "--disable-asm --with-capabilities"
+
+do_configure_prepend () {
+	# Else this could be used in preference to the one in aclocal-copy
+	rm -f ${S}/m4/gpg-error.m4
+}
 
 # libgcrypt.pc is added locally and thus installed here
 do_install_append() {

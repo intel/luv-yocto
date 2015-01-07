@@ -1,6 +1,5 @@
-DESCRIPTION = "An arbitrary precision calculator language."
+SUMMARY = "Arbitrary precision calculator language"
 HOMEPAGE = "http://www.gnu.org/software/bc/bc.html"
-BUGTRACKER = ""
 
 LICENSE = "GPLv2+ & LGPLv2.1"
 LIC_FILES_CHKSUM = "file://COPYING;md5=94d55d512a9ba36caa9b7df079bae19f \
@@ -19,7 +18,7 @@ SRC_URI = "${GNU_MIRROR}/bc/bc-${PV}.tar.gz \
 SRC_URI[md5sum] = "d44b5dddebd8a7a7309aea6c36fda117"
 SRC_URI[sha256sum] = "4ef6d9f17c3c0d92d8798e35666175ecd3d8efac4009d6457b5c99cea72c0e33"
 
-inherit autotools update-alternatives
+inherit autotools-brokensep texinfo update-alternatives
 
 ALTERNATIVE_${PN} = "dc"
 ALTERNATIVE_PRIORITY = "100"

@@ -1,12 +1,11 @@
-DESCRIPTION = "DMI (Desktop Management Interface) table related utilities"
+SUMMARY = "DMI (Desktop Management Interface) table related utilities"
 HOMEPAGE = "http://www.nongnu.org/dmidecode/"
 LICENSE = "GPLv2"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=393a5ca445f6965873eca0259a17f833"
-PR = "r0"
 
-SRC_URI = "http://savannah.nongnu.org/download/dmidecode/${BP}.tar.bz2"
+SRC_URI = "${SAVANNAH_NONGNU_MIRROR}/dmidecode/${BP}.tar.bz2"
 
-COMPATIBLE_HOST = "(i.86|x86_64|aarch64|arm).*-linux"
+COMPATIBLE_HOST = "(i.86|x86_64|aarch64|arm|powerpc).*-linux"
 
 do_install() {
 	oe_runmake DESTDIR="${D}" install

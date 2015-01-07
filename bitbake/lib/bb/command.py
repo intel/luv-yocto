@@ -86,7 +86,10 @@ class Command:
 
     def runAsyncCommand(self):
         try:
-            if self.cooker.state == bb.cooker.state.error:
+            if self.cooker.state in (bb.cooker.state.error, bb.cooker.state.shutdown, bb.cooker.state.forceshutdown):
+                # updateCache will trigger a shutdown of the parser
+                # and then raise BBHandledException triggering an exit
+                self.cooker.updateCache()
                 return False
             if self.currentAsyncCommand is not None:
                 (command, options) = self.currentAsyncCommand
@@ -196,18 +199,11 @@ class CommandsSync:
         """
         command.cooker.disableDataTracking()
 
-    def initCooker(self, command, params):
-        """
-        Init the cooker to initial state with nothing parsed
-        """
-        command.cooker.initialize()
-
-    def resetCooker(self, command, params):
-        """
-        Reset the cooker to its initial state, thus forcing a reparse for
-        any async command that has the needcache property set to True
-        """
-        command.cooker.reset()
+    def setPrePostConfFiles(self, command, params):
+        prefiles = params[0].split()
+        postfiles = params[1].split()
+        command.cooker.configuration.prefile = prefiles
+        command.cooker.configuration.postfile = postfiles
 
     def getCpuCount(self, command, params):
         """
@@ -263,6 +259,21 @@ class CommandsSync:
         debug_domains = params[2]
         mask = params[3]
         return bb.event.set_UIHmask(handlerNum, llevel, debug_domains, mask)
+
+    def setFeatures(self, command, params):
+        """
+        Set the cooker features to include the passed list of features
+        """
+        features = params[0]
+        command.cooker.setFeatures(features)
+
+    # although we change the internal state of the cooker, this is transparent since
+    # we always take and leave the cooker in state.initial
+    setFeatures.readonly = True
+
+    def updateConfig(self, command, params):
+        options = params[0]
+        command.cooker.updateConfigOpts(options)
 
 class CommandsAsync:
     """
@@ -420,18 +431,6 @@ class CommandsAsync:
             command.finishAsyncCommand()
     compareRevisions.needcache = True
 
-    def parseConfigurationFiles(self, command, params):
-        """
-        Parse the configuration files
-        """
-        prefiles = params[0].split()
-        postfiles = params[1].split()
-        command.cooker.configuration.prefile = prefiles
-        command.cooker.configuration.postfile = postfiles
-        command.cooker.loadConfigurationData()
-        command.finishAsyncCommand()
-    parseConfigurationFiles.needcache = False
-
     def triggerEvent(self, command, params):
         """
         Trigger a certain event
@@ -440,4 +439,13 @@ class CommandsAsync:
         bb.event.fire(eval(event), command.cooker.data)
         command.currentAsyncCommand = None
     triggerEvent.needcache = False
+
+    def resetCooker(self, command, params):
+        """
+        Reset the cooker to its initial state, thus forcing a reparse for
+        any async command that has the needcache property set to True
+        """
+        command.cooker.reset()
+        command.finishAsyncCommand()
+    resetCooker.needcache = False
 

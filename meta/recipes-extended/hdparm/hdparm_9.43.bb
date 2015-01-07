@@ -1,3 +1,4 @@
+SUMMARY = "Utility for viewing/manipulating IDE disk drive/driver parameters"
 DESCRIPTION = "hdparm is a Linux shell utility for viewing \
 and manipulating various IDE drive and driver parameters."
 SECTION = "console/utils"
@@ -8,9 +9,8 @@ LIC_FILES_CHKSUM = "file://LICENSE.TXT;md5=910a8a42c962d238619c75fdb78bdb24 \
                     file://wiper/GPLv2.txt;md5=fcb02dc552a041dee27e4b85c7396067 \
                     file://wiper/wiper.sh;beginline=7;endline=31;md5=b7bc642addc152ea307505bf1a296f09"
 
-PR = "r0"
 
-PACKAGES += "wiper"
+PACKAGES =+ "wiper"
 
 FILES_wiper = "${bindir}/wiper.sh"
 

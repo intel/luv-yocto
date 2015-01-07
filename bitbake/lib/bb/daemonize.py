@@ -1,5 +1,5 @@
 """
-Python Deamonizing helper
+Python Daemonizing helper
 
 Configurable daemon behaviors:
 
@@ -12,8 +12,11 @@ A failed call to fork() now raises an exception.
 
 References:
     1) Advanced Programming in the Unix Environment: W. Richard Stevens
-    2) Unix Programming Frequently Asked Questions:
-            http://www.erlenstar.demon.co.uk/unix/faq_toc.html
+	http://www.apuebook.com/apue3e.html
+    2) The Linux Programming Interface: Michael Kerrisk
+	http://man7.org/tlpi/index.html
+    3) Unix Programming Frequently Asked Questions:
+	http://www.faqs.org/faqs/unix-faq/programmer/faq/
 
 Modified to allow a function to be daemonized and return for 
 bitbake use by Richard Purdie
@@ -25,7 +28,7 @@ __version__ = "0.2"
 
 # Standard Python modules.
 import os                    # Miscellaneous OS interfaces.
-import sys                  # System-specific parameters and functions.
+import sys                   # System-specific parameters and functions.
 
 # Default daemon parameters.
 # File mode creation mask of the daemon.
@@ -128,7 +131,7 @@ def createDaemon(function, logfile):
     # of methods to accomplish this task.  Three are listed below.
     #
     # Try the system configuration variable, SC_OPEN_MAX, to obtain the maximum
-    # number of open file descriptors to close.  If it doesn't exists, use
+    # number of open file descriptors to close.  If it doesn't exist, use
     # the default value (configurable).
     #
     # try:
@@ -146,7 +149,7 @@ def createDaemon(function, logfile):
     # OR
     #
     # Use the getrlimit method to retrieve the maximum file descriptor number
-    # that can be opened by this process.  If there is not limit on the
+    # that can be opened by this process.  If there is no limit on the
     # resource, use the default value.
     #
     import resource             # Resource usage information.

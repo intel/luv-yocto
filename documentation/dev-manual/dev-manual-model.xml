@@ -18,8 +18,7 @@
              "<ulink url='&YOCTO_DOCS_BSP_URL;#creating-a-new-bsp-layer-using-the-yocto-bsp-script'>Creating a New BSP Layer Using the yocto-bsp Script</ulink>"
              section in the Yocto Project Board Support Package (BSP) Developer's Guide.
              For more complete information on how to work with the kernel, see the
-             <ulink url='&YOCTO_DOCS_KERNEL_DEV_URL;'>Yocto Project Linux Kernel
-             Development Manual</ulink>.
+             <ulink url='&YOCTO_DOCS_KERNEL_DEV_URL;'>Yocto Project Linux Kernel Development Manual</ulink>.
              </para></listitem>
          <listitem><para><emphasis>User Application Development:</emphasis>
              User Application Development covers development of applications that you intend
@@ -71,7 +70,7 @@
         <title>Developing a Board Support Package (BSP)</title>
 
         <para>
-            A BSP is a package of recipes that, when applied during a build, results in
+            A BSP is a collection of recipes that, when applied during a build, results in
             an image that you can run on a particular board.
             Thus, the package when compiled into the new image, supports the operation of the board.
         </para>
@@ -157,14 +156,21 @@
                     Yocto Project Board Support Package (BSP) Developer's Guide.</para>
                     <note>Five BSPs exist that are part of the
                     Yocto Project release: <filename>genericx86</filename>, <filename>genericx86-64</filename>,
-                    <filename>beagleboard</filename>,
-                    <filename>mpc8315e</filename>, and <filename>routerstationpro</filename>.
+                    <filename>beaglebone</filename> (ARM),
+                    <filename>mpc8315e</filename> (PowerPC),
+                    and <filename>edgerouter</filename> (MIPS).
                     The recipes and configurations for these five BSPs are located and dispersed
                     within the <link linkend='source-directory'>Source Directory</link>.
-                    On the other hand, BSP layers for Chief River, Crown Bay,
-                    Crystal Forest, Emenlow, Fish River Island 2, Jasper Forest, N450, NUC DC3217IYE,
-                    Romley, sys940x, Sugar Bay, and tlk exist in their own separate layers
-                    within the larger <filename>meta-intel</filename> layer.</note>
+                    On the other hand, the <filename>meta-intel</filename> layer
+                    contains BSP layers for many supported BSPs (e.g.
+                    Crystal Forest, Emenlow, Fish River Island 2, Haswell,
+                    Jasper Forest, and so forth).
+                    Aside from the BSPs in the <filename>meta-intel</filename>
+                    layer, the
+                    <ulink url='&YOCTO_GIT_URL;'>Source Repositories</ulink>
+                    contain additional BSP layers such as
+                    <filename>meta-minnow</filename> and
+                    <filename>meta-raspberrypi</filename>.</note>
                     <para>When you set up a layer for a new BSP, you should follow a standard layout.
                     This layout is described in the
                     "<ulink url='&YOCTO_DOCS_BSP_URL;#bsp-filelayout'>Example Filesystem Layout</ulink>"
@@ -185,13 +191,15 @@
                     </para></listitem>
                 <listitem><para><emphasis>Make recipe changes to your new BSP layer</emphasis>:  Recipe
                     changes include altering recipes (<filename>.bb</filename> files), removing
-                    recipes you don't use, and adding new recipes or append files
+                    recipes you do not use, and adding new recipes or append files
                     (<filename>.bbappend</filename>) that you need to support your hardware.
                     </para></listitem>
                 <listitem><para><emphasis>Prepare for the build</emphasis>:  Once you have made all the
                     changes to your BSP layer, there remains a few things
                     you need to do for the OpenEmbedded build system in order for it to create your image.
                     You need to get the build environment ready by sourcing an environment setup script
+                    (i.e. <filename>oe-init-build-env</filename> or
+                    <filename>oe-init-build-env-memres</filename>)
                     and you need to be sure two key configuration files are configured appropriately:
                     the <filename>conf/local.conf</filename> and the
                     <filename>conf/bblayers.conf</filename> file.
@@ -205,9 +213,9 @@
                     You might want to reference this information.</para></listitem>
                 <listitem><para><emphasis>Build the image</emphasis>:  The OpenEmbedded build system
                     uses the BitBake tool to build images based on the type of image you want to create.
-                    You can find more information about BitBake in the user manual, which is found in the
-                    <filename>bitbake/doc/manual</filename> directory of the
-                    <link linkend='source-directory'>Source Directory</link>.</para>
+                    You can find more information about BitBake in the
+                    <ulink url='&YOCTO_DOCS_BB_URL;'>BitBake User Manual</ulink>.
+                    </para>
                     <para>The build process supports several types of images to satisfy different needs.
                     See the
                     "<ulink url='&YOCTO_DOCS_REF_URL;#ref-images'>Images</ulink>" chapter
@@ -219,6 +227,7 @@
         <para>
             You can view a video presentation on "Building Custom Embedded Images with Yocto"
             at <ulink url='http://free-electrons.com/blog/elc-2011-videos'>Free Electrons</ulink>.
+            After going to the page, just search for "Embedded".
             You can also find supplemental information in the
             <ulink url='&YOCTO_DOCS_BSP_URL;'>
             Yocto Project Board Support Package (BSP) Developer's Guide</ulink>.
@@ -270,17 +279,35 @@
                 Within this group, you will find several kernels supported by
                 the Yocto Project:
                 <itemizedlist>
-                    <listitem><para><emphasis><filename>linux-yocto-3.4</filename></emphasis> - The
-                    stable Yocto Project kernel to use with the Yocto Project Release 1.3. This kernel
-                    is based on the Linux 3.4 released kernel.</para></listitem>
-                    <listitem><para><emphasis><filename>linux-yocto-3.8</filename></emphasis> - The
-                    stable Yocto Project kernel to use with the Yocto Project Release 1.4. This kernel
-                    is based on the Linux 3.8 released kernel.</para></listitem>
-                    <listitem><para><emphasis><filename>linux-yocto-3.10</filename></emphasis> - The
-                    stable Yocto Project kernel to use with the Yocto Project Release 1.5. This kernel
-                    is based on the Linux 3.10 released kernel.</para></listitem>
-                    <listitem><para><emphasis><filename>linux-yocto-dev</filename></emphasis> - A development
-                    kernel based on the latest upstream release candidate available.</para></listitem>
+                    <listitem><para><emphasis>
+                        <filename>linux-yocto-3.8</filename></emphasis> - The
+                        stable Yocto Project kernel to use with the Yocto
+                        Project Release 1.4. This kernel is based on the
+                        Linux 3.8 released kernel.
+                        </para></listitem>
+                    <listitem><para><emphasis>
+                        <filename>linux-yocto-3.10</filename></emphasis> - The
+                        stable Yocto Project kernel to use with the Yocto
+                        Project Release 1.5.
+                        This kernel is based on the Linux 3.10 released kernel.
+                        </para></listitem>
+                    <listitem><para><emphasis>
+                        <filename>linux-yocto-3.14</filename></emphasis> - The
+                        stable Yocto Project kernel to use with the Yocto
+                        Project Releases 1.6 and 1.7.
+                        This kernel is based on the Linux 3.14 released kernel.
+                        </para></listitem>
+                    <listitem><para><emphasis>
+                        <filename>linux-yocto-3.17</filename></emphasis> - An
+                        additional Yocto Project kernel used with the Yocto
+                        Project Release 1.7.
+                        This kernel is based on the Linux 3.17 released kernel.
+                        </para></listitem>
+                    <listitem><para><emphasis>
+                        <filename>linux-yocto-dev</filename></emphasis> - A
+                        development kernel based on the latest upstream release
+                        candidate available.
+                        </para></listitem>
                 </itemizedlist>
             </para>
 
@@ -304,7 +331,7 @@
                 kernel.
                 Thus, everything further to the right in the structure is based on the
                 <filename>linux-yocto-3.4</filename> kernel.
-                Branch points to right in the figure represent where the
+                Branch points to the right in the figure represent where the
                 <filename>linux-yocto-3.4</filename> kernel is modified for specific hardware
                 or types of kernels, such as real-time kernels.
                 Each leaf thus represents the end-point for a kernel designed to run on a specific
@@ -376,7 +403,7 @@
             </para>
 
             <para>
-                Again, for additional information the Yocto Project kernel's
+                Again, for additional information on the Yocto Project kernel's
                 architecture and its branching strategy, see the
                 <ulink url='&YOCTO_DOCS_KERNEL_DEV_URL;'>Yocto Project Linux Kernel Development Manual</ulink>.
                 You can also reference the
@@ -416,11 +443,13 @@
                         <link linkend='build-directory'>Build Directory</link>
                         created by the
                         OpenEmbedded build system when you run BitBake.
-                        If you have never built the kernel you are interested in, you need to run
-                        an initial build to establish local kernel source files.</para>
+                        If you have never built the kernel in which you are
+                        interested, you need to run an initial build to
+                        establish local kernel source files.</para>
                         <para>If you are building an image for the first time, you need to get the build
-                        environment ready by sourcing
-                        the environment setup script.
+                        environment ready by sourcing an environment setup script
+                        (i.e. <filename>oe-init-build-env</filename> or
+                        <filename>oe-init-build-env-memres</filename>).
                         You also need to be sure two key configuration files
                         (<filename>local.conf</filename> and <filename>bblayers.conf</filename>)
                         are configured appropriately.</para>
@@ -428,9 +457,9 @@
                         "<ulink url='&YOCTO_DOCS_QS_URL;#building-image'>Building an Image</ulink>"
                         section of the Yocto Project Quick Start.
                         You might want to reference this information.
-                        You can find more information on BitBake in the user manual, which is found in the
-                        <filename>bitbake/doc/manual</filename> directory of the
-                        Source Directory.</para>
+                        You can find more information on BitBake in the
+                        <ulink url='&YOCTO_DOCS_BB_URL;'>BitBake User Manual</ulink>.
+                        </para>
                         <para>The build process supports several types of images to satisfy different needs.
                         See the "<ulink url='&YOCTO_DOCS_REF_URL;#ref-images'>Images</ulink>" chapter in
                         the Yocto Project Reference Manual for information on supported images.
@@ -439,7 +468,7 @@
                         applicable</emphasis>:  Modifying the kernel does not always mean directly
                         changing source files.
                         However, if you have to do this, you make the changes to the files in the
-                        Build directory.</para></listitem>
+                        Build Directory.</para></listitem>
                     <listitem><para><emphasis>Make kernel configuration changes
                         if applicable</emphasis>:
                         If your situation calls for changing the kernel's configuration, you can
@@ -476,7 +505,7 @@
         to run on your target hardware, which is running a kernel image created using the
         OpenEmbedded build system.
         The Yocto Project provides an
-        <ulink url='&YOCTO_DOCS_ADT_URL;#adt-intro-section'>Application Development Toolkit (ADT)</ulink>
+        <ulink url='&YOCTO_DOCS_ADT_URL;#adt-intro'>Application Development Toolkit (ADT)</ulink>
         and stand-alone
         <ulink url='&YOCTO_DOCS_ADT_URL;#the-cross-development-toolchain'>cross-development toolchains</ulink>
         that facilitate quick development and integration of your application into its runtime environment.
@@ -516,9 +545,13 @@
             <orderedlist>
                 <listitem><para><emphasis>Prepare the host system for the Yocto Project</emphasis>:
                     See
-                    "<ulink url='&YOCTO_DOCS_QS_URL;#the-linux-distro'>The Linux Distribution</ulink>" and
-                    "<ulink url='&YOCTO_DOCS_QS_URL;#packages'>The Packages</ulink>" sections both
-                    in the Yocto Project Quick Start for requirements.</para></listitem>
+                    "<ulink url='&YOCTO_DOCS_REF_URL;#detailed-supported-distros'>Supported Linux Distributions</ulink>"
+                    and
+                    "<ulink url='&YOCTO_DOCS_REF_URL;#required-packages-for-the-host-development-system'>Required Packages for the Host Development System</ulink>" sections both
+                    in the Yocto Project Reference Manual for requirements.
+                    In particular, be sure your host system has the
+                    <filename>xterm</filename> package installed.
+                    </para></listitem>
                 <listitem><para><emphasis>Secure the Yocto Project kernel target image</emphasis>:
                     You must have a target kernel image that has been built using the OpenEmbedded
                     build system.</para>
@@ -590,7 +623,11 @@
                     QEMU through the project's preferences.
                     If you are not using the Eclipse IDE, then you need to deploy the application
                     to the hardware using other methods.
-                    Or, if you are using QEMU, you need to use that tool and load your image in for testing.
+                    Or, if you are using QEMU, you need to use that tool and
+                    load your image in for testing.
+                    See the
+                    "<link linkend='dev-manual-qemu'>Using the Quick EMUlator (QEMU)</link>"
+                    chapter for information on using QEMU.
                     </para></listitem>
                 <listitem><para><emphasis>Test and debug the application</emphasis>:
                     Once your application is deployed, you need to test it.
@@ -663,7 +700,7 @@
                 <title>Installing the Eclipse IDE</title>
 
                 <para>
-                    It is recommended that you have the Kepler 4.3 version of
+                    It is recommended that you have the Kepler 4.3.2 version of
                     the Eclipse IDE installed on your development system.
                     However, if you currently have the Juno 4.2 version
                     installed and you do not want to upgrade the IDE, you can
@@ -671,10 +708,10 @@
                 </para>
 
                 <para>
-                    If you do not have the Kepler 4.3 Eclipse IDE installed, you
-                    can find the tarball at
+                    If you do not have the Kepler 4.3.2 Eclipse IDE installed,
+                    you can find the tarball at
                     <ulink url='&ECLIPSE_MAIN_URL;'></ulink>.
-                    From that site, choose the Eclipse Standard 4.3 version
+                    From that site, choose the Eclipse Standard 4.3.2 version
                     particular to your development host.
                     This version contains the Eclipse Platform, the Java
                     Development Tools (JDT), and the Plug-in Development
@@ -689,7 +726,7 @@
                     using the default name <filename>eclipse</filename>:
                     <literallayout class='monospaced'>
      $ cd ~
-     $ tar -xzvf ~/Downloads/eclipse-standard-kepler-R-linux-gtk-x86_64.tar.gz
+     $ tar -xzvf ~/Downloads/eclipse-standard-kepler-SR2-linux-gtk-x86_64.tar.gz
                     </literallayout>
                 </para>
             </section>
@@ -726,7 +763,7 @@
                         <listitem><para>Expand the box next to "Mobile and
                             Device Development" and select the following boxes:
                             <itemizedlist>
-                                <listitem><para><filename>C/C++ Remote Launch</filename></para></listitem>
+                                <listitem><para><filename>C/C++ Remote Launch (Requires RSE Remote System Explorer)</filename></para></listitem>
                                 <listitem><para><filename>Remote System Explorer End-user Runtime</filename></para></listitem>
                                 <listitem><para><filename>Remote System Explorer User Actions</filename></para></listitem>
                                 <listitem><para><filename>Target Management Terminal</filename></para></listitem>
@@ -735,7 +772,7 @@
                             </itemizedlist></para></listitem>
                         <listitem><para>Expand the box next to "Programming
                             Languages" and select the
-                            <filename>Autotools Support for CDT</filename>
+                            <filename>C/C++ Autotools Support</filename>
                             and <filename>C/C++ Development Tools</filename>
                             boxes.</para></listitem>
                         <listitem><para>Complete the installation and restart
@@ -862,7 +899,8 @@
                             <listitem><para>When the script finishes execution,
                                 it prompts you with instructions on how to run
                                 the <filename>build.sh</filename> script, which
-                                is also in the <filename>scripts</filename> of
+                                is also in the <filename>scripts</filename>
+                                directory of
                                 the Git repository created earlier.
                                 </para></listitem>
                             <listitem><para>Run the <filename>build.sh</filename> script
@@ -887,7 +925,7 @@
                             <listitem><para>Provide anything you want in the
                                 "Name" field.</para></listitem>
                             <listitem><para>Click "Archive" and browse to the
-                                ZIP file you built in step seven.
+                                ZIP file you built in step eight.
                                 This ZIP file should not be "unzipped", and must
                                 be the <filename>*archive.zip</filename> file
                                 created by running the
@@ -1007,7 +1045,7 @@
                                 If you used the ADT Installer script and
                                 accepted the default installation directory,
                                 then the location is
-                                <filename>/opt/poky/&lt;release&gt;</filename>.
+                                <filename>/opt/poky/&DISTRO;</filename>.
                                 Additionally, when you use the ADT Installer
                                 script, the same location is used for the QEMU
                                 user-space tools and the NFS boot process.
@@ -1022,7 +1060,9 @@
                                 <para>For information on how to install the
                                 toolchain and on how to extract and install the
                                 sysroot filesystem, see the
-                                "<ulink url='&YOCTO_DOCS_ADT_URL;#installing-the-adt'>Installing the ADT and Toolchains</ulink>" section.
+                                "<ulink url='&YOCTO_DOCS_ADT_URL;#installing-the-adt'>Installing the ADT and Toolchains</ulink>"
+                                section in the Yocto Project Application
+                                Developer's Guide.
                                 </para></listitem>
                             <listitem><para><emphasis>Select the Target Architecture:</emphasis>
                                 The target architecture is the type of hardware
@@ -1050,7 +1090,7 @@
                         emulator, or you can choose to run your image on actual
                         hardware.
                         <itemizedlist>
-                            <listitem><para><emphasis><filename>QEMU:</filename></emphasis>
+                            <listitem><para><emphasis>QEMU:</emphasis>
                                 Select this option if you will be using the
                                 QEMU emulator.
                                 If you are using the emulator, you also need to
@@ -1060,7 +1100,7 @@
                                 <filename>Build system derived toolchain</filename>,
                                 the target kernel you built will be located in
                                 the Build Directory in
-                                <filename>tmp/deploy/images/&lt;machine&gt;</filename>
+                                <filename>tmp/deploy/images/<replaceable>machine</replaceable></filename>
                                 directory.
                                 If you selected
                                 <filename>Standalone pre-built toolchain</filename>,
@@ -1090,7 +1130,7 @@
                                 configuration in the
                                 <filename>Sysroot Location:</filename> field.
                                 </para></listitem>
-                            <listitem><para><emphasis><filename>External HW:</filename></emphasis>
+                            <listitem><para><emphasis>External HW:</emphasis>
                                 Select this option if you will be using actual
                                 hardware.</para></listitem>
                         </itemizedlist>
@@ -1115,6 +1155,11 @@
                 terminal window, see the section
                 "<ulink url='&YOCTO_DOCS_ADT_URL;#using-the-command-line'>Using the Command Line</ulink>"
                 in the Yocto Project Application Developer's Guide.
+                <note>
+                    Do not use special characters in project names
+                    (e.g. spaces, underscores, etc.).  Doing so can
+                    cause configuration to fail.
+                </note>
             </para>
 
             <para>
@@ -1172,7 +1217,7 @@
                         individual project.</para>
                         <para>By default, the Cross Compiler Options and Target
                         Options for a project are inherited from settings you
-                        provide using the Preferences Dialog as described
+                        provided using the Preferences Dialog as described
                         earlier in the
                         "<link linkend='configuring-the-eclipse-yocto-plug-in'>Configuring the Eclipse Yocto Plug-in</link>" section.
                         The Yocto Project Settings Dialog allows you to override
@@ -1223,6 +1268,11 @@
             <para>
                 To start the QEMU emulator from within Eclipse, follow these
                 steps:
+                <note>
+                    See the
+                    "<link linkend='dev-manual-qemu'>Using the Quick EMUlator (QEMU)</link>"
+                    chapter for more information on using QEMU.
+                </note>
                 <orderedlist>
                     <listitem><para>Expose and select "External Tools" from
                         the "Run" menu.
@@ -1250,7 +1300,7 @@
 
             <para>
                 Once the QEMU emulator is running the image, you can deploy
-                your application using the Eclipse IDE and use then use
+                your application using the Eclipse IDE and then use
                 the emulator to perform debugging.
                 Follow these steps to deploy the application.
                 <orderedlist>
@@ -1335,7 +1385,7 @@
                         <ulink url='&YOCTO_GIT_URL;/cgit/cgit.cgi/oprofileui/'></ulink>.
                         You can also find more information on setting up and
                         using this tool in the
-                        "<ulink url='&YOCTO_DOCS_PROF_URL;#profile-manual-oprofile'>OProfile</ulink>"
+                        "<ulink url='&YOCTO_DOCS_PROF_URL;#profile-manual-oprofile'>oprofile</ulink>"
                         section of the Yocto Project Profiling and Tracing
                         Manual.
                         <note>The <filename>oprofile-server</filename> is
@@ -1463,7 +1513,7 @@
                             Project Location.
                             The Yocto project's Metadata files will be put under
                             the directory
-                            <filename>&lt;project_location&gt;/&lt;project_name&gt;</filename>.
+                            <filename><replaceable>project_location</replaceable>/<replaceable>project_name</replaceable></filename>.
                             If that directory does not exist, you need to check
                             the "Clone from Yocto Git Repository" box, which
                             would execute a <filename>git clone</filename>
@@ -1606,7 +1656,11 @@
                     If you need to separately install and use the QEMU
                     emulator, you can go to
                     <ulink url='http://wiki.qemu.org/Main_Page'>QEMU Home Page</ulink>
-                    to download and learn about the emulator.</para></listitem>
+                    to download and learn about the emulator.
+                    You can see the
+                    "<link linkend='dev-manual-qemu'>Using the Quick EMUlator (QEMU)</link>"
+                    chapter for information on using QEMU within the Yocto
+                    Project.</para></listitem>
             </orderedlist>
         </para>
     </section>
@@ -1661,57 +1715,45 @@
 
         <para>
             The path to the work directory for the recipe
-            (<ulink url='&YOCTO_DOCS_REF_URL;#var-WORKDIR'><filename>WORKDIR</filename></ulink>) depends
-            on the recipe name and the architecture of the target device.
-            For example, here is the work directory for recipes and resulting packages that are
-            not device-dependent:
+            (<ulink url='&YOCTO_DOCS_REF_URL;#var-WORKDIR'><filename>WORKDIR</filename></ulink>)
+            is defined as follows:
             <literallayout class='monospaced'>
-     ${TMPDIR}/work/${PACKAGE_ARCH}-poky-${TARGET_OS}/${PN}/${EXTENDPE}${PV}-${PR}
+     ${TMPDIR}/work/${MULTIMACH_TARGET_SYS}/${PN}/${EXTENDPE}${PV}-${PR}
             </literallayout>
-            Let's look at an example without variables.
-            Assuming a top-level <link linkend='source-directory'>Source Directory</link>
-            named <filename>poky</filename>
-            and a default Build Directory of <filename>poky/build</filename>,
-            the following is the work directory for the <filename>acl</filename> recipe that
-            creates the <filename>acl</filename> package:
-            <literallayout class='monospaced'>
-     poky/build/tmp/work/i586-poky-linux/acl/2.2.51-r3/
-            </literallayout>
+            The actual directory depends on several things:
+            <itemizedlist>
+                <listitem><ulink url='&YOCTO_DOCS_REF_URL;#var-TMPDIR'><filename>TMPDIR</filename></ulink>:
+                    The top-level build output directory</listitem>
+                <listitem><ulink url='&YOCTO_DOCS_REF_URL;#var-MULTIMACH_TARGET_SYS'><filename>MULTIMACH_TARGET_SYS</filename></ulink>:
+                    The target system identifier</listitem>
+                <listitem><ulink url='&YOCTO_DOCS_REF_URL;#var-PN'><filename>PN</filename></ulink>:
+                    The recipe name</listitem>
+                <listitem><ulink url='&YOCTO_DOCS_REF_URL;#var-EXTENDPE'><filename>EXTENDPE</filename></ulink>:
+                    The epoch - (if
+                    <ulink url='&YOCTO_DOCS_REF_URL;#var-PE'><filename>PE</filename></ulink>
+                    is not specified, which is usually the case for most
+                    recipes, then <filename>EXTENDPE</filename> is blank)</listitem>
+                <listitem><ulink url='&YOCTO_DOCS_REF_URL;#var-PV'><filename>PV</filename></ulink>:
+                    The recipe version</listitem>
+                <listitem><ulink url='&YOCTO_DOCS_REF_URL;#var-PR'><filename>PR</filename></ulink>:
+                    The recipe revision</listitem>
+            </itemizedlist>
         </para>
 
         <para>
-            If your resulting package is dependent on the target device,
-            the work directory varies slightly:
+            As an example, assume a Source Directory top-level folder
+            name <filename>poky</filename>, a default Build Directory at
+            <filename>poky/build</filename>, and a
+            <filename>qemux86-poky-linux</filename> machine target
+            system.
+            Furthermore, suppose your recipe is named
+            <filename>foo_1.3.0.bb</filename>.
+            In this case, the work directory the build system uses to
+            build the package would be as follows:
             <literallayout class='monospaced'>
-     ${TMPDIR}/work/${MACHINE}-poky-${TARGET_OS}/${PN}/${EXTENDPE}${PV}-${PR}
-            </literallayout>
-            Again, assuming top-level Source Directory named <filename>poky</filename>
-            and a default Build Directory of <filename>poky/build</filename>, the
-            following are the work and temporary source directories, respectively,
-            for the <filename>acl</filename> package that is being
-            built for a MIPS-based device:
-            <literallayout class='monospaced'>
-     poky/build/tmp/work/mips-poky-linux/acl/2.2.51-r2
-     poky/build/tmp/work/mips-poky-linux/acl/2.2.51-r2/acl-2.2.51
+     poky/build/tmp/work/qemux86-poky-linux/foo/1.3.0-r0
             </literallayout>
         </para>
-
-        <note>
-            To better understand how the OpenEmbedded build system resolves directories during the
-            build process, see the glossary entries for the
-            <ulink url='&YOCTO_DOCS_REF_URL;#var-WORKDIR'><filename>WORKDIR</filename></ulink>,
-            <ulink url='&YOCTO_DOCS_REF_URL;#var-TMPDIR'><filename>TMPDIR</filename></ulink>,
-            <ulink url='&YOCTO_DOCS_REF_URL;#var-TOPDIR'><filename>TOPDIR</filename></ulink>,
-            <ulink url='&YOCTO_DOCS_REF_URL;#var-PACKAGE_ARCH'><filename>PACKAGE_ARCH</filename></ulink>,
-            <ulink url='&YOCTO_DOCS_REF_URL;#var-MULTIMACH_TARGET_SYS'><filename>MULTIMACH_TARGET_SYS</filename></ulink>,
-            <ulink url='&YOCTO_DOCS_REF_URL;#var-TARGET_OS'><filename>TARGET_OS</filename></ulink>,
-            <ulink url='&YOCTO_DOCS_REF_URL;#var-PN'><filename>PN</filename></ulink>,
-            <ulink url='&YOCTO_DOCS_REF_URL;#var-PV'><filename>PV</filename></ulink>,
-            <ulink url='&YOCTO_DOCS_REF_URL;#var-EXTENDPE'><filename>EXTENDPE</filename></ulink>,
-            and
-            <ulink url='&YOCTO_DOCS_REF_URL;#var-PR'><filename>PR</filename></ulink>
-            variables in the Yocto Project Reference Manual.
-        </note>
 
         <para>
             Now that you know where to locate the directory that has the temporary source code,
@@ -1764,18 +1806,26 @@
                     Make your changes in the temporary source code to the files you added
                     to the patch.</para></listitem>
                 <listitem><para><emphasis>Test Your Changes:</emphasis>
-                    Once you have modified the source code, the easiest way to test your changes
-                    is by calling the <filename>compile</filename> task as shown in the following example:
+                    Once you have modified the source code, the easiest way to
+                    your changes is by calling the
+                    <filename>do_compile</filename> task as shown in the
+                    following example:
                     <literallayout class='monospaced'>
-     $ bitbake -c compile -f &lt;name_of_package&gt;
+     $ bitbake -c compile -f <replaceable>name_of_package</replaceable>
                     </literallayout>
                     The <filename>-f</filename> or <filename>--force</filename>
                     option forces the specified task to execute.
                     If you find problems with your code, you can just keep editing and
                     re-testing iteratively until things work as expected.
                     <note>All the modifications you make to the temporary source code
-                    disappear once you <filename>-c clean</filename> or
-                    <filename>-c cleanall</filename> with BitBake for the package.
+                    disappear once you run the
+                    <ulink url='&YOCTO_DOCS_REF_URL;#ref-tasks-clean'><filename>do_clean</filename></ulink>
+                    or
+                    <ulink url='&YOCTO_DOCS_REF_URL;#ref-tasks-cleanall'><filename>do_cleanall</filename></ulink>
+                    tasks using BitBake (i.e.
+                    <filename>bitbake -c clean <replaceable>name_of_package</replaceable></filename>
+                    and
+                    <filename>bitbake -c cleanall <replaceable>name_of_package</replaceable></filename>).
                     Modifications will also disappear if you use the <filename>rm_work</filename>
                     feature as described in the
                     "<ulink url='&YOCTO_DOCS_QS_URL;#building-image'>Building an Image</ulink>"
@@ -1861,10 +1911,12 @@
                 <listitem><para><emphasis>Edit the Files:</emphasis>
                     Make your changes to the temporary source code.</para></listitem>
                 <listitem><para><emphasis>Test Your Changes:</emphasis>
-                    Once you have modified the source code, the easiest way to test your changes
-                    is by calling the <filename>compile</filename> task as shown in the following example:
+                    Once you have modified the source code, the easiest way
+                    to test your changes is by calling the
+                    <filename>do_compile</filename> task as shown in the
+                    following example:
                     <literallayout class='monospaced'>
-     $ bitbake -c compile -f &lt;name_of_package&gt;
+     $ bitbake -c compile -f <replaceable>name_of_package</replaceable>
                     </literallayout>
                     The <filename>-f</filename> or <filename>--force</filename>
                     option forces the specified task to execute.
@@ -1898,11 +1950,11 @@
                     Once you have committed the files, you can use the <filename>git log</filename>
                     command to see your changes:
                     <literallayout class='monospaced'>
-     $ git commit -m "&lt;commit-summary-message&gt;"
+     $ git commit -m "<replaceable>commit-summary-message</replaceable>"
      $ git log
                     </literallayout>
                     <note>The name of the patch file created in the next step is based on your
-                        <filename>commit-summary-message</filename>.</note></para></listitem>
+                        <replaceable>commit-summary-message</replaceable>.</note></para></listitem>
                 <listitem><para><emphasis>Generate the Patch:</emphasis>
                     Once the changes are committed, use the <filename>git format-patch</filename>
                     command to generate a patch file:
@@ -1929,7 +1981,7 @@
                     of the recipe.
                     Here is an example:
                     <literallayout class='monospaced'>
-     SRC_URI += "file://0001-&lt;commit-summary-message&gt;.patch"
+     SRC_URI += "file://0001-<replaceable>commit-summary-message</replaceable>.patch"
                     </literallayout></para></listitem>
                 <listitem><para><emphasis>Increment the Recipe Revision Number:</emphasis>
                     Finally, don't forget to 'bump' the

@@ -1,4 +1,4 @@
-DESCRIPTION = "Firmware files for use with Linux kernel"
+SUMMARY = "Firmware files for use with Linux kernel"
 SECTION = "kernel"
 # Notes:
 # This is kind of a mess. Each bit of firmware has their own license. Some free
@@ -7,11 +7,11 @@ SECTION = "kernel"
 
 LICENSE = "Proprietary"
 
-LIC_FILES_CHKSUM = "file://LICENSE.radeon;md5=9c2faab1bfca55e1510d6bde67206f9c \
+LIC_FILES_CHKSUM = "file://LICENSE.radeon;md5=07b0c31777bd686d8e1609c6940b5e74\
                     file://LICENSE.dib0700;md5=f7411825c8a555a1a3e5eab9ca773431 \
                     file://LICENCE.xc5000;md5=1e170c13175323c32c7f4d0998d53f66 \
                     file://LICENCE.ralink-firmware.txt;md5=ab2c269277c45476fb449673911a2dfd \
-                    file://LICENCE.qla2xxx;md5=4005328a134054f0fa077bdc37aa64f2 \
+                    file://LICENCE.qla2xxx;md5=f5ce8529ec5c17cb7f911d2721d90e91 \
                     file://LICENCE.iwlwifi_firmware;md5=8b938534f77ffd453690eb34ed84ae8b \
                     file://LICENCE.i2400m;md5=14b901969e23c41881327c0d9e4b7d36 \
                     file://LICENCE.atheros_firmware;md5=30a14c7823beedac9fa39c64fdd01a13 \
@@ -24,7 +24,7 @@ LIC_FILES_CHKSUM = "file://LICENSE.radeon;md5=9c2faab1bfca55e1510d6bde67206f9c \
                     file://LICENCE.Marvell;md5=9ddea1734a4baf3c78d845151f42a37a \
                    "
 
-SRCREV = "600caefd83a406540b2a789be6415e44c9b87add"
+SRCREV = "dec41bce44e0dff6a2c3358a958fadf22bf58858"
 PE = "1"
 PV = "0.0+git${SRCPV}"
 
@@ -45,6 +45,12 @@ do_install() {
 	# Avoid Makefile to be deplyed
 	rm ${D}/lib/firmware/Makefile
 
+	# Remove unbuild firmware which needs cmake and bash
+	rm ${D}/lib/firmware/carl9170fw -rf
+
+	# Remove pointless bash script
+	rm ${D}/lib/firmware/configure
+
 	# Libertas sd8686
 	ln -sf libertas/sd8686_v9.bin ${D}/lib/firmware/sd8686.bin
 	ln -sf libertas/sd8686_v9_helper.bin ${D}/lib/firmware/sd8686_helper.bin
@@ -55,12 +61,15 @@ do_install() {
 
 
 PACKAGES =+ "${PN}-ralink \
-             ${PN}-marvell-license ${PN}-sd8686 ${PN}-sd8787 \
-             ${PN}-wl12xx ${PN}-vt6656 \
+             ${PN}-radeon \
+             ${PN}-marvell-license ${PN}-sd8686 ${PN}-sd8787 ${PN}-sd8797 \
+             ${PN}-wl12xx ${PN}-wl18xx ${PN}-vt6656 \
              ${PN}-rtl-license ${PN}-rtl8192cu ${PN}-rtl8192ce ${PN}-rtl8192su \
              ${PN}-broadcom-license ${PN}-bcm4329 ${PN}-bcm4330 ${PN}-bcm4334 \
              ${PN}-atheros-license ${PN}-ar9170 ${PN}-ar3k ${PN}-ath6k ${PN}-ath9k \
-             ${PN}-iwlwifi-license ${PN}-iwlwifi-6000g2a-5 ${PN}-iwlwifi-6000g2b-6"
+             ${PN}-iwlwifi-license ${PN}-iwlwifi-6000g2a-5 ${PN}-iwlwifi-6000g2b-6 ${PN}-iwlwifi-7260-7 \
+             ${PN}-iwlwifi-6000g2a-6 ${PN}-iwlwifi-135-6"
+
 
 FILES_${PN}-atheros-license = "/lib/firmware/LICENCE.atheros_firmware"
 
@@ -97,6 +106,12 @@ FILES_${PN}-ralink = " \
   /lib/firmware/LICENCE.ralink-firmware.txt \
 "
 
+LICENSE_${PN}-radeon = "Firmware-radeon"
+FILES_${PN}-radeon = " \
+  /lib/firmware/radeon \
+  /lib/firmware/LICENCE.radeon \
+"
+
 FILES_${PN}-marvell-license = "/lib/firmware/LICENCE.Marvell"
 
 LICENSE_${PN}-sd8686 = "Firmware-Marvell"
@@ -111,6 +126,12 @@ FILES_${PN}-sd8787 = " \
   /lib/firmware/mrvl/sd8787_uapsta.bin \
 "
 RDEPENDS_${PN}-sd8787 += "${PN}-marvell-license"
+
+LICENSE_${PN}-sd8797 = "Firmware-Marvell"
+FILES_${PN}-sd8797 = " \
+  /lib/firmware/mrvl/sd8797_uapsta.bin \
+"
+RDEPENDS_${PN}-sd8797 += "${PN}-marvell-license"
 
 FILES_${PN}-rtl-license = " \
   /lib/firmware/LICENCE.rtlwifi_firmware.txt \
@@ -141,6 +162,13 @@ FILES_${PN}-wl12xx = " \
   /lib/firmware/ti-connectivity \
 "
 
+LICENSE_${PN}-wl18xx = "Firmware-ti-connectivity"
+FILES_${PN}-wl18xx = " \
+  /lib/firmware/wl18* \
+  /lib/firmware/TI* \
+  /lib/firmware/ti-connectivity \
+"
+
 LICENSE_${PN}-vt6656 = "Firmware-via_vt6656"
 FILES_${PN}-vt6656 = " \
   /lib/firmware/vntwusb.fw \
@@ -158,35 +186,39 @@ FILES_${PN}-broadcom-license = " \
 
 LICENSE_${PN}-bcm4329 = "Firmware-bcm4329"
 FILES_${PN}-bcm4329 = " \
-  /lib/firmware/brcm/brcmfmac4329.bin \
+  /lib/firmware/brcm/brcmfmac4329-sdio.bin \
 "
 RDEPENDS_${PN}-bcm4329 += "${PN}-broadcom-license"
 ALTERNATIVE_linux-firmware-bcm4329 = "brcmfmac-sdio.bin"
-ALTERNATIVE_TARGET_linux-firmware-bcm4329[brcmfmac-sdio.bin] = "/lib/firmware/brcm/brcmfmac4329.bin"
+ALTERNATIVE_TARGET_linux-firmware-bcm4329[brcmfmac-sdio.bin] = "/lib/firmware/brcm/brcmfmac4329-sdio.bin"
 
 LICENSE_${PN}-bcm4330 = "Firmware-bcm4330"
 FILES_${PN}-bcm4330 = " \
-  /lib/firmware/brcm/brcmfmac4330.bin \
+  /lib/firmware/brcm/brcmfmac4330-sdio.bin \
 "
 RDEPENDS_${PN}-bcm4330 += "${PN}-broadcom-license"
 ALTERNATIVE_linux-firmware-bcm4330 = "brcmfmac-sdio.bin"
-ALTERNATIVE_TARGET_linux-firmware-bcm4330[brcmfmac-sdio.bin] = "/lib/firmware/brcm/brcmfmac4330.bin"
+ALTERNATIVE_TARGET_linux-firmware-bcm4330[brcmfmac-sdio.bin] = "/lib/firmware/brcm/brcmfmac4330-sdio.bin"
 
 LICENSE_${PN}-bcm4334 = "Firmware-bcm4334"
 FILES_${PN}-bcm4334 = " \
-  /lib/firmware/brcm/brcmfmac4334.bin \
+  /lib/firmware/brcm/brcmfmac4334-sdio.bin \
 "
 RDEPENDS_${PN}-bcm4334 += "${PN}-broadcom-license"
 ALTERNATIVE_linux-firmware-bcm4334 = "brcmfmac-sdio.bin"
-ALTERNATIVE_TARGET_linux-firmware-bcm4334[brcmfmac-sdio.bin] = "/lib/firmware/brcm/brcmfmac4334.bin"
+ALTERNATIVE_TARGET_linux-firmware-bcm4334[brcmfmac-sdio.bin] = "/lib/firmware/brcm/brcmfmac4334-sdio.bin"
 
 RDEPENDS_${PN}-iwlwifi-6000g2a-5 = "${PN}-iwlwifi-license"
+RDEPENDS_${PN}-iwlwifi-6000g2a-6 = "${PN}-iwlwifi-license"
 RDEPENDS_${PN}-iwlwifi-6000g2b-6 = "${PN}-iwlwifi-license"
+RDEPENDS_${PN}-iwlwifi-135-6 = "${PN}-iwlwifi-license"
 RDEPENDS_${PN}-iwlwifi-7260-7 = "${PN}-iwlwifi-license"
 
 FILES_${PN}-iwlwifi-license =   "/lib/firmware/LICENCE.iwlwifi_firmware"
 FILES_${PN}-iwlwifi-6000g2a-5 = "/lib/firmware/iwlwifi-6000g2a-5.ucode"
+FILES_${PN}-iwlwifi-6000g2a-6 = "/lib/firmware/iwlwifi-6000g2a-6.ucode"
 FILES_${PN}-iwlwifi-6000g2b-6 = "/lib/firmware/iwlwifi-6000g2b-6.ucode"
+FILES_${PN}-iwlwifi-135-6 =     "/lib/firmware/iwlwifi-135-6.ucode"
 FILES_${PN}-iwlwifi-7260-7 = "/lib/firmware/iwlwifi-7260-7.ucode"
 
 FILES_${PN} += "/lib/firmware/*"

@@ -1,9 +1,9 @@
 
 #NOISO = "1"
 
-SYSLINUX_ROOT = "root=/dev/hda2 "
-SYSLINUX_PROMPT = "0"
-SYSLINUX_TIMEOUT = "1"
+SYSLINUX_ROOT ?= "root=/dev/sda2"
+SYSLINUX_PROMPT ?= "0"
+SYSLINUX_TIMEOUT ?= "10"
 SYSLINUX_LABELS = "boot"
 LABELS_append = " ${SYSLINUX_LABELS} "
 
@@ -15,6 +15,9 @@ ROOTFS ?= "${DEPLOY_DIR_IMAGE}/${IMAGE_BASENAME}-${MACHINE}.ext3"
 # inherit it here.
 #inherit image-live
 inherit boot-directdisk
+
+IMAGE_TYPEDEP_vmdk = "ext3"
+IMAGE_TYPES_MASKED += "vmdk"
 
 create_vmdk_image () {
 	qemu-img convert -O vmdk ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.hdddirect ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.vmdk

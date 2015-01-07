@@ -1,6 +1,6 @@
-DESCRIPTION = "OpenedHand Widget Library"
+SUMMARY = "OpenedHand Widget Library"
 HOMEPAGE = "http://www.o-hand.com"
-BUGTRACKER = "http://bugzilla.openedhand.com/"
+BUGTRACKER = "http://bugzilla.yoctoproject.org/"
 
 LICENSE = "GPLv2 & LGPLv2+"
 LIC_FILES_CHKSUM = "file://COPYING;md5=94d55d512a9ba36caa9b7df079bae19f \
@@ -12,7 +12,6 @@ SECTION = "libs"
 DEPENDS = "gtk+"
 SRCREV = "6ebc8ac8f8575278dd40a535cadefa26374e44b1"
 PV = "0.1+git${SRCPV}"
-PR = "r0"
 
 SRC_URI = "git://git.yoctoproject.org/${BPN}"
 

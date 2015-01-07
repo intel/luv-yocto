@@ -14,6 +14,8 @@
 #    gcc/config/mips/linux64.h
 #    gcc/config/rs6000/linux64.h
 
+MULTILIB_OPTION_WHITELIST ??= "-m32 -m64 -mx32 -mabi=n32 -mabi=32 -mabi=64" 
+
 python gcc_multilib_setup() {
     import re
     import shutil
@@ -26,7 +28,8 @@ python gcc_multilib_setup() {
 
     bb.utils.remove(build_conf_dir, True)
     ml_globs = ('%s/*/t-linux64' % src_conf_dir,
-                '%s/*/linux64.h' % src_conf_dir)
+                '%s/*/linux64.h' % src_conf_dir,
+                '%s/linux.h' % src_conf_dir)
 
     # copy the target multilib config files to ${B}
     for ml_glob in ml_globs:
@@ -87,12 +90,22 @@ python gcc_multilib_setup() {
                 substs = [
                     (r'^(#define\s*GLIBC_DYNAMIC_LINKER32\s*)(\S+)(\s*\".*\")$',
                         r'\1' + wrap_libdir(libdir32) + r'\3'),
-                    (r'^(#define\s*GLIBC_DYNAMIC_LINKER64\s*)(\S+)(\s*\".*\")$',
+                    (r'^(#define\s*GLIBC_DYNAMIC_LINKER64\s*)(\S+)(\s*\"\S+\")$',
                         r'\1' + wrap_libdir(libdir64) + r'\3'),
+                    (r'^(#define\s*GLIBC_DYNAMIC_LINKER64\s*\"\S+\"\s*)(\S+)(\s*\"\S+\"\s*)(\S+)(\s*\".*\")$',
+                        r'\1' + wrap_libdir(libdir64) + r'\3' + wrap_libdir(libdir64) + r'\5'),
                     (r'^(#define\s*GLIBC_DYNAMIC_LINKERX32\s*)(\S+)(\s*\".*\")$',
                         r'\1' + wrap_libdir(libdirx32) + r'\3'),
                     (r'^(#define\s*GLIBC_DYNAMIC_LINKERN32\s*)(\S+)(\s*\".*\")$',
                         r'\1' + wrap_libdir(libdirn32) + r'\3'),
+                    (r'^(#define\s*UCLIBC_DYNAMIC_LINKER32\s*)(\S+)(\s*\".*\")$',
+                        r'\1' + wrap_libdir(libdir32) + r'\3'),
+                    (r'^(#define\s*UCLIBC_DYNAMIC_LINKER64\s*)(\S+)(\s*\".*\")$',
+                        r'\1' + wrap_libdir(libdir64) + r'\3'),
+                    (r'^(#define\s*UCLIBC_DYNAMIC_LINKERN32\s*)(\S+)(\s*\".*\")$',
+                        r'\1' + wrap_libdir(libdirn32) + r'\3'),
+                    (r'^(#define\s*UCLIBC_DYNAMIC_LINKER\b\s*)(\S+)(\s*\".*\")$',
+                        r'\1' + wrap_libdir(libdir32) + r'\3'),
                 ]
 
                 for (i, line) in enumerate(filelines):
@@ -109,6 +122,7 @@ python gcc_multilib_setup() {
         'i586'      : ['gcc/config/i386/t-linux64'],
         'mips'      : ['gcc/config/mips/t-linux64'],
         'powerpc'   : ['gcc/config/rs6000/t-linux64'],
+        'powerpc64' : ['gcc/config/rs6000/t-linux64'],
     }
 
     gcc_header_config_files = {
@@ -116,6 +130,7 @@ python gcc_multilib_setup() {
         'i586'      : ['gcc/config/i386/linux64.h'],
         'mips'      : ['gcc/config/mips/linux64.h'],
         'powerpc'   : ['gcc/config/rs6000/linux64.h'],
+        'powerpc64' : ['gcc/config/rs6000/linux64.h'],
     }
 
     target_arch = (d.getVar('TARGET_ARCH_MULTILIB_ORIGINAL', True) if mlprefix
@@ -137,7 +152,7 @@ python gcc_multilib_setup() {
     if mlprefix:
         mlindex = 0
         for ml in multilibs:
-            if mlprefix.startswith(ml):
+            if mlprefix == ml + '-':
                 break
             mlindex += 1
 
@@ -148,6 +163,7 @@ python gcc_multilib_setup() {
     options = []
     dirnames = []
     osdirnames = []
+    optsets = []
 
     for ml in ml_list:
         tune = d.getVar(ml, True)
@@ -172,10 +188,14 @@ python gcc_multilib_setup() {
         else:
             bb.error('Unknown libdir (%s) of the tune : %s' % (tune_baselib, tune))
 
-        # take out '-' and march='s from parameters
-        options.append(re.sub(r'march=[^ ]+ *', '',
-                            re.sub(r' +\-+', ' ',
-                                re.sub(r'^ *\-+', '', tune_parameters['ccargs']))))
+        # take out '-' mcpu='s and march='s from parameters
+        opts = []
+        whitelist = (d.getVar("MULTILIB_OPTION_WHITELIST", True) or "").split()
+        for i in tune_parameters['ccargs'].split():
+            if i in whitelist:
+                opts.append(i)
+        options.append(" ".join(opts))
+
         if tune_baselib == 'lib':
             dirnames.append('32')  # /lib => 32bit lib
         else:

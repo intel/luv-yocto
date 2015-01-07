@@ -2,12 +2,9 @@
 # Defaults to using symlinks, as it's a quick operation, and one can easily
 # follow the links when making use of the files (e.g. tar with the -h arg).
 #
-# By default, includes all GPL and LGPL, and excludes CLOSED and Proprietary.
-#
 # vi:sts=4:sw=4:et
 
-# Need the copyleft_should_include
-inherit archiver
+inherit copyleft_filter
 
 COPYLEFT_SOURCES_DIR ?= '${DEPLOY_DIR}/copyleft_sources'
 

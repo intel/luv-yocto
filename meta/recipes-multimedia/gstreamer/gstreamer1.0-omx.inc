@@ -1,9 +1,9 @@
-DESCRIPTION = "OpenMAX IL plugins for GStreamer"
+SUMMARY = "OpenMAX IL plugins for GStreamer"
 SECTION = "multimedia"
 LICENSE = "LGPLv2.1"
 LICENSE_FLAGS = "commercial"
 HOMEPAGE = "http://www.gstreamer.net/"
-DEPENDS = "gstreamer1.0 gstreamer1.0-plugins-base"
+DEPENDS = "gstreamer1.0 gstreamer1.0-plugins-base gstreamer1.0-plugins-bad"
 RDEPENDS_${PN} = "libomxil"
 
 inherit autotools pkgconfig gettext
@@ -13,7 +13,7 @@ acpaths = "-I ${S}/common/m4 -I ${S}/m4"
 PR = "r1"
 
 GSTREAMER_1_0_OMX_TARGET ?= "bellagio"
-GSTREAMER_1_0_OMX_CORE_NAME ?= "/usr/lib/libomxil-bellagio.so.0"
+GSTREAMER_1_0_OMX_CORE_NAME ?= "${libdir}/libomxil-bellagio.so.0"
 
 EXTRA_OECONF += "--disable-valgrind --with-omx-target=${GSTREAMER_1_0_OMX_TARGET}"
 
@@ -31,7 +31,7 @@ python __anonymous () {
 }
 
 set_omx_core_name() {
-	sed -i -e "s;^core-name=.*;core-name=${GSTREAMER_1_0_OMX_CORE_NAME};" "${D}/etc/xdg/gstomx.conf"
+	sed -i -e "s;^core-name=.*;core-name=${GSTREAMER_1_0_OMX_CORE_NAME};" "${D}${sysconfdir}/xdg/gstomx.conf"
 }
 do_install[postfuncs] += " set_omx_core_name "
 

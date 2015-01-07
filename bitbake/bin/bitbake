@@ -41,7 +41,7 @@ from bb import ui
 from bb import server
 from bb import cookerdata
 
-__version__ = "1.20.0"
+__version__ = "1.24.0"
 logger = logging.getLogger("BitBake")
 
 # Python multiprocessing requires /dev/shm
@@ -139,8 +139,8 @@ class BitBakeConfigParameters(cookerdata.ConfigParameters):
         parser.add_option("-n", "--dry-run", help = "Don't execute, just go through the motions.",
                    action = "store_true", dest = "dry_run", default = False)
 
-        parser.add_option("-S", "--dump-signatures", help = "Don't execute, just dump out the signature construction information.",
-                   action = "store_true", dest = "dump_signatures", default = False)
+        parser.add_option("-S", "--dump-signatures", help = "Dump out the signature construction information, with no task execution. The SIGNATURE_HANDLER parameter is passed to the handler. Two common values are none and printdiff but the handler may define more/less. none means only dump the signature, printdiff means compare the dumped signature with the cached one.",
+                   action = "append", dest = "dump_signatures", default = [], metavar="SIGNATURE_HANDLER")
 
         parser.add_option("-p", "--parse-only", help = "Quit after parsing the BB recipes.",
                    action = "store_true", dest = "parse_only", default = False)
@@ -148,7 +148,7 @@ class BitBakeConfigParameters(cookerdata.ConfigParameters):
         parser.add_option("-s", "--show-versions", help = "Show current and preferred versions of all recipes.",
                    action = "store_true", dest = "show_versions", default = False)
 
-        parser.add_option("-e", "--environment", help = "Show the global or per-package environment complete with information about where variables were set/changed.",
+        parser.add_option("-e", "--environment", help = "Show the global or per-recipe environment complete with information about where variables were set/changed.",
                    action = "store_true", dest = "show_environment", default = False)
 
         parser.add_option("-g", "--graphviz", help = "Save dependency tree information for the specified targets in the dot syntax.",
@@ -168,6 +168,9 @@ class BitBakeConfigParameters(cookerdata.ConfigParameters):
 
         parser.add_option("-t", "--servertype", help = "Choose which server to use, process or xmlrpc.",
                    action = "store", dest = "servertype")
+
+        parser.add_option("", "--token", help = "Specify the connection token to be used when connecting to a remote server.",
+                   action = "store", dest = "xmlrpctoken")
 
         parser.add_option("", "--revisions-changed", help = "Set the exit code depending on whether upstream floating revisions have changed or not.",
                    action = "store_true", dest = "revisions_changed", default = False)
@@ -190,6 +193,9 @@ class BitBakeConfigParameters(cookerdata.ConfigParameters):
         parser.add_option("", "--observe-only", help = "Connect to a server as an observing-only client.",
                    action = "store_true", dest = "observe_only", default = False)
 
+        parser.add_option("", "--status-only", help = "Check the status of the remote bitbake server.",
+                   action = "store_true", dest = "status_only", default = False)
+
         options, targets = parser.parse_args(sys.argv)
 
         # some environmental variables set also configuration options
@@ -197,27 +203,54 @@ class BitBakeConfigParameters(cookerdata.ConfigParameters):
             options.servertype = "xmlrpc"
             options.remote_server = os.environ["BBSERVER"]
 
+        if "BBTOKEN" in os.environ:
+            options.xmlrpctoken = os.environ["BBTOKEN"]
+
+        # if BBSERVER says to autodetect, let's do that
+        if options.remote_server:
+            [host, port] = options.remote_server.split(":", 2)
+            port = int(port)
+            # use automatic port if port set to -1, means read it from
+            # the bitbake.lock file; this is a bit tricky, but we always expect
+            # to be in the base of the build directory if we need to have a
+            # chance to start the server later, anyway
+            if port == -1:
+                lock_location = "./bitbake.lock"
+                # we try to read the address at all times; if the server is not started,
+                # we'll try to start it after the first connect fails, below
+                try:
+                    lf = open(lock_location, 'r')
+                    remotedef = lf.readline()
+                    [host, port] = remotedef.split(":")
+                    port = int(port)
+                    lf.close()
+                    options.remote_server = remotedef
+                except Exception as e:
+                    sys.exit("Failed to read bitbake.lock (%s), invalid port" % str(e))
+
         return options, targets[1:]
 
 
-def start_server(servermodule, configParams, configuration):
+def start_server(servermodule, configParams, configuration, features):
     server = servermodule.BitBakeServer()
     if configParams.bind:
         (host, port) = configParams.bind.split(':')
         server.initServer((host, int(port)))
+        configuration.interface = [ server.serverImpl.host, server.serverImpl.port ]
     else:
         server.initServer()
+        configuration.interface = []
 
     try:
         configuration.setServerRegIdleCallback(server.getServerIdleCB())
 
-        cooker = bb.cooker.BBCooker(configuration)
+        cooker = bb.cooker.BBCooker(configuration, features)
 
         server.addcooker(cooker)
         server.saveConnectionDetails()
     except Exception as e:
         exc_info = sys.exc_info()
-        while True:
+        while hasattr(server, "event_queue"):
             try:
                 import queue
             except ImportError:
@@ -254,7 +287,7 @@ def main():
         servermodule = getattr(module, server_type)
     except AttributeError:
         sys.exit("FATAL: Invalid server type '%s' specified.\n"
-                 "Valid interfaces: xmlrpc, process [default]." % servertype)
+                 "Valid interfaces: xmlrpc, process [default]." % server_type)
 
     if configParams.server_only:
         if configParams.servertype != "xmlrpc":
@@ -274,6 +307,9 @@ def main():
     if configParams.observe_only and (not configParams.remote_server or configParams.bind):
         sys.exit("FATAL: '--observe-only' can only be used by UI clients connecting to a server.\n")
 
+    if configParams.kill_server and not configParams.remote_server:
+        sys.exit("FATAL: '--kill-server' can only be used to terminate a remote server")
+
     if "BBDEBUG" in os.environ:
         level = int(os.environ["BBDEBUG"])
         if level > configuration.debug:
@@ -284,32 +320,51 @@ def main():
 
     # Ensure logging messages get sent to the UI as events
     handler = bb.event.LogHandler()
-    logger.addHandler(handler)
+    if not configParams.status_only:
+        # In status only mode there are no logs and no UI
+        logger.addHandler(handler)
 
     # Clear away any spurious environment variables while we stoke up the cooker
     cleanedvars = bb.utils.clean_environment()
 
-    if not configParams.remote_server:
-        # we start a server with a given configuration
-        server = start_server(servermodule, configParams, configuration)
-        bb.event.ui_queue = []
-    else:
-        # we start a stub server that is actually a XMLRPClient that connects to a real server
-        server = servermodule.BitBakeXMLRPCClient(configParams.observe_only)
-        server.saveConnectionDetails(configParams.remote_server)
-
+    featureset = []
     if not configParams.server_only:
         # Collect the feature set for the UI
         featureset = getattr(ui_module, "featureSet", [])
 
-        # Setup a connection to the server (cooker)
-        server_connection = server.establishConnection(featureset)
+    if not configParams.remote_server:
+        # we start a server with a given configuration
+        server = start_server(servermodule, configParams, configuration, featureset)
+        bb.event.ui_queue = []
+    else:
+        # we start a stub server that is actually a XMLRPClient that connects to a real server
+        server = servermodule.BitBakeXMLRPCClient(configParams.observe_only, configParams.xmlrpctoken)
+        server.saveConnectionDetails(configParams.remote_server)
+
+
+    if not configParams.server_only:
+        try:
+            server_connection = server.establishConnection(featureset)
+        except Exception as e:
+            if configParams.kill_server:
+                sys.exit(0)
+            bb.fatal("Could not connect to server %s: %s" % (configParams.remote_server, str(e)))
 
         # Restore the environment in case the UI needs it
         for k in cleanedvars:
             os.environ[k] = cleanedvars[k]
 
         logger.removeHandler(handler)
+
+
+        if configParams.status_only:
+            server_connection.terminate()
+            sys.exit(0)
+
+        if configParams.kill_server:
+            server_connection.connection.terminateServer()
+            bb.event.ui_queue = []
+            sys.exit(0)
 
         try:
             return ui_module.main(server_connection.connection, server_connection.events, configParams)
@@ -318,6 +373,7 @@ def main():
             server_connection.terminate()
     else:
         print("server address: %s, server port: %s" % (server.serverImpl.host, server.serverImpl.port))
+        return 0
 
     return 1
 

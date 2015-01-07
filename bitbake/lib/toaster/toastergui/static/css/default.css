@@ -1,0 +1,146 @@
+/* Style the Yocto Project logo */
+.logo img { height: 30px; width: auto !important; }
+.logo { padding-top: 4px !important; padding-bottom:0px !important; }
+
+/* Style the breadcrumb */
+.breadcrumb { display: inline-block; background-color: transparent; }
+.section { margin: 20px 0; }
+
+/* Styles for the help information */
+.get-help { color: #CCCCCC; }
+.get-help:hover { color: #999999; cursor: pointer; }
+.get-help-blue { color: #3A87AD; }
+.get-help-blue:hover { color: #005580; cursor: pointer; }
+.manual { margin-top: 11px; }
+.heading-help { font-size: 14px; }
+
+/* Styles for the external link */
+.get-info { color: #0088CC; }
+.get-info:hover { color: #005580; cursor: pointer; text-decoration: none; }
+
+/* Styles for code and pre tags */
+code { background-color: transparent; border: none; color: #333333; }
+dd code, .alert code { white-space: pre-wrap; word-break: break-all; word-wrap: break-word; }
+.alert-warning code, .alert-warning pre { background-color: transparent; border: none; color: #C09853; margin-bottom: 0px; }
+.alert-error code { background-color: transparent; border: none; color: #B94A48; margin-bottom:0px; }
+.alert-error pre { background-color: transparent; border: none; color: #B94A48; word-break: normal; margin-bottom: 0px; }
+.alert-warning pre { word-break: normal; }
+.alert-info a { font-weight: bold; }
+.alert-info code { color: #3A87AD; }
+.tooltip code { background-color: transparent; color: #FFFFFF; font-weight: normal; border: none; font-size: 1em; }
+
+/* Style for definition lists */
+dd ul { list-style-type: none; margin: 0px; }
+dt, dd  {line-height: 25px; }
+dd li { line-height: 25px; }
+dd p { line-height: 20px; }
+
+/* Style the filter modal dialogs */
+.modal { width: 800px; margin-left: -400px; }
+.modal-footer .btn { float: left; }
+
+/* Hover style for the clear search icon */
+.icon-remove-sign:hover { color: #999999; cursor: pointer; }
+
+/* Some extra space before headings when needed */
+.details { margin-top: 30px; }
+
+/* Required classes for the highlight behaviour in tables */
+.highlight { -webkit-animation: target-fade 10s 1; -moz-animation: target-fade 10s 1; animation: target-fade 10s 1; }
+@-webkit-keyframes target-fade { 0% { background-color: #D9EDF7; } 25% { background-color: #D9EDF7; } 100% { background-color: white; } }
+@-moz-keyframes target-fade { 0% { background-color: #D9EDF7; } 25% { background-color: #D9EDF7; } 100% { background-color: white; } }
+@keyframes target-fade { 0% { background-color: #D9EDF7; } 25% { background-color: #D9EDF7; } 100% { background-color: white; } }
+
+/* This makes tooltips work inside modal dialogs */
+.tooltip { z-index: 2000 !important; }
+
+/* Override default Twitter Boostrap styles for anchor tags inside tables */
+td a { color: #333333; }
+td a:hover { color: #000000; text-decoration: underline; }
+
+/* Override default Twitter Bootstrap styles for tr.error */
+.table tbody tr.error > td { background-color: #FFFFFF; } /* override default Bootstrap behaviour */
+.table-hover tbody tr.error:hover > td { background-color: #F5F5F5;} /* override default Bootstrap behaviour */
+
+/* Right justify Bootstrap table columns for size fields */
+.table .sizecol { text-align: right; }
+
+/* Set error, warning, success and muted styles */
+.error, .red, td.error a, tr.error a { color: #b94a48; }
+a.error:hover, a.error:focus, tr.error a:hover { color: #943A38; text-decoration: underline; }
+.warning, .yellow { color: #c09853;}
+a.warning { background-color: transparent; }
+a.warning:hover, a.warning:focus { color: #B38942; text-decoration: underline; }
+.success, .green { color: #468847;}
+.success:hover { color: #347132; text-decoration: underline; }
+td > .success:hover { text-decoration: underline; }
+.muted a { color:#999999; }
+.muted a:hover { color:#999999; }
+
+/* Sorting functionality styles for table headings */
+.sorted { color: #333333; font-weight: bold; }
+.sorted:hover { color: #000000; text-decoration: underline; }
+th > a, th > span { font-weight: normal; }
+
+/* Force long strings like commit hashes to wrap */
+.iscommit { white-space: pre-wrap; word-break: break-all; word-wrap: break-word;}
+
+/* Make the popovers scrollable if they are too long */
+.popover-content { max-height: 30em; overflow-y: scroll; }
+
+/* Styles for the directory structure table. We'll probably won't use those in production */
+.one { padding-left: 18px !important; }
+.two { padding-left: 36px !important; }
+.three { padding-left: 54px !important; }
+.content-directory a { color: #0088CC; }
+.content-directory a:hover { color: #005580; text-decoration: underline; }
+.symlink { color: #CCCCCC; }
+
+/* Other styles */
+.dropdown-menu { padding: 10px; }
+select { width: auto; }
+.page-header { color: #5A5A5A; }
+.top-air { margin-top: 40px;}
+.progress { margin-bottom: 0px; }
+.lead .badge { font-size: 18px; font-weight: normal; border-radius: 15px; padding: 9px; }
+.well > .lead, .alert .lead { margin-bottom: 0px; }
+.no-results { margin: 10px 0; }
+.task-name { margin-left: 7px; }
+.icon-hand-right {color: #CCCCCC; }
+.help-inline { margin: 5px; }
+.hero-unit { margin: 20px 0 30px; }
+.hero-unit > .close { font-size:40px; }
+.hero-actions { margin-top: 30px; }
+.dashboard-section { background-color: transparent; }
+
+/* make tables Chrome-happy (me, not so much) */
+#otable { table-layout: fixed; word-wrap: break-word; }
+
+/* Configuration styles */
+.icon-trash { color: #B94A48; font-size: 16px; padding-left: 2px; }
+.icon-trash:hover { color: #943A38; text-decoration: none; cursor: pointer; }
+.icon-pencil, .icon-download-alt { font-size: 16px; color: #0088CC; padding-left: 2px; }
+.icon-pencil:hover, .icon-download-alt:hover { color: #005580; text-decoration: none; cursor: pointer; }
+.configuration-list li { line-height: 35px; font-size: 21px; font-weight: 200; }
+.configuration-list { font-size: 16px; margin-bottom: 1.5em; }
+.configuration-list i { font-size: 16px; }
+/*.configuration-layers { height: 135px; overflow: scroll; }*/
+.counter { font-weight: normal; }
+.well-alert { background-color: #FCF8E3; border: 1px solid #FBEED5; border-radius: 4px; }
+.well-alert > .lead { color: #C09853; padding-bottom: .75em; }
+.configuration-alert { margin-bottom: 0px; padding: 8px 14px; }
+.configuration-alert p { margin-bottom: 0px; }
+fieldset { padding-left: 19px; }
+.project-form { margin-top: 10px; }
+.add-layers .btn-block + .btn-block { margin-top: 0px; }
+input.huge { font-size: 17.5px; padding: 11px 19px; }
+.build-form { margin-bottom: 0px; padding-left: 20px; }
+a code { color: #0088CC; }
+a code:hover { color: #005580; }
+.localconf { font-size: 17.5px; margin-top: 40px; }
+.localconf code { font-size: 17.5px; }
+#add-layer-dependencies {  margin-top: 5px; }
+.artifact { width: 9em; }
+.control-group { margin-bottom: 0px; }
+#project-details form { margin: 0px; }
+dd form { margin: 10px 0 0 0; }

@@ -5,7 +5,6 @@ SECTION = "optional"
 LICENSE = "GPLv3"
 LIC_FILES_CHKSUM = "file://COPYING;md5=d32239bcb673463ab874e80d47fae504"
 
-PR = "r0"
 
 RDEPENDS_${PN} = "glibc-gconv-ibm850"
 RRECOMMENDS_${PN} = "\
@@ -32,10 +31,10 @@ SRC_URI = "${GNU_MIRROR}/mtools/mtools-${PV}.tar.bz2 \
            file://no-x11.gplv3.patch"
 
 
-inherit autotools
+inherit autotools texinfo
 
 EXTRA_OECONF = "--without-x"
 
 PARALLEL_MAKEINST = ""
 
-BBCLASSEXTEND = "native"
+BBCLASSEXTEND = "native nativesdk"

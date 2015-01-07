@@ -1,4 +1,4 @@
-DESCRIPTION = "A multi-purpose linux bootloader"
+SUMMARY = "Multi-purpose linux bootloader"
 HOMEPAGE = "http://syslinux.zytor.com/"
 LICENSE = "GPLv2+"
 LIC_FILES_CHKSUM = "file://COPYING;md5=0636e73ff0215e8d672dc4c32c317bb3 \
@@ -8,7 +8,15 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=0636e73ff0215e8d672dc4c32c317bb3 \
 # ldlinux.* stuff for now, so skip mtools-native
 DEPENDS = "nasm-native util-linux"
 
-SRC_URI = "${KERNELORG_MIRROR}/linux/utils/boot/syslinux/6.xx/syslinux-${PV}.tar.bz2"
+SRC_URI = "${KERNELORG_MIRROR}/linux/utils/boot/syslinux/6.xx/syslinux-${PV}.tar.bz2 \
+           file://0001-movebits-Add-SMT_TERMINAL-a-last-resort-region-type.patch \
+           file://0002-memscan-build-a-linked-list-of-memory-scanners.patch \
+           file://0003-PXELINUX-Add-bios-memscan-function.patch \
+           file://0004-pxe-use-bios_fbm-and-real_base_mem-to-calculate-free.patch \
+           file://syslinux-fix-parallel-building-issue.patch \
+           file://isohybrid-fix-overflow-on-32-bit-system.patch \
+           file://syslinux-libupload-depend-lib.patch \
+           "
 
 SRC_URI[md5sum] = "6945ee89e29119d459baed4937bbc534"
 SRC_URI[sha256sum] = "83a04cf81e6a46b80ee5a321926eea095af3498b04317e3674b46c125c7a5b43"
@@ -38,6 +46,10 @@ do_configure() {
 }
 
 do_compile() {
+	# Make sure the recompile is OK.
+	# Though the ${B} should always exist, still check it before find and rm.
+	[ -d "${B}" ] && find ${B} -name '.*.d' -type f -exec rm -f {} \;
+
 	# Rebuild only the installer; keep precompiled bootloaders
 	# as per author's request (doc/distrib.txt)
 	oe_runmake CC="${CC} ${CFLAGS}" LDFLAGS="${LDFLAGS}" firmware="bios" installer
@@ -54,6 +66,7 @@ do_install() {
 PACKAGES += "${PN}-extlinux ${PN}-mbr ${PN}-chain ${PN}-pxelinux ${PN}-isolinux ${PN}-misc"
 
 RDEPENDS_${PN} += "mtools"
+RDEPENDS_${PN}-misc += "perl"
 
 FILES_${PN} = "${bindir}/syslinux"
 FILES_${PN}-extlinux = "${sbindir}/extlinux"
@@ -65,4 +78,4 @@ FILES_${PN}-dev += "${datadir}/${BPN}/com32/lib*${SOLIBS} ${datadir}/${BPN}/com3
 FILES_${PN}-staticdev += "${datadir}/${BPN}/com32/lib*.a ${libdir}/${BPN}/com32/lib*.a"
 FILES_${PN}-misc = "${datadir}/${BPN}/* ${libdir}/${BPN}/* ${bindir}/*"
 
-BBCLASSEXTEND = "native"
+BBCLASSEXTEND = "native nativesdk"

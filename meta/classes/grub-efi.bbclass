@@ -7,7 +7,7 @@
 # Provide grub-efi specific functions for building bootable images.
 
 # External variables
-# ${INITRD} - indicates a filesystem image to use as an initrd (optional)
+# ${INITRD} - indicates a list of filesystem images to concatenate and use as an initrd (optional)
 # ${ROOTFS} - indicates a filesystem image to include as the root filesystem (optional)
 # ${GRUB_GFXSERIAL} - set this to 1 to have graphics and serial in the boot menu
 # ${LABELS} - a list of targets for the automatic config
@@ -15,8 +15,8 @@
 # ${GRUB_OPTS} - additional options to add to the config, ';' delimited # (optional)
 # ${GRUB_TIMEOUT} - timeout before executing the deault label (optional)
 
-do_bootimg[depends] += "grub-efi-${TRANSLATED_TARGET_ARCH}-native:do_deploy"
-do_bootdirectdisk[depends] += "grub-efi-${TRANSLATED_TARGET_ARCH}-native:do_deploy"
+do_bootimg[depends] += "${MLPREFIX}grub-efi:do_deploy"
+do_bootdirectdisk[depends] += "${MLPREFIX}grub-efi:do_deploy"
 
 GRUB_SERIAL ?= "console=ttyS0,115200"
 GRUBCFG = "${S}/grub.cfg"

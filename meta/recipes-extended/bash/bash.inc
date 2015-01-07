@@ -1,10 +1,10 @@
-DESCRIPTION = "An sh-compatible command language interpreter."
-HOMEPAGE = "http://cnswww.cns.cwru.edu/~chet/bash/bashtop.html"
+SUMMARY = "An sh-compatible command language interpreter"
+HOMEPAGE = "http://tiswww.case.edu/php/chet/bash/bashtop.html"
 SECTION = "base/shell"
 
 DEPENDS = "ncurses bison-native"
 
-inherit autotools gettext update-alternatives ptest
+inherit autotools-brokensep gettext texinfo update-alternatives ptest
 
 PARALLEL_MAKE = ""
 
@@ -17,6 +17,8 @@ ALTERNATIVE_PRIORITY = "100"
 
 export AUTOHEADER = "true"
 
+RDEPENDS_${PN} += "base-files"
+RDEPENDS_${PN}_class-nativesdk = ""
 RDEPENDS_${PN}-ptest += "make"
 
 do_configure_prepend () {
@@ -36,6 +38,10 @@ do_install_append () {
 		mv ${D}${bindir}/bash ${D}${base_bindir}
 	fi
 }
+do_install_append_class-target () {
+	# Clean host path in bashbug
+	sed -i -e "s,${STAGING_DIR_TARGET},,g" ${D}${bindir}/bashbug
+}
 
 do_install_ptest () {
 	make INSTALL_TEST_DIR=${D}${PTEST_PATH}/tests install-test
@@ -44,7 +50,9 @@ do_install_ptest () {
 }
 
 pkg_postinst_${PN} () {
-	touch $D${sysconfdir}/shells
-	grep -q "bin/bash" $D${sysconfdir}/shells || echo /bin/bash >> $D${sysconfdir}/shells
-	grep -q "bin/sh" $D${sysconfdir}/shells || echo /bin/sh >> $D${sysconfdir}/shells
+	grep -q "^${base_bindir}/bash$" $D${sysconfdir}/shells || echo ${base_bindir}/bash >> $D${sysconfdir}/shells
+}
+
+pkg_postrm_${PN} () {
+	printf "$(grep -v "^${base_bindir}/bash$" $D${sysconfdir}/shells)\n" > $D${sysconfdir}/shells
 }

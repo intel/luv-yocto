@@ -9,25 +9,28 @@ python () {
         d.setVar("EXTRADEPENDS", "linux-libc-headers")
 }
 
+PN = "gcc-cross-${TARGET_ARCH}"
+
 require gcc-configure-common.inc
 
-EXTRA_OECONF += " --enable-poison-system-directories"
-EXTRA_OECONF_append_sh4 = " --with-multilib-list= --enable-incomplete-targets "
+EXTRA_OECONF += "--enable-poison-system-directories"
+EXTRA_OECONF_append_sh4 = " \
+    --with-multilib-list= \
+    --enable-incomplete-targets \
+"
 
-EXTRA_OECONF += "--disable-libunwind-exceptions \
-                 --with-mpfr=${STAGING_DIR_NATIVE}${prefix_native} \
-                 --with-system-zlib "
+EXTRA_OECONF += "\
+    --with-mpfr=${STAGING_DIR_NATIVE}${prefix_native} \
+    --with-system-zlib \
+"
 
-EXTRA_OECONF_PATHS = " \
-                      --with-gxx-include-dir=${STAGING_DIR_TARGET}${target_includedir}/c++ \
-                      --with-sysroot=${STAGING_DIR_TARGET} \
-                      --with-build-sysroot=${STAGING_DIR_TARGET}"
+EXTRA_OECONF_PATHS = "\
+    --with-gxx-include-dir=${STAGING_DIR_TARGET}${target_includedir}/c++/${BINV} \
+    --with-sysroot=${STAGING_DIR_TARGET} \
+    --with-build-sysroot=${STAGING_DIR_TARGET} \
+"
 
 ARCH_FLAGS_FOR_TARGET += "-isystem${STAGING_DIR_TARGET}${target_includedir}"
-
-do_configure_prepend () {
-	sed -i 's/BUILD_INFO=info/BUILD_INFO=/' ${S}/gcc/configure
-}
 
 do_compile () {
 	export CC="${BUILD_CC}"
@@ -35,13 +38,13 @@ do_compile () {
 	export RANLIB_FOR_TARGET="${TARGET_SYS}-ranlib"
 	export LD_FOR_TARGET="${TARGET_SYS}-ld"
 	export NM_FOR_TARGET="${TARGET_SYS}-nm"
-	export CC_FOR_TARGET="${CCACHE} ${TARGET_SYS}-gcc ${TARGET_CC_ARCH}"
+	export CC_FOR_TARGET="${CCACHE} ${TARGET_SYS}-gcc"
 	export CFLAGS_FOR_TARGET="${TARGET_CFLAGS}"
 	export CPPFLAGS_FOR_TARGET="${TARGET_CPPFLAGS}"
 	export CXXFLAGS_FOR_TARGET="${TARGET_CXXFLAGS}"
 	export LDFLAGS_FOR_TARGET="${TARGET_LDFLAGS}"
 
-	oe_runmake all-host all-target-libgcc
+	oe_runmake all-host configure-target-libgcc
 	# now generate script to drive testing
 	echo "#!/usr/bin/env sh" >${B}/${TARGET_PREFIX}testgcc
 	set >> ${B}/${TARGET_PREFIX}testgcc
@@ -138,9 +141,10 @@ STOP
 INHIBIT_PACKAGE_STRIP = "1"
 
 # Compute how to get from libexecdir to bindir in python (easier than shell)
-BINRELPATH = "${@oe.path.relative(d.expand("${libexecdir}/gcc/${TARGET_SYS}/${BINV}"), d.expand("${STAGING_DIR_NATIVE}${prefix_native}/bin/${MULTIMACH_TARGET_SYS}"))}"
+BINRELPATH = "${@os.path.relpath(d.expand("${STAGING_DIR_NATIVE}${prefix_native}/bin/${TARGET_SYS}"), d.expand("${libexecdir}/gcc/${TARGET_SYS}/${BINV}"))}"
 
 do_install () {
+	( cd ${B}/${TARGET_SYS}/libgcc; oe_runmake 'DESTDIR=${D}' install-unwind_h )
 	oe_runmake 'DESTDIR=${D}' install-host
 
 	install -d ${D}${target_base_libdir}
@@ -165,15 +169,20 @@ do_install () {
 		rm -rf ${D}${STAGING_DIR_NATIVE}${prefix_native}/$d
 	done
 
+	# libquadmath headers need to  be available in the gcc libexec dir
+	install -d ${D}${libdir}/gcc/${TARGET_SYS}/${BINV}/include/
+	cp ${S}/libquadmath/quadmath.h ${D}${libdir}/gcc/${TARGET_SYS}/${BINV}/include/
+	cp ${S}/libquadmath/quadmath_weak.h ${D}${libdir}/gcc/${TARGET_SYS}/${BINV}/include/
+
 	# We use libiberty from binutils
 	find ${D}${exec_prefix}/lib -name libiberty.a | xargs rm -f
 	find ${D}${exec_prefix}/lib -name libiberty.h | xargs rm -f
 
 	# gcc-runtime installs libgcc into a special location in staging since it breaks doing a standalone build
 	case ${PN} in
-		*gcc-cross|*gcc-crosssdk)
-			dest=${D}/${includedir}/gcc-build-internal-${MULTIMACH_TARGET_SYS}
-			cp -fpPR . $dest
+		*gcc-cross-${TARGET_ARCH}|*gcc-crosssdk-${TARGET_ARCH})
+			dest=${D}/${includedir}/gcc-build-internal-${TARGET_SYS}
+			hardlinkdir . $dest
 		;;
 	esac
 }

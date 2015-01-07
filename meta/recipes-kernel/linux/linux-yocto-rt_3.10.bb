@@ -1,15 +1,15 @@
+KBRANCH ?= "standard/preempt-rt/base"
+KBRANCH_qemuppc ?= "standard/preempt-rt/qemuppc"
+
 require recipes-kernel/linux/linux-yocto.inc
 
-KBRANCH = "standard/preempt-rt/base"
-KBRANCH_qemuppc = "standard/preempt-rt/qemuppc"
-
-SRCREV_machine ?= "baed5453f830d06075a4480ec0ded8ff785828bc"
-SRCREV_machine_qemuppc ?= "26a465af89793c7dc5a81661449c5a9f0ad06dee"
-SRCREV_meta ?= "6ad20f049abd52b515a8e0a4664861cfd331f684"
+SRCREV_machine ?= "94a79d98e40b51466600fb3375ad2908c38dd192"
+SRCREV_machine_qemuppc ?= "c1dcbac7751652784f180fdb91f87bc37fba8c52"
+SRCREV_meta ?= "f4ab00d96a3d8e443d7f7744ad996e184eac03b5"
 
 SRC_URI = "git://git.yoctoproject.org/linux-yocto-3.10.git;bareclone=1;branch=${KBRANCH},meta;name=machine,meta"
 
-LINUX_VERSION ?= "3.10.17"
+LINUX_VERSION ?= "3.10.62"
 
 PV = "${LINUX_VERSION}+git${SRCPV}"
 

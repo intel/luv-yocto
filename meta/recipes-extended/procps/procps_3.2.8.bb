@@ -1,6 +1,6 @@
 require procps.inc
 
-PR = "r11"
+PR = "r12"
 
 SRC_URI += "file://procmodule.patch \
             file://psmodule.patch \
@@ -11,6 +11,8 @@ SRC_URI += "file://procmodule.patch \
             file://60_linux_version_init.patch \
             file://procps-3.2.7-top-remcpu.patch \
             file://procps-3.2.8-ps-cgroup.patch \
+            file://detect_bitness.patch \
+            file://0001-Fix-musl-build-failure.patch \
            "
 
 SRC_URI[md5sum] = "9532714b6846013ca9898984ba4cd7e0"
@@ -26,6 +28,10 @@ EXTRA_OEMAKE = 'CFLAGS="${CFLAGS} -I${STAGING_INCDIR}" \
 do_install_append () {
 	install -d ${D}${sysconfdir}
 	install -m 0644 ${WORKDIR}/sysctl.conf ${D}${sysconfdir}/sysctl.conf
+	if ${@bb.utils.contains('DISTRO_FEATURES','systemd','true','false',d)}; then
+		install -d ${D}${sysconfdir}/sysctl.d
+		ln -sf ../sysctl.conf ${D}${sysconfdir}/sysctl.d/99-sysctl.conf
+	fi
 }
 
 CONFFILES_${PN} = "${sysconfdir}/sysctl.conf"

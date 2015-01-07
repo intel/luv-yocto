@@ -1,4 +1,4 @@
-SUMMARY = "ACPI data gathering library."
+SUMMARY = "ACPI data gathering library"
 DESCRIPTION = "General purpose shared library for programs gathering ACPI data on Linux. \
 Thermal zones, battery infomration, fan information and AC states are implemented."
 SECTION = "base"
@@ -22,6 +22,8 @@ COMPATIBLE_HOST = '(x86_64|i.86).*-(linux|freebsd.*)'
 
 CFLAGS += "-fPIC"
 EXTRA_OEMAKE += 'STRIP="echo"'
+
+TARGET_CC_ARCH += "${LDFLAGS}"
 
 do_install() {
 	oe_runmake install DESTDIR=${D} PREFIX=${exec_prefix}

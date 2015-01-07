@@ -4,8 +4,8 @@ inherit useradd_base
 # target sysroot, and shadow -native and -sysroot provide the utilities
 # and support files needed to add and modify user and group accounts
 DEPENDS_append = "${USERADDDEPENDS}"
-USERADDDEPENDS = " base-passwd shadow-native shadow-sysroot shadow"
-USERADDDEPENDS_virtclass-cross = ""
+USERADDDEPENDS = " base-files base-passwd shadow-native shadow-sysroot shadow"
+USERADDDEPENDS_class-cross = ""
 USERADDDEPENDS_class-native = ""
 USERADDDEPENDS_class-nativesdk = ""
 
@@ -24,12 +24,13 @@ if test "x$D" != "x"; then
 	# Installing into a sysroot
 	SYSROOT="$D"
 	OPT="--root $D"
+	# user/group lookups should match useradd/groupadd --root
+	export PSEUDO_PASSWD="$SYSROOT:${STAGING_DIR_NATIVE}"
+fi
 
-	# Add groups and users defined for all recipe packages
-	GROUPADD_PARAM="${@get_all_cmd_params(d, 'groupadd')}"
-	USERADD_PARAM="${@get_all_cmd_params(d, 'useradd')}"
-	GROUPMEMS_PARAM="${@get_all_cmd_params(d, 'groupmems')}"
-else
+# If we're not doing a special SSTATE/SYSROOT install
+# then set the values, otherwise use the environment
+if test "x$UA_SYSROOT" = "x"; then
 	# Installing onto a target
 	# Add groups and users defined only for this package
 	GROUPADD_PARAM="${GROUPADD_PARAM}"
@@ -97,6 +98,15 @@ useradd_sysroot () {
 	# Explicitly set $D since it isn't set to anything
 	# before do_install
 	D=${STAGING_DIR_TARGET}
+
+	# Add groups and users defined for all recipe packages
+	GROUPADD_PARAM="${@get_all_cmd_params(d, 'groupadd')}"
+	USERADD_PARAM="${@get_all_cmd_params(d, 'useradd')}"
+	GROUPMEMS_PARAM="${@get_all_cmd_params(d, 'groupmems')}"
+
+	# Tell the system to use the environment vars
+	UA_SYSROOT=1
+
 	useradd_preinst
 }
 
@@ -109,17 +119,17 @@ useradd_sysroot_sstate () {
 
 do_install[prefuncs] += "${SYSROOTFUNC}"
 SYSROOTFUNC = "useradd_sysroot"
-SYSROOTFUNC_virtclass-cross = ""
+SYSROOTFUNC_class-cross = ""
 SYSROOTFUNC_class-native = ""
 SYSROOTFUNC_class-nativesdk = ""
 SSTATEPREINSTFUNCS += "${SYSROOTPOSTFUNC}"
 SYSROOTPOSTFUNC = "useradd_sysroot_sstate"
-SYSROOTPOSTFUNC_virtclass-cross = ""
+SYSROOTPOSTFUNC_class-cross = ""
 SYSROOTPOSTFUNC_class-native = ""
 SYSROOTPOSTFUNC_class-nativesdk = ""
 
-USERADDSETSCENEDEPS = "${MLPREFIX}base-passwd:do_populate_sysroot_setscene shadow-native:do_populate_sysroot_setscene ${MLPREFIX}shadow-sysroot:do_populate_sysroot_setscene"
-USERADDSETSCENEDEPS_virtclass-cross = ""
+USERADDSETSCENEDEPS = "${MLPREFIX}base-passwd:do_populate_sysroot_setscene pseudo-native:do_populate_sysroot_setscene shadow-native:do_populate_sysroot_setscene ${MLPREFIX}shadow-sysroot:do_populate_sysroot_setscene"
+USERADDSETSCENEDEPS_class-cross = ""
 USERADDSETSCENEDEPS_class-native = ""
 USERADDSETSCENEDEPS_class-nativesdk = ""
 do_package_setscene[depends] += "${USERADDSETSCENEDEPS}"
@@ -137,7 +147,9 @@ def update_useradd_after_parse(d):
             bb.fatal("%s inherits useradd but doesn't set USERADD_PARAM, GROUPADD_PARAM or GROUPMEMS_PARAM for package %s" % (d.getVar('FILE'), pkg))
 
 python __anonymous() {
-    update_useradd_after_parse(d)
+    if not bb.data.inherits_class('nativesdk', d) \
+        and not bb.data.inherits_class('native', d):
+        update_useradd_after_parse(d)
 }
 
 # Return a single [GROUP|USER]ADD_PARAM formatted string which includes the
@@ -182,12 +194,20 @@ fakeroot python populate_packages_prepend () {
         rdepends = d.getVar("RDEPENDS_%s" % pkg, True) or ""
         rdepends += ' ' + d.getVar('MLPREFIX') + 'base-passwd'
         rdepends += ' ' + d.getVar('MLPREFIX') + 'shadow'
+        # base-files is where the default /etc/skel is packaged
+        rdepends += ' ' + d.getVar('MLPREFIX') + 'base-files'
         d.setVar("RDEPENDS_%s" % pkg, rdepends)
 
     # Add the user/group preinstall scripts and RDEPENDS requirements
     # to packages specified by USERADD_PACKAGES
-    if not bb.data.inherits_class('nativesdk', d):
+    if not bb.data.inherits_class('nativesdk', d) \
+        and not bb.data.inherits_class('native', d):
         useradd_packages = d.getVar('USERADD_PACKAGES', True) or ""
         for pkg in useradd_packages.split():
             update_useradd_package(pkg)
 }
+
+# Use the following to extend the useradd with custom functions
+USERADDEXTENSION ?= ""
+
+inherit ${USERADDEXTENSION}

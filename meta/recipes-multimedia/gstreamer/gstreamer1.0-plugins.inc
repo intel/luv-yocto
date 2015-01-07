@@ -1,12 +1,10 @@
-DESCRIPTION = "Plugins for GStreamer 1.x"
+SUMMARY = "Plugins for the GStreamer multimedia framework 1.x"
 HOMEPAGE = "http://gstreamer.freedesktop.org/"
 BUGTRACKER = "https://bugzilla.gnome.org/enter_bug.cgi?product=Gstreamer"
 SECTION = "multimedia"
 DEPENDS = "gstreamer1.0"
 
 inherit autotools pkgconfig
-
-FILESPATH =. "${FILE_DIRNAME}/gst-plugins:"
 
 GSTREAMER_1_0_DEBUG ?= "--disable-debug"
 GSTREAMER_1_0_GIT_BRANCH ?= "master"

@@ -6,483 +6,10 @@ RPM="rpm"
 RPMBUILD="rpmbuild"
 
 PKGWRITEDIRRPM = "${WORKDIR}/deploy-rpms"
-PKGWRITEDIRSRPM = "${DEPLOY_DIR}/sources/deploy-srpm"
 
 # Maintaining the perfile dependencies has singificant overhead when writing the 
 # packages. When set, this value merges them for efficiency.
 MERGEPERFILEDEPS = "1"
-
-#
-# Update the packages indexes ${DEPLOY_DIR_RPM}
-#
-package_update_index_rpm () {
-	if [ ! -z "${DEPLOY_KEEP_PACKAGES}" ]; then
-		return
-	fi
-
-	sdk_archs=`echo "${SDK_PACKAGE_ARCHS}" | tr - _`
-
-	target_archs=""
-	for i in ${MULTILIB_PREFIX_LIST} ; do
-		old_IFS="$IFS"
-		IFS=":"
-		set $i
-		IFS="$old_IFS"
-		shift # remove mlib
-		while [ -n "$1" ]; do
-			target_archs="$target_archs $1"
-			shift
-		done
-	done
-
-	# FIXME stopgap for broken "bitbake package-index" since MULTILIB_PREFIX_LIST isn't set for that
-	if [ "$target_archs" = "" ] ; then
-		target_archs="${ALL_MULTILIB_PACKAGE_ARCHS}"
-	fi
-
-	target_archs=`echo "$target_archs" | tr - _`
-
-	archs=`for arch in $target_archs $sdk_archs ; do
-		echo $arch
-	done | sort | uniq`
-
-	found=0
-	for arch in $archs; do
-		if [ -d ${DEPLOY_DIR_RPM}/$arch ] ; then
-			createrepo --update -q ${DEPLOY_DIR_RPM}/$arch
-			found=1
-		fi
-	done
-	if [ "$found" != "1" ]; then
-		bbfatal "There are no packages in ${DEPLOY_DIR_RPM}!"
-	fi
-}
-
-rpm_log_check() {
-	target="$1"
-	lf_path="$2"
-
-	lf_txt="`cat $lf_path`"
-	for keyword_die in "unpacking of archive failed" "Cannot find package" "exit 1" ERR Fail
-	do
-		if (echo "$lf_txt" | grep -v log_check | grep "$keyword_die") >/dev/null 2>&1
-		then
-			echo "log_check: There were error messages in the logfile"
-			printf "log_check: Matched keyword: [$keyword_die]\n\n"
-			echo "$lf_txt" | grep -v log_check | grep -C 5 -i "$keyword_die"
-			echo ""
-			do_exit=1
-		fi
-	done
-	test "$do_exit" = 1 && exit 1
-	true
-}
-
-# Translate the RPM/Smart format names to the OE multilib format names
-# Input via stdin (only the first item per line is converted!)
-# Output via stdout
-translate_smart_to_oe() {
-	arg1="$1"
-
-	# Dump installed packages
-	while read pkg arch other ; do
-		found=0
-		if [ -z "$pkg" ]; then
-			continue
-		fi
-		new_pkg=$pkg
-		fixed_arch=`echo "$arch" | tr _ -`
-		for i in ${MULTILIB_PREFIX_LIST} ; do
-			old_IFS="$IFS"
-			IFS=":"
-			set $i
-			IFS="$old_IFS"
-			mlib="$1"
-			shift
-			while [ -n "$1" ]; do
-				cmp_arch=$1
-				shift
-				fixed_cmp_arch=`echo "$cmp_arch" | tr _ -`
-				if [ "$fixed_arch" = "$fixed_cmp_arch" ]; then
-					if [ "$mlib" = "default" ]; then
-						new_pkg="$pkg"
-						new_arch=$cmp_arch
-					else
-						new_pkg="$mlib-$pkg"
-						# We need to strip off the ${mlib}_ prefix on the arch
-						new_arch=${cmp_arch#${mlib}_}
-					fi
-					# Workaround for bug 3565
-					# Simply look to see if we know of a package with that name, if not try again!
-					filename=`ls ${PKGDATA_DIR}/runtime-reverse/$new_pkg 2>/dev/null | head -n 1`
-					if [ -n "$filename" ] ; then
-						found=1
-						break
-					fi
-					# 'real' code
-					# found=1
-					# break
-				fi
-			done
-			if [ "$found" = "1" ] && [ "$fixed_arch" = "$fixed_cmp_arch" ]; then
-				break
-			fi
-		done
-
-		#echo "$pkg -> $new_pkg" >&2
-		if [ "$arg1" = "arch" ]; then
-			echo $new_pkg $new_arch $other
-		elif [ "$arg1" = "file" ]; then
-			echo $new_pkg $other $new_arch
-		else
-			echo $new_pkg $other
-		fi
-	done
-}		
-
-# Translate the OE multilib format names to the RPM/Smart format names
-# Input via arguments
-# Ouput via pkgs_to_install
-translate_oe_to_smart() {
-	default_archs=""
-	sdk_mode=""
-	if [ "$1" = "--sdk" ]; then
-		shift
-		sdk_mode="true"
-		# Need to reverse the order of the SDK_ARCHS highest -> lowest priority
-		archs=`echo "${SDK_PACKAGE_ARCHS}" | tr - _`
-		for arch in $archs ; do
-		        default_archs="$arch $default_archs"
-		done
-	fi
-
-	attemptonly="Error"
-	if [ "$1" = "--attemptonly" ]; then
-		attemptonly="Warning"
-		shift
-	fi
-
-	# Dump a list of all available packages
-	[ ! -e ${target_rootfs}/install/tmp/fullpkglist.query ] && smart --data-dir=${target_rootfs}/var/lib/smart query --output ${target_rootfs}/install/tmp/fullpkglist.query
-
-	pkgs_to_install=""
-	for pkg in "$@" ; do
-		new_pkg="$pkg"
-		if [ -z "$sdk_mode" ]; then
-			for i in ${MULTILIB_PREFIX_LIST} ; do
-				old_IFS="$IFS"
-				IFS=":"
-				set $i
-				IFS="$old_IFS"
-				mlib="$1"
-				shift
-				if [ "$mlib" = "default" ]; then
-					if [ -z "$default_archs" ]; then
-						default_archs=$@
-					fi
-					continue
-				fi
-				subst=${pkg#${mlib}-}
-				if [ "$subst" != "$pkg" ]; then
-					feeds=$@
-					while [ -n "$1" ]; do
-						arch="$1"
-						arch=`echo "$arch" | tr - _`
-						shift
-						if grep -q '^'$subst'-[^-]*-[^-]*@'$arch'$' ${target_rootfs}/install/tmp/fullpkglist.query ; then
-							new_pkg="$subst@$arch"
-							# First found is best match
-							break
-						fi
-					done
-					if [ "$pkg" = "$new_pkg" ]; then
-						# Failed to translate, package not found!
-						echo "$attemptonly: $pkg not found in the $mlib feeds ($feeds)." >&2
-						if [ "$attemptonly" = "Error" ]; then
-							exit 1
-						fi
-						continue
-					fi
-				fi
-			done
-		fi
-		# Apparently not a multilib package...
-		if [ "$pkg" = "$new_pkg" ]; then
-			default_archs_fixed=`echo "$default_archs" | tr - _`
-			for arch in $default_archs_fixed ; do
-				if grep -q '^'$pkg'-[^-]*-[^-]*@'$arch'$' ${target_rootfs}/install/tmp/fullpkglist.query ; then
-					new_pkg="$pkg@$arch"
-					# First found is best match
-					break
-				fi
-			done
-			if [ "$pkg" = "$new_pkg" ]; then
-				# Failed to translate, package not found!
-				echo "$attemptonly: $pkg not found in the base feeds ($default_archs)." >&2
-				if [ "$attemptonly" = "Error" ]; then
-					exit 1
-				fi
-				continue
-			fi
-		fi
-		#echo "$pkg -> $new_pkg" >&2
-		pkgs_to_install="${pkgs_to_install} ${new_pkg}"
-	done
-	export pkgs_to_install
-}
-
-package_write_smart_config() {
-	# Write common configuration for host and target usage
-	smart --data-dir=$1/var/lib/smart config --set rpm-nolinktos=1
-	smart --data-dir=$1/var/lib/smart config --set rpm-noparentdirs=1
-	for i in ${BAD_RECOMMENDATIONS}; do
-		smart --data-dir=$1/var/lib/smart flag --set ignore-recommends $i
-	done
-}
-
-#
-# Install a bunch of packages using rpm.
-# There are two solutions in an image's FRESH generation:
-# 1) main package solution
-# 2) complementary solution
-#
-# It is different when incremental image generation is enabled:
-# 1) The incremental image generation takes action during the main package
-#    installation, the previous installed complementary packages would
-#    usually be removed here, and the new complementary ones would be
-#    installed in the next step.
-# 2) The complementary would always be installed since it is
-#    generated based on the first step's image.
-#
-# the following shell variables needs to be set before calling this func:
-# INSTALL_ROOTFS_RPM - install root dir
-# INSTALL_PLATFORM_RPM - main platform
-# INSTALL_PLATFORM_EXTRA_RPM - extra platform
-# INSTALL_PACKAGES_RPM - packages to be installed
-# INSTALL_PACKAGES_ATTEMPTONLY_RPM - packages attemped to be installed only
-# INSTALL_PACKAGES_LINGUAS_RPM - additional packages for uclibc
-# INSTALL_PROVIDENAME_RPM - content for provide name
-# INSTALL_TASK_RPM - task name
-# INSTALL_COMPLEMENTARY_RPM - 1 to enable complementary package install mode
-
-package_install_internal_rpm () {
-
-	local target_rootfs="$INSTALL_ROOTFS_RPM"
-	local package_to_install="$INSTALL_PACKAGES_RPM"
-	local package_attemptonly="$INSTALL_PACKAGES_ATTEMPTONLY_RPM"
-	local package_linguas="$INSTALL_PACKAGES_LINGUAS_RPM"
-	local providename="$INSTALL_PROVIDENAME_RPM"
-	local task="$INSTALL_TASK_RPM"
-
-	local sdk_mode=""
-	if [ "$1" = "--sdk" ]; then
-		sdk_mode="--sdk"
-	fi
-
-	# Configure internal RPM environment when using Smart
-	export RPM_ETCRPM=${target_rootfs}/etc/rpm
-
-	# Setup temporary directory -- install...
-	rm -rf ${target_rootfs}/install
-	mkdir -p ${target_rootfs}/install/tmp
-
-	channel_priority=5
-	if [ "${INSTALL_COMPLEMENTARY_RPM}" != "1" ] ; then
-		# Setup base system configuration
-		echo "Note: configuring RPM platform settings"
-		mkdir -p ${target_rootfs}/etc/rpm/
-		echo "$INSTALL_PLATFORM_RPM" > ${target_rootfs}/etc/rpm/platform
-
-		if [ ! -z "$INSTALL_PLATFORM_EXTRA_RPM" ]; then
-			for pt in $INSTALL_PLATFORM_EXTRA_RPM ; do
-				channel_priority=$(expr $channel_priority + 5)
-				pt=$(echo $pt | sed "s,-linux.*$,-linux\.*,")
-				echo "$pt" >> ${target_rootfs}/etc/rpm/platform
-			done
-		fi
-
-		# Tell RPM that the "/" directory exist and is available
-		echo "Note: configuring RPM system provides"
-		mkdir -p ${target_rootfs}/etc/rpm/sysinfo
-		echo "/" >${target_rootfs}/etc/rpm/sysinfo/Dirnames
-
-		if [ ! -z "$providename" ]; then
-			cat /dev/null > ${target_rootfs}/etc/rpm/sysinfo/Providename
-			for provide in $providename ; do
-				echo $provide >> ${target_rootfs}/etc/rpm/sysinfo/Providename
-			done
-		fi
-
-		# Configure RPM... we enforce these settings!
-		echo "Note: configuring RPM DB settings"
-		mkdir -p ${target_rootfs}${rpmlibdir}
-		mkdir -p ${target_rootfs}${rpmlibdir}/log
-		# After change the __db.* cache size, log file will not be generated automatically,
-		# that will raise some warnings, so touch a bare log for rpm write into it.
-		touch ${target_rootfs}${rpmlibdir}/log/log.0000000001
-		if [ ! -e ${target_rootfs}${rpmlibdir}/DB_CONFIG ]; then
-			cat > ${target_rootfs}${rpmlibdir}/DB_CONFIG << EOF
-# ================ Environment
-set_data_dir .
-set_create_dir .
-set_lg_dir ./log
-set_tmp_dir ./tmp
-set_flags db_log_autoremove on
-
-# -- thread_count must be >= 8
-set_thread_count 64
-
-# ================ Logging
-
-# ================ Memory Pool
-set_cachesize 0 1048576 0
-set_mp_mmapsize 268435456
-
-# ================ Locking
-set_lk_max_locks 16384
-set_lk_max_lockers 16384
-set_lk_max_objects 16384
- mutex_set_max 163840
-
-# ================ Replication
-EOF
-		fi
-
-		# Create database so that smart doesn't complain (lazy init)
-		rpm --root $target_rootfs --dbpath /var/lib/rpm -qa > /dev/null
-
-		# Configure smart
-		echo "Note: configuring Smart settings"
-		rm -rf ${target_rootfs}/var/lib/smart
-		smart --data-dir=${target_rootfs}/var/lib/smart config --set rpm-root=${target_rootfs}
-		smart --data-dir=${target_rootfs}/var/lib/smart config --set rpm-dbpath=${rpmlibdir}
-		smart --data-dir=${target_rootfs}/var/lib/smart config --set rpm-extra-macros._var=${localstatedir}
-		smart --data-dir=${target_rootfs}/var/lib/smart config --set rpm-extra-macros._tmppath=/install/tmp
-		package_write_smart_config ${target_rootfs}
-		# Do the following configurations here, to avoid them being saved for field upgrade
-		if [ "x${NO_RECOMMENDATIONS}" = "x1" ]; then
-			smart --data-dir=${target_rootfs}/var/lib/smart config --set ignore-all-recommends=1
-		fi
-		for i in ${PACKAGE_EXCLUDE}; do
-			smart --data-dir=${target_rootfs}/var/lib/smart flag --set exclude-packages $i
-		done
-
-		# Optional debugging
-		#smart --data-dir=${target_rootfs}/var/lib/smart config --set rpm-log-level=debug
-		#smart --data-dir=${target_rootfs}/var/lib/smart config --set rpm-log-file=/tmp/smart-debug-logfile
-
-		# Delay this until later...
-		#smart --data-dir=${target_rootfs}/var/lib/smart channel --add rpmsys type=rpm-sys -y
-
-		for canonical_arch in $INSTALL_PLATFORM_EXTRA_RPM; do
-			arch=$(echo $canonical_arch | sed "s,\([^-]*\)-.*,\1,")
-			if [ -d ${DEPLOY_DIR_RPM}/$arch -a ! -e ${target_rootfs}/install/channel.$arch.stamp ] ; then
-				echo "Note: adding Smart channel $arch ($channel_priority)"
-				smart --data-dir=${target_rootfs}/var/lib/smart channel --add $arch type=rpm-md type=rpm-md baseurl=${DEPLOY_DIR_RPM}/$arch -y
-				smart --data-dir=${target_rootfs}/var/lib/smart channel --set $arch priority=$channel_priority
-				touch ${target_rootfs}/install/channel.$arch.stamp
-			fi
-			channel_priority=$(expr $channel_priority - 5)
-		done
-	fi
-
-	# Construct install scriptlet wrapper
-	# Scripts need to be ordered when executed, this ensures numeric order
-	# If we ever run into needing more the 899 scripts, we'll have to
-	# change num to start with 1000.
-	#
-	cat << EOF > ${WORKDIR}/scriptlet_wrapper
-#!/bin/bash
-
-export PATH="${PATH}"
-export D="${target_rootfs}"
-export OFFLINE_ROOT="\$D"
-export IPKG_OFFLINE_ROOT="\$D"
-export OPKG_OFFLINE_ROOT="\$D"
-export INTERCEPT_DIR="${WORKDIR}/intercept_scripts"
-export NATIVE_ROOT=${STAGING_DIR_NATIVE}
-
-\$2 \$1/\$3 \$4
-if [ \$? -ne 0 ]; then
-  if [ \$4 -eq 1 ]; then
-    mkdir -p \$1/etc/rpm-postinsts
-    num=100
-    while [ -e \$1/etc/rpm-postinsts/\${num}-* ]; do num=\$((num + 1)); done
-    name=\`head -1 \$1/\$3 | cut -d' ' -f 2\`
-    echo "#!\$2" > \$1/etc/rpm-postinsts/\${num}-\${name}
-    echo "# Arg: \$4" >> \$1/etc/rpm-postinsts/\${num}-\${name}
-    cat \$1/\$3 >> \$1/etc/rpm-postinsts/\${num}-\${name}
-    chmod +x \$1/etc/rpm-postinsts/\${num}-\${name}
-  else
-    echo "Error: pre/post remove scriptlet failed"
-  fi
-fi
-EOF
-
-	echo "Note: configuring RPM cross-install scriptlet_wrapper"
-	chmod 0755 ${WORKDIR}/scriptlet_wrapper
-	smart --data-dir=${target_rootfs}/var/lib/smart config --set rpm-extra-macros._cross_scriptlet_wrapper=${WORKDIR}/scriptlet_wrapper
-
-	# Determine what to install
-	translate_oe_to_smart ${sdk_mode} ${package_to_install} ${package_linguas}
-
-	# If incremental install, we need to determine what we've got,
-	# what we need to add, and what to remove...
-	if [ "${INC_RPM_IMAGE_GEN}" = "1" -a "${INSTALL_COMPLEMENTARY_RPM}" != "1" ]; then
-		# Dump the new solution
-		echo "Note: creating install solution for incremental install"
-		smart --data-dir=${target_rootfs}/var/lib/smart install -y --dump ${pkgs_to_install} 2> ${target_rootfs}/../solution.manifest
-	fi
-
-	if [ "${INSTALL_COMPLEMENTARY_RPM}" != "1" ]; then
-		echo "Note: adding Smart RPM DB channel"
-		smart --data-dir=${target_rootfs}/var/lib/smart channel --add rpmsys type=rpm-sys -y
-	fi
-
-	# If incremental install, we need to determine what we've got,
-	# what we need to add, and what to remove...
-	if [ "${INC_RPM_IMAGE_GEN}" = "1" -a "${INSTALL_COMPLEMENTARY_RPM}" != "1" ]; then
-		# First upgrade everything that was previously installed to the latest version
-		echo "Note: incremental update -- upgrade packages in place"
-		smart --data-dir=${target_rootfs}/var/lib/smart upgrade
-
-		# Dump what is already installed
-		echo "Note: dump installed packages for incremental update"
-		smart --data-dir=${target_rootfs}/var/lib/smart query --installed --output ${target_rootfs}/../installed.manifest
-
-		sort ${target_rootfs}/../installed.manifest > ${target_rootfs}/../installed.manifest.sorted
-		sort ${target_rootfs}/../solution.manifest > ${target_rootfs}/../solution.manifest.sorted
-		
-		comm -1 -3 ${target_rootfs}/../solution.manifest.sorted ${target_rootfs}/../installed.manifest.sorted \
-			> ${target_rootfs}/../remove.list
-		comm -2 -3 ${target_rootfs}/../solution.manifest.sorted ${target_rootfs}/../installed.manifest.sorted \
-			> ${target_rootfs}/../install.list
-		
-		pkgs_to_remove=`cat ${target_rootfs}/../remove.list | xargs echo`
-		pkgs_to_install=`cat ${target_rootfs}/../install.list | xargs echo`
-		
-		echo "Note: to be removed: ${pkgs_to_remove}"
-
-		for pkg in ${pkgs_to_remove}; do
-			echo "Debug: What required: $pkg"
-			smart --data-dir=${target_rootfs}/var/lib/smart query $pkg --show-requiredby
-		done
-
-		[ -n "$pkgs_to_remove" ] && smart --data-dir=${target_rootfs}/var/lib/smart remove -y ${pkgs_to_remove}
-	fi
-
-	echo "Note: to be installed: ${pkgs_to_install}"
-	[ -n "$pkgs_to_install" ] && smart --data-dir=${target_rootfs}/var/lib/smart install -y ${pkgs_to_install}
-
-	if [ -n "${package_attemptonly}" ]; then
-		echo "Note: installing attempt only packages..."
-		echo "Attempting $pkgs_to_install"
-		echo "Note: see `dirname ${BB_LOGFILE}`/log.do_${task}_attemptonly.${PID}"
-		translate_oe_to_smart ${sdk_mode} --attemptonly $package_attemptonly
-		echo "Attempting $pkgs_to_install" >> "`dirname ${BB_LOGFILE}`/log.do_${task}_attemptonly.${PID}"
-		smart --data-dir=${target_rootfs}/var/lib/smart install --attempt -y ${pkgs_to_install} >> "`dirname ${BB_LOGFILE}`/log.do_${task}_attemptonly.${PID}" 2>&1 || :
-	fi
-}
 
 # Construct per file dependencies file
 def write_rpm_perfiledata(srcname, d):
@@ -559,23 +86,26 @@ python write_specfile () {
 
     # append information for logs and patches to %prep
     def add_prep(d,spec_files_bottom):
-        if d.getVar('SOURCE_ARCHIVE_PACKAGE_TYPE', True) == 'srpm':
+        if d.getVarFlag('ARCHIVER_MODE', 'srpm', True) == '1' and bb.data.inherits_class('archiver', d):
             spec_files_bottom.append('%%prep -n %s' % d.getVar('PN', True) )
             spec_files_bottom.append('%s' % "echo \"include logs and patches, Please check them in SOURCES\"")
             spec_files_bottom.append('')
 
     # append the name of tarball to key word 'SOURCE' in xxx.spec.
     def tail_source(d):
-        if d.getVar('SOURCE_ARCHIVE_PACKAGE_TYPE', True) == 'srpm':
-            source_list = get_package(d)
+        if d.getVarFlag('ARCHIVER_MODE', 'srpm', True) == '1' and bb.data.inherits_class('archiver', d):
+            ar_outdir = d.getVar('ARCHIVER_OUTDIR', True)
+            if not os.path.exists(ar_outdir):
+                return
+            source_list = os.listdir(ar_outdir)
             source_number = 0
-            workdir = d.getVar('WORKDIR', True)
             for source in source_list:
                 # The rpmbuild doesn't need the root permission, but it needs
                 # to know the file's user and group name, the only user and
                 # group in fakeroot is "root" when working in fakeroot.
-                os.chown("%s/%s" % (workdir, source), 0, 0)
-                spec_preamble_top.append('Source' + str(source_number) + ': %s' % source)
+                f = os.path.join(ar_outdir, source)
+                os.chown(f, 0, 0)
+                spec_preamble_top.append('Source%s: %s' % (source_number, source))
                 source_number += 1
     # We need a simple way to remove the MLPREFIX from the package name,
     # and dependency information...
@@ -655,13 +185,38 @@ python write_specfile () {
                 if not len(depends_dict[dep]):
                     array.append("%s: %s" % (tag, dep))
 
-    def walk_files(walkpath, target, conffiles):
+    def walk_files(walkpath, target, conffiles, dirfiles):
+        # We can race against the ipk/deb backends which create CONTROL or DEBIAN directories
+        # when packaging. We just ignore these files which are created in 
+        # packages-split/ and not package/
+        # We have the odd situation where the CONTROL/DEBIAN directory can be removed in the middle of
+        # of the walk, the isdir() test would then fail and the walk code would assume its a file
+        # hence we check for the names in files too.
         for rootpath, dirs, files in os.walk(walkpath):
             path = rootpath.replace(walkpath, "")
-            for dir in dirs:
-                # All packages own the directories their files are in...
-                target.append('%dir "' + path + '/' + dir + '"')
+            if path.endswith("DEBIAN") or path.endswith("CONTROL"):
+                continue
+
+            # Directory handling can happen in two ways, either DIRFILES is not set at all
+            # in which case we fall back to the older behaviour of packages owning all their
+            # directories
+            if dirfiles is None:
+                for dir in dirs:
+                    if dir == "CONTROL" or dir == "DEBIAN":
+                        continue
+                    # All packages own the directories their files are in...
+                    target.append('%dir "' + path + '/' + dir + '"')
+            else:
+                # packages own only empty directories or explict directory.
+                # This will prevent the overlapping of security permission.
+                if path and not files and not dirs:
+                    target.append('%dir "' + path + '"')
+                elif path and path in dirfiles:
+                    target.append('%dir "' + path + '"')
+
             for file in files:
+                if file == "CONTROL" or file == "DEBIAN":
+                    continue
                 if conffiles.count(path + '/' + file):
                     target.append('%config "' + path + '/' + file + '"')
                 else:
@@ -725,6 +280,7 @@ python write_specfile () {
     srcmaintainer  = d.getVar('MAINTAINER', True)
     srchomepage    = d.getVar('HOMEPAGE', True)
     srcdescription = d.getVar('DESCRIPTION', True) or "."
+    srccustomtagschunk = get_package_additional_metadata("rpm", d)
 
     srcdepends     = strip_multilib_deps(d.getVar('DEPENDS', True), d)
     srcrdepends    = []
@@ -750,13 +306,12 @@ python write_specfile () {
     spec_files_bottom = []
 
     perfiledeps = (d.getVar("MERGEPERFILEDEPS", True) or "0") == "0"
+    extra_pkgdata = (d.getVar("RPM_EXTRA_PKGDATA", True) or "0") == "1"
 
     for pkg in packages.split():
         localdata = bb.data.createCopy(d)
 
         root = "%s/%s" % (pkgdest, pkg)
-
-        lf = bb.utils.lockfile(root + ".lock")
 
         localdata.setVar('ROOT', '')
         localdata.setVar('ROOT_%s' % pkg, root)
@@ -770,6 +325,9 @@ python write_specfile () {
         bb.data.update_data(localdata)
 
         conffiles = (localdata.getVar('CONFFILES', True) or "").split()
+        dirfiles = localdata.getVar('DIRFILES', True)
+        if dirfiles is not None:
+            dirfiles = dirfiles.split()
 
         splitname    = strip_multilib(pkgname, d)
 
@@ -780,6 +338,7 @@ python write_specfile () {
         splitlicense = (localdata.getVar('LICENSE', True) or "")
         splitsection = (localdata.getVar('SECTION', True) or "")
         splitdescription = (localdata.getVar('DESCRIPTION', True) or ".")
+        splitcustomtagschunk = get_package_additional_metadata("rpm", localdata)
 
         translate_vers('RDEPENDS', localdata)
         translate_vers('RRECOMMENDS', localdata)
@@ -825,12 +384,14 @@ python write_specfile () {
             srcrpostrm     = splitrpostrm
 
             file_list = []
-            walk_files(root, file_list, conffiles)
+            walk_files(root, file_list, conffiles, dirfiles)
             if not file_list and localdata.getVar('ALLOW_EMPTY') != "1":
                 bb.note("Not creating empty RPM package for %s" % splitname)
             else:
                 bb.note("Creating RPM package for %s" % splitname)
                 spec_files_top.append('%files')
+                if extra_pkgdata:
+                    package_rpm_extra_pkgdata(splitname, spec_files_top, localdata)
                 spec_files_top.append('%defattr(-,-,-,-)')
                 if file_list:
                     bb.note("Creating RPM package for %s" % splitname)
@@ -838,8 +399,6 @@ python write_specfile () {
                 else:
                     bb.note("Creating EMPTY RPM Package for %s" % splitname)
                 spec_files_top.append('')
-
-            bb.utils.unlockfile(lf)
             continue
 
         # Process subpackage data
@@ -854,6 +413,9 @@ python write_specfile () {
         if srclicense != splitlicense:
             spec_preamble_bottom.append('License: %s' % splitlicense)
         spec_preamble_bottom.append('Group: %s' % splitsection)
+
+        if srccustomtagschunk != splitcustomtagschunk:
+            spec_preamble_bottom.append(splitcustomtagschunk)
 
         # Replaces == Obsoletes && Provides
         robsoletes = bb.utils.explode_dep_versions2(splitrobsoletes or "")
@@ -931,11 +493,13 @@ python write_specfile () {
 
         # Now process files
         file_list = []
-        walk_files(root, file_list, conffiles)
+        walk_files(root, file_list, conffiles, dirfiles)
         if not file_list and localdata.getVar('ALLOW_EMPTY') != "1":
             bb.note("Not creating empty RPM package for %s" % splitname)
         else:
             spec_files_bottom.append('%%files -n %s' % splitname)
+            if extra_pkgdata:
+                package_rpm_extra_pkgdata(splitname, spec_files_bottom, localdata)
             spec_files_bottom.append('%defattr(-,-,-,-)')
             if file_list:
                 bb.note("Creating RPM package for %s" % splitname)
@@ -945,7 +509,6 @@ python write_specfile () {
             spec_files_bottom.append('')
 
         del localdata
-        bb.utils.unlockfile(lf)
     
     add_prep(d,spec_files_bottom)
     spec_preamble_top.append('Summary: %s' % srcsummary)
@@ -957,7 +520,10 @@ python write_specfile () {
     spec_preamble_top.append('License: %s' % srclicense)
     spec_preamble_top.append('Group: %s' % srcsection)
     spec_preamble_top.append('Packager: %s' % srcmaintainer)
-    spec_preamble_top.append('URL: %s' % srchomepage)
+    if srchomepage:
+        spec_preamble_top.append('URL: %s' % srchomepage)
+    if srccustomtagschunk:
+        spec_preamble_top.append(srccustomtagschunk)
     tail_source(d)
 
     # Replaces == Obsoletes && Provides
@@ -1068,15 +634,6 @@ python write_specfile () {
 }
 
 python do_package_rpm () {
-    def creat_srpm_dir(d):
-        if d.getVar('SOURCE_ARCHIVE_PACKAGE_TYPE', True) == 'srpm':
-            clean_licenses = get_licenses(d)
-            pkgwritesrpmdir = bb.data.expand('${PKGWRITEDIRSRPM}/${PACKAGE_ARCH_EXTEND}', d)
-            pkgwritesrpmdir = pkgwritesrpmdir + '/' + clean_licenses
-            bb.utils.mkdirhier(pkgwritesrpmdir)
-            os.chmod(pkgwritesrpmdir, 0755)
-            return pkgwritesrpmdir
-            
     # We need a simple way to remove the MLPREFIX from the package name,
     # and dependency information...
     def strip_multilib(name, d):
@@ -1116,15 +673,16 @@ python do_package_rpm () {
     # Setup the rpmbuild arguments...
     rpmbuild = d.getVar('RPMBUILD', True)
     targetsys = d.getVar('TARGET_SYS', True)
-    targetvendor = d.getVar('TARGET_VENDOR', True)
+    targetvendor = d.getVar('HOST_VENDOR', True)
     package_arch = (d.getVar('PACKAGE_ARCH', True) or "").replace("-", "_")
-    if package_arch not in "all any noarch".split() and not package_arch.endswith("_nativesdk"):
+    sdkpkgsuffix = (d.getVar('SDKPKGSUFFIX', True) or "nativesdk").replace("-", "_")
+    if package_arch not in "all any noarch".split() and not package_arch.endswith(sdkpkgsuffix):
         ml_prefix = (d.getVar('MLPREFIX', True) or "").replace("-", "_")
         d.setVar('PACKAGE_ARCH_EXTEND', ml_prefix + package_arch)
     else:
         d.setVar('PACKAGE_ARCH_EXTEND', package_arch)
     pkgwritedir = d.expand('${PKGWRITEDIRRPM}/${PACKAGE_ARCH_EXTEND}')
-    pkgarch = d.expand('${PACKAGE_ARCH_EXTEND}${TARGET_VENDOR}-${TARGET_OS}')
+    pkgarch = d.expand('${PACKAGE_ARCH_EXTEND}${HOST_VENDOR}-${HOST_OS}')
     magicfile = d.expand('${STAGING_DIR_NATIVE}${datadir_native}/misc/magic.mgc')
     bb.utils.mkdirhier(pkgwritedir)
     os.chmod(pkgwritedir, 0755)
@@ -1132,6 +690,7 @@ python do_package_rpm () {
     cmd = rpmbuild
     cmd = cmd + " --nodeps --short-circuit --target " + pkgarch + " --buildroot " + pkgd
     cmd = cmd + " --define '_topdir " + workdir + "' --define '_rpmdir " + pkgwritedir + "'"
+    cmd = cmd + " --define '_builddir " + d.getVar('S', True) + "'"
     cmd = cmd + " --define '_build_name_fmt %%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm'"
     cmd = cmd + " --define '_use_internal_dependency_generator 0'"
     if perfiledeps:
@@ -1144,16 +703,14 @@ python do_package_rpm () {
     cmd = cmd + " --define 'debug_package %{nil}'"
     cmd = cmd + " --define '_rpmfc_magic_path " + magicfile + "'"
     cmd = cmd + " --define '_tmppath " + workdir + "'"
-    if d.getVar('SOURCE_ARCHIVE_PACKAGE_TYPE', True) == 'srpm':
-        cmd = cmd + " --define '_sourcedir " + workdir + "'"
-        cmdsrpm = cmd + " --define '_srcrpmdir " + creat_srpm_dir(d) + "'"
+    if d.getVarFlag('ARCHIVER_MODE', 'srpm', True) == '1' and bb.data.inherits_class('archiver', d):
+        cmd = cmd + " --define '_sourcedir " + d.getVar('ARCHIVER_OUTDIR', True) + "'"
+        cmdsrpm = cmd + " --define '_srcrpmdir " + d.getVar('ARCHIVER_OUTDIR', True) + "'"
         cmdsrpm = cmdsrpm + " -bs " + outspecfile
         # Build the .src.rpm
         d.setVar('SBUILDSPEC', cmdsrpm + "\n")
         d.setVarFlag('SBUILDSPEC', 'func', '1')
         bb.build.exec_func('SBUILDSPEC', d)
-        # Remove the source (SOURCE0, SOURCE1 ...)
-        cmd = cmd + " --rmsource "
     cmd = cmd + " -bb " + outspecfile
 
     # Build the rpm package!
@@ -1170,7 +727,6 @@ python () {
 }
 
 SSTATETASKS += "do_package_write_rpm"
-do_package_write_rpm[sstate-name] = "deploy-rpm"
 do_package_write_rpm[sstate-inputdirs] = "${PKGWRITEDIRRPM}"
 do_package_write_rpm[sstate-outputdirs] = "${DEPLOY_DIR_RPM}"
 # Take a shared lock, we can write multiple packages at the same time...
@@ -1190,8 +746,9 @@ python do_package_write_rpm () {
 do_package_write_rpm[dirs] = "${PKGWRITEDIRRPM}"
 do_package_write_rpm[cleandirs] = "${PKGWRITEDIRRPM}"
 do_package_write_rpm[umask] = "022"
-addtask package_write_rpm before do_package_write after do_packagedata do_package
+addtask package_write_rpm after do_packagedata do_package
 
-PACKAGEINDEXES += "[ ! -e ${DEPLOY_DIR_RPM} ] || package_update_index_rpm;"
 PACKAGEINDEXDEPS += "rpm-native:do_populate_sysroot"
 PACKAGEINDEXDEPS += "createrepo-native:do_populate_sysroot"
+
+do_build[recrdeptask] += "do_package_write_rpm"

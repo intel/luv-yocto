@@ -33,8 +33,8 @@ EXTRA_OECONF += " \
                  --disable-introspection \
 "
 
-PACKAGECONFIG ??= "${@base_contains("DISTRO_FEATURES", "x11", "x11", "", d)} \
-                   ${@base_contains("DISTRO_FEATURES", "wayland", "wayland", "", d)}"
+PACKAGECONFIG ??= "${@bb.utils.contains("DISTRO_FEATURES", "x11", "x11", "", d)} \
+                   ${@bb.utils.contains("DISTRO_FEATURES", "wayland", "wayland", "", d)}"
 
 PACKAGECONFIG[x11] = "--enable-x11-backend,--disable-x11-backend,at-spi2-atk fontconfig libx11 libxext libxcursor libxi libxdamage libxrandr libxrender libxcomposite libxfixes"
 PACKAGECONFIG[wayland] = "--enable-wayland-backend,--disable-wayland-backend,wayland libxkbcommon"
@@ -49,7 +49,11 @@ LIBV = "3.0.0"
 FILES_${PN}-demo = "${bindir}/gtk3-demo \
                     ${bindir}/gtk3-demo-application \
                     ${bindir}/gtk3-widget-factory \
-                    ${datadir}/gtk-3.0/demo"
+                    ${datadir}/gtk-3.0/demo \
+                    ${datadir}/applications/gtk3-demo.desktop \
+                    ${datadir}/applications/gtk3-widget-factory.desktop \
+                    ${datadir}/icons/hicolor/*/apps/gtk3-demo.png \
+                    ${datadir}/icons/hicolor/*/apps/gtk3-widget-factory.png"
 
 # The demo uses PNG files and mime type sniffing, so ensure that these
 # dependencies are present.
@@ -101,6 +105,6 @@ python populate_packages_prepend () {
     do_split_packages(d, printmodules_root, '^libprintbackend-(.*)\.so$', 'gtk3-printbackend-%s', 'GTK printbackend module for %s')
 
     if (d.getVar('DEBIAN_NAMES', 1)):
-        d.setVar('PKG_${PN}', 'libgtk-3.0')
+        d.setVar('PKG_${PN}', '${MLPREFIX}libgtk-3.0')
 }
 

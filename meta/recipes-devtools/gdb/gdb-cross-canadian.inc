@@ -1,7 +1,7 @@
 inherit cross-canadian
 inherit python-dir
 
-DESCRIPTION = "cross-canadian gdb for ${TARGET_ARCH} target - GNU debugger"
+SUMMARY = "GNU debugger (cross-canadian gdb for ${TARGET_ARCH} target)"
 PN = "gdb-cross-canadian-${TRANSLATED_TARGET_ARCH}"
 BPN = "gdb"
 
@@ -12,6 +12,8 @@ RDEPENDS_${PN} += "nativesdk-python-core nativesdk-python-lang nativesdk-python-
 GDBPROPREFIX = "--program-prefix='${TARGET_PREFIX}'"
 
 EXTRA_OECONF_append = "--with-python=${WORKDIR}/python"
+
+SSTATE_DUPWHITELIST += "${STAGING_DATADIR}/gdb"
 
 do_configure_prepend() {
 cat > ${WORKDIR}/python << EOF

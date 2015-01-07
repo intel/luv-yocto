@@ -8,7 +8,7 @@ v3 certificates, and other security standards."
 HOMEPAGE = "http://www.mozilla.org/projects/security/pki/nss/"
 SECTION = "libs"
 
-LICENSE = "MPL-1.1 GPL-2.0 LGPL-2.1"
+LICENSE = "MPL-2.0 | (MPL-2.0 & GPL-2.0+) | (MPL-2.0 & LGPL-2.1+)"
 
 LIC_FILES_CHKSUM = "file://nss/lib/freebl/mpi/doc/LICENSE;md5=491f158d09d948466afce85d6f1fe18f \
                     file://nss/lib/freebl/mpi/doc/LICENSE-MPL;md5=6bf96825e3d7ce4de25621ae886cc859"
@@ -16,8 +16,16 @@ SRC_URI = "\
     file://nss-fix-support-cross-compiling.patch \
     file://nss-no-rpath-for-cross-compiling.patch \
     file://nss-fix-incorrect-shebang-of-perl.patch \
+    file://nss-3.15.1-fix-CVE-2013-1741.patch \
+    file://nss-3.15.1-fix-CVE-2013-5605.patch \
+    file://nss-CVE-2014-1492.patch \
+    file://nss-CVE-2013-1740.patch \
+    file://nss-3.15.1-fix-CVE-2013-1739.patch \
+    file://nss-CVE-2013-5606.patch \
+    file://nss-CVE-2014-1544.patch \
+    file://nss-CVE-2014-1568.patch \
 "
-SRC_URI_append_class-target += "\
+SRC_URI_append = "\
     file://nss.pc.in \
     file://signlibs.sh \
 "
@@ -35,6 +43,10 @@ TARGET_CC_ARCH += "${LDFLAGS}"
 do_compile_prepend_class-native() {
     export NSPR_INCLUDE_DIR=${STAGING_INCDIR_NATIVE}
     export NSPR_LIB_DIR=${STAGING_LIBDIR_NATIVE}
+}
+
+do_compile_prepend_class-nativesdk() {
+    export LDFLAGS=""
 }
 
 do_compile() {
@@ -71,6 +83,11 @@ do_compile() {
 
     make -C ./nss CCC="${CXX}" \
         OS_TEST=${OS_TEST} \
+}
+
+
+do_install_prepend_class-nativesdk() {
+    export LDFLAGS=""
 }
 
 do_install() {
@@ -137,7 +154,7 @@ do_install() {
     done
 }
 
-do_install_append_class-target() {
+do_install_append() {
     # Create empty .chk files for the NSS libraries at build time. They could
     # be regenerated at target's boot time.
     for file in libsoftokn3.chk libfreebl3.chk libnssdbm3.chk; do
@@ -152,12 +169,14 @@ do_install_append_class-target() {
     sed -i s:OEEXECPREFIX:${exec_prefix}:g ${D}${libdir}/pkgconfig/nss.pc
     sed -i s:OELIBDIR:${libdir}:g ${D}${libdir}/pkgconfig/nss.pc
     sed -i s:OEINCDIR:${includedir}/nss3:g ${D}${libdir}/pkgconfig/nss.pc
+}
 
+do_install_append_class-target() {
     # Create a blank certificate
-    mkdir -p ${D}/etc/pki/nssdb/
+    mkdir -p ${D}${sysconfdir}/pki/nssdb/
     touch ./empty_password
-    certutil -N -d ${D}/etc/pki/nssdb/ -f ./empty_password
-    chmod 644 ${D}/etc/pki/nssdb/*.db
+    certutil -N -d ${D}${sysconfdir}/pki/nssdb/ -f ./empty_password
+    chmod 644 ${D}${sysconfdir}/pki/nssdb/*.db
     rm ./empty_password
 }
 
@@ -193,4 +212,4 @@ FILES_${PN}-dbg = "\
     ${libdir}/.debug/* \
     "
 
-BBCLASSEXTEND = "native"
+BBCLASSEXTEND = "native nativesdk"

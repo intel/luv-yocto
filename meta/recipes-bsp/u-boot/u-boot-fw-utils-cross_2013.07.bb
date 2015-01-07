@@ -1,4 +1,4 @@
-DESCRIPTION = "U-boot bootloader fw_printenv/setenv utils"
+SUMMARY = "U-Boot bootloader fw_printenv/setenv utilities"
 LICENSE = "GPLv2+"
 LIC_FILES_CHKSUM = "file://COPYING;md5=1707d6db1d42237583f50183a5651ecb"
 SECTION = "bootloader"
@@ -20,19 +20,19 @@ inherit uboot-config cross
 EXTRA_OEMAKE = 'CROSS_COMPILE=${TARGET_PREFIX} CC="${TARGET_PREFIX}gcc ${TOOLCHAIN_OPTIONS}"'
 
 do_compile () {
-  oe_runmake ${UBOOT_MACHINE}
-  oe_runmake env
+	oe_runmake ${UBOOT_MACHINE}
+	oe_runmake env
 }
 
 do_install () {
-  install -d ${D}${bindir_cross}
-  install -m 755 ${S}/tools/env/fw_printenv ${D}${bindir_cross}/fw_printenv
-  install -m 755 ${S}/tools/env/fw_printenv ${D}${bindir_cross}/fw_setenv
+	install -d ${D}${bindir_cross}
+	install -m 755 ${S}/tools/env/fw_printenv ${D}${bindir_cross}/fw_printenv
+	install -m 755 ${S}/tools/env/fw_printenv ${D}${bindir_cross}/fw_setenv
 }
 
 SYSROOT_PREPROCESS_FUNCS = "uboot_fw_utils_cross"
 uboot_fw_utils_cross() {
-    sysroot_stage_dir ${D}${bindir_cross} ${SYSROOT_DESTDIR}${bindir_cross}
+	sysroot_stage_dir ${D}${bindir_cross} ${SYSROOT_DESTDIR}${bindir_cross}
 }
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"

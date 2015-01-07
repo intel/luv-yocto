@@ -38,13 +38,17 @@ from . import BitBakeBaseServer, BitBakeBaseServerConnection, BaseImplServer
 logger = logging.getLogger('BitBake')
 
 class ServerCommunicator():
-    def __init__(self, connection, event_handle):
+    def __init__(self, connection, event_handle, server):
         self.connection = connection
         self.event_handle = event_handle
+        self.server = server
 
     def runCommand(self, command):
         # @todo try/except
         self.connection.send(command)
+
+        if not self.server.is_alive():
+            raise SystemExit
 
         while True:
             # don't let the user ctrl-c while we're waiting for a response
@@ -80,15 +84,14 @@ class ProcessServer(Process, BaseImplServer):
 
     def __init__(self, command_channel, event_queue, featurelist):
         BaseImplServer.__init__(self)
-        Process.__init__(self, args=(featurelist))
+        Process.__init__(self)
         self.command_channel = command_channel
         self.event_queue = event_queue
         self.event = EventAdapter(event_queue)
         self.featurelist = featurelist
         self.quit = False
 
-        self.keep_running = Event()
-        self.keep_running.set()
+        self.quitin, self.quitout = Pipe()
         self.event_handle = multiprocessing.Value("i")
 
     def run(self):
@@ -96,26 +99,23 @@ class ProcessServer(Process, BaseImplServer):
             self.event_queue.put(event)
         self.event_handle.value = bb.event.register_UIHhandler(self)
 
-        # process any feature changes based on what UI requested
-        original_featureset = list(self.cooker.featureset)
-        while len(self.featurelist)> 0:
-            self.cooker.featureset.setFeature(self.featurelist.pop())
-        if (original_featureset != list(self.cooker.featureset)):
-            self.cooker.reset()
-
         bb.cooker.server_main(self.cooker, self.main)
 
     def main(self):
         # Ignore SIGINT within the server, as all SIGINT handling is done by
         # the UI and communicated to us
+        self.quitin.close()
         signal.signal(signal.SIGINT, signal.SIG_IGN)
-        while self.keep_running.is_set():
+        while not self.quit:
             try:
                 if self.command_channel.poll():
                     command = self.command_channel.recv()
                     self.runCommand(command)
+                if self.quitout.poll():
+                    self.quitout.recv()
+                    self.quit = True
 
-                self.idle_commands(.1, [self.event_queue._reader, self.command_channel])
+                self.idle_commands(.1, [self.event_queue._reader, self.command_channel, self.quitout])
             except Exception:
                 logger.exception('Running command %s', command)
 
@@ -123,7 +123,6 @@ class ProcessServer(Process, BaseImplServer):
         bb.event.unregister_UIHhandler(self.event_handle.value)
         self.command_channel.close()
         self.cooker.shutdown(True)
-        self.idle_commands(.1)
 
     def idle_commands(self, delay, fds = []):
         nextsleep = delay
@@ -133,6 +132,7 @@ class ProcessServer(Process, BaseImplServer):
                 retval = function(self, data, False)
                 if retval is False:
                     del self._idlefuns[function]
+                    nextsleep = None
                 elif retval is True:
                     nextsleep = None
                 elif nextsleep is None:
@@ -143,6 +143,8 @@ class ProcessServer(Process, BaseImplServer):
                 raise
             except Exception:
                 logger.exception('Running idle function')
+                del self._idlefuns[function]
+                self.quit = True
 
         if nextsleep is not None:
             select.select(fds,[],[],nextsleep)
@@ -154,15 +156,20 @@ class ProcessServer(Process, BaseImplServer):
         self.command_channel.send(self.cooker.command.runCommand(command))
 
     def stop(self):
-        self.keep_running.clear()
+        self.quitin.send("quit")
+        self.quitin.close()
 
 class BitBakeProcessServerConnection(BitBakeBaseServerConnection):
     def __init__(self, serverImpl, ui_channel, event_queue):
         self.procserver = serverImpl
         self.ui_channel = ui_channel
         self.event_queue = event_queue
-        self.connection = ServerCommunicator(self.ui_channel, self.procserver.event_handle)
+        self.connection = ServerCommunicator(self.ui_channel, self.procserver.event_handle, self.procserver)
         self.events = self.event_queue
+
+    def sigterm_terminate(self):
+        bb.error("UI received SIGTERM")
+        self.terminate()
 
     def terminate(self):
         def flushevents():
@@ -183,17 +190,33 @@ class BitBakeProcessServerConnection(BitBakeBaseServerConnection):
 
         self.ui_channel.close()
         self.event_queue.close()
+        self.event_queue.setexit()
 
 # Wrap Queue to provide API which isn't server implementation specific
 class ProcessEventQueue(multiprocessing.queues.Queue):
+    def __init__(self, maxsize):
+        multiprocessing.queues.Queue.__init__(self, maxsize)
+        self.exit = False
+
+    def setexit(self):
+        self.exit = True
+
     def waitEvent(self, timeout):
+        if self.exit:
+            sys.exit(1)
         try:
+            if not self.server.is_alive():
+                self.setexit()
+                return None
             return self.get(True, timeout)
         except Empty:
             return None
 
     def getEvent(self):
         try:
+            if not self.server.is_alive():
+                self.setexit()
+                return None
             return self.get(False)
         except Empty:
             return None
@@ -207,17 +230,20 @@ class BitBakeServer(BitBakeBaseServer):
         #
         self.ui_channel, self.server_channel = Pipe()
         self.event_queue = ProcessEventQueue(0)
-        manager = Manager()
-        self.featurelist = manager.list()
-        self.serverImpl = ProcessServer(self.server_channel, self.event_queue, self.featurelist)
+        self.serverImpl = ProcessServer(self.server_channel, self.event_queue, None)
+        self.event_queue.server = self.serverImpl
 
     def detach(self):
         self.serverImpl.start()
         return
 
     def establishConnection(self, featureset):
-        for f in featureset:
-            self.featurelist.append(f)
+
         self.connection = BitBakeProcessServerConnection(self.serverImpl, self.ui_channel, self.event_queue)
-        signal.signal(signal.SIGTERM, lambda i, s: self.connection.terminate())
+
+        _, error = self.connection.connection.runCommand(["setFeatures", featureset])
+        if error:
+            logger.error("Unable to set the cooker to the correct featureset: %s" % error)
+            raise BaseException(error)
+        signal.signal(signal.SIGTERM, lambda i, s: self.connection.sigterm_terminate())
         return self.connection

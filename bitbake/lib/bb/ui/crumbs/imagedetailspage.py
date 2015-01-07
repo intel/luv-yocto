@@ -355,9 +355,9 @@ class ImageDetailsPage (HobPage):
             vallist.append(base_image)
             i = 0
             for layer in layers:
-                varlist.append(" - ")
                 if i > layer_num_limit:
                     break
+                varlist.append(" - ")
                 i += 1
             vallist.append("")
             i = 0
@@ -632,7 +632,7 @@ class ImageDetailsPage (HobPage):
 
     def save_button_clicked_cb(self, button):
         topdir = self.builder.get_topdir()
-        images_dir = topdir + "/recipes/images/"
+        images_dir = topdir + "/recipes/images/custom/"
         self.builder.ensure_dir(images_dir)
 
         self.name_field_template = self.builder.image_configuration_page.custom_image_selected
@@ -655,7 +655,7 @@ class ImageDetailsPage (HobPage):
         self.builder.show_configuration()
 
     def edit_packages_button_clicked_cb(self, button):
-        self.builder.show_packages(ask=False)
+        self.builder.show_packages()
 
     def my_images_button_clicked_cb(self, button):
         self.builder.show_load_my_images_dialog()

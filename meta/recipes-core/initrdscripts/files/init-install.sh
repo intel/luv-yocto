@@ -16,6 +16,7 @@ swap_ratio=5
 # Get a list of hard drives
 hdnamelist=""
 live_dev_name=${1%%/*}
+live_dev_name=${live_dev_name%%[0-9]*}
 
 echo "Searching for hard drives ..."
 
@@ -23,6 +24,9 @@ for device in `ls /sys/block/`; do
     case $device in
 	loop*)
             # skip loop device
+	    ;;
+	sr*)
+            # skip CDROM device
 	    ;;
 	ram*)
             # skip ram device
@@ -46,9 +50,14 @@ for hdname in $hdnamelist; do
 	echo -n "VENDOR="
 	cat /sys/block/$hdname/device/vendor
     fi
-    echo -n "MODEL="
-    cat /sys/block/$hdname/device/model
-    cat /sys/block/$hdname/device/uevent
+    if [ -r /sys/block/$hdname/device/model ]; then
+        echo -n "MODEL="
+        cat /sys/block/$hdname/device/model
+    fi
+    if [ -r /sys/block/$hdname/device/uevent ]; then
+        echo -n "UEVENT="
+        cat /sys/block/$hdname/device/uevent
+    fi
     echo
     # Get user choice
     while true; do
@@ -90,7 +99,9 @@ if [ ! -b /dev/loop0 ] ; then
 fi
 
 mkdir -p /tmp
-cat /proc/mounts > /etc/mtab
+if [ ! -L /etc/mtab ]; then
+	cat /proc/mounts > /etc/mtab
+fi
 
 disk_size=$(parted /dev/${device} unit mb print | grep Disk | cut -d" " -f 3 | sed -e "s/MB//")
 
@@ -151,7 +162,7 @@ mkdir -p /boot
 
 # Handling of the target root partition
 mount $rootfs /tgt_root
-mount -o rw,loop,noatime,nodiratime /media/$1/$2 /src_root
+mount -o rw,loop,noatime,nodiratime /run/media/$1/$2 /src_root
 echo "Copying rootfs files..."
 cp -a /src_root/* /tgt_root
 if [ -d /tgt_root/etc/ ] ; then
@@ -168,17 +179,16 @@ umount /src_root
 # Handling of the target boot partition
 mount $bootfs /boot
 echo "Preparing boot partition..."
-if [ -f /etc/grub.d/40_custom ] ; then
+if [ -f /etc/grub.d/00_header ] ; then
     echo "Preparing custom grub2 menu..."
     GRUBCFG="/boot/grub/grub.cfg"
     mkdir -p $(dirname $GRUBCFG)
-    cp /etc/grub.d/40_custom $GRUBCFG
-    sed -i "s@__ROOTFS__@$rootfs $rootwait@g" $GRUBCFG
-    sed -i "s/__VIDEO_MODE__/$3/g" $GRUBCFG
-    sed -i "s/__VGA_MODE__/$4/g" $GRUBCFG
-    sed -i "s/__CONSOLE__/$5/g" $GRUBCFG
-    sed -i "/#/d" $GRUBCFG
-    sed -i "/exec tail/d" $GRUBCFG
+    cat >$GRUBCFG <<_EOF
+menuentry "Linux" {
+    set root=(hd0,1)
+    linux /vmlinuz root=$rootfs $rootwait rw $5 $3 $4 quiet
+}
+_EOF
     chmod 0444 $GRUBCFG
 fi
 grub-install /dev/${device}
@@ -194,7 +204,7 @@ if [ ! -f /boot/grub/grub.cfg ] ; then
     echo "kernel /vmlinuz root=$rootfs rw $3 $4 quiet" >> /boot/grub/menu.lst
 fi
 
-cp /media/$1/vmlinuz /boot/
+cp /run/media/$1/vmlinuz /boot/
 
 umount /boot
 

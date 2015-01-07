@@ -1,4 +1,4 @@
-DESCRIPTION = "Free peer-reviewed portable C++ source libraries"
+SUMMARY = "Free peer-reviewed portable C++ source libraries"
 SECTION = "libs"
 DEPENDS = "bjam-native zlib bzip2"
 
@@ -21,7 +21,7 @@ BOOST_LIBS = "\
 # optional boost-python library
 PACKAGECONFIG ??= ""
 PACKAGECONFIG[python] = ",,python"
-BOOST_LIBS += "${@base_contains('PACKAGECONFIG', 'python', 'python', '', d)}"
+BOOST_LIBS += "${@bb.utils.contains('PACKAGECONFIG', 'python', 'python', '', d)}"
 inherit python-dir
 PYTHON_ROOT = "${STAGING_DIR_HOST}/${prefix}"
 
@@ -106,21 +106,29 @@ BJAM_TOOLS   = "-sTOOLS=gcc \
 def get_boost_parallel_make(bb, d):
     pm = d.getVar('PARALLEL_MAKE', True)
     if pm:
-        # people are usually using "-jN" or "-j N", but let it work with something else appended to it
-        import re
-        pm_prefix = re.search("\D+", pm)
-        pm_val = re.search("\d+", pm)
-        if pm_prefix is None or pm_val is None:
-            bb.error("Unable to analyse format of PARALLEL_MAKE variable: %s" % pm)
-        pm_nval = min(64, int(pm_val.group(0)))
-        return pm_prefix.group(0) + str(pm_nval) + pm[pm_val.end():]
-    else:
-        return ""
+        # look for '-j' and throw other options (e.g. '-l') away
+        # because they might have different meaning in bjam
+        pm = pm.split()
+        while pm:
+            v = None
+            opt = pm.pop(0)
+            if opt == '-j':
+                v = pm.pop(0)
+            elif opt.startswith('-j'):
+                v = opt[2:].strip()
+            else:
+                v = None
+
+            if v:
+                v = min(64, int(v))
+                return '-j' + str(v)
+
+    return ""
 
 BOOST_PARALLEL_MAKE = "${@get_boost_parallel_make(bb, d)}"
 BJAM_OPTS    = '${BOOST_PARALLEL_MAKE} \
 		${BJAM_TOOLS} \
-		-sBOOST_BUILD_USER_CONFIG=${S}/tools/build/v2/user-config.jam \
+		-sBOOST_BUILD_USER_CONFIG=${S}/tools/build/example/user-config.jam \
 		--builddir=${S}/${TARGET_SYS} \
 		--disable-icu \
 		${BJAM_EXTRA}'
@@ -132,12 +140,12 @@ do_boostconfig() {
 	cp -f boost/config/platform/linux.hpp boost/config/platform/linux-gnueabi.hpp
 
 	# D2194:Fixing the failure of "error: duplicate initialization of gcc with the following parameters" during compilation.
-	if ! grep -qe "^using gcc : 4.3.1" ${S}/tools/build/v2/user-config.jam 
+	if ! grep -qe "^using gcc : 4.3.1" ${S}/tools/build/example/user-config.jam 
 	then
-		echo 'using gcc : 4.3.1 : ${CXX} : compileflags -DBOOST_SP_USE_PTHREADS -I${includedir} linkflags -L${libdir} ;' >> ${S}/tools/build/v2/user-config.jam
+		echo 'using gcc : 4.3.1 : ${CXX} : <cflags>"${CFLAGS}" <cxxflags>"${CXXFLAGS}" <linkflags>"${LDFLAGS}" ;' >> ${S}/tools/build/example/user-config.jam
 	fi	
 
-	echo "using python : ${PYTHON_BASEVERSION} : : ${STAGING_INCDIR}/python${PYTHON_BASEVERSION} ;" >> ${S}/tools/build/v2/user-config.jam
+	echo "using python : ${PYTHON_BASEVERSION} : : ${STAGING_INCDIR}/python${PYTHON_BASEVERSION} ;" >> ${S}/tools/build/example/user-config.jam
 
 	CC="${BUILD_CC}" CFLAGS="${BUILD_CFLAGS}" ./bootstrap.sh --with-bjam=bjam --with-toolset=gcc --with-python-root=${PYTHON_ROOT}
 	sed -i '/^using python/d' project-config.jam

@@ -1,25 +1,35 @@
-DESCRIPTION = "OPKG Package Manager Utilities"
+SUMMARY = "Additional utilities for the opkg package manager"
+SUMMARY_update-alternatives-opkg = "Utility for managing the alternatives system"
 SECTION = "base"
-HOMEPAGE = "http://wiki.openmoko.org/wiki/Opkg"
+HOMEPAGE = "http://code.google.com/p/opkg/"
 LICENSE = "GPLv2+"
 LIC_FILES_CHKSUM = "file://COPYING;md5=94d55d512a9ba36caa9b7df079bae19f \
                     file://opkg.py;beginline=1;endline=18;md5=15917491ad6bf7acc666ca5f7cc1e083"
-RDEPENDS_${PN} = "python python-shell python-io python-math python-crypt python-logging python-fcntl python-subprocess python-pickle python-compression python-textutils python-stringold"
-RDEPENDS_${PN}_class-native = ""
-SRCREV = "757a1664a440c60e8126443bf984e4bdf374c327"
+PROVIDES += "virtual/update-alternatives"
+
+SRCREV = "eae0d8fa44e8594aa90eadf06e5f4fbeef314509"
 PV = "0.1.8+git${SRCPV}"
 
-SRC_URI = "git://git.yoctoproject.org/opkg-utils \
-           "
+SRC_URI = "git://git.yoctoproject.org/opkg-utils"
 
 S = "${WORKDIR}/git"
 
-# Avoid circular dependencies from package_ipk.bbclass
-PACKAGES_class-native = ""
+TARGET_CC_ARCH += "${LDFLAGS}"
+
+PYTHONRDEPS = "python python-shell python-io python-math python-crypt python-logging python-fcntl python-subprocess python-pickle python-compression python-textutils python-stringold"
+PYTHONRDEPS_class-native = ""
+
+PACKAGECONFIG = "python"
+PACKAGECONFIG[python] = ",,,${PYTHONRDEPS}"
 
 do_install() {
 	oe_runmake PREFIX=${prefix} DESTDIR=${D} install
 }
 
-BBCLASSEXTEND = "native"
-TARGET_CC_ARCH += "${LDFLAGS}"
+PACKAGES =+ "update-alternatives-opkg"
+FILES_update-alternatives-opkg = "${bindir}/update-alternatives"
+RPROVIDES_update-alternatives-opkg = "update-alternatives update-alternatives-cworth"
+RREPLACES_update-alternatives-opkg = "update-alternatives-cworth"
+RCONFLICTS_update-alternatives-opkg = "update-alternatives-cworth"
+
+BBCLASSEXTEND = "native nativesdk"

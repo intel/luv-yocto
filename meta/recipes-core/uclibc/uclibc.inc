@@ -81,6 +81,7 @@ configmangle = '/^KERNEL_HEADERS/d; \
                 s,^DOSTRIP.*,# DOSTRIP is not set,g; \
                 /_[EO]*ABI/d; \
                 /HAS_FPU/d; \
+                ${@["","s,.*MULTILIB_DIR.*,MULTILIB_DIR=\"${baselib}\",;"][d.getVar("baselib", True) != "lib"]} \
                '
 OE_FEATURES := "${@features_to_uclibc_conf(d)}"
 OE_DEL      := "${@features_to_uclibc_del(d)}"
@@ -92,10 +93,10 @@ python () {
     # if we use TARGET_CC_ARCH="-march=mips32" we end up 
     # with conflicting march options to gcc. Here we
     # ask for MIPS32 ISA to match the chosen arch
-
-    if "mips32" in d.getVar("TUNE_FEATURES",True):
+    tune = d.getVar("DEFAULTTUNE", True)
+    if tune in ['mips32', 'mips32r2']:
         d.setVar('configmangle_append',
-                 "/^### MIPS32_CHECK$/a\\\nCONFIG_MIPS_ISA_MIPS32=y\n\n")
+                 "/^### MIPS32_CHECK$/a\\\nCONFIG_MIPS_ISA_%s=y\n\n" % (tune.upper()))
     if "${OE_FEATURES}":
         d.setVar('configmangle_append',
                    "/^### DISTRO FEATURES$/a\\\n%s\n\n" %
@@ -155,7 +156,8 @@ do_configure() {
 }
 
 do_install() {
-        oe_runmake PREFIX=${D} install
+	oe_runmake PREFIX=${D} install
+	rm -rf ${D}${includedir}/iconv.h
 }
 
 # build ldd, ldconfig and friends but only for full uclibc

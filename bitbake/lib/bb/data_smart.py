@@ -88,6 +88,7 @@ class VariableParse:
 
         self.references = set()
         self.execs = set()
+        self.contains = {}
 
     def var_sub(self, match):
             key = match.group()[2:-1]
@@ -98,7 +99,7 @@ class VariableParse:
                 varparse = self.d.expand_cache[key]
                 var = varparse.value
             else:
-                var = self.d.getVar(key, True)
+                var = self.d.getVarFlag(key, "_content", True)
             self.references.add(key)
             if var is not None:
                 return var
@@ -120,6 +121,11 @@ class VariableParse:
             self.references |= parser.references
             self.execs |= parser.execs
 
+            for k in parser.contains:
+                if k not in self.contains:
+                    self.contains[k] = parser.contains[k].copy()
+                else:
+                    self.contains[k].update(parser.contains[k])
             value = utils.better_eval(codeobj, DataContext(self.d))
             return str(value)
 
@@ -257,7 +263,7 @@ class VariableHistory(object):
                     flag = ''
                 o.write("#   %s %s:%s%s\n#     %s\"%s\"\n" % (event['op'], event['file'], event['line'], display_func, flag, re.sub('\n', '\n#     ', event['detail'])))
             if len(history) > 1:
-                o.write("# computed:\n")
+                o.write("# pre-expansion value:\n")
                 o.write('#   "%s"\n' % (commentVal))
         else:
             o.write("#\n# $%s\n#   [no history recorded]\n#\n" % var)
@@ -328,7 +334,7 @@ class DataSmart(MutableMapping):
                     break
             except ExpansionError:
                 raise
-            except bb.parse.SkipPackage:
+            except bb.parse.SkipRecipe:
                 raise
             except Exception as exc:
                 raise ExpansionError(varname, s, exc)
@@ -507,10 +513,15 @@ class DataSmart(MutableMapping):
     def _setvar_update_overrides(self, var):
         # aka pay the cookie monster
         override = var[var.rfind('_')+1:]
-        if len(override) > 0:
+        shortvar = var[:var.rfind('_')]
+        while override:
             if override not in self._seen_overrides:
                 self._seen_overrides[override] = set()
             self._seen_overrides[override].add( var )
+            override = None
+            if "_" in shortvar:
+                override = var[shortvar.rfind('_')+1:]
+                shortvar = var[:shortvar.rfind('_')]
 
     def getVar(self, var, expand=False, noweakdefault=False):
         return self.getVarFlag(var, "_content", expand, noweakdefault)
@@ -604,10 +615,15 @@ class DataSmart(MutableMapping):
             else:
                 cachename = var + "[" + flag + "]"
             value = self.expand(value, cachename)
-        if value is not None and flag == "_content" and local_var is not None and "_removeactive" in local_var:
-            filtered = filter(lambda v: v not in local_var["_removeactive"],
-                              value.split(" "))
+        if value and flag == "_content" and local_var is not None and "_removeactive" in local_var:
+            removes = [self.expand(r) for r in local_var["_removeactive"]]
+            filtered = filter(lambda v: v not in removes,
+                              value.split())
             value = " ".join(filtered)
+            if expand:
+                 # We need to ensure the expand cache has the correct value
+                 # flag == "_content" here
+                self.expand_cache[var].value = value
         return value
 
     def delVarFlag(self, var, flag, **loginfo):

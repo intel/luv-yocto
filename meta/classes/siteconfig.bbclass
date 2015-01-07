@@ -1,6 +1,6 @@
 python siteconfig_do_siteconfig () {
 	shared_state = sstate_state_fromvars(d)
-	if shared_state['name'] != 'populate-sysroot':
+	if shared_state['task'] != 'populate_sysroot':
 		return
 	if not os.path.isdir(os.path.join(d.getVar('FILE_DIRNAME', True), 'site_config')):
 		bb.debug(1, "No site_config directory, skipping do_siteconfig")
@@ -18,13 +18,13 @@ siteconfig_do_siteconfig_gencache () {
 		>${WORKDIR}/site_config_${MACHINE}/configure.ac
 	cd ${WORKDIR}/site_config_${MACHINE}
 	autoconf
-	rm -f ${PN}_cache
-        CONFIG_SITE="" ${EXTRASITECONFIG} ./configure ${CONFIGUREOPTS} --cache-file ${PN}_cache
+	rm -f ${BPN}_cache
+	CONFIG_SITE="" ${EXTRASITECONFIG} ./configure ${CONFIGUREOPTS} --cache-file ${BPN}_cache
 	sed -n -e "/ac_cv_c_bigendian/p" -e "/ac_cv_sizeof_/p" \
 		-e "/ac_cv_type_/p" -e "/ac_cv_header_/p" -e "/ac_cv_func_/p" \
-		< ${PN}_cache > ${PN}_config
+		< ${BPN}_cache > ${BPN}_config
 	mkdir -p ${SYSROOT_DESTDIR}${datadir}/${TARGET_SYS}_config_site.d
-	cp ${PN}_config ${SYSROOT_DESTDIR}${datadir}/${TARGET_SYS}_config_site.d
+	cp ${BPN}_config ${SYSROOT_DESTDIR}${datadir}/${TARGET_SYS}_config_site.d
 
 }
 

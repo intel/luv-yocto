@@ -1,10 +1,11 @@
-DESCRIPTION = "createrepo creates rpm-metadata for rpms to build the repository"
+SUMMARY = "Creates metadata indexes for RPM package repositories"
 HOMEPAGE = "http://createrepo.baseurl.org/"
 
 LICENSE = "GPLv2+"
 LIC_FILES_CHKSUM = "file://COPYING;md5=18810669f13b87348459e611d31ab760"
 
 DEPENDS_class-native += "libxml2-native rpm-native"
+RDEPENDS_${PN}_class-target = "libxml2-python"
 
 PR = "r9"
 

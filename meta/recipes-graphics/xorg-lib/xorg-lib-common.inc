@@ -11,14 +11,16 @@ SRC_URI = "${XORG_MIRROR}/individual/lib/${XORG_PN}-${PV}.tar.bz2"
 
 S = "${WORKDIR}/${XORG_PN}-${PV}"
 
-inherit autotools pkgconfig
+inherit autotools distro_features_check pkgconfig
 
-EXTRA_OECONF = "--disable-specs --without-groff --without-ps2pdf --without-fop --without-xmlto"
-EXTRA_OECONF_append_libc-glibc = " --disable-malloc0returnsnull"
-EXTRA_OECONF_append_libc-uclibc = " --enable-malloc0returnsnull"
+EXTRA_OECONF = "--disable-specs --without-groff --without-ps2pdf --without-fop"
 
-python () {
-        whitelist = [ "pixman", "libpciaccess" ]
-        if not d.getVar('BPN', True) in whitelist and not oe.utils.contains ('DISTRO_FEATURES', 'x11', True, False, d):
-                raise bb.parse.SkipPackage("'x11' not in DISTRO_FEATURES")
-}
+PACKAGECONFIG ??= ""
+PACKAGECONFIG[xmlto] = "--with-xmlto, --without-xmlto, xmlto-native docbook-xml-dtd4-native docbook-xsl-stylesheets-native"
+
+UNKNOWN_CONFIGURE_WHITELIST += "--enable-malloc0returnsnull --disable-malloc0returnsnull \
+                                --disable-specs --without-groff --without-ps2pdf --without-fop \
+                                --without-xmlto --with-xmlto \
+"
+
+REQUIRED_DISTRO_FEATURES ?= "x11"

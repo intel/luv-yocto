@@ -12,22 +12,6 @@
 # variable as required.
 
 #
-# Parallelism Options
-#
-# These two options control how much parallelism BitBake should use. The first 
-# option determines how many tasks bitbake should run in parallel:
-#
-#BB_NUMBER_THREADS ?= "4"
-# 
-# The second option controls how many processes make should run in parallel when
-# running compile tasks:
-#
-#PARALLEL_MAKE ?= "-j 4"
-#
-# For a quad-core machine, BB_NUMBER_THREADS = "4", PARALLEL_MAKE = "-j 4" would
-# be appropriate for example.
-
-#
 # Machine Selection
 #
 # You need to select a specific machine to target the build with. There are a selection
@@ -42,11 +26,11 @@
 # There are also the following hardware board target machines included for 
 # demonstration purposes:
 #
-#MACHINE ?= "beagleboard"
+#MACHINE ?= "beaglebone"
 #MACHINE ?= "genericx86"
 #MACHINE ?= "genericx86-64"
 #MACHINE ?= "mpc8315e-rdb"
-#MACHINE ?= "routerstationpro"
+#MACHINE ?= "edgerouter"
 #
 # This sets the default machine to be qemux86 if no other machine is selected:
 MACHINE ??= "qemux86"
@@ -124,9 +108,9 @@ PACKAGE_CLASSES ?= "package_rpm"
 #
 # SDK/ADT target architecture
 #
-# This variable specified the architecture to build SDK/ADT items for and means
+# This variable specifies the architecture to build SDK/ADT items for and means
 # you can build the SDK packages for architectures other than the machine you are 
-# running the build on (i.e. building i686 packages on an x86_64 host._
+# running the build on (i.e. building i686 packages on an x86_64 host).
 # Supported values are i686 and x86_64
 #SDKMACHINE ?= "i686"
 
@@ -228,6 +212,18 @@ BB_DISKMON_DIRS = "\
 #SSTATE_MIRRORS ?= "\
 #file://.* http://someserver.tld/share/sstate/PATH;downloadfilename=PATH \n \
 #file://.* file:///some/local/dir/sstate/PATH"
+
+
+#
+# Qemu configuration
+#
+# By default qemu will build with a builtin VNC server where graphical output can be
+# seen. The two lines below enable the SDL backend too. This assumes there is a
+# libsdl library available on your build system.
+PACKAGECONFIG_append_pn-qemu-native = " sdl"
+PACKAGECONFIG_append_pn-nativesdk-qemu = " sdl"
+ASSUME_PROVIDED += "libsdl-native"
+
 
 # CONF_VERSION is increased each time build/conf/ changes incompatibly and is used to
 # track the version of this file when it was generated. This can safely be ignored if

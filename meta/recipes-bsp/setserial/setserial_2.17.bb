@@ -8,10 +8,13 @@ LICENSE = "GPLv2.0"
 LIC_FILES_CHKSUM = "file://version.h;beginline=1;endline=6;md5=2e7c59cb9e57e356ae81f50f4e4dfd99"
 PR = "r3"
 
-inherit autotools
+DEPENDS += "groff-native"
+
+inherit autotools-brokensep
 
 SRC_URI = "${SOURCEFORGE_MIRROR}/setserial/${BPN}-${PV}.tar.gz \
            file://add_stdlib.patch \
+           file://ldflags.patch \
           "
 
 SRC_URI[md5sum] = "c4867d72c41564318e0107745eb7a0f2"

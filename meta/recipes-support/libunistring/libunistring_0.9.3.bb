@@ -1,4 +1,4 @@
-SUMMARY = "libunistring provides functions for manipulating according to the Unicode standard."
+SUMMARY = "Library for manipulating C and Unicode strings"
 
 DESCRIPTION = "Text files are nowadays usually encoded in Unicode, and may\
  consist of very different scripts from Latin letters to Chinese Hanzi\
@@ -28,5 +28,5 @@ SRC_URI[sha256sum] = "610d3ec724fbdaa654afe3cff20b9f4d504be3fd296fded2e0f7f76404
 
 PR = "r3"
 
-inherit autotools
+inherit autotools texinfo
 BBCLASSEXTEND = "native nativesdk"

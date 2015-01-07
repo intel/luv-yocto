@@ -1,6 +1,6 @@
-DESCRIPTION = "Settings-daemon provides a bridge between gconf and xsettings"
+SUMMARY = "Provides a bridge between gconf and xsettings"
 HOMEPAGE = "http://svn.o-hand.com/view/matchbox/trunk/settings-daemon/"
-BUGTRACKER = "http://bugzilla.openedhand.com/"
+BUGTRACKER = "http://bugzilla.yoctoproject.org/"
 LICENSE = "MIT-style"
 LIC_FILES_CHKSUM = "file://xsettings-manager.h;endline=22;md5=7cfac9d2d4dc3694cc7eb605cf32a69b \
                     file://xsettings-common.h;endline=22;md5=7cfac9d2d4dc3694cc7eb605cf32a69b"
@@ -9,7 +9,6 @@ SECTION = "x11"
 SRCREV = "9a99528b02255450db81176abd9bbcc1dab9a4c1"
 PV = "0.0+git${SRCPV}"
 
-PR = "r0"
 
 SRC_URI = "git://git.yoctoproject.org/xsettings-daemon \
            file://addsoundkeys.patch;apply=yes \

@@ -1,10 +1,10 @@
-SUMMARY = "Diffutils contains tools used for finding differences between files."
+SUMMARY = "Diffutils contains tools used for finding differences between files"
 DESCRIPTION = "Diffutils contains the GNU diff, diff3, \
 sdiff, and cmp utilities. These programs are usually \
 used for creating patch files."
 SECTION = "base"
 
-inherit autotools update-alternatives gettext
+inherit autotools texinfo update-alternatives gettext
 
 # diffutils assumes non-glibc compilation with uclibc and
 # this causes it to generate its own implementations of

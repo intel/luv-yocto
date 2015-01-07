@@ -7,35 +7,28 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=12f884d2ae1ff87c09e5b7ccc2c4ca7e \
                     file://COPYING.LIB;md5=fb504b67c50331fc78734fed90fb0e09 \
                     file://src/main.c;beginline=1;endline=24;md5=9bc54b93cd7e17bf03f52513f39f926e"
 DEPENDS = "udev libusb dbus-glib glib-2.0 libcheck readline"
+PROVIDES += "bluez-hcidump"
+RPROVIDES_${PN} += "bluez-hcidump"
 
 RCONFLICTS_${PN} = "bluez4"
 
-PACKAGECONFIG ??= "${@base_contains('DISTRO_FEATURES', 'alsa', 'alsa', '', d)} obex-profiles"
-PACKAGECONFIG[alsa] = "--enable-alsa,--disable-alsa,alsa-lib"
+PACKAGECONFIG ??= "${@bb.utils.contains('DISTRO_FEATURES', 'alsa', 'alsa', '', d)} obex-profiles"
 PACKAGECONFIG[obex-profiles] = "--enable-obex,--disable-obex,libical"
 
 SRC_URI = "\
-    ${KERNELORG_MIRROR}/linux/bluetooth/bluez-${PV}.tar.gz \
+    ${KERNELORG_MIRROR}/linux/bluetooth/bluez-${PV}.tar.xz \
     file://bluetooth.conf \
 "
 S = "${WORKDIR}/bluez-${PV}"
 
-inherit autotools pkgconfig systemd
+inherit autotools-brokensep pkgconfig systemd
 
 EXTRA_OECONF = "\
-  --disable-gstreamer \
-  --enable-usb \
   --enable-tools \
-  --enable-bccmd \
-  --enable-hid2hci \
-  --enable-dfutool \
-  --disable-hidd \
-  --disable-pand \
-  --disable-dund \
   --disable-cups \
   --enable-test \
   --enable-datafiles \
-  ${@base_contains('DISTRO_FEATURES', 'systemd', '--with-systemdunitdir=${systemd_unitdir}/system/', '--disable-systemd', d)} \
+  ${@bb.utils.contains('DISTRO_FEATURES', 'systemd', '--with-systemdunitdir=${systemd_unitdir}/system/', '--disable-systemd', d)} \
   --enable-library \
 "
 
@@ -65,7 +58,7 @@ FILES_${PN}-dev += "\
 "
 
 FILES_${PN}-obex = "${libdir}/bluez5/bluetooth/obexd \
-                    ${libdir}/systemd/user/obex.service \
+                    ${exec_prefix}/lib/systemd/user/obex.service \
                     ${datadir}/dbus-1/services/org.bluez.obex.service \
                    "
 SYSTEMD_SERVICE_${PN}-obex = "obex.service"

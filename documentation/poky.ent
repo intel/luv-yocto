@@ -1,11 +1,11 @@
-<!ENTITY DISTRO "1.5.1">
-<!ENTITY DISTRO_COMPRESSED "151">
-<!ENTITY DISTRO_NAME "dora">
-<!ENTITY YOCTO_DOC_VERSION "1.5.1">
-<!ENTITY POKYVERSION "10.0.1">
-<!ENTITY POKYVERSION_COMPRESSED "1001">
+<!ENTITY DISTRO "1.7.1">
+<!ENTITY DISTRO_COMPRESSED "171">
+<!ENTITY DISTRO_NAME "dizzy">
+<!ENTITY YOCTO_DOC_VERSION "1.7.1">
+<!ENTITY POKYVERSION "12.0.1">
+<!ENTITY POKYVERSION_COMPRESSED "1201">
 <!ENTITY YOCTO_POKY "poky-&DISTRO_NAME;-&POKYVERSION;">
-<!ENTITY COPYRIGHT_YEAR "2010-2013">
+<!ENTITY COPYRIGHT_YEAR "2010-2015">
 <!ENTITY YOCTO_DL_URL "http://downloads.yoctoproject.org">
 <!ENTITY YOCTO_HOME_URL "http://www.yoctoproject.org">
 <!ENTITY YOCTO_LISTS_URL "http://lists.yoctoproject.org">
@@ -14,9 +14,9 @@
 <!ENTITY YOCTO_AB_URL "http://autobuilder.yoctoproject.org">
 <!ENTITY YOCTO_GIT_URL "http://git.yoctoproject.org">
 <!ENTITY YOCTO_ADTREPO_URL "http://adtrepo.yoctoproject.org">
-<!ENTITY YOCTO_RELEASE_NOTES "&YOCTO_HOME_URL;/download/yocto-project-&DISTRO_COMPRESSED;-poky-&POKYVERSION_COMPRESSED;">
+<!ENTITY YOCTO_RELEASE_NOTES "&YOCTO_HOME_URL;/downloads/core/&DISTRO_NAME;&DISTRO_COMPRESSED;">
 <!ENTITY OE_HOME_URL "http://www.openembedded.org">
-<!ENTITY OE_LISTS_URL "http://lists.linuxtogo.org/cgi-bin/mailman">
+<!ENTITY OE_LISTS_URL "http://lists.openembedded.org/mailman">
 <!ENTITY OE_DOCS_URL "http://docs.openembedded.org">
 <!ENTITY OH_HOME_URL "http://o-hand.com">
 <!ENTITY BITBAKE_HOME_URL "http://developer.berlios.de/projects/bitbake/">
@@ -50,16 +50,17 @@
 <!ENTITY YOCTO_DOCS_KERNEL_URL "&YOCTO_DOCS_URL;/&YOCTO_DOC_VERSION;/kernel-manual/kernel-manual.html">
 <!ENTITY YOCTO_DOCS_KERNEL_DEV_URL "&YOCTO_DOCS_URL;/&YOCTO_DOC_VERSION;/kernel-dev/kernel-dev.html">
 <!ENTITY YOCTO_DOCS_PROF_URL "&YOCTO_DOCS_URL;/&YOCTO_DOC_VERSION;/profile-manual/profile-manual.html">
+<!ENTITY YOCTO_DOCS_BB_URL "&YOCTO_DOCS_URL;/&YOCTO_DOC_VERSION;/bitbake-user-manual/bitbake-user-manual.html">
 <!ENTITY YOCTO_ADTPATH_DIR "/opt/poky/&DISTRO;">
 <!ENTITY YOCTO_POKY_TARBALL "&YOCTO_POKY;.tar.bz2">
 <!ENTITY OE_INIT_PATH "&YOCTO_POKY;/oe-init-build-env">
 <!ENTITY OE_INIT_FILE "oe-init-build-env">
 <!ENTITY UBUNTU_HOST_PACKAGES_ESSENTIAL "gawk wget git-core diffstat unzip texinfo gcc-multilib \
-     build-essential chrpath">
+     build-essential chrpath socat">
 <!ENTITY FEDORA_HOST_PACKAGES_ESSENTIAL "gawk make wget tar bzip2 gzip python unzip perl patch \
      diffutils diffstat git cpp gcc gcc-c++ glibc-devel texinfo chrpath \
-     ccache perl-Data-Dumper perl-Text-ParseWords">
+     ccache perl-Data-Dumper perl-Text-ParseWords perl-Thread-Queue socat">
 <!ENTITY OPENSUSE_HOST_PACKAGES_ESSENTIAL "python gcc gcc-c++ git chrpath make wget python-xml \
-     diffstat texinfo python-curses patch">
+     diffstat texinfo python-curses patch socat">
 <!ENTITY CENTOS_HOST_PACKAGES_ESSENTIAL "gawk make wget tar bzip2 gzip python unzip perl patch \
-     diffutils diffstat git cpp gcc gcc-c++ glibc-devel texinfo chrpath">
+     diffutils diffstat git cpp gcc gcc-c++ glibc-devel texinfo chrpath socat">

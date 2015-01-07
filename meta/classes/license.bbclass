@@ -16,10 +16,21 @@ addtask populate_lic after do_patch before do_build
 do_populate_lic[dirs] = "${LICSSTATEDIR}/${PN}"
 do_populate_lic[cleandirs] = "${LICSSTATEDIR}"
 
+python write_package_manifest() {
+    # Get list of installed packages
+    license_image_dir = d.expand('${LICENSE_DIRECTORY}/${IMAGE_NAME}')
+    bb.utils.mkdirhier(license_image_dir)
+    from oe.rootfs import image_list_installed_packages
+    open(os.path.join(license_image_dir, 'package.manifest'),
+        'w+').write(image_list_installed_packages(d))
+}
+
 license_create_manifest() {
-	mkdir -p ${LICENSE_DIRECTORY}/${IMAGE_NAME}
-	# Get list of installed packages
-	list_installed_packages |sort > ${LICENSE_DIRECTORY}/${IMAGE_NAME}/package.manifest
+        # Test if BUILD_IMAGES_FROM_FEEDS is defined in env
+        if [ -n "${BUILD_IMAGES_FROM_FEEDS}" ]; then
+          exit 0
+        fi
+
 	INSTALLED_PKGS=`cat ${LICENSE_DIRECTORY}/${IMAGE_NAME}/package.manifest`
 	LICENSE_MANIFEST="${LICENSE_DIRECTORY}/${IMAGE_NAME}/license.manifest"
 	# remove existing license.manifest file
@@ -62,23 +73,24 @@ license_create_manifest() {
 	# - Just copy the manifest
 	# - Copy the manifest and the license directories
 	# With both options set we see a .5 M increase in core-image-minimal
-	if [ -n "${COPY_LIC_MANIFEST}" ]; then
+	if [ "${COPY_LIC_MANIFEST}" = "1" ]; then
 		mkdir -p ${IMAGE_ROOTFS}/usr/share/common-licenses/
 		cp ${LICENSE_MANIFEST} ${IMAGE_ROOTFS}/usr/share/common-licenses/license.manifest
-		if [ -n "${COPY_LIC_DIRS}" ]; then
+		if [ "${COPY_LIC_DIRS}" = "1" ]; then
 			for pkg in ${INSTALLED_PKGS}; do
 				mkdir -p ${IMAGE_ROOTFS}/usr/share/common-licenses/${pkg}
-				for lic in `ls ${LICENSE_DIRECTORY}/${pkg}`; do
+				pkged_pn="$(oe-pkgdata-util lookup-recipe ${PKGDATA_DIR} ${pkg})"
+				for lic in `ls ${LICENSE_DIRECTORY}/${pkged_pn}`; do
 					# Really don't need to copy the generics as they're 
 					# represented in the manifest and in the actual pkg licenses
 					# Doing so would make your image quite a bit larger
 					if [ "${lic#generic_}" = "${lic}" ]; then
-						cp ${LICENSE_DIRECTORY}/${pkg}/${lic} ${IMAGE_ROOTFS}/usr/share/common-licenses/${pkg}/${lic}
+						cp ${LICENSE_DIRECTORY}/${pkged_pn}/${lic} ${IMAGE_ROOTFS}/usr/share/common-licenses/${pkg}/${lic}
 					else
 						if [ ! -f ${IMAGE_ROOTFS}/usr/share/common-licenses/${lic} ]; then
-							cp ${LICENSE_DIRECTORY}/${pkg}/${lic} ${IMAGE_ROOTFS}/usr/share/common-licenses/
+							cp ${LICENSE_DIRECTORY}/${pkged_pn}/${lic} ${IMAGE_ROOTFS}/usr/share/common-licenses/
 						fi
-						ln -s ../${lic} ${IMAGE_ROOTFS}/usr/share/common-licenses/${pkg}/${lic}
+						ln -sf ../${lic} ${IMAGE_ROOTFS}/usr/share/common-licenses/${pkg}/${lic}
 					fi
 				done
 			done
@@ -133,7 +145,14 @@ def copy_license_files(lic_files_paths, destdir):
     bb.utils.mkdirhier(destdir)
     for (basename, path) in lic_files_paths:
         try:
-            ret = shutil.copyfile(path, os.path.join(destdir, basename))
+            src = path
+            dst = os.path.join(destdir, basename)
+            if os.path.exists(dst):
+                os.remove(dst)
+            if (os.stat(src).st_dev == os.stat(destdir).st_dev):
+                os.link(src, dst)
+            else:
+                shutil.copyfile(src, dst)
         except Exception as e:
             bb.warn("Could not copy license file %s: %s" % (basename, e))
 
@@ -228,7 +247,10 @@ def find_license_files(d):
         return lic_files_paths
 
     for url in lic_files.split():
-        (type, host, path, user, pswd, parm) = bb.fetch.decodeurl(url)
+        try:
+            (type, host, path, user, pswd, parm) = bb.fetch.decodeurl(url)
+        except bb.fetch.MalformedUrl:
+            raise bb.build.FuncFailed("%s: LIC_FILES_CHKSUM contains an invalid URL:  %s" % (d.getVar('PF', True), url))
         # We want the license filename and path
         srclicfile = os.path.join(srcdir, path)
         lic_files_paths.append((os.path.basename(path), srclicfile))
@@ -249,10 +271,25 @@ def return_spdx(d, license):
      """
     return d.getVarFlag('SPDXLICENSEMAP', license, True)
 
+def canonical_license(d, license):
+    """
+    Return the canonical (SPDX) form of the license if available (so GPLv3
+    becomes GPL-3.0), for the license named 'X+', return canonical form of
+    'X' if availabel and the tailing '+' (so GPLv3+ becomes GPL-3.0+), 
+    or the passed license if there is no canonical form.
+    """
+    lic = d.getVarFlag('SPDXLICENSEMAP', license, True) or ""
+    if not lic and license.endswith('+'):
+        lic = d.getVarFlag('SPDXLICENSEMAP', license.rstrip('+'), True)
+        if lic:
+            lic += '+'
+    return lic or license
+
 def incompatible_license(d, dont_want_licenses, package=None):
     """
-    This function checks if a recipe has only incompatible licenses. It also take into consideration 'or'
-    operand.
+    This function checks if a recipe has only incompatible licenses. It also
+    take into consideration 'or' operand.  dont_want_licenses should be passed
+    as canonical (SPDX) names.
     """
     import re
     import oe.license
@@ -283,15 +320,15 @@ def incompatible_license(d, dont_want_licenses, package=None):
         licenses = oe.license.flattened_licenses(license, choose_lic_set)
     except oe.license.LicenseError as exc:
         bb.fatal('%s: %s' % (d.getVar('P', True), exc))
-    return any(not license_ok(l) for l in licenses)
+    return any(not license_ok(canonical_license(d, l)) for l in licenses)
 
 def check_license_flags(d):
     """
-    This function checks if a recipe has any LICENSE_FLAGs that
+    This function checks if a recipe has any LICENSE_FLAGS that
     aren't whitelisted.
 
-    If it does, it returns the first LICENSE_FLAG missing from the
-    whitelist, or all the LICENSE_FLAGs if there is no whitelist.
+    If it does, it returns the first LICENSE_FLAGS item missing from the
+    whitelist, or all of the LICENSE_FLAGS if there is no whitelist.
 
     If everything is is properly whitelisted, it returns None.
     """
@@ -347,11 +384,10 @@ def check_license_flags(d):
     return None
 
 SSTATETASKS += "do_populate_lic"
-do_populate_lic[sstate-name] = "populate-lic"
 do_populate_lic[sstate-inputdirs] = "${LICSSTATEDIR}"
 do_populate_lic[sstate-outputdirs] = "${LICENSE_DIRECTORY}/"
 
-ROOTFS_POSTPROCESS_COMMAND_prepend = "license_create_manifest; "
+ROOTFS_POSTPROCESS_COMMAND_prepend = "write_package_manifest; license_create_manifest; "
 
 python do_populate_lic_setscene () {
     sstate_setscene(d)

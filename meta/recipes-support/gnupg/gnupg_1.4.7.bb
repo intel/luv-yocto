@@ -1,4 +1,4 @@
-DESCRIPTION = "gnupg - GNU privacy guard"
+SUMMARY = "GNU Privacy Guard - encryption and signing tools"
 HOMEPAGE = "http://www.gnupg.org/"
 DEPENDS = "zlib bzip2 readline"
 SECTION = "console/utils"
@@ -14,12 +14,16 @@ SRC_URI = "ftp://ftp.gnupg.org/gcrypt/gnupg/gnupg-${PV}.tar.bz2 \
            file://configure.patch \
            file://mips_gcc4.4.patch \
            file://GnuPG1-CVE-2012-6085.patch \
-           file://curl_typeof_fix_backport.patch"
+           file://curl_typeof_fix_backport.patch \
+           file://CVE-2013-4351.patch \
+           file://CVE-2013-4576.patch \
+           file://CVE-2013-4242.patch \
+	  "
 
 SRC_URI[md5sum] = "b06a141cca5cd1a55bbdd25ab833303c"
 SRC_URI[sha256sum] = "69d18b7d193f62ca27ed4febcb4c9044aa0c95305d3258fe902e2fae5fc6468d"
 
-inherit autotools gettext
+inherit autotools gettext texinfo
 
 #   --with-egd-socket=NAME  use NAME for the EGD socket
 #   --with-photo-viewer=FIXED_VIEWER  set a fixed photo ID viewer
@@ -92,3 +96,7 @@ FILES_gpgv = "${bindir}/gpgv"
 # Exclude debug files from the main packages
 FILES_${PN} = "${bindir}/* ${datadir}/${BPN} ${libexecdir}/${BPN}/*"
 FILES_${PN}-dbg += "${libexecdir}/${BPN}/.debug"
+
+PACKAGECONFIG ??= ""
+PACKAGECONFIG[curl] = "--with-libcurl=${STAGING_LIBDIR},--without-libcurl,curl"
+PACKAGECONFIG[libusb] = "--with-libusb=${STAGING_LIBDIR},--without-libusb,libusb-compat"

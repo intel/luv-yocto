@@ -8,7 +8,9 @@ DEPENDS = "ncurses-native"
 DEPENDS_class-native = ""
 INC_PR = "r15"
 
-inherit autotools binconfig multilib_header
+BINCONFIG = "${bindir}/ncurses-config"
+
+inherit autotools binconfig-disabled multilib_header
 
 # Upstream has useful patches at times at ftp://invisible-island.net/ncurses/
 SRC_URI = "${GNU_MIRROR}/ncurses/ncurses-${PV}.tar.gz"
@@ -33,11 +35,11 @@ base_libdir_class-native = "${libdir}"
 # This was derrived from the upstream debian ncurses which uses
 # these settings for 32 and 64 bit hosts.
 EXCONFIG_ARGS = ""
-EXCONFIG_ARGS_virtclass-native = " \
+EXCONFIG_ARGS_class-native = " \
 		--disable-lp64 \
 		--with-chtype='long' \
 		--with-mmask-t='long'"
-EXCONFIG_ARGS_virtclass-nativesdk = " \
+EXCONFIG_ARGS_class-nativesdk = " \
 		--disable-lp64 \
 		--with-chtype='long' \
 		--with-mmask-t='long'"
@@ -50,11 +52,11 @@ PACKAGES_DYNAMIC = "^${PN}-lib.*"
 # because the sstate had a hard coded search path.  Until this is fixed
 # another way this is deemed good enough.
 EX_TERMCAP = ""
-EX_TERMCAP_virtclass-native = ":/etc/termcap:/usr/share/misc/termcap"
-EX_TERMCAP_virtclass-nativesdk = ":/etc/termcap:/usr/share/misc/termcap"
+EX_TERMCAP_class-native = ":/etc/termcap:/usr/share/misc/termcap"
+EX_TERMCAP_class-nativesdk = ":/etc/termcap:/usr/share/misc/termcap"
 EX_TERMINFO = ""
-EX_TERMINFO_virtclass-native = ":/etc/terminfo:/usr/share/terminfo:/usr/share/misc/terminfo:/lib/terminfo"
-EX_TERMINFO_virtclass-nativesdk = ":/etc/terminfo:/usr/share/terminfo:/usr/share/misc/terminfo:/lib/terminfo"
+EX_TERMINFO_class-native = ":/etc/terminfo:/usr/share/terminfo:/usr/share/misc/terminfo:/lib/terminfo"
+EX_TERMINFO_class-nativesdk = ":/etc/terminfo:/usr/share/terminfo:/usr/share/misc/terminfo:/lib/terminfo"
 
 # Helper function for do_configure to allow multiple configurations
 # $1 the directory to run configure in
@@ -96,6 +98,8 @@ do_configure() {
         # not the case for /dev/null redirections)
         export cf_cv_working_poll=yes
 
+	# The --enable-pc-files requires PKG_CONFIG_LIBDIR existed
+	mkdir -p ${PKG_CONFIG_LIBDIR}
 	( cd ${S}; gnu-configize --force )
 	ncurses_configure "narrowc" || \
 		return 1
@@ -147,12 +151,7 @@ _install_cfgs = "\
   PKG_CONFIG_LIBDIR='${libdir}/pkgconfig' \
 "
 
-python do_install () {
-    bb.build.exec_func("shell_do_install", d)
-    oe.path.make_relative_symlink(d.expand("${D}${libdir}/libtinfo.so"))
-}
-
-shell_do_install() {
+do_install() {
         # Order of installation is important; widec installs a 'curses.h'
         # header with more definitions and must be installed last hence.
         # Compatibility of these headers will be checked in 'do_test()'.
@@ -226,8 +225,11 @@ shell_do_install() {
 
             mv ${D}${libdir}/libtinfo.so.* ${D}${base_libdir}
             rm ${D}${libdir}/libtinfo.so
-            # We'll turn this into a relative symlink after do_install returns
-            ln -sf ${D}${base_libdir}/libtinfo.so.5 ${D}${libdir}/libtinfo.so
+
+            # Use lnr to ensure this is a relative link despite absolute paths
+            # (as we can't know the relationship between base_libdir and libdir).
+            # At some point we can rely on coreutils 8.16 which has ln -r.
+            lnr ${D}${base_libdir}/libtinfo.so.5 ${D}${libdir}/libtinfo.so
         fi
 
         oe_multilib_header curses.h

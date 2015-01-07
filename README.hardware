@@ -46,13 +46,19 @@ Hardware Reference Boards
 
 The following boards are supported by the meta-yocto-bsp layer:
 
-  * Texas Instruments Beagleboard (beagleboard)
+  * Texas Instruments Beaglebone (beaglebone)
   * Freescale MPC8315E-RDB (mpc8315e-rdb)
-  * Ubiquiti Networks RouterStation Pro (routerstationpro)
 
 For more information see the board's section below. The appropriate MACHINE
 variable value corresponding to the board is given in brackets.
 
+Reference Board Maintenance
+===========================
+
+Send pull requests, patches, comments or questions about meta-yocto-bsps to poky@yoctoproject.org
+
+Maintainers: Kevin Hao <kexin.hao@windriver.com>
+             Bruce Ashfield <bruce.ashfield@windriver.com>
 
 Consumer Devices
 ================
@@ -60,6 +66,7 @@ Consumer Devices
 The following consumer devices are supported by the meta-yocto-bsp layer:
 
   * Intel x86 based PCs and devices (genericx86)
+  * Ubiquiti Networks EdgeRouter Lite (edgerouter)
 
 For more information see the device's section below. The appropriate MACHINE
 variable value corresponding to the device is given in brackets.
@@ -180,30 +187,28 @@ USB Device:
   http://git.kernel.org/?p=boot/syslinux/syslinux.git;a=blob_plain;f=doc/usbkey.txt;hb=HEAD
 
 
-Texas Instruments Beagleboard (beagleboard)
-===========================================
+Texas Instruments Beaglebone (beaglebone)
+=========================================
 
-The Beagleboard is an ARM Cortex-A8 development board with USB, DVI-D, S-Video,
-2D/3D accelerated graphics, audio, serial, JTAG, and SD/MMC. The xM adds a
-faster CPU, more RAM, an ethernet port, more USB ports, microSD, and removes
-the NAND flash. The beagleboard MACHINE is tested on the following platforms:
+The Beaglebone is an ARM Cortex-A8 development board with USB, Ethernet, 2D/3D
+accelerated graphics, audio, serial, JTAG, and SD/MMC. The Black adds a faster
+CPU, more RAM, eMMC flash and a micro HDMI port. The beaglebone MACHINE is
+tested on the following platforms:
 
-  o Beagleboard C4
-  o Beagleboard xM rev A & B
+  o Beaglebone Black A6
+  o Beaglebone A6 (the original "White" model)
 
-The Beagleboard C4 has NAND, while the xM does not. For the sake of simplicity,
-these instructions assume you have erased the NAND on the C4 so its boot
-behavior matches that of the xM. To do this, issue the following commands from
-the u-boot prompt (note that the unlock may be unecessary depending on the
-version of u-boot installed on your board and only one of the erase commands
-will succeed):
+The Beaglebone Black has eMMC, while the White does not. Pressing the USER/BOOT
+button when powering on will temporarily change the boot order. But for the sake
+of simplicity, these instructions assume you have erased the eMMC on the Black,
+so its boot behavior matches that of the White and boots off of SD card. To do
+this, issue the following commands from the u-boot prompt:
 
-    # nand unlock
-    # nand erase
-    # nand erase.chip
+    # mmc dev 1
+    # mmc erase 0 512
 
 To further tailor these instructions for your board, please refer to the
-documentation at http://www.beagleboard.org.
+documentation at http://www.beagleboard.org/bone and http://www.beagleboard.org/black
 
 From a Linux system with access to the image files perform the following steps
 as root, replacing mmcblk0* with the SD card device on your machine (such as sdc
@@ -211,11 +216,11 @@ if used via a usb card reader):
 
   1. Partition and format an SD card:
      # fdisk -lu /dev/mmcblk0
-     
+
      Disk /dev/mmcblk0: 3951 MB, 3951034368 bytes
      255 heads, 63 sectors/track, 480 cylinders, total 7716864 sectors
      Units = sectors of 1 * 512 = 512 bytes
-     
+
              Device Boot      Start         End      Blocks  Id System
      /dev/mmcblk0p1   *          63      144584       72261   c Win95 FAT32 (LBA)
      /dev/mmcblk0p2          144585      465884      160650  83 Linux
@@ -223,51 +228,40 @@ if used via a usb card reader):
      # mkfs.vfat -F 16 -n "boot" /dev/mmcblk0p1
      # mke2fs -j -L "root" /dev/mmcblk0p2
 
-  The following assumes the SD card partition 1 and 2 are mounted at
+  The following assumes the SD card partitions 1 and 2 are mounted at
   /media/boot and /media/root respectively. Removing the card and reinserting
   it will do just that on most modern Linux desktop environments.
-  
+
   The files referenced below are made available after the build in
   build/tmp/deploy/images.
 
   2. Install the boot loaders
-     # cp MLO-beagleboard /media/boot/MLO
-     # cp u-boot-beagleboard.bin /media/boot/u-boot.bin
+     # cp MLO-beaglebone /media/boot/MLO
+     # cp u-boot-beaglebone.img /media/boot/u-boot.img
 
   3. Install the root filesystem
-     # tar x -C /media/root -f core-image-$IMAGE_TYPE-beagleboard.tar.bz2
-     # tar x -C /media/root -f modules-$KERNEL_VERSION-beagleboard.tgz
+     # tar x -C /media/root -f core-image-$IMAGE_TYPE-beaglebone.tar.bz2
 
-  4. Install the kernel uImage
-     # cp uImage-beagleboard.bin /media/boot/uImage
+  4. If using core-image-base or core-image-sato images, the SD card is ready
+     and rootfs already contains the kernel, modules and device tree (DTB)
+     files necessary to be booted with U-boot's default configuration, so
+     skip directly to step 8.
+     For core-image-minimal, proceed through next steps.
 
-  5. Prepare a u-boot script to simplify the boot process
-     The Beagleboard can be made to boot at this point from the u-boot command
-     shell. To automate this process, generate a user.scr script as follows.
+  5. If using core-image-minimal rootfs, install the modules
+     # tar x -C /media/root -f modules-beaglebone.tgz
 
-     Install uboot-mkimage (from uboot-mkimage on Ubuntu or uboot-tools on Fedora).
+  6. If using core-image-minimal rootfs, install the kernel uImage into /boot
+     directory of rootfs
+     # cp uImage-beaglebone.bin /media/root/boot/uImage
 
-     Prepare a script config:
+  7. If using core-image-minimal rootfs, also install device tree (DTB) files
+     into /boot directory of rootfs
+     # cp uImage-am335x-bone.dtb /media/root/boot/am335x-bone.dtb
+     # cp uImage-am335x-boneblack.dtb /media/root/boot/am335x-boneblack.dtb
 
-     # (cat << EOF
-     setenv bootcmd 'mmc init; fatload mmc 0:1 0x80300000 uImage; bootm 0x80300000'
-     setenv bootargs 'console=tty0 console=ttyO2,115200n8 root=/dev/mmcblk0p2 rootwait rootfstype=ext3 ro'
-     boot
-     EOF
-     ) > serial-boot.cmd
-     # mkimage -A arm -O linux -T script -C none -a 0 -e 0 -n "Core Minimal" -d ./serial-boot.cmd ./boot.scr
-     # cp boot.scr /media/boot
-
-   6. Unmount the SD partitions, insert the SD card into the Beagleboard, and
-      boot the Beagleboard
-
-Note: As of the 2.6.37 linux-yocto kernel recipe, the Beagleboard uses the
-      OMAP_SERIAL device (ttyO2). If you are using an older kernel, such as the
-      2.6.34 linux-yocto-stable, be sure to replace ttyO2 with ttyS2 above. You
-      should also override the machine SERIAL_CONSOLE in your local.conf in
-      order to setup the getty on the serial line:
-
-      SERIAL_CONSOLE_beagleboard = "115200 ttyS2"
+  8. Unmount the SD partitions, insert the SD card into the Beaglebone, and
+     boot the Beaglebone
 
 
 Freescale MPC8315E-RDB (mpc8315e-rdb)
@@ -330,165 +324,176 @@ Load the kernel and dtb (device tree blob), and boot the system as follows:
  => tftp 2000000 uImage-mpc8315e-rdb.dtb
  => bootm 1000000 - 2000000
 
+--- Booting from JFFS2 root ---
 
-Ubiquiti Networks RouterStation Pro (routerstationpro)
-======================================================
+ 1. First boot the board with NFS root.
 
-The RouterStation Pro is an Atheros AR7161 MIPS-based board. Geared towards
-networking applications, it has all of the usual features as well as three
-type IIIA mini-PCI slots and an on-board 3-port 10/100/1000 Ethernet switch,
-in addition to the 10/100/1000 Ethernet WAN port which supports
-Power-over-Ethernet.
+ 2. Erase the MTD partition which will be used as root:
+
+    $ flash_eraseall  /dev/mtd3
+
+ 3. Copy the JFFS2 image to the MTD partition:
+
+    $ flashcp core-image-minimal-mpc8315e-rdb.jffs2 /dev/mtd3
+
+ 4. Then reboot the board and set up the environment in U-Boot:
+
+    => setenv bootargs root=/dev/mtdblock3 rootfstype=jffs2 console=ttyS0,115200
+
+
+Ubiquiti Networks EdgeRouter Lite (edgerouter)
+==============================================
+
+The EdgeRouter Lite is part of the EdgeMax series. It is a MIPS64 router
+(based on the Cavium Octeon processor) with 512MB of RAM, which uses an
+internal USB pendrive for storage.
 
 Setup instructions
 ------------------
 
 You will need the following:
-* A serial cable - female to female (or female to male + gender changer)
-  NOTE: cable must be straight through, *not* a null modem cable.
-* USB flash drive or hard disk that is able to be powered from the
-  board's USB port.
-* tftp server installed on your workstation
-
-NOTE: in the following instructions it is assumed that /dev/sdb corresponds
-to the USB disk when it is plugged into your workstation. If this is not the
-case in your setup then please be careful to substitute the correct device
-name in all commands where appropriate.
+* NFS root setup on your workstation
+* TFTP server installed on your workstation
+* RJ45 -> serial ("rollover") cable connected from your PC to the CONSOLE
+  port on the board
+* Ethernet connected to the first ethernet port on the board
 
 --- Preparation ---
 
-1) Build an image (e.g. core-image-minimal) using "routerstationpro" as the
-MACHINE
+Build an image (e.g. core-image-minimal) using "edgerouter" as the MACHINE.
+In the following instruction it is based on core-image-minimal. Another target
+may be similiar with it.
 
-2) Partition the USB drive so that primary partition 1 is type Linux (83).
-Minimum size depends on your root image size - core-image-minimal probably
-only needs 8-16MB, other images will need more.
+--- Booting from NFS root ---
 
-  # fdisk /dev/sdb
-  Command (m for help): p
+Load the kernel, and boot the system as follows:
 
-  Disk /dev/sdb: 4011 MB, 4011491328 bytes
-  124 heads, 62 sectors/track, 1019 cylinders, total 7834944 sectors
-  Units = sectors of 1 * 512 = 512 bytes
-  Sector size (logical/physical): 512 bytes / 512 bytes
-  I/O size (minimum/optimal): 512 bytes / 512 bytes
-  Disk identifier: 0x0009e87d
+ 1. Get the kernel (vmlinux) file from the tmp/deploy/images/edgerouter
+    directory, and make them available on your TFTP server.
 
-     Device Boot      Start         End      Blocks   Id  System
-  /dev/sdb1              62     1952751      976345   83  Linux
+ 2. Connect the board's first serial port to your workstation and then start up
+    your favourite serial terminal so that you will be able to interact with
+    the serial console. If you don't have a favourite, picocom is suggested:
 
-3) Format partition 1 on the USB as ext3
+  $ picocom /dev/ttyS0 -b 115200
 
-  # mke2fs -j /dev/sdb1
+ 3. Power up or reset the board and press a key on the terminal when prompted
+    to get to the U-Boot command line
 
-4) Mount partition 1 and then extract the contents of
-tmp/deploy/images/core-image-XXXX.tar.bz2 into it (preserving permissions).
+ 4. Set up the environment in U-Boot:
 
-  # mount /dev/sdb1 /media/sdb1
-  # cd /media/sdb1
-  # tar -xvjpf tmp/deploy/images/core-image-XXXX.tar.bz2
+ => setenv ipaddr <board ip>
+ => setenv serverip <tftp server ip>
 
-5) Unmount the USB drive and then plug it into the board's USB port
+ 5. Download the kernel and boot:
 
-6) Connect the board's serial port to your workstation and then start up
-your favourite serial terminal so that you will be able to interact with
-the serial console. If you don't have a favourite, picocom is suggested:
+ => tftp tftp $loadaddr vmlinux
+ => bootoctlinux $loadaddr coremask=0x3 root=/dev/nfs rw nfsroot=<nfsroot ip>:<rootfs path> ip=<board ip>:<server ip>:<gateway ip>:<netmask>:edgerouter:eth0:off mtdparts=phys_mapped_flash:512k(boot0),512k(boot1),64k@3072k(eeprom)
 
-  $ picocom /dev/ttyUSB0 -b 115200
+--- Booting from USB root ---
 
-7) Connect the network into eth0 (the one that is NOT the 3 port switch). If
-you are using power-over-ethernet then the board will power up at this point.
+To boot from the USB disk, you either need to remove it from the edgerouter
+box and populate it from another computer, or use a previously booted NFS
+image and populate from the edgerouter itself.
 
-8) Start up the board, watch the serial console. Hit Ctrl+C to abort the
-autostart if the board is configured that way (it is by default). The
-bootloader's fconfig command can be used to disable autostart and configure
-the IP settings if you need to change them (default IP is 192.168.1.20).
+Type 1: Mounted USB disk
+------------------------
 
-9) Make the kernel (tmp/deploy/images/vmlinux-routerstationpro.bin) available
-on the tftp server.
+To boot from the USB disk there are two available partitions on the factory
+USB storage. The rest of this guide assumes that these partitions are left
+intact. If you change the partition scheme, you must update your boot method
+appropriately.
 
-10) If you are going to write the kernel to flash (optional - see "Booting a
-kernel directly" below for the alternative), remove the current kernel and
-rootfs flash partitions. You can list the partitions using the following
-bootloader command:
+The standard partitions are:
 
-  RedBoot> fis list
+  - 1: vfat partition containing factory kernels
+  - 2: ext3 partition for the root filesystem.
 
-You can delete the existing kernel and rootfs with these commands:
+You can place the kernel on either partition 1, or partition 2, but the roofs
+must go on partition 2 (due to its size).
 
-  RedBoot> fis delete kernel
-  RedBoot> fis delete rootfs
+Note: If you place the kernel on the ext3 partition, you must re-create the
+      ext3 filesystem, since the factory u-boot can only handle 128 byte inodes and
+      cannot read the partition otherwise.
 
---- Booting a kernel directly ---
+Steps:
 
-1) Load the kernel using the following bootloader command:
+ 1. Remove the USB disk from the edgerouter and insert it into a computer
+    that has access to your build artifacts.
 
-  RedBoot> load -m tftp -h <ip of tftp server> vmlinux-routerstationpro.bin
+ 2. Copy the kernel image to the USB storage (assuming discovered as 'sdb' on
+    the development machine):
 
-You should see a message on it being successfully loaded.
+    2a) if booting from vfat
+ 
+        # mount /dev/sdb1 /mnt
+        # cp tmp/deploy/images/edgerouter/vmlinux /mnt
+        # umount /mnt
 
-2) Execute the kernel:
+    2b) if booting from ext3
 
-  RedBoot> exec -c "console=ttyS0,115200 root=/dev/sda1 rw rootdelay=2 board=UBNT-RSPRO"
+        # mkfs.ext3 -I 128 /dev/sdb2
+        # mount /dev/sdb2 /mnt
+        # mkdir /mnt/boot
+        # cp tmp/deploy/images/edgerouter/vmlinux /mnt/boot
+        # umount /mnt
 
-Note that specifying the command line with -c is important as linux-yocto does
-not provide a default command line.
+ 3. Extract the rootfs to the USB storage ext3 partition
 
---- Writing a kernel to flash ---
+        # mount /dev/sdb2 /mnt
+        # tar -xvjpf core-image-minimal-XXX.tar.bz2 -C /mnt
+        # umount /mnt
 
-1) Go to your tftp server and gzip the kernel you want in flash. It should
-halve the size.
+ 4. Reboot the board and press a key on the terminal when prompted to get to the U-Boot
+    command line:
 
-2) Load the kernel using the following bootloader command:
+ 5. Load the kernel and boot:
 
-  RedBoot> load -r -b 0x80600000 -m tftp -h <ip of tftp server> vmlinux-routerstationpro.bin.gz
+    5a) vfat boot
 
-This should output something similar to the following:
+         => fatload usb 0:1 $loadaddr vmlinux
 
-  Raw file loaded 0x80600000-0x8087c537, assumed entry at 0x80600000
+    5b) ext3 boot
 
-Calculate the length by subtracting the first number from the second number
-and then rounding the result up to the nearest 0x1000.
+         => ext2load usb 0:2 $loadaddr boot/vmlinux
+ 
+    => bootoctlinux $loadaddr coremask=0x3 root=/dev/sda2 rw rootwait mtdparts=phys_mapped_flash:512k(boot0),512k(boot1),64k@3072k(eeprom)
+ 
 
-3) Using the length calculated above, create a flash partition for the kernel:
+Type 2: NFS
+-----------
 
-  RedBoot> fis create -b 0x80600000 -l 0x240000 kernel
+Note: If you place the kernel on the ext3 partition, you must re-create the
+      ext3 filesystem, since the factory u-boot can only handle 128 byte inodes and
+      cannot read the partition otherwise.
 
-(change 0x240000 to your rounded length -- change "kernel" to whatever
-you want to name your kernel)
+      These boot instructions assume that you have recreated the ext3 filesystem with
+      128 byte inodes, you have an updated uboot or you are running and image capable
+      of making the filesystem on the board itself.
 
---- Booting a kernel from flash ---
 
-To boot the flashed kernel perform the following steps.
+ 1. Boot from NFS root
 
-1) At the bootloader prompt, load the kernel:
+ 2. Mount the USB disk partition 2 and then extract the contents of
+    tmp/deploy/core-image-XXXX.tar.bz2 into it.
 
-  RedBoot> fis load -d -e kernel
+    Before starting, copy core-image-minimal-xxx.tar.bz2 and vmlinux into
+    rootfs path on your workstation.
 
-(Change the name "kernel" above if you chose something different earlier)
+    and then,
+  
+      # mount /dev/sda2 /media/sda2
+      # tar -xvjpf core-image-minimal-XXX.tar.bz2 -C /media/sda2
+      # cp vmlinux /media/sda2/boot/vmlinux
+      # umount /media/sda2
+      # reboot
 
-(-e means 'elf', -d 'decompress')
+ 3. Reboot the board and press a key on the terminal when prompted to get to the U-Boot
+    command line:
 
-2) Execute the kernel using the exec command as above.
+    # reboot
 
---- Automating the boot process ---
+ 4. Load the kernel and boot:
 
-After writing the kernel to flash and testing the load and exec commands
-manually, you can automate the boot process with a boot script.
-
-1) RedBoot> fconfig
-   (Answer the questions not specified here as they pertain to your environment)
-2) Run script at boot: true
-  Boot script: 
-  .. fis load -d -e kernel
-  .. exec
-  Enter script, terminate with empty line
-  >> fis load -d -e kernel
-  >> exec -c "console=ttyS0,115200 root=/dev/sda1 rw rootdelay=2 board=UBNT-RSPRO"
-  >> 
-3) Answer the remaining questions and write the changes to flash:
-  Update RedBoot non-volatile configuration - continue (y/n)? y
-  ... Erase from 0xbfff0000-0xc0000000: .
-  ... Program from 0x87ff0000-0x88000000 at 0xbfff0000: .
-4) Power cycle the board.
-
+      => ext2load usb 0:2 $loadaddr boot/vmlinux
+      => bootoctlinux $loadaddr coremask=0x3 root=/dev/sda2 rw rootwait mtdparts=phys_mapped_flash:512k(boot0),512k(boot1),64k@3072k(eeprom)

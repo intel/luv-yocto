@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+{% load static %}
+<html>
+    <head>
+        <title>{% if objectname %} {{objectname|title}} - {% endif %}Toaster</title>
+<link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}" type="text/css">
+<link rel="stylesheet" href="{% static 'css/bootstrap-responsive.min.css' %}" type='text/css'>
+<link rel="stylesheet" href="{% static 'css/font-awesome.min.css' %}" type='text/css'>
+<link rel="stylesheet" href="{% static 'css/prettify.css' %}" type='text/css'>
+<link rel="stylesheet" href="{% static 'css/default.css' %}" type='text/css'>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script src="{% static 'js/jquery-2.0.3.min.js' %}">
+</script>
+<script src="{% static 'js/jquery.cookie.js' %}">
+</script>
+<script src="{% static 'js/bootstrap.min.js' %}">
+</script>
+<script src="{% static 'js/prettify.js' %}">
+</script>
+<script src="{% static 'js/main.js' %}">
+</script>
+<script>
+function reload_params(params) {
+    uri = window.location.href;
+    splitlist = uri.split("?");
+    url = splitlist[0], parameters=splitlist[1];
+    // deserialize the call parameters
+    if(parameters){
+        cparams = parameters.split("&");
+    }else{
+        cparams = []
+    }
+    nparams = {}
+    for (i = 0; i < cparams.length; i++) {
+        temp = cparams[i].split("=");
+        nparams[temp[0]] = temp[1];
+    }
+    // update parameter values
+    for (i in params) {
+        nparams[encodeURIComponent(i)] = encodeURIComponent(params[i]);
+    }
+    // serialize the structure
+    callparams = []
+    for (i in nparams) {
+        callparams.push(i+"="+nparams[i]);
+    }
+    window.location.href = url+"?"+callparams.join('&');
+
+}
+</script>
+
+{% block extraheadcontent %}
+{% endblock %}
+    </head>
+
+<body style="height: 100%">
+<div class="navbar navbar-static-top">
+    <div class="navbar-inner">
+            <a class="brand logo" href="#"><img src="{% static 'img/logo.png' %}" class="" alt="Yocto logo project"/></a>
+            <a class="brand" href="/">Toaster</a>
+				{%if MANAGED %}
+					  <div class="btn-group pull-right">
+						  <a class="btn" href="{% url 'newproject' %}">New project</a>
+						  <button class="btn dropdown-toggle" data-toggle="dropdown">
+							  <i class="icon-caret-down"></i>
+						  </button>
+						  <ul class="dropdown-menu">
+{% for prj in projects %}
+								<li><a href="{% url 'project' prj.id %}">{{prj.name}}</a></li>
+{% endfor %}
+							  <li><hr/></li>
+							  <li><a href="#">Clone project</a></li>
+							  <li><a href="#">Export project</a></li>
+							  <li><a href="#">Import project</a></li>
+						  </ul>
+					  </div>
+				{%endif%}
+            <a class="pull-right manual" target="_blank" href="http://www.yoctoproject.org/documentation/toaster-manual">
+                <i class="icon-book"></i>
+                Toaster manual
+            </a>
+    </div>
+</div>
+
+<div class="container-fluid">
+{% block pagecontent %}
+{% endblock %}
+</div>
+</body>
+</html>
+

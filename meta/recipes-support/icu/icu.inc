@@ -7,10 +7,13 @@ DEPENDS = "icu-native"
 DEPENDS_class-native = ""
 
 S = "${WORKDIR}/icu/source"
+SPDX_S = "${WORKDIR}/icu"
 STAGING_ICU_DIR_NATIVE = "${STAGING_DATADIR_NATIVE}/${BPN}/${PV}"
 
 PARALLEL_MAKE = ""
 CPPFLAGS_append_libc-uclibc = " -DU_TIMEZONE=0"
+
+BINCONFIG = "${bindir}/icu-config"
 
 inherit autotools pkgconfig binconfig
 
@@ -19,6 +22,7 @@ inherit autotools pkgconfig binconfig
 # into consideration, the native build directory needs to be staged.
 EXTRA_OECONF = "--with-cross-build=${STAGING_ICU_DIR_NATIVE}"
 EXTRA_OECONF_class-native = ""
+EXTRA_OECONF_class-nativesdk = "--with-cross-build=${STAGING_ICU_DIR_NATIVE}"
 
 # ICU puts custom m4 autoconf functions in aclocal.m4.
 # However, this file is deleted in our build system. 
@@ -51,5 +55,5 @@ FILES_libiculx = "${libdir}/libiculx.so.*"
 FILES_libicutu = "${libdir}/libicutu.so.*"
 FILES_libicuio = "${libdir}/libicuio.so.*"
 
-BBCLASSEXTEND = "native"
+BBCLASSEXTEND = "native nativesdk"
 

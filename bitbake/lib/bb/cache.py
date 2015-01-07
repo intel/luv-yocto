@@ -225,14 +225,16 @@ class CoreRecipeInfo(RecipeInfoCommon):
         for package in self.packages_dynamic:
             cachedata.packages_dynamic[package].append(fn)
 
-        # Build hash of runtime depends and rececommends
+        # Build hash of runtime depends and recommends
         for package in self.packages + [self.pn]:
             cachedata.rundeps[fn][package] = list(self.rdepends) + self.rdepends_pkg[package]
             cachedata.runrecs[fn][package] = list(self.rrecommends) + self.rrecommends_pkg[package]
 
         # Collect files we may need for possible world-dep
         # calculations
-        if not self.not_world:
+        if self.not_world:
+            logger.debug(1, "EXCLUDE FROM WORLD: %s", fn)
+        else:
             cachedata.possible_world.append(fn)
 
         # create a collection of all targets for sanity checking
@@ -259,7 +261,7 @@ class Cache(object):
 
     def __init__(self, data, data_hash, caches_array):
         # Pass caches_array information into Cache Constructor
-        # It will be used in later for deciding whether we 
+        # It will be used later for deciding whether we 
         # need extra cache file dump/load support 
         self.caches_array = caches_array
         self.cachedir = data.getVar("CACHE", True)
@@ -527,7 +529,7 @@ class Cache(object):
         if hasattr(info_array[0], 'file_checksums'):
             for _, fl in info_array[0].file_checksums.items():
                 for f in fl.split():
-                    if not os.path.exists(f):
+                    if not ('*' in f or os.path.exists(f)):
                         logger.debug(2, "Cache: %s's file checksum list file %s was removed",
                                         fn, f)
                         self.remove(fn)
@@ -692,7 +694,7 @@ def init(cooker):
 
     * Its mtime
     * The mtimes of all its dependencies
-    * Whether it caused a parse.SkipPackage exception
+    * Whether it caused a parse.SkipRecipe exception
 
     Files causing parsing errors are evicted from the cache.
 
@@ -762,16 +764,6 @@ class MultiProcessCache(object):
 
         self.cachedata = data
 
-    def internSet(self, items):
-        new = set()
-        for i in items:
-            new.add(intern(i))
-        return new
-
-    def compress_keys(self, data):
-        # Override in subclasses if desired
-        return
-
     def create_cachedata(self):
         data = [{}]
         return data
@@ -812,15 +804,7 @@ class MultiProcessCache(object):
 
         glf = bb.utils.lockfile(self.cachefile + ".lock")
 
-        try:
-            with open(self.cachefile, "rb") as f:
-                p = pickle.Unpickler(f)
-                data, version = p.load()
-        except (IOError, EOFError):
-            data, version = None, None
-
-        if version != self.__class__.CACHE_VERSION:
-            data = self.create_cachedata()
+        data = self.cachedata
 
         for f in [y for y in os.listdir(os.path.dirname(self.cachefile)) if y.startswith(os.path.basename(self.cachefile) + '-')]:
             f = os.path.join(os.path.dirname(self.cachefile), f)
@@ -829,15 +813,15 @@ class MultiProcessCache(object):
                     p = pickle.Unpickler(fd)
                     extradata, version = p.load()
             except (IOError, EOFError):
-                extradata, version = self.create_cachedata(), None
+                os.unlink(f)
+                continue
 
             if version != self.__class__.CACHE_VERSION:
+                os.unlink(f)
                 continue
 
             self.merge_data(extradata, data)
             os.unlink(f)
-
-        self.compress_keys(data)
 
         with open(self.cachefile, "wb") as f:
             p = pickle.Pickler(f, -1)

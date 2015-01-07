@@ -10,87 +10,73 @@
 import os, re, mmap
 import unittest
 import inspect
-import bb
-from oeqa.utils.sshcontrol import SSHControl
+import subprocess
+from oeqa.utils.decorators import LogResults
 
-
-def runTests(tc):
-
-    # set the context object passed from the test class
-    setattr(oeRuntimeTest, "tc", tc)
-    # set ps command to use
-    setattr(oeRuntimeTest, "pscmd", "ps -ef" if oeRuntimeTest.hasPackage("procps") else "ps")
-    # prepare test suite, loader and runner
-    suite = unittest.TestSuite()
+def loadTests(tc, type="runtime"):
+    if type == "runtime":
+        # set the context object passed from the test class
+        setattr(oeTest, "tc", tc)
+        # set ps command to use
+        setattr(oeRuntimeTest, "pscmd", "ps -ef" if oeTest.hasPackage("procps") else "ps")
+        # prepare test suite, loader and runner
+        suite = unittest.TestSuite()
+    elif type == "sdk":
+        # set the context object passed from the test class
+        setattr(oeTest, "tc", tc)
     testloader = unittest.TestLoader()
     testloader.sortTestMethodsUsing = None
-    runner = unittest.TextTestRunner(verbosity=2)
-
-    bb.note("Test modules  %s" % tc.testslist)
     suite = testloader.loadTestsFromNames(tc.testslist)
-    bb.note("Found %s tests" % suite.countTestCases())
 
+    return suite
+
+def runTests(tc, type="runtime"):
+
+    suite = loadTests(tc, type)
+    print("Test modules  %s" % tc.testslist)
+    print("Found %s tests" % suite.countTestCases())
+    runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
 
     return result
 
-
-
-class oeRuntimeTest(unittest.TestCase):
+@LogResults
+class oeTest(unittest.TestCase):
 
     longMessage = True
-    testFailures = []
-    testSkipped = []
-    testErrors = []
-
-    def __init__(self, methodName='runTest'):
-        self.target = oeRuntimeTest.tc.target
-        super(oeRuntimeTest, self).__init__(methodName)
-
-
-    def run(self, result=None):
-        super(oeRuntimeTest, self).run(result)
-
-        # we add to our own lists the results, we use those for decorators
-        if len(result.failures) > len(oeRuntimeTest.testFailures):
-            oeRuntimeTest.testFailures.append(str(result.failures[-1][0]).split()[0])
-        if len(result.skipped) > len(oeRuntimeTest.testSkipped):
-            oeRuntimeTest.testSkipped.append(str(result.skipped[-1][0]).split()[0])
-        if len(result.errors) > len(oeRuntimeTest.testErrors):
-            oeRuntimeTest.testErrors.append(str(result.errors[-1][0]).split()[0])
 
     @classmethod
     def hasPackage(self, pkg):
 
-        pkgfile = os.path.join(oeRuntimeTest.tc.d.getVar("WORKDIR", True), "installed_pkgs.txt")
-
-        with open(pkgfile) as f:
-            data = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
-            match = re.search(pkg, data)
-            data.close()
-
-        if match:
+        if re.search(pkg, oeTest.tc.pkgmanifest):
             return True
-
         return False
 
     @classmethod
     def hasFeature(self,feature):
 
-        if feature in oeRuntimeTest.tc.d.getVar("IMAGE_FEATURES", True).split() or \
-                feature in oeRuntimeTest.tc.d.getVar("DISTRO_FEATURES", True).split():
+        if feature in oeTest.tc.imagefeatures or \
+                feature in oeTest.tc.distrofeatures:
             return True
         else:
             return False
 
-    @classmethod
-    def restartTarget(self,params=None):
+class oeRuntimeTest(oeTest):
+    def __init__(self, methodName='runTest'):
+        self.target = oeRuntimeTest.tc.target
+        super(oeRuntimeTest, self).__init__(methodName)
 
-        if oeRuntimeTest.tc.qemu.restart(params):
-            oeRuntimeTest.tc.target.host = oeRuntimeTest.tc.qemu.ip
-        else:
-            raise Exception("Restarting target failed")
+    #TODO: use package_manager.py to install packages on any type of image
+    def install_packages(self, packagelist):
+        for package in packagelist:
+            (status, result) = self.target.run("smart install -y "+package)
+            if status != 0:
+                return status
 
+class oeSDKTest(oeTest):
+    def __init__(self, methodName='runTest'):
+        self.sdktestdir = oeSDKTest.tc.sdktestdir
+        super(oeSDKTest, self).__init__(methodName)
 
 def getmodule(pos=2):
     # stack returns a list of tuples containg frame information
@@ -102,12 +88,12 @@ def getmodule(pos=2):
 
 def skipModule(reason, pos=2):
     modname = getmodule(pos)
-    if modname not in oeRuntimeTest.tc.testsrequired:
+    if modname not in oeTest.tc.testsrequired:
         raise unittest.SkipTest("%s: %s" % (modname, reason))
     else:
         raise Exception("\nTest %s wants to be skipped.\nReason is: %s" \
                 "\nTest was required in TEST_SUITES, so either the condition for skipping is wrong" \
-                "\nor the image really doesn't have the requred feature/package when it should." % (modname, reason))
+                "\nor the image really doesn't have the required feature/package when it should." % (modname, reason))
 
 def skipModuleIf(cond, reason):
 

@@ -34,7 +34,9 @@ class SignatureGenerator(object):
     name = "noop"
 
     def __init__(self, data):
-        return
+        self.taskhash = {}
+        self.runtaskdeps = {}
+        self.file_checksum_values = {}
 
     def finalise(self, fn, d, varient):
         return
@@ -42,7 +44,7 @@ class SignatureGenerator(object):
     def get_taskhash(self, fn, task, deps, dataCache):
         return "0"
 
-    def set_taskdata(self, hashes, deps):
+    def set_taskdata(self, hashes, deps, checksum):
         return
 
     def stampfile(self, stampbase, file_name, taskname, extrainfo):
@@ -57,6 +59,8 @@ class SignatureGenerator(object):
     def invalidate_task(self, task, d, fn):
         bb.build.del_stamp(task, d, fn)
 
+    def dump_sigs(self, dataCache, options):
+        return
 
 class SignatureGeneratorBasic(SignatureGenerator):
     """
@@ -186,16 +190,18 @@ class SignatureGeneratorBasic(SignatureGenerator):
         taint = self.read_taint(fn, task, dataCache.stamp[fn])
         if taint:
             data = data + taint
+            logger.warn("%s is tainted from a forced run" % k)
 
         h = hashlib.md5(data).hexdigest()
         self.taskhash[k] = h
         #d.setVar("BB_TASKHASH_task-%s" % task, taskhash[task])
         return h
 
-    def set_taskdata(self, hashes, deps, checksums):
-        self.runtaskdeps = deps
-        self.taskhash = hashes
-        self.file_checksum_values = checksums
+    def get_taskdata(self):
+       return (self.runtaskdeps, self.taskhash, self.file_checksum_values)
+
+    def set_taskdata(self, data):
+        self.runtaskdeps, self.taskhash, self.file_checksum_values = data
 
     def dump_sigtask(self, fn, task, stampbase, runtime):
         k = fn + "." + task
@@ -224,7 +230,7 @@ class SignatureGeneratorBasic(SignatureGenerator):
 
         if runtime and k in self.taskhash:
             data['runtaskdeps'] = self.runtaskdeps[k]
-            data['file_checksum_values'] = self.file_checksum_values[k]
+            data['file_checksum_values'] = [(os.path.basename(f), cs) for f,cs in self.file_checksum_values[k].items()]
             data['runtaskhashes'] = {}
             for dep in data['runtaskdeps']:
                 data['runtaskhashes'][dep] = self.taskhash[dep]
@@ -238,7 +244,6 @@ class SignatureGeneratorBasic(SignatureGenerator):
             with os.fdopen(fd, "wb") as stream:
                 p = pickle.dump(data, stream, -1)
                 stream.flush()
-                os.fsync(fd)
             os.chmod(tmpfile, 0664)
             os.rename(tmpfile, sigfile)
         except (OSError, IOError) as err:
@@ -248,7 +253,7 @@ class SignatureGeneratorBasic(SignatureGenerator):
                 pass
             raise err
 
-    def dump_sigs(self, dataCache):
+    def dump_sigs(self, dataCache, options):
         for fn in self.taskdeps:
             for task in self.taskdeps[fn]:
                 k = fn + "." + task
@@ -290,10 +295,9 @@ def dump_this_task(outfile, d):
     bb.parse.siggen.dump_sigtask(fn, task, outfile, "customfile")
 
 def clean_basepath(a):
+    b = a.rsplit("/", 2)[1] + a.rsplit("/", 2)[2]
     if a.startswith("virtual:"):
-        b = a.rsplit(":", 1)[0] + ":" + a.rsplit("/", 1)[1]
-    else:
-        b = a.rsplit("/", 1)[1]
+        b = b + ":" + a.rsplit(":", 1)[0]
     return b
 
 def clean_basepaths(a):
@@ -318,8 +322,41 @@ def compare_sigfiles(a, b, recursecb = None):
         for i in common:
             if a[i] != b[i] and i not in whitelist:
                 changed.add(i)
-        added = sa - sb
-        removed = sb - sa
+        added = sb - sa
+        removed = sa - sb
+        return changed, added, removed
+
+    def file_checksums_diff(a, b):
+        from collections import Counter
+        # Handle old siginfo format
+        if isinstance(a, dict):
+            a = [(os.path.basename(f), cs) for f, cs in a.items()]
+        if isinstance(b, dict):
+            b = [(os.path.basename(f), cs) for f, cs in b.items()]
+        # Compare lists, ensuring we can handle duplicate filenames if they exist
+        removedcount = Counter(a)
+        removedcount.subtract(b)
+        addedcount = Counter(b)
+        addedcount.subtract(a)
+        added = []
+        for x in b:
+            if addedcount[x] > 0:
+                addedcount[x] -= 1
+                added.append(x)
+        removed = []
+        changed = []
+        for x in a:
+            if removedcount[x] > 0:
+                removedcount[x] -= 1
+                for y in added:
+                    if y[0] == x[0]:
+                        changed.append((x[0], x[1], y[1]))
+                        added.remove(y)
+                        break
+                else:
+                    removed.append(x)
+        added = [x[0] for x in added]
+        removed = [x[0] for x in removed]
         return changed, added, removed
 
     if 'basewhitelist' in a_data and a_data['basewhitelist'] != b_data['basewhitelist']:
@@ -357,10 +394,10 @@ def compare_sigfiles(a, b, recursecb = None):
         for dep in changed:
             output.append("Variable %s value changed from '%s' to '%s'" % (dep, a_data['varvals'][dep], b_data['varvals'][dep]))
 
-    changed, added, removed = dict_diff(a_data['file_checksum_values'], b_data['file_checksum_values'])
+    changed, added, removed = file_checksums_diff(a_data['file_checksum_values'], b_data['file_checksum_values'])
     if changed:
-        for f in changed:
-            output.append("Checksum for file %s changed from %s to %s" % (f, a_data['file_checksum_values'][f], b_data['file_checksum_values'][f]))
+        for f, old, new in changed:
+            output.append("Checksum for file %s changed from %s to %s" % (f, old, new))
     if added:
         for f in added:
             output.append("Dependency on checksum of file %s was added" % (f))
@@ -378,28 +415,30 @@ def compare_sigfiles(a, b, recursecb = None):
                 bdep_found = False
                 if removed:
                     for bdep in removed:
-                        if a[dep] == b[bdep]:
+                        if b[dep] == a[bdep]:
                             #output.append("Dependency on task %s was replaced by %s with same hash" % (dep, bdep))
                             bdep_found = True
                 if not bdep_found:
-                    output.append("Dependency on task %s was added with hash %s" % (clean_basepath(dep), a[dep]))
+                    output.append("Dependency on task %s was added with hash %s" % (clean_basepath(dep), b[dep]))
         if removed:
             for dep in removed:
                 adep_found = False
                 if added:
                     for adep in added:
-                        if a[adep] == b[dep]:
+                        if b[adep] == a[dep]:
                             #output.append("Dependency on task %s was replaced by %s with same hash" % (adep, dep))
                             adep_found = True
                 if not adep_found:
-                    output.append("Dependency on task %s was removed with hash %s" % (clean_basepath(dep), b[dep]))
+                    output.append("Dependency on task %s was removed with hash %s" % (clean_basepath(dep), a[dep]))
         if changed:
             for dep in changed:
                 output.append("Hash for dependent task %s changed from %s to %s" % (clean_basepath(dep), a[dep], b[dep]))
                 if callable(recursecb):
+                    # If a dependent hash changed, might as well print the line above and then defer to the changes in 
+                    # that hash since in all likelyhood, they're the same changes this task also saw.
                     recout = recursecb(dep, a[dep], b[dep])
                     if recout:
-                        output.extend(recout)
+                        output = [output[-1]] + recout
 
     a_taint = a_data.get('taint', None)
     b_taint = b_data.get('taint', None)

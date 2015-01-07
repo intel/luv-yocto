@@ -105,13 +105,14 @@ class PropertyDialog(CrumbsDialog):
                 
         def create_package_visual_elements(self):
 
+                import json
+
                 name = self.properties['name']
                 binb = self.properties['binb']
                 size = self.properties['size']
                 recipe = self.properties['recipe']
-                file_list = self.properties['files_list']
+                file_list = json.loads(self.properties['files_list'])
 
-                file_list = file_list.strip("{}'")
                 files_temp = ''
                 paths_temp = ''
                 files_binb = []
@@ -180,58 +181,43 @@ class PropertyDialog(CrumbsDialog):
 
                 #################################### FILES BROUGHT BY PACKAGES ###################################
 
-                if file_list != '':
+                if file_list:
                 
                         self.textWindow = gtk.ScrolledWindow()
                         self.textWindow.set_shadow_type(gtk.SHADOW_IN)
                         self.textWindow.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
                         self.textWindow.set_size_request(100, 170)
 
-                        sstatemirrors_store = gtk.ListStore(str)
+                        packagefiles_store = gtk.ListStore(str)
 
-                        self.sstatemirrors_tv = gtk.TreeView()
-                        self.sstatemirrors_tv.set_rules_hint(True)
-                        self.sstatemirrors_tv.set_headers_visible(True)
-                        self.textWindow.add(self.sstatemirrors_tv)
+                        self.packagefiles_tv = gtk.TreeView()
+                        self.packagefiles_tv.set_rules_hint(True)
+                        self.packagefiles_tv.set_headers_visible(True)
+                        self.textWindow.add(self.packagefiles_tv)
 
                         self.cell1 = gtk.CellRendererText()
                         col1 = gtk.TreeViewColumn('Package files', self.cell1)
                         col1.set_cell_data_func(self.cell1, self.regex_field)
-                        self.sstatemirrors_tv.append_column(col1)
+                        self.packagefiles_tv.append_column(col1)
 
-                        for items in file_list.split(']'):
-                            if len(items) > 1:
-                                paths_temp = items.split(":")[0]
-                                paths_binb.append(paths_temp.strip(" ,'"))
-                                files_temp = items.split(":")[1]
-                                files_binb.append(files_temp.strip(" ['"))
+                        items = file_list.keys()
+                        items.sort()
+                        for item in items:
+                                fullpath = item
+                                while len(item) > 35:
+                                        item = item[:len(item)/2] + "" + item[len(item)/2+1:]
+                                if len(item) == 35:
+                                        item = item[:len(item)/2] + "..." + item[len(item)/2+3:]
+                                        self.tooltip_items[item] = fullpath
 
-                        unsorted_list = []
-                        
-                        for items in range(len(paths_binb)):
-                              if len(files_binb[items]) > 1:
-                                  for aduse in (files_binb[items].split(",")):
-                                        unsorted_list.append(paths_binb[items].split(name)[len(paths_binb[items].split(name))-1] + '/' + aduse.strip(" '"))
-                       
-                         
-                        unsorted_list.sort()
-                        for items in unsorted_list:
-                                temp = items
-                                while len(items) > 35:
-                                        items = items[:len(items)/2] + "" + items[len(items)/2+1:]
-                                if len(items) == 35:
-                                        items = items[:len(items)/2] + "..." + items[len(items)/2+3:]
-                                        self.tooltip_items[items] = temp
+                                packagefiles_store.append([str(item)])
 
-                                sstatemirrors_store.append([str(items)])
-                                
-                                
-                        self.sstatemirrors_tv.set_model(sstatemirrors_store)
+                        self.packagefiles_tv.set_model(packagefiles_store)
 
                         tips = gtk.Tooltips()
-                        tips.set_tip(self.sstatemirrors_tv, "")
-                        self.sstatemirrors_tv.connect("motion-notify-event", self.treeViewTooltip, tips, 0)
-                        self.sstatemirrors_tv.set_events(gtk.gdk.POINTER_MOTION_MASK)
+                        tips.set_tip(self.packagefiles_tv, "")
+                        self.packagefiles_tv.connect("motion-notify-event", self.treeViewTooltip, tips, 0)
+                        self.packagefiles_tv.set_events(gtk.gdk.POINTER_MOTION_MASK)
                         
                         self.vbox.add(self.textWindow)                                      
 

@@ -5,7 +5,6 @@ KERNEL_CONSOLE ?= "ttyS0"
 KEEPUIMAGE ??= "yes"
 
 IMAGE_LINGUAS ?= "en-us en-gb"
-LIMIT_BUILT_LOCALES ?= "POSIX en_US en_GB"
 ENABLE_BINARY_LOCALE_GENERATION ?= "1"
 LOCALE_UTF8_ONLY ?= "0"
 
@@ -24,9 +23,9 @@ IMAGE_FEATURES ?= ""
 
 # This is a list of packages that are used by the build system to build the distribution, they are not
 # directly part of the distribution. 
-HOSTTOOLS_WHITELIST_GPLv3 ?= ""
-WHITELIST_GPLv3 ?= "less"
-LGPLv2_WHITELIST_GPLv3 ?= "libassuan gnutls libtasn1 libidn libgcc gcc-runtime" 
+HOSTTOOLS_WHITELIST_GPL-3.0 ?= ""
+WHITELIST_GPL-3.0 ?= "less"
+LGPLv2_WHITELIST_GPL-3.0 ?= "libassuan gnutls libtasn1 libidn gcc-source libgcc libgcc-initial gcc-runtime"
 
 COMMERCIAL_AUDIO_PLUGINS ?= ""
 # COMMERCIAL_AUDIO_PLUGINS ?= "gst-plugins-ugly-mad gst-plugins-ugly-mpegaudioparse"
@@ -43,8 +42,8 @@ NO32LIBS ??= "1"
 
 # Default to emitting logfiles if a build fails.
 BBINCLUDELOGS ??= "yes"
-SDK_VERSION ??= "oe-core.0"
-DISTRO_VERSION ??= "oe-core.0"
+SDK_VERSION ??= "nodistro.0"
+DISTRO_VERSION ??= "nodistro.0"
 
 # Missing checksums should raise an error
 BB_STRICT_CHECKSUM = "1"

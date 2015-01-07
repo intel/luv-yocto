@@ -9,11 +9,13 @@
 #
 # UBOOT_MACHINE = "config"
 #
-# Copyright 2013 (C) O.S. Systems Software LTDA.
+# Copyright 2013, 2014 (C) O.S. Systems Software LTDA.
 
 python () {
     ubootmachine = d.getVar("UBOOT_MACHINE", True)
     ubootconfigflags = d.getVarFlags('UBOOT_CONFIG')
+    # The "doc" varflag is special, we don't want to see it here
+    ubootconfigflags.pop('doc', None)
 
     if not ubootmachine and not ubootconfigflags:
         PN = d.getVar("PN", True)
@@ -55,5 +57,5 @@ python () {
             # Go out as we found a match!
             break
     else:
-        raise ValueError("UBOOT_CONFIG %s is not supported" % ubootconfig)
+        raise bb.parse.SkipPackage("UBOOT_CONFIG %s is not supported" % ubootconfig)
 }

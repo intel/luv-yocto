@@ -1,4 +1,4 @@
-DESCRIPTION = "Export your X session on-the-fly via VNC"
+SUMMARY = "Exports your X session on-the-fly via VNC"
 HOMEPAGE = "http://www.karlrunge.com/x11vnc/"
 
 SECTION = "x11/utils"
@@ -16,8 +16,8 @@ SRC_URI[sha256sum] = "f6829f2e629667a5284de62b080b13126a0736499fe47cdb447aedb07a
 
 DEPENDS = "openssl virtual/libx11 libxext jpeg zlib libxfixes libxrandr libxdamage libxtst"
 
-inherit autotools
+inherit autotools-brokensep
 
-PACKAGECONFIG ??= "${@base_contains('DISTRO_FEATURES', 'zeroconf', 'avahi', '', d)}"
+PACKAGECONFIG ??= "${@bb.utils.contains('DISTRO_FEATURES', 'zeroconf', 'avahi', '', d)}"
 PACKAGECONFIG[avahi] = "--with-avahi,--without-avahi,avahi"
 PACKAGECONFIG[xinerama] = "--with-xinerama,--without-xinerama,libxinerama"

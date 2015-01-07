@@ -1,4 +1,4 @@
-SUMMARY = "mailx is the traditional command-line-mode mail user agent."
+SUMMARY = "mailx is the traditional command-line-mode mail user agent"
 
 DESCRIPTION = "Mailx is derived from Berkeley Mail and is intended provide the \
 functionality of the POSIX mailx command with additional support \
@@ -24,8 +24,9 @@ SRC_URI[patch.sha256sum] = "aaf2a4bbf145e5ca9cdeb0843091ec8cc01df6c9568c997207a5
 
 S = "${WORKDIR}/heirloom-mailx-${PV}"
 
-inherit autotools
+inherit autotools-brokensep
 
 CFLAGS_append = " -D_BSD_SOURCE -DDEBIAN -I${S}/EXT"
+EXTRA_OEMAKE = "SENDMAIL=${sbindir}/sendmail"
 
 PARALLEL_MAKE = ""

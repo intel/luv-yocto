@@ -37,7 +37,7 @@ from bb.fetch2 import logger
 
 class Hg(FetchMethod):
     """Class to fetch from mercurial repositories"""
-    def supports(self, url, ud, d):
+    def supports(self, ud, d):
         """
         Check to see if a given url can be fetched with mercurial.
         """
@@ -62,11 +62,11 @@ class Hg(FetchMethod):
         if 'rev' in ud.parm:
             ud.revision = ud.parm['rev']
         elif not ud.revision:
-            ud.revision = self.latest_revision(ud.url, ud, d)
+            ud.revision = self.latest_revision(ud, d)
 
         ud.localfile = data.expand('%s_%s_%s_%s.tar.gz' % (ud.module.replace('/', '.'), ud.host, ud.path.replace('/', '.'), ud.revision), d)
 
-    def need_update(self, url, ud, d):
+    def need_update(self, ud, d):
         revTag = ud.parm.get('rev', 'tip')
         if revTag == "tip":
             return True
@@ -110,7 +110,10 @@ class Hg(FetchMethod):
             options.append("-r %s" % ud.revision)
 
         if command == "fetch":
-            cmd = "%s clone %s %s://%s/%s %s" % (basecmd, " ".join(options), proto, hgroot, ud.module, ud.module)
+            if ud.user and ud.pswd:
+                cmd = "%s --config auth.default.prefix=* --config auth.default.username=%s --config auth.default.password=%s --config \"auth.default.schemes=%s\" clone %s %s://%s/%s %s" % (basecmd, ud.user, ud.pswd, proto, " ".join(options), proto, hgroot, ud.module, ud.module)
+            else:
+                cmd = "%s clone %s %s://%s/%s %s" % (basecmd, " ".join(options), proto, hgroot, ud.module, ud.module)	      
         elif command == "pull":
             # do not pass options list; limiting pull to rev causes the local
             # repo not to contain it and immediately following "update" command
@@ -120,20 +123,23 @@ class Hg(FetchMethod):
             else:
                 cmd = "%s pull" % (basecmd)
         elif command == "update":
-            cmd = "%s update -C %s" % (basecmd, " ".join(options))
+            if ud.user and ud.pswd:
+                cmd = "%s --config auth.default.prefix=* --config auth.default.username=%s --config auth.default.password=%s --config \"auth.default.schemes=%s\" update -C %s" % (basecmd, ud.user, ud.pswd, proto, " ".join(options))
+            else:
+                cmd = "%s update -C %s" % (basecmd, " ".join(options))
         else:
             raise FetchError("Invalid hg command %s" % command, ud.url)
 
         return cmd
 
-    def download(self, loc, ud, d):
+    def download(self, ud, d):
         """Fetch url"""
 
         logger.debug(2, "Fetch: checking for module directory '" + ud.moddir + "'")
 
         if os.access(os.path.join(ud.moddir, '.hg'), os.R_OK):
             updatecmd = self._buildhgcommand(ud, d, "pull")
-            logger.info("Update " + loc)
+            logger.info("Update " + ud.url)
             # update sources there
             os.chdir(ud.moddir)
             logger.debug(1, "Running %s", updatecmd)
@@ -142,7 +148,7 @@ class Hg(FetchMethod):
 
         else:
             fetchcmd = self._buildhgcommand(ud, d, "fetch")
-            logger.info("Fetch " + loc)
+            logger.info("Fetch " + ud.url)
             # check out sources there
             bb.utils.mkdirhier(ud.pkgdir)
             os.chdir(ud.pkgdir)
@@ -169,7 +175,7 @@ class Hg(FetchMethod):
     def supports_srcrev(self):
         return True
 
-    def _latest_revision(self, url, ud, d, name):
+    def _latest_revision(self, ud, d, name):
         """
         Compute tip revision for the url
         """
@@ -177,10 +183,10 @@ class Hg(FetchMethod):
         output = runfetchcmd(self._buildhgcommand(ud, d, "info"), d)
         return output.strip()
 
-    def _build_revision(self, url, ud, d, name):
+    def _build_revision(self, ud, d, name):
         return ud.revision
 
-    def _revision_key(self, url, ud, d, name):
+    def _revision_key(self, ud, d, name):
         """
         Return a unique key for the url
         """

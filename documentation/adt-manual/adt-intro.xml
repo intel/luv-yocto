@@ -3,32 +3,6 @@
 [<!ENTITY % poky SYSTEM "../poky.ent"> %poky; ] >
 
 <chapter id='adt-intro'>
-<title>Introduction</title>
-
-<para>
-    Welcome to the Yocto Project Application Developer's Guide.
-    This manual provides information that lets you begin developing applications
-    using the Yocto Project.
-</para>
-
-<para>
-    The Yocto Project provides an application development environment based on
-    an Application Development Toolkit (ADT) and the availability of stand-alone
-    cross-development toolchains and other tools.
-    This manual describes the ADT and how you can configure and install it,
-    how to access and use the cross-development toolchains, how to
-    customize the development packages installation,
-    how to use command line development for both Autotools-based and Makefile-based projects,
-    and an introduction to the <trademark class='trade'>Eclipse</trademark> IDE
-    Yocto Plug-in.
-    <note>
-        The ADT is distribution-neutral and does not require the Yocto
-        Project reference distribution, which is called Poky.
-        This manual, however, uses examples that use the Poky distribution.
-    </note>
-</para>
-
-<section id='adt-intro-section'>
     <title>The Application Development Toolkit (ADT)</title>
 
     <para>
@@ -121,17 +95,29 @@
             application or image.
             QEMU is made available a number of ways:
             <itemizedlist>
-                <listitem><para>If you use the ADT Installer script to install ADT, you can
-                    specify whether or not to install QEMU.</para></listitem>
-                <listitem><para>If you have downloaded a Yocto Project release and unpacked
+                <listitem><para>
+                    If you use the ADT Installer script to install ADT, you can
+                    specify whether or not to install QEMU.
+                    </para></listitem>
+                <listitem><para>
+                    If you have cloned the <filename>poky</filename> Git
+                    repository to create a
+                    <ulink url='&YOCTO_DOCS_DEV_URL;#source-directory'>Source Directory</ulink>
+                    and you have sourced the environment setup script, QEMU is
+                    installed and automatically available.
+                    </para></listitem>
+                <listitem><para>
+                    If you have downloaded a Yocto Project release and unpacked
                     it to create a
-                    <ulink url='&YOCTO_DOCS_DEV_URL;#source-directory'>Source Directory</ulink> and
-                    you have sourced
-                    the environment setup script, QEMU is installed and automatically
-                    available.</para></listitem>
-                <listitem><para>If you have installed the cross-toolchain
-                    tarball and you have sourced the toolchain's setup environment script, QEMU
-                    is also installed and automatically available.</para></listitem>
+                    <ulink url='&YOCTO_DOCS_DEV_URL;#source-directory'>Source Directory</ulink>
+                    and you have sourced the environment setup script, QEMU is
+                    installed and automatically available.
+                    </para></listitem>
+                <listitem><para>
+                    If you have installed the cross-toolchain tarball and you
+                    have sourced the toolchain's setup environment script, QEMU
+                    is also installed and automatically available.
+                    </para></listitem>
             </itemizedlist>
         </para>
     </section>
@@ -165,8 +151,7 @@
                 <listitem><para><emphasis>Perf:</emphasis> Performance counters for Linux used
                     to keep track of certain types of hardware and software events.
                     For more information on these types of counters see
-                    <ulink url='https://perf.wiki.kernel.org/'></ulink> and click
-                    on “Perf tools.”
+                    <ulink url='https://perf.wiki.kernel.org/'></ulink>.
                     For examples on how to setup and use this tool, see the
                     "<ulink url='&YOCTO_DOCS_PROF_URL;#profile-manual-perf'>perf</ulink>"
                     section in the Yocto Project Profiling and Tracing Manual.
@@ -187,7 +172,6 @@
             </itemizedlist>
         </para>
     </section>
-</section>
 
 </chapter>
 <!--

@@ -1,4 +1,4 @@
-DESCRIPTION = "sysprof - System-wide Performance Profiler for Linux"
+SUMMARY = "System-wide Performance Profiler for Linux"
 LICENSE = "GPLv2"
 LIC_FILES_CHKSUM = "file://COPYING;md5=94d55d512a9ba36caa9b7df079bae19f"
 
@@ -17,4 +17,4 @@ SRC_URI_append_mips64 = " file://rmb-mips.patch"
 
 S = "${WORKDIR}/git"
 
-inherit autotools
+inherit autotools pkgconfig

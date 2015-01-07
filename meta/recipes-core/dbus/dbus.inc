@@ -5,19 +5,18 @@ SECTION = "base"
 LICENSE = "AFL-2 | GPLv2+"
 LIC_FILES_CHKSUM = "file://COPYING;md5=10dded3b58148f3f1fd804b26354af3e \
                     file://dbus/dbus.h;beginline=6;endline=20;md5=7755c9d7abccd5dbd25a6a974538bb3c"
-X11DEPENDS = "virtual/libx11 libsm"
-DEPENDS = "expat virtual/libintl ${@base_contains('DISTRO_FEATURES', 'x11', '${X11DEPENDS}', '', d)}"
-DEPENDS_class-native = "expat-native virtual/libintl-native"
-DEPENDS_class-nativesdk = "nativesdk-expat virtual/nativesdk-libintl"
-RDEPENDS_dbus = "${@base_contains('DISTRO_FEATURES', 'ptest', 'dbus-ptest-ptest', '', d)}"
-RDEPENDS_class-native = ""
-
-INC_PR = "r6"
+DEPENDS = "expat virtual/libintl"
+RDEPENDS_dbus_class-native = ""
+RDEPENDS_dbus_class-nativesdk = ""
+PACKAGES += "${@bb.utils.contains('PTEST_ENABLED', '1', 'dbus-ptest', '', d)}"
+ALLOW_EMPTY_dbus-ptest = "1"
+RDEPENDS_dbus-ptest_class-target = "dbus-test-ptest"
 
 SRC_URI = "http://dbus.freedesktop.org/releases/dbus/dbus-${PV}.tar.gz \
-           file://tmpdir.patch; \
+           file://tmpdir.patch \
            file://dbus-1.init \
            file://os-test.patch \
+           file://clear-guid_from_server-if-send_negotiate_unix_f.patch \
 "
 
 inherit useradd autotools pkgconfig gettext update-rc.d
@@ -26,8 +25,7 @@ INITSCRIPT_NAME = "dbus-1"
 INITSCRIPT_PARAMS = "start 02 5 3 2 . stop 20 0 1 6 ."
 
 python __anonymous() {
-    features = d.getVar("DISTRO_FEATURES", True).split()
-    if "sysvinit" not in features:
+    if not bb.utils.contains('DISTRO_FEATURES', 'sysvinit', True, False, d):
         d.setVar("INHIBIT_UPDATERCD_BBCLASS", "1")
 }
 
@@ -56,6 +54,7 @@ FILES_${PN} = "${bindir}/dbus-daemon* \
                ${bindir}/dbus-send \
                ${bindir}/dbus-monitor \
                ${bindir}/dbus-launch \
+               ${bindir}/dbus-run-session \
                ${libexecdir}/dbus* \
                ${sysconfdir} \
                ${localstatedir} \
@@ -67,34 +66,55 @@ RRECOMMENDS_${PN}-lib = "${PN}"
 FILES_${PN}-dev += "${libdir}/dbus-1.0/include ${bindir}/dbus-glib-tool"
 
 pkg_postinst_dbus() {
+	# If both systemd and sysvinit are enabled, mask the dbus-1 init script
+        if ${@bb.utils.contains('DISTRO_FEATURES','systemd sysvinit','true','false',d)}; then
+		if [ -n "$D" ]; then
+			OPTS="--root=$D"
+		fi
+		systemctl $OPTS mask dbus-1.service
+	fi
+
 	if [ -z "$D" ] && [ -e /etc/init.d/populate-volatile.sh ] ; then
 		/etc/init.d/populate-volatile.sh update
 	fi
 }
 
-EXTRA_OECONF_X = "${@base_contains('DISTRO_FEATURES', 'x11', '--with-x', '--without-x', d)}"
-EXTRA_OECONF_X_class-native = "--without-x --disable-x11-autolaunch"
-# TODO: would like to --enable-systemd but that's a circular build-dependency
-# between systemd<->dbus
-EXTRA_OECONF_SYSTEMD = "${@base_contains('DISTRO_FEATURES', 'systemd', '--with-systemdsystemunitdir=${systemd_unitdir}/system/', '--without-systemdsystemunitdir', d)}"
-
 EXTRA_OECONF = "--disable-tests \
-                --disable-checks \
                 --disable-xml-docs \
                 --disable-doxygen-docs \
                 --disable-libaudit \
-                --with-xml=expat \
                 --disable-systemd \
-                ${EXTRA_OECONF_SYSTEMD} \
-                ${EXTRA_OECONF_X}"
+                --without-dbus-glib"
+
+EXTRA_OECONF_append_class-native = " --disable-selinux"
+
+PACKAGECONFIG ??= "${@bb.utils.contains('DISTRO_FEATURES', 'systemd', 'systemd', '', d)} \
+                   ${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'x11', '', d)}"
+PACKAGECONFIG_class-native = ""
+PACKAGECONFIG_class-nativesdk = ""
+
+# Would like to --enable-systemd but that's a circular build-dependency between
+# systemd<->dbus
+PACKAGECONFIG[systemd] = "--with-systemdsystemunitdir=${systemd_unitdir}/system/,--without-systemdsystemunitdir"
+PACKAGECONFIG[x11] = "--with-x --enable-x11-autolaunch,--without-x --disable-x11-autolaunch, virtual/libx11 libsm"
 
 do_install() {
 	autotools_do_install
 
-	if ${@base_contains('DISTRO_FEATURES', 'sysvinit', 'true', 'false', d)}; then
+	if ${@bb.utils.contains('DISTRO_FEATURES', 'sysvinit', 'true', 'false', d)}; then
 		install -d ${D}${sysconfdir}/init.d
 		sed 's:@bindir@:${bindir}:' < ${WORKDIR}/dbus-1.init >${WORKDIR}/dbus-1.init.sh
 		install -m 0755 ${WORKDIR}/dbus-1.init.sh ${D}${sysconfdir}/init.d/dbus-1
+	fi
+
+	if ${@bb.utils.contains('DISTRO_FEATURES', 'systemd', 'true', 'false', d)}; then
+		for i in dbus.target.wants sockets.target.wants multi-user.target.wants; do \
+			install -d ${D}${systemd_unitdir}/system/$i; done
+		install -m 0644 ${B}/bus/dbus.service ${B}/bus/dbus.socket ${D}${systemd_unitdir}/system/
+		cd ${D}${systemd_unitdir}/system/dbus.target.wants/
+		ln -fs ../dbus.socket ${D}${systemd_unitdir}/system/dbus.target.wants/dbus.socket
+		ln -fs ../dbus.socket ${D}${systemd_unitdir}/system/sockets.target.wants/dbus.socket
+		ln -fs ../dbus.service ${D}${systemd_unitdir}/system/multi-user.target.wants/dbus.service
 	fi
 
 	install -d ${D}${sysconfdir}/default/volatiles

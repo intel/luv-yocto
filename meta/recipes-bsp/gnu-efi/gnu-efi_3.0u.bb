@@ -23,17 +23,11 @@ def gnu_efi_arch(d):
     return tarch
 
 EXTRA_OEMAKE = "'ARCH=${@gnu_efi_arch(d)}' 'CC=${CC}' 'AS=${AS}' 'LD=${LD}' 'AR=${AR}' \
-                'RANLIB=${RANLIB}' 'OBJCOPY=${OBJCOPY}' 'PREFIX=${prefix}'\
+                'RANLIB=${RANLIB}' 'OBJCOPY=${OBJCOPY}' 'PREFIX=${prefix}' 'LIBDIR=${libdir}' \
                 "
 
 do_install() {
         oe_runmake install INSTALLROOT="${D}"
 }
 
-do_install_class-native() {
-	oe_runmake install
-}
-
 FILES_${PN} += "${libdir}/*.lds"
-
-BBCLASSEXTEND = "native"

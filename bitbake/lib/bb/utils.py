@@ -264,7 +264,7 @@ def _print_trace(body, line):
 def better_compile(text, file, realfile, mode = "exec"):
     """
     A better compile method. This method
-    will print  the offending lines.
+    will print the offending lines.
     """
     try:
         return compile(text, file, mode)
@@ -354,11 +354,11 @@ def better_exec(code, context, text = None, realfile = "<code>"):
         code = better_compile(code, realfile, realfile)
     try:
         exec(code, get_context(), context)
+    except (bb.BBHandledException, bb.parse.SkipRecipe, bb.build.FuncFailed, bb.data_smart.ExpansionError):
+        # Error already shown so passthrough, no need for traceback
+        raise
     except Exception as e:
         (t, value, tb) = sys.exc_info()
-
-        if t in [bb.parse.SkipPackage, bb.build.FuncFailed]:
-            raise
         try:
             _print_exception(t, value, tb, realfile, text, context)
         except Exception as e:
@@ -530,7 +530,7 @@ def filter_environment(good_vars):
 def approved_variables():
     """
     Determine and return the list of whitelisted variables which are approved
-    to remain in the envrionment.
+    to remain in the environment.
     """
     if 'BB_PRESERVE_ENV' in os.environ:
         return os.environ.keys()
@@ -793,22 +793,28 @@ def copyfile(src, dest, newmtime = None, sstat = None):
         newmtime = sstat[stat.ST_MTIME]
     return newmtime
 
-def which(path, item, direction = 0):
+def which(path, item, direction = 0, history = False):
     """
     Locate a file in a PATH
     """
 
+    hist = []
     paths = (path or "").split(':')
     if direction != 0:
         paths.reverse()
 
     for p in paths:
         next = os.path.join(p, item)
+        hist.append(next)
         if os.path.exists(next):
             if not os.path.isabs(next):
                 next = os.path.abspath(next)
+            if history:
+                return next, hist
             return next
 
+    if history:
+        return "", hist
     return ""
 
 def to_boolean(string, default=None):
@@ -836,6 +842,19 @@ def contains(variable, checkvalues, truevalue, falsevalue, d):
         return truevalue
     return falsevalue
 
+def contains_any(variable, checkvalues, truevalue, falsevalue, d):
+    val = d.getVar(variable, True)
+    if not val:
+        return falsevalue
+    val = set(val.split())
+    if isinstance(checkvalues, basestring):
+        checkvalues = set(checkvalues.split())
+    else:
+        checkvalues = set(checkvalues)
+    if checkvalues & val:
+        return truevalue
+    return falsevalue
+
 def cpu_count():
     return multiprocessing.cpu_count()
 
@@ -843,21 +862,16 @@ def nonblockingfd(fd):
     fcntl.fcntl(fd, fcntl.F_SETFL, fcntl.fcntl(fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 
 def process_profilelog(fn):
-    # Redirect stdout to capture profile information
     pout = open(fn + '.processed', 'w')
-    so = sys.stdout.fileno()
-    orig_so = os.dup(sys.stdout.fileno())
-    os.dup2(pout.fileno(), so)
    
     import pstats
-    p = pstats.Stats(fn)
+    p = pstats.Stats(fn, stream=pout)
     p.sort_stats('time')
     p.print_stats()
     p.print_callers()
     p.sort_stats('cumulative')
     p.print_stats()
 
-    os.dup2(orig_so, so)
     pout.flush()
     pout.close()  
 
@@ -865,5 +879,17 @@ def process_profilelog(fn):
 # Was present to work around multiprocessing pool bugs in python < 2.7.3
 #
 def multiprocessingpool(*args, **kwargs):
+
+    import multiprocessing.pool
+    #import multiprocessing.util
+    #multiprocessing.util.log_to_stderr(10)
+    # Deal with a multiprocessing bug where signals to the processes would be delayed until the work
+    # completes. Putting in a timeout means the signals (like SIGINT/SIGTERM) get processed.
+    def wrapper(func):
+        def wrap(self, timeout=None):
+            return func(self, timeout=timeout if timeout is not None else 1e100)
+        return wrap
+    multiprocessing.pool.IMapIterator.next = wrapper(multiprocessing.pool.IMapIterator.next)
+
     return multiprocessing.Pool(*args, **kwargs)
 

@@ -16,10 +16,14 @@ SRC_URI += "\
            file://multilib.patch \
            file://add-md5module-support.patch \
            file://builddir.patch \
+           file://parallel-makeinst-create-bindir.patch \
+           file://python-fix-build-error-with-Readline-6.3.patch \
+           file://gcc-4.8-fix-configure-Wformat.patch \
+           file://json-flaw-fix.patch \
            "
 S = "${WORKDIR}/Python-${PV}"
 
-FILESPATH = "${FILE_DIRNAME}/python-native/:${FILE_DIRNAME}/python/"
+FILESEXTRAPATHS =. "${FILE_DIRNAME}/${PN}:"
 
 inherit native
 
@@ -54,4 +58,8 @@ do_install() {
 	# (these often end up too long for the #! parser in the kernel as the
 	# buffer is 128 bytes long).
 	ln -s python-native/python ${D}${bindir}/nativepython
+	
+	# We don't want modules in ~/.local being used in preference to those
+	# installed in the native sysroot, so disable user site support.
+	sed -i -e 's,^\(ENABLE_USER_SITE = \).*,\1False,' ${D}${libdir}/python${PYTHON_MAJMIN}/site.py
 }

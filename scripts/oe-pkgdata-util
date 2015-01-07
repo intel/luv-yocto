@@ -4,7 +4,7 @@
 #
 # Written by: Paul Eggleton <paul.eggleton@linux.intel.com>
 #
-# Copyright 2012 Intel Corporation
+# Copyright 2012-2013 Intel Corporation
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -19,28 +19,16 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
-#
-# Currently only has two functions:
-# 1) glob - mapping of packages to their dev/dbg/doc/locale etc. counterparts.
-# 2) read-value - mapping of packagenames to their location in
-#    pkgdata and then returns value of selected variable (e.g. PKGSIZE)
-# Could be extended in future to perform other useful querying functions on the
-# pkgdata though.
-#
 
 import sys
 import os
 import os.path
 import fnmatch
 import re
+import optparse
+from collections import defaultdict
 
-def usage():
-    print("syntax: oe-pkgdata-util glob [-d] <pkgdatadir> <vendor-os> <pkglist> \"<globs>\"\n \
-                    read-value [-d] <pkgdatadir> <vendor-os> <value-name> \"<package-name>_<package_architecture>\"");
-
-
-
-def glob(args):
+def glob(args, usage, debug=False):
     if len(args) < 3:
         usage()
         sys.exit(1)
@@ -49,16 +37,25 @@ def glob(args):
     pkglist_file = args[1]
     globs = args[2].split()
 
+    if not os.path.exists(pkgdata_dir):
+        print('ERROR: Unable to find pkgdata directory %s' % pkgdata_dir)
+        sys.exit(1)
+
+    if not os.path.exists(pkglist_file):
+        print('ERROR: Unable to find package list file %s' % pkglist_file)
+        sys.exit(1)
+
     skipregex = re.compile("-locale-|^locale-base-|-dev$|-doc$|-dbg$|-staticdev$|^kernel-module-")
 
     mappedpkgs = set()
     with open(pkglist_file, 'r') as f:
         for line in f:
             fields = line.rstrip().split()
-            if len(fields) < 2:
+            if not fields:
                 continue
             pkg = fields[0]
-            arch = fields[1]
+            # We don't care about other args (used to need the package architecture but the
+            # new pkgdata structure avoids the need for that)
 
             # Skip packages for which there is no point applying globs
             if skipregex.search(pkg):
@@ -150,7 +147,7 @@ def glob(args):
 
     print("\n".join(mappedpkgs))
 
-def read_value(args):
+def read_value(args, usage, debug=False):
     if len(args) < 3:
         usage()
         sys.exit(1)
@@ -158,6 +155,10 @@ def read_value(args):
     pkgdata_dir = args[0]
     var = args[1]
     packages = args[2].split()
+
+    if not os.path.exists(pkgdata_dir):
+        print('ERROR: Unable to find pkgdata directory %s' % pkgdata_dir)
+        sys.exit(1)
 
     def readvar(pkgdata_file, var):
         val = ""
@@ -172,9 +173,8 @@ def read_value(args):
     for package in packages:
         pkg_split = package.split('_')
         pkg_name = pkg_split[0]
-        pkg_arch = '_'.join(pkg_split[1:])
         if debug:
-            print "package: name: '%s', arch: '%s'" % (pkg_name, pkg_arch)
+            print "package: '%s'" % pkg_name
         revlink = os.path.join(pkgdata_dir, "runtime-reverse", pkg_name)
         if debug:
             print(revlink)
@@ -184,30 +184,149 @@ def read_value(args):
             if qvar == "PKGSIZE":
                 # append packagename
                 qvar = "%s_%s" % (var, mappedpkg)
-            print(readvar(revlink, qvar))
+                # PKGSIZE is now in bytes, but we we want it in KB
+                pkgsize = (int(readvar(revlink, qvar)) + 1024 // 2) // 1024
+                print("%d" % pkgsize)
+            else:
+                print(readvar(revlink, qvar))
 
-# Too lazy to use getopt
-debug = False
-noopt = False
-args = []
-for arg in sys.argv[1:]:
-    if arg == "--":
-        noopt = True
+def lookup_pkg(args, usage, debug=False):
+    if len(args) < 2:
+        usage()
+        sys.exit(1)
+
+    pkgdata_dir = args[0]
+    pkgs = args[1].split()
+
+    if not os.path.exists(pkgdata_dir):
+        print('ERROR: Unable to find pkgdata directory %s' % pkgdata_dir)
+        sys.exit(1)
+
+    mappings = defaultdict(list)
+    for pkg in pkgs:
+        pkgfile = os.path.join(pkgdata_dir, 'runtime', pkg)
+        if os.path.exists(pkgfile):
+            with open(pkgfile, 'r') as f:
+                for line in f:
+                    fields = line.rstrip().split(': ')
+                    if fields[0] == 'PKG_%s' % pkg:
+                        mappings[pkg].append(fields[1])
+                        break
+    if len(mappings) < len(pkgs):
+        missing = list(set(pkgs) - set(mappings.keys()))
+        sys.stderr.write("ERROR: the following packages could not be found: %s\n" % ', '.join(missing))
+        sys.exit(1)
+
+    items = []
+    for pkg in pkgs:
+        items.extend(mappings.get(pkg, []))
+    print '\n'.join(items)
+
+def lookup_recipe(args, usage, debug=False):
+    if len(args) < 2:
+        usage()
+        sys.exit(1)
+
+    pkgdata_dir = args[0]
+    pkgs = args[1].split()
+
+    if not os.path.exists(pkgdata_dir):
+        print('ERROR: Unable to find pkgdata directory %s' % pkgdata_dir)
+        sys.exit(1)
+
+    mappings = defaultdict(list)
+    for pkg in pkgs:
+        pkgfile = os.path.join(pkgdata_dir, 'runtime-reverse', pkg)
+        if os.path.exists(pkgfile):
+            with open(pkgfile, 'r') as f:
+                for line in f:
+                    fields = line.rstrip().split(': ')
+                    if fields[0] == 'PN':
+                        mappings[pkg].append(fields[1])
+                        break
+    if len(mappings) < len(pkgs):
+        missing = list(set(pkgs) - set(mappings.keys()))
+        sys.stderr.write("ERROR: the following packages could not be found: %s\n" % ', '.join(missing))
+        sys.exit(1)
+
+    items = []
+    for pkg in pkgs:
+        items.extend(mappings.get(pkg, []))
+    print '\n'.join(items)
+
+def find_path(args, usage, debug=False):
+    if len(args) < 2:
+        usage()
+        sys.exit(1)
+
+    pkgdata_dir = args[0]
+    targetpath = args[1]
+
+    if not os.path.exists(pkgdata_dir):
+        print('ERROR: Unable to find pkgdata directory %s' % pkgdata_dir)
+        sys.exit(1)
+
+    import json
+    import fnmatch
+
+    for root, dirs, files in os.walk(os.path.join(pkgdata_dir, 'runtime')):
+        for fn in files:
+            with open(os.path.join(root,fn)) as f:
+                for line in f:
+                    if line.startswith('FILES_INFO:'):
+                        val = line.split(':', 1)[1].strip()
+                        dictval = json.loads(val)
+                        for fullpth in dictval.keys():
+                            if fnmatch.fnmatchcase(fullpth, targetpath):
+                                print("%s: %s" % (fn, fullpth))
+                        break
+
+
+def main():
+    parser = optparse.OptionParser(
+        usage = '''%prog [options] <command> <arguments>
+
+Available commands:
+    glob <pkgdatadir> <pkglistfile> "<globs>"
+        expand one or more glob expressions over the packages listed in
+        pkglistfile (one package per line)
+    lookup-pkg <pkgdatadir> "<recipe-pkgs>"
+        look up the specified recipe-space package name(s) to see what the
+        final runtime package name is (e.g. eglibc becomes libc6)
+    lookup-recipe <pkgdatadir> "<pkgs>"
+        look up the specified package(s) to see which recipe they were
+        produced by
+    find-path <pkgdatadir> <path>
+        find the package providing the specified path (wildcards * ? allowed)
+    read-value <pkgdatadir> <value-name> "<pkgs>"
+        read the named value from the pkgdata files for the specified
+        packages''')
+
+    parser.add_option("-d", "--debug",
+            help = "Enable debug output",
+            action="store_true", dest="debug", default=False)
+
+    options, args = parser.parse_args(sys.argv)
+    args = args[1:]
+
+    if len(args) < 1:
+        parser.print_help()
+        sys.exit(1)
+
+    if args[0] == "glob":
+        glob(args[1:], parser.print_help, options.debug)
+    elif args[0] == "lookup-pkg":
+        lookup_pkg(args[1:], parser.print_help, options.debug)
+    elif args[0] == "lookup-recipe":
+        lookup_recipe(args[1:], parser.print_help, options.debug)
+    elif args[0] == "find-path":
+        find_path(args[1:], parser.print_help, options.debug)
+    elif args[0] == "read-value":
+        read_value(args[1:], parser.print_help, options.debug)
     else:
-        if not noopt:
-            if arg == "-d":
-                debug = True
-                continue
-        args.append(arg)
+        parser.print_help()
+        sys.exit(1)
 
-if len(args) < 1:
-    usage()
-    sys.exit(1)
 
-if args[0] == "glob":
-    glob(args[1:])
-elif args[0] == "read-value":
-    read_value(args[1:])
-else:
-    usage()
-    sys.exit(1)
+if __name__ == "__main__":
+    main()

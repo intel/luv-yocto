@@ -36,7 +36,12 @@ if [ -f "${SYSCTL_CONF}" ]
 then
 	if [ -x "/sbin/sysctl" ]
 	then
-		/sbin/sysctl -p "${SYSCTL_CONF}"
+		# busybox sysctl does not support -q
+		VERBOSE_REDIR="1>/dev/null"
+		if [ "${VERBOSE}" != "no" ]; then
+			VERBOSE_REDIR="1>&1"
+		fi
+		eval /sbin/sysctl -p "${SYSCTL_CONF}" $VERBOSE_REDIR
 	else
 		echo "To have ${SYSCTL_CONF} applied during boot, install package <procps>."
 	fi
@@ -61,10 +66,15 @@ fi
 test -x /etc/init.d/hwclock.sh && /etc/init.d/hwclock.sh start
 if test -e /etc/timestamp
 then
-	SYSTEMDATE=`date -u +%4Y%2m%2d%2H%2M`
+	SYSTEMDATE=`date -u +%4Y%2m%2d%2H%2M%2S`
 	read TIMESTAMP < /etc/timestamp
 	if [ ${TIMESTAMP} -gt $SYSTEMDATE ]; then
-		date -u ${TIMESTAMP#????}${TIMESTAMP%????????}
+		# format the timestamp as date expects it (2m2d2H2M4Y.2S)
+		TS_YR=${TIMESTAMP%??????????}
+		TS_SEC=${TIMESTAMP#????????????}
+		TS_FIRST12=${TIMESTAMP%??}
+		TS_MIDDLE8=${TS_FIRST12#????}
+		date -u ${TS_MIDDLE8}${TS_YR}.${TS_SEC}
 		test -x /etc/init.d/hwclock.sh && /etc/init.d/hwclock.sh stop
 	fi
 fi

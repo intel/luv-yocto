@@ -39,6 +39,7 @@ class URITest(unittest.TestCase):
             'username': '',
             'password': '',
             'params': {},
+            'query': {},
             'relative': False
         },
         "http://www.google.com/index.html;param1=value1" : {
@@ -54,6 +55,41 @@ class URITest(unittest.TestCase):
             'params': {
                 'param1': 'value1'
             },
+            'query': {},
+            'relative': False
+        },
+        "http://www.example.org/index.html?param1=value1" : {
+            'uri': 'http://www.example.org/index.html?param1=value1',
+            'scheme': 'http',
+            'hostname': 'www.example.org',
+            'port': None,
+            'hostport': 'www.example.org',
+            'path': '/index.html',
+            'userinfo': '',
+            'username': '',
+            'password': '',
+            'params': {},
+            'query': {
+                'param1': 'value1'
+            },
+            'relative': False
+        },
+        "http://www.example.org/index.html?qparam1=qvalue1;param2=value2" : {
+            'uri': 'http://www.example.org/index.html?qparam1=qvalue1;param2=value2',
+            'scheme': 'http',
+            'hostname': 'www.example.org',
+            'port': None,
+            'hostport': 'www.example.org',
+            'path': '/index.html',
+            'userinfo': '',
+            'username': '',
+            'password': '',
+            'params': {
+                'param2': 'value2'
+            },
+            'query': {
+                'qparam1': 'qvalue1'
+            },
             'relative': False
         },
         "http://www.example.com:8080/index.html" : {
@@ -67,6 +103,7 @@ class URITest(unittest.TestCase):
             'username': '',
             'password': '',
             'params': {},
+            'query': {},
             'relative': False
         },
         "cvs://anoncvs@cvs.handhelds.org/cvs;module=familiar/dist/ipkg" : {
@@ -82,6 +119,7 @@ class URITest(unittest.TestCase):
             'params': {
                 'module': 'familiar/dist/ipkg'
             },
+            'query': {},
             'relative': False
         },
         "cvs://anoncvs:anonymous@cvs.handhelds.org/cvs;tag=V0-99-81;module=familiar/dist/ipkg": {
@@ -98,6 +136,7 @@ class URITest(unittest.TestCase):
                 'tag': 'V0-99-81',
                 'module': 'familiar/dist/ipkg'
             },
+            'query': {},
             'relative': False
         },
         "file://example.diff": { # NOTE: Not RFC compliant!
@@ -111,6 +150,7 @@ class URITest(unittest.TestCase):
             'username': '',
             'password': '',
             'params': {},
+            'query': {},
             'relative': True
         },
         "file:example.diff": { # NOTE: RFC compliant version of the former
@@ -125,6 +165,7 @@ class URITest(unittest.TestCase):
             'username': '',
             'password': '',
             'params': {},
+            'query': {},
             'relative': True
         },
         "file:///tmp/example.diff": {
@@ -139,6 +180,7 @@ class URITest(unittest.TestCase):
             'username': '',
             'password': '',
             'params': {},
+            'query': {},
             'relative': False
         },
         "git:///path/example.git": {
@@ -153,6 +195,7 @@ class URITest(unittest.TestCase):
             'username': '',
             'password': '',
             'params': {},
+            'query': {},
             'relative': False
         },
         "git:path/example.git": {
@@ -167,6 +210,7 @@ class URITest(unittest.TestCase):
             'username': '',
             'password': '',
             'params': {},
+            'query': {},
             'relative': True
         },
         "git://example.net/path/example.git": {
@@ -181,6 +225,7 @@ class URITest(unittest.TestCase):
             'username': '',
             'password': '',
             'params': {},
+            'query': {},
             'relative': False
         }
     }
@@ -229,6 +274,20 @@ class URITest(unittest.TestCase):
             self.assertEqual(uri.username, test['username'])
             self.assertEqual(uri.password, test['password'])
 
+            # make sure changing the values doesn't do anything unexpected
+            uri.username = 'changeme'
+            self.assertEqual(uri.username, 'changeme')
+            self.assertEqual(uri.password, test['password'])
+            uri.password = 'insecure'
+            self.assertEqual(uri.username, 'changeme')
+            self.assertEqual(uri.password, 'insecure')
+
+            # reset back after our trickery
+            uri.userinfo = test['userinfo']
+            self.assertEqual(uri.userinfo, test['userinfo'])
+            self.assertEqual(uri.username, test['username'])
+            self.assertEqual(uri.password, test['password'])
+
             uri.hostname = test['hostname']
             self.assertEqual(uri.hostname, test['hostname'])
             self.assertEqual(uri.hostport, test['hostname'])
@@ -243,7 +302,8 @@ class URITest(unittest.TestCase):
             uri.params = test['params']
             self.assertEqual(uri.params, test['params'])
 
-            self.assertEqual(str(uri)+str(uri.relative), str(test['uri'])+str(test['relative']))
+            uri.query = test['query']
+            self.assertEqual(uri.query, test['query'])
 
             self.assertEqual(str(uri), test['uri'])
 
@@ -330,6 +390,68 @@ class MirrorUriTest(FetcherTest):
         uris, uds = bb.fetch2.build_mirroruris(fetcher, mirrors, self.d)
         self.assertEqual(uris, ['file:///someotherpath/downloads/bitbake-1.0.tar.gz'])
 
+
+class FetcherLocalTest(FetcherTest):
+    def setUp(self):
+        def touch(fn):
+            with file(fn, 'a'):
+                os.utime(fn, None)
+
+        super(FetcherLocalTest, self).setUp()
+        self.localsrcdir = os.path.join(self.tempdir, 'localsrc')
+        os.makedirs(self.localsrcdir)
+        touch(os.path.join(self.localsrcdir, 'a'))
+        touch(os.path.join(self.localsrcdir, 'b'))
+        os.makedirs(os.path.join(self.localsrcdir, 'dir'))
+        touch(os.path.join(self.localsrcdir, 'dir', 'c'))
+        touch(os.path.join(self.localsrcdir, 'dir', 'd'))
+        os.makedirs(os.path.join(self.localsrcdir, 'dir', 'subdir'))
+        touch(os.path.join(self.localsrcdir, 'dir', 'subdir', 'e'))
+        self.d.setVar("FILESPATH", self.localsrcdir)
+
+    def fetchUnpack(self, uris):
+        fetcher = bb.fetch.Fetch(uris, self.d)
+        fetcher.download()
+        fetcher.unpack(self.unpackdir)
+        flst = []
+        for root, dirs, files in os.walk(self.unpackdir):
+            for f in files:
+                flst.append(os.path.relpath(os.path.join(root, f), self.unpackdir))
+        flst.sort()
+        return flst
+
+    def test_local(self):
+        tree = self.fetchUnpack(['file://a', 'file://dir/c'])
+        self.assertEqual(tree, ['a', 'dir/c'])
+
+    def test_local_wildcard(self):
+        tree = self.fetchUnpack(['file://a', 'file://dir/*'])
+        # FIXME: this is broken - it should return ['a', 'dir/c', 'dir/d', 'dir/subdir/e']
+        # see https://bugzilla.yoctoproject.org/show_bug.cgi?id=6128
+        self.assertEqual(tree, ['a', 'b', 'dir/c', 'dir/d', 'dir/subdir/e'])
+
+    def test_local_dir(self):
+        tree = self.fetchUnpack(['file://a', 'file://dir'])
+        self.assertEqual(tree, ['a', 'dir/c', 'dir/d', 'dir/subdir/e'])
+
+    def test_local_subdir(self):
+        tree = self.fetchUnpack(['file://dir/subdir'])
+        # FIXME: this is broken - it should return ['dir/subdir/e']
+        # see https://bugzilla.yoctoproject.org/show_bug.cgi?id=6129
+        self.assertEqual(tree, ['subdir/e'])
+
+    def test_local_subdir_file(self):
+        tree = self.fetchUnpack(['file://dir/subdir/e'])
+        self.assertEqual(tree, ['dir/subdir/e'])
+
+    def test_local_subdirparam(self):
+        tree = self.fetchUnpack(['file://a;subdir=bar'])
+        self.assertEqual(tree, ['bar/a'])
+
+    def test_local_deepsubdirparam(self):
+        tree = self.fetchUnpack(['file://dir/subdir/e;subdir=bar'])
+        self.assertEqual(tree, ['bar/dir/subdir/e'])
+
 class FetcherNetworkTest(FetcherTest):
 
     if os.environ.get("BB_SKIP_NETTESTS") == "yes":
@@ -382,6 +504,21 @@ class FetcherNetworkTest(FetcherTest):
             url1 = url2 = "git://git.openembedded.org/bitbake"
             self.gitfetcher(url1, url2)
 
+        def test_gitfetch_goodsrcrev(self):
+            # SRCREV is set but matches rev= parameter
+            url1 = url2 = "git://git.openembedded.org/bitbake;rev=270a05b0b4ba0959fe0624d2a4885d7b70426da5"
+            self.gitfetcher(url1, url2)
+
+        def test_gitfetch_badsrcrev(self):
+            # SRCREV is set but does not match rev= parameter
+            url1 = url2 = "git://git.openembedded.org/bitbake;rev=dead05b0b4ba0959fe0624d2a4885d7b70426da5"
+            self.assertRaises(bb.fetch.FetchError, self.gitfetcher, url1, url2)
+
+        def test_gitfetch_tagandrev(self):
+            # SRCREV is set but does not match rev= parameter
+            url1 = url2 = "git://git.openembedded.org/bitbake;rev=270a05b0b4ba0959fe0624d2a4885d7b70426da5;tag=270a05b0b4ba0959fe0624d2a4885d7b70426da5"
+            self.assertRaises(bb.fetch.FetchError, self.gitfetcher, url1, url2)
+
         def test_gitfetch_premirror(self):
             url1 = "git://git.openembedded.org/bitbake"
             url2 = "git://someserver.org/bitbake"
@@ -402,12 +539,20 @@ class FetcherNetworkTest(FetcherTest):
             self.d.setVar("PREMIRRORS", "%s git://%s;protocol=file \n" % (dummyurl, self.sourcedir))
             self.gitfetcher(dummyurl, dummyurl)
 
+        def test_git_submodule(self):
+            fetcher = bb.fetch.Fetch(["gitsm://git.yoctoproject.org/git-submodule-test;rev=f12e57f2edf0aa534cf1616fa983d165a92b0842"], self.d)
+            fetcher.download()
+            # Previous cwd has been deleted
+            os.chdir(os.path.dirname(self.unpackdir))
+            fetcher.unpack(self.unpackdir)
+
 class URLHandle(unittest.TestCase):
 
     datatable = {
        "http://www.google.com/index.html" : ('http', 'www.google.com', '/index.html', '', '', {}),
        "cvs://anoncvs@cvs.handhelds.org/cvs;module=familiar/dist/ipkg" : ('cvs', 'cvs.handhelds.org', '/cvs', 'anoncvs', '', {'module': 'familiar/dist/ipkg'}),
-       "cvs://anoncvs:anonymous@cvs.handhelds.org/cvs;tag=V0-99-81;module=familiar/dist/ipkg" : ('cvs', 'cvs.handhelds.org', '/cvs', 'anoncvs', 'anonymous', {'tag': 'V0-99-81', 'module': 'familiar/dist/ipkg'})
+       "cvs://anoncvs:anonymous@cvs.handhelds.org/cvs;tag=V0-99-81;module=familiar/dist/ipkg" : ('cvs', 'cvs.handhelds.org', '/cvs', 'anoncvs', 'anonymous', {'tag': 'V0-99-81', 'module': 'familiar/dist/ipkg'}),
+       "git://git.openembedded.org/bitbake;branch=@foo" : ('git', 'git.openembedded.org', '/bitbake', '', '', {'branch': '@foo'})
     }
 
     def test_decodeurl(self):

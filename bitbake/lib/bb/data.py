@@ -6,7 +6,7 @@ BitBake 'Data' implementations
 Functions for interacting with the data structure used by the
 BitBake build tools.
 
-The expandData and update_data are the most expensive
+The expandKeys and update_data are the most expensive
 operations. At night the cookie monster came by and
 suggested 'give me cookies on setting the variables and
 things will work out'. Taking this suggestion into account
@@ -15,7 +15,7 @@ Analyse von Algorithmen' lecture and the cookie
 monster seems to be right. We will track setVar more carefully
 to have faster update_data and expandKeys operations.
 
-This is a treade-off between speed and memory again but
+This is a trade-off between speed and memory again but
 the speed is more critical here.
 """
 
@@ -35,7 +35,7 @@ the speed is more critical here.
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
-#Based on functions from the base bb module, Copyright 2003 Holger Schurig
+# Based on functions from the base bb module, Copyright 2003 Holger Schurig
 
 import sys, os, re
 if sys.argv[0][-5:] == "pydoc":
@@ -214,10 +214,17 @@ def emit_var(var, o=sys.__stdout__, d = init(), all=False):
         o.write('unset %s\n' % varExpanded)
         return 0
 
-    if not val:
+    if val is None:
         return 0
 
     val = str(val)
+
+    if varExpanded.startswith("BASH_FUNC_"):
+        varExpanded = varExpanded[10:-2]
+        val = val[3:] # Strip off "() "
+        o.write("%s() %s\n" % (varExpanded, val))
+        o.write("export -f %s\n" % (varExpanded))
+        return 1
 
     if func:
         # NOTE: should probably check for unbalanced {} within the var
@@ -229,7 +236,7 @@ def emit_var(var, o=sys.__stdout__, d = init(), all=False):
 
     # if we're going to output this within doublequotes,
     # to a shell, we need to escape the quotes in the var
-    alter = re.sub('"', '\\"', val.strip())
+    alter = re.sub('"', '\\"', val)
     alter = re.sub('\n', ' \\\n', alter)
     o.write('%s="%s"\n' % (varExpanded, alter))
     return 0
@@ -275,9 +282,44 @@ def emit_func(func, o=sys.__stdout__, d = init()):
         seen |= deps
         newdeps = set()
         for dep in deps:
-            if d.getVarFlag(dep, "func"):
+            if d.getVarFlag(dep, "func") and not d.getVarFlag(dep, "python"):
                emit_var(dep, o, d, False) and o.write('\n')
                newdeps |=  bb.codeparser.ShellParser(dep, logger).parse_shell(d.getVar(dep, True))
+               newdeps |= set((d.getVarFlag(dep, "vardeps", True) or "").split())
+        newdeps -= seen
+
+_functionfmt = """
+def {function}(d):
+{body}"""
+
+def emit_func_python(func, o=sys.__stdout__, d = init()):
+    """Emits all items in the data store in a format such that it can be sourced by a shell."""
+
+    def write_func(func, o, call = False):
+        body = d.getVar(func, True)
+        if not body.startswith("def"):
+            body = _functionfmt.format(function=func, body=body)
+
+        o.write(body.strip() + "\n\n")
+        if call:
+            o.write(func + "(d)" + "\n\n")
+
+    write_func(func, o, True)
+    pp = bb.codeparser.PythonParser(func, logger)
+    pp.parse_python(d.getVar(func, True))
+    newdeps = pp.execs
+    newdeps |= set((d.getVarFlag(func, "vardeps", True) or "").split())
+    seen = set()
+    while newdeps:
+        deps = newdeps
+        seen |= deps
+        newdeps = set()
+        for dep in deps:
+            if d.getVarFlag(dep, "func") and d.getVarFlag(dep, "python"):
+               write_func(dep, o)
+               pp = bb.codeparser.PythonParser(dep, logger)
+               pp.parse_python(d.getVar(dep, True))
+               newdeps |= pp.execs
                newdeps |= set((d.getVarFlag(dep, "vardeps", True) or "").split())
         newdeps -= seen
 
@@ -295,9 +337,24 @@ def build_dependencies(key, keys, shelldeps, varflagsexcl, d):
             deps |= parser.references
             deps = deps | (keys & parser.execs)
             return deps, value
-        varflags = d.getVarFlags(key, ["vardeps", "vardepvalue", "vardepsexclude"]) or {}
+        varflags = d.getVarFlags(key, ["vardeps", "vardepvalue", "vardepsexclude", "vardepvalueexclude", "postfuncs", "prefuncs"]) or {}
         vardeps = varflags.get("vardeps")
         value = d.getVar(key, False)
+
+        def handle_contains(value, contains, d):
+            newvalue = ""
+            for k in sorted(contains):
+                l = (d.getVar(k, True) or "").split()
+                for word in sorted(contains[k]):
+                    if word in l:
+                        newvalue += "\n%s{%s} = Set" %  (k, word)
+                    else:
+                        newvalue += "\n%s{%s} = Unset" %  (k, word)
+            if not newvalue:
+                return value
+            if not value:
+                return newvalue
+            return value + newvalue
 
         if "vardepvalue" in varflags:
            value = varflags.get("vardepvalue")
@@ -309,6 +366,7 @@ def build_dependencies(key, keys, shelldeps, varflagsexcl, d):
                     logger.warn("Variable %s contains tabs, please remove these (%s)" % (key, d.getVar("FILE", True)))
                 parser.parse_python(parsedvar.value)
                 deps = deps | parser.references
+                value = handle_contains(value, parser.contains, d)
             else:
                 parsedvar = d.expandWithRefs(value, key)
                 parser = bb.codeparser.ShellParser(key, logger)
@@ -316,12 +374,24 @@ def build_dependencies(key, keys, shelldeps, varflagsexcl, d):
                 deps = deps | shelldeps
             if vardeps is None:
                 parser.log.flush()
+            if "prefuncs" in varflags:
+                deps = deps | set(varflags["prefuncs"].split())
+            if "postfuncs" in varflags:
+                deps = deps | set(varflags["postfuncs"].split())
             deps = deps | parsedvar.references
             deps = deps | (keys & parser.execs) | (keys & parsedvar.execs)
+            value = handle_contains(value, parsedvar.contains, d)
         else:
             parser = d.expandWithRefs(value, key)
             deps |= parser.references
             deps = deps | (keys & parser.execs)
+            value = handle_contains(value, parser.contains, d)
+
+        if "vardepvalueexclude" in varflags:
+            exclude = varflags.get("vardepvalueexclude")
+            for excl in exclude.split('|'):
+                if excl:
+                    value = value.replace(excl, '')
 
         # Add varflags, assuming an exclusion list is set
         if varflagsexcl:

@@ -80,7 +80,7 @@ class BBTransport(xmlrpclib.Transport):
 
 def _create_server(host, port, timeout = 60):
     t = BBTransport(timeout)
-    s = xmlrpclib.Server("http://%s:%d/" % (host, port), transport=t, allow_none=True)
+    s = xmlrpclib.ServerProxy("http://%s:%d/" % (host, port), transport=t, allow_none=True)
     return s, t
 
 class BitBakeServerCommands():
@@ -89,7 +89,7 @@ class BitBakeServerCommands():
         self.server = server
         self.has_client = False
 
-    def registerEventHandler(self, host, port, featureset = []):
+    def registerEventHandler(self, host, port):
         """
         Register a remote UI Event Handler
         """
@@ -98,13 +98,6 @@ class BitBakeServerCommands():
         # we don't allow connections if the cooker is running
         if (self.cooker.state in [bb.cooker.state.parsing, bb.cooker.state.running]):
             return None
-
-        original_featureset = list(self.cooker.featureset)
-        for f in featureset:
-            self.cooker.featureset.setFeature(f)
-
-        if (original_featureset != list(self.cooker.featureset)):
-            self.cooker.reset()
 
         self.event_handle = bb.event.register_UIHhandler(s)
         return self.event_handle
@@ -198,6 +191,11 @@ class XMLRPCServer(SimpleXMLRPCServer, BaseImplServer):
         Constructor
         """
         BaseImplServer.__init__(self)
+        if (interface[1] == 0):     # anonymous port, not getting reused
+            self.single_use = True
+        # Use auto port configuration
+        if (interface[1] == -1):
+            interface = (interface[0], 0)
         SimpleXMLRPCServer.__init__(self, interface,
                                     requestHandler=BitBakeXMLRPCRequestHandler,
                                     logRequests=False, allow_none=True)
@@ -208,8 +206,6 @@ class XMLRPCServer(SimpleXMLRPCServer, BaseImplServer):
         self.autoregister_all_functions(self.commands, "")
         self.interface = interface
         self.single_use = False
-        if (interface[1] == 0):     # anonymous port, not getting reused
-            self.single_use = True
 
     def addcooker(self, cooker):
         BaseImplServer.addcooker(self, cooker)
@@ -257,9 +253,13 @@ class XMLRPCServer(SimpleXMLRPCServer, BaseImplServer):
             socktimeout = self.socket.gettimeout() or nextsleep
             socktimeout = min(socktimeout, nextsleep)
             # Mirror what BaseServer handle_request would do
-            fd_sets = select.select(fds, [], [], socktimeout)
-            if fd_sets[0] and self in fd_sets[0]:
-                self._handle_request_noblock()
+            try:
+                fd_sets = select.select(fds, [], [], socktimeout)
+                if fd_sets[0] and self in fd_sets[0]:
+                    self._handle_request_noblock()
+            except IOError:
+                # we ignore interrupted calls
+                pass
 
         # Tell idle functions we're exiting
         for function, data in self._idlefuns.items():
@@ -281,18 +281,27 @@ class BitBakeXMLRPCServerConnection(BitBakeBaseServerConnection):
         self.observer_only = observer_only
         self.featureset = featureset
 
-    def connect(self):
-        if not self.observer_only:
-            token = self.connection.addClient()
-        else:
-            token = "observer"
+    def connect(self, token = None):
+        if token is None:
+            if self.observer_only:
+                token = "observer"
+            else:
+                token = self.connection.addClient()
+
         if token is None:
             return None
+
         self.transport.set_connection_token(token)
 
-        self.events = uievent.BBUIEventQueue(self.connection, self.clientinfo, self.featureset)
+        self.events = uievent.BBUIEventQueue(self.connection, self.clientinfo)
         for event in bb.event.ui_queue:
             self.events.queue_event(event)
+
+        _, error = self.connection.runCommand(["setFeatures", self.featureset])
+        if error:
+            # no need to log it here, the error shall be sent to the client
+            raise BaseException(error)
+
         return self
 
     def removeClient(self):
@@ -330,7 +339,9 @@ class BitBakeServer(BitBakeBaseServer):
 
 class BitBakeXMLRPCClient(BitBakeBaseServer):
 
-    def __init__(self, observer_only = False):
+    def __init__(self, observer_only = False, token = None):
+        self.token = token
+
         self.observer_only = observer_only
         # if we need extra caches, just tell the server to load them all
         pass
@@ -343,8 +354,10 @@ class BitBakeXMLRPCClient(BitBakeBaseServer):
         try:
             [host, port] = self.remote.split(":")
             port = int(port)
-        except:
-            return None
+        except Exception as e:
+            bb.warn("Failed to read remote definition (%s)" % str(e))
+            raise e
+
         # We need our IP for the server connection. We get the IP
         # by trying to connect with the server
         try:
@@ -352,14 +365,16 @@ class BitBakeXMLRPCClient(BitBakeBaseServer):
             s.connect((host, port))
             ip = s.getsockname()[0]
             s.close()
-        except:
-            return None
+        except Exception as e:
+            bb.warn("Could not create socket for %s:%s (%s)" % (host, port, str(e)))
+            raise e
         try:
             self.serverImpl = XMLRPCProxyServer(host, port)
             self.connection = BitBakeXMLRPCServerConnection(self.serverImpl, (ip, 0), self.observer_only, featureset)
-            return self.connection.connect()
+            return self.connection.connect(self.token)
         except Exception as e:
-            bb.fatal("Could not connect to server at %s:%s (%s)" % (host, port, str(e)))
+            bb.warn("Could not connect to server at %s:%s (%s)" % (host, port, str(e)))
+            raise e
 
     def endSession(self):
         self.connection.removeClient()

@@ -37,13 +37,19 @@ Options:
         Specify sstate cache directory, will use the environment
         variable SSTATE_CACHE_DIR if it is not specified.
 
+  --extra-archs=<arch1>,<arch2>...<archn>
+        Specify list of architectures which should be tested, this list
+        will be extended with native arch, allarch and empty arch. The
+        script won't be trying to generate list of available archs from
+        AVAILTUNES in tune files.
+
   --extra-layer=<layer1>,<layer2>...<layern>
         Specify the layer which will be used for searching the archs,
         it will search the meta and meta-* layers in the top dir by
         default, and will search meta, meta-*, <layer1>, <layer2>,
         ...<layern> when specified. Use "," as the separator.
 
-        This is useless for --stamps-dir.
+        This is useless for --stamps-dir or when --extra-archs is used.
 
   -d, --remove-duplicated
         Remove the duplicated sstate cache files of one package, only
@@ -63,17 +69,17 @@ Options:
         Conflicts with --remove-duplicated.
 
   -L, --follow-symlink
-        Rmove both the symbol link and the destination file, default: no.
+        Remove both the symbol link and the destination file, default: no.
 
   -y, --yes
         Automatic yes to prompts; assume "yes" as answer to all prompts
         and run non-interactively.
 
   -v, --verbose
-        explain what is being done
+        Explain what is being done.
 
   -D, --debug
-        show debug info, repeat for more debug info
+        Show debug info, repeat for more debug info.
 
 EOF
 }
@@ -95,13 +101,13 @@ do_nothing () {
 
 # Read the input "y"
 read_confirm () {
-  echo -n "$total_deleted files will be removed! "
+  echo "$total_deleted from $total_files files will be removed! "
   if [ "$confirm" != "y" ]; then
-      echo -n "Do you want to continue (y/n)? "
+      echo "Do you want to continue (y/n)? "
       while read confirm; do
           [ "$confirm" = "Y" -o "$confirm" = "y" -o "$confirm" = "n" \
             -o "$confirm" = "N" ] && break
-          echo -n "Invalid input \"$confirm\", please input 'y' or 'n': "
+          echo "Invalid input \"$confirm\", please input 'y' or 'n': "
       done
   else
       echo
@@ -166,39 +172,50 @@ remove_duplicated () {
   local ava_archs
   local arch
   local file_names
-  local sstate_list
+  local sstate_files_list
   local fn_tmp
   local list_suffix=`mktemp` || exit 1
 
-  # Find out the archs in all the layers
-  echo -n "Figuring out the archs in the layers ... "
-  oe_core_dir=$(dirname $(dirname $(readlink -e $0)))
-  topdir=$(dirname $oe_core_dir)
-  tunedirs="`find $topdir/meta* ${oe_core_dir}/meta* $layers -path '*/meta*/conf/machine/include' 2>/dev/null`"
-  [ -n "$tunedirs" ] || echo_error "Can't find the tune directory"
-  all_machines="`find $topdir/meta* ${oe_core_dir}/meta* $layers -path '*/meta*/conf/machine/*' -name '*.conf' 2>/dev/null | sed -e 's/.*\///' -e 's/.conf$//'`"
-  all_archs=`grep -r -h "^AVAILTUNES .*=" $tunedirs | sed -e 's/.*=//' -e 's/\"//g'`
-  # Add the qemu and native archs
-  # Use the "_" to substitute "-", e.g., x86-64 to x86_64
+  if [ -z "$extra_archs" ] ; then
+    # Find out the archs in all the layers
+    echo "Figuring out the archs in the layers ... "
+    oe_core_dir=$(dirname $(dirname $(readlink -e $0)))
+    topdir=$(dirname $oe_core_dir)
+    tunedirs="`find $topdir/meta* ${oe_core_dir}/meta* $layers -path '*/meta*/conf/machine/include' 2>/dev/null`"
+    [ -n "$tunedirs" ] || echo_error "Can't find the tune directory"
+    all_machines="`find $topdir/meta* ${oe_core_dir}/meta* $layers -path '*/meta*/conf/machine/*' -name '*.conf' 2>/dev/null | sed -e 's/.*\///' -e 's/.conf$//'`"
+    all_archs=`grep -r -h "^AVAILTUNES .*=" $tunedirs | sed -e 's/.*=//' -e 's/\"//g'`
+  fi
+
+  # Use the "_" to substitute "-", e.g., x86-64 to x86_64, but not for extra_archs which can be something like cortexa9t2-vfp-neon
   # Sort to remove the duplicated ones
-  all_archs=$(echo $all_archs $all_machines $(uname -m) \
-          | sed -e 's/-/_/g' -e 's/ /\n/g' | sort -u)
+  # Add allarch and builder arch (native)
+  builder_arch=$(uname -m)
+  all_archs="$(echo allarch $all_archs $all_machines $builder_arch \
+          | sed -e 's/-/_/g' -e 's/ /\n/g' | sort -u) $extra_archs"
   echo "Done"
 
+  # Total number of files including sstate-, .siginfo and .done files
+  total_files=`find $cache_dir -name 'sstate*' | wc -l`
   # Save all the sstate files in a file
-  sstate_list=`mktemp` || exit 1
-  find $cache_dir -name 'sstate-*.tgz' >$sstate_list
+  sstate_files_list=`mktemp` || exit 1
+  find $cache_dir -name 'sstate:*:*:*:*:*:*:*.tgz*' >$sstate_files_list
 
-  echo -n "Figuring out the suffixes in the sstate cache dir ... "
-  sstate_suffixes="`sed 's/.*_\([^_]*\)\.tgz$/\1/g' $sstate_list | sort -u`"
+  echo "Figuring out the suffixes in the sstate cache dir ... "
+  sstate_suffixes="`sed 's%.*/sstate:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^_]*_\([^:]*\)\.tgz.*%\1%g' $sstate_files_list | sort -u`"
   echo "Done"
   echo "The following suffixes have been found in the cache dir:"
   echo $sstate_suffixes
 
-  echo -n "Figuring out the archs in the sstate cache dir ... "
+  echo "Figuring out the archs in the sstate cache dir ... "
+  # Using this SSTATE_PKGSPEC definition it's 6th colon separated field
+  # SSTATE_PKGSPEC    = "sstate:${PN}:${PACKAGE_ARCH}${TARGET_VENDOR}-${TARGET_OS}:${PV}:${PR}:${SSTATE_PKGARCH}:${SSTATE_VERSION}:"
   for arch in $all_archs; do
-      grep -q "\-$arch-" $sstate_list
+      grep -q ".*/sstate:[^:]*:[^:]*:[^:]*:[^:]*:$arch:[^:]*:[^:]*\.tgz$" $sstate_files_list
       [ $? -eq 0 ] && ava_archs="$ava_archs $arch"
+      # ${builder_arch}_$arch used by toolchain sstate
+      grep -q ".*/sstate:[^:]*:[^:]*:[^:]*:[^:]*:${builder_arch}_$arch:[^:]*:[^:]*\.tgz$" $sstate_files_list
+      [ $? -eq 0 ] && ava_archs="$ava_archs ${builder_arch}_$arch"
   done
   echo "Done"
   echo "The following archs have been found in the cache dir:"
@@ -207,65 +224,83 @@ remove_duplicated () {
 
   # Save the file list which needs to be removed
   local remove_listdir=`mktemp -d` || exit 1
-
   for suffix in $sstate_suffixes; do
+      if [ "$suffix" = "populate_lic" ] ; then
+          echo "Skipping populate_lic, because removing duplicates doesn't work correctly for them (use --stamps-dir instead)"
+          continue
+      fi
+      # Total number of files including .siginfo and .done files
+      total_files_suffix=`grep ".*/sstate:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:_]*_$suffix\.tgz.*" $sstate_files_list | wc -l 2>/dev/null`
+      total_tgz_suffix=`grep ".*/sstate:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:_]*_$suffix\.tgz$" $sstate_files_list | wc -l 2>/dev/null`
       # Save the file list to a file, some suffix's file may not exist
-      grep "sstate-.*_$suffix.tgz" $sstate_list >$list_suffix 2>/dev/null
-      local deleted=0
-      echo -n "Figuring out the sstate-xxx_$suffix.tgz ... "
-      # There are at list 6 dashes (-) after arch, use this to avoid the
-      # greedy match of sed.
-      file_names=`for arch in $ava_archs; do
-          sed -ne 's#.*/\(sstate-.*\)-'"$arch"'-.*-.*-.*-.*-.*-.*#\1#p' $list_suffix
-      done | sort -u`
+      grep ".*/sstate:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:_]*_$suffix\.tgz.*" $sstate_files_list >$list_suffix 2>/dev/null
+      local deleted_tgz=0
+      local deleted_files=0
+      for ext in tgz tgz.siginfo tgz.done; do
+          echo "Figuring out the sstate:xxx_$suffix.$ext ... "
+          # Uniq BPNs
+          file_names=`for arch in $ava_archs ""; do
+              sed -ne "s%.*/sstate:\([^:]*\):[^:]*:[^:]*:[^:]*:$arch:[^:]*:[^:]*\.${ext}$%\1%p" $list_suffix
+          done | sort -u`
 
-      fn_tmp=`mktemp` || exit 1
-      rm_list="$remove_listdir/sstate-xxx_$suffix"
-      for fn in $file_names; do
-          [ -z "$verbose" ] || echo "Analyzing $fn-xxx_$suffix.tgz"
-          for arch in $ava_archs; do
-              grep -h "/$fn-$arch-" $list_suffix >$fn_tmp
-              if [ -s $fn_tmp ] ; then
-                  [ $debug -gt 1 ] && echo "Available files for $fn-$arch- with suffix $suffix:" && cat $fn_tmp
-                  # Use the modification time
-                  to_del=$(ls -t $(cat $fn_tmp) | sed -n '1!p')
-                  [ $debug -gt 2 ] && echo "Considering to delete: $to_del"
-                  # The sstate file which is downloaded from the SSTATE_MIRROR is
-                  # put in SSTATE_DIR, and there is a symlink in SSTATE_DIR/??/ to
-                  # it, so filter it out from the remove list if it should not be
-                  # removed.
-                  to_keep=$(ls -t $(cat $fn_tmp) | sed -n '1p')
-                  [ $debug -gt 2 ] && echo "Considering to keep: $to_keep"
-                  for k in $to_keep; do
-                      if [ -L "$k" ]; then
-                          # The symlink's destination
-                          k_dest="`readlink -e $k`"
-                          # Maybe it is the one in cache_dir
-                          k_maybe="$cache_dir/${k##/*/}"
-                          # Remove it from the remove list if they are the same.
-                          if [ "$k_dest" = "$k_maybe" ]; then
-                              to_del="`echo $to_del | sed 's#'\"$k_maybe\"'##g'`"
+          fn_tmp=`mktemp` || exit 1
+          rm_list="$remove_listdir/sstate:xxx_$suffix"
+          for fn in $file_names; do
+              [ -z "$verbose" ] || echo "Analyzing sstate:$fn-xxx_$suffix.${ext}"
+              for arch in $ava_archs ""; do
+                  grep -h ".*/sstate:$fn:[^:]*:[^:]*:[^:]*:$arch:[^:]*:[^:]*\.${ext}$" $list_suffix >$fn_tmp
+                  if [ -s $fn_tmp ] ; then
+                      [ $debug -gt 1 ] && echo "Available files for $fn-$arch- with suffix $suffix.${ext}:" && cat $fn_tmp
+                      # Use the modification time
+                      to_del=$(ls -t $(cat $fn_tmp) | sed -n '1!p')
+                      [ $debug -gt 2 ] && echo "Considering to delete: $to_del"
+                      # The sstate file which is downloaded from the SSTATE_MIRROR is
+                      # put in SSTATE_DIR, and there is a symlink in SSTATE_DIR/??/ to
+                      # it, so filter it out from the remove list if it should not be
+                      # removed.
+                      to_keep=$(ls -t $(cat $fn_tmp) | sed -n '1p')
+                      [ $debug -gt 2 ] && echo "Considering to keep: $to_keep"
+                      for k in $to_keep; do
+                          if [ -L "$k" ]; then
+                              # The symlink's destination
+                              k_dest="`readlink -e $k`"
+                              # Maybe it is the one in cache_dir
+                              k_maybe="$cache_dir/${k##/*/}"
+                              # Remove it from the remove list if they are the same.
+                              if [ "$k_dest" = "$k_maybe" ]; then
+                                  to_del="`echo $to_del | sed 's#'\"$k_maybe\"'##g'`"
+                              fi
                           fi
-                      fi
-                  done
-                  rm -f $fn_tmp
-                  [ $debug -gt 2 ] && echo "Decided to delete: $to_del"
-                  gen_rmlist $rm_list "$to_del"
-              fi
+                      done
+                      rm -f $fn_tmp
+                      [ $debug -gt 2 ] && echo "Decided to delete: $to_del"
+                      gen_rmlist $rm_list.$ext "$to_del"
+                  fi
+              done
           done
       done
-      [ ! -s "$rm_list" ] || deleted=`cat $rm_list | wc -l`
-      [ -s "$rm_list" -a $debug -gt 0 ] && cat $rm_list
-      echo "($deleted files will be removed)"
-      let total_deleted=$total_deleted+$deleted
+      deleted_tgz=`cat $rm_list.* 2>/dev/null | grep ".tgz$" | wc -l`
+      deleted_files=`cat $rm_list.* 2>/dev/null | wc -l`
+      [ "$deleted_files" -gt 0 -a $debug -gt 0 ] && cat $rm_list.*
+      echo "($deleted_tgz from $total_tgz_suffix .tgz files for $suffix suffix will be removed or $deleted_files from $total_files_suffix when counting also .siginfo and .done files)"
+      let total_deleted=$total_deleted+$deleted_files
   done
+  deleted_tgz=0
+  rm_old_list=$remove_listdir/sstate-old-filenames
+  find $cache_dir -name 'sstate-*.tgz' >$rm_old_list
+  [ -s "$rm_old_list" ] && deleted_tgz=`cat $rm_old_list | grep ".tgz$" | wc -l`
+  [ -s "$rm_old_list" ] && deleted_files=`cat $rm_old_list | wc -l`
+  [ -s "$rm_old_list" -a $debug -gt 0 ] && cat $rm_old_list
+  echo "($deleted_tgz .tgz files with old sstate-* filenames will be removed or $deleted_files when counting also .siginfo and .done files)"
+  let total_deleted=$total_deleted+$deleted_files
+
   rm -f $list_suffix
-  rm -f $sstate_list
+  rm -f $sstate_files_list
   if [ $total_deleted -gt 0 ]; then
       read_confirm
       if [ "$confirm" = "y" -o "$confirm" = "Y" ]; then
           for list in `ls $remove_listdir/`; do
-              echo -n "Removing $list.tgz (`cat $remove_listdir/$list | wc -w` files) ... "
+              echo "Removing $list.tgz (`cat $remove_listdir/$list | wc -w` files) ... "
               # Remove them one by one to avoid the argument list too long error
               for i in `cat $remove_listdir/$list`; do
                   rm -f $verbose $i
@@ -289,16 +324,23 @@ rm_by_stamps (){
   local cache_list=`mktemp` || exit 1
   local keep_list=`mktemp` || exit 1
   local rm_list=`mktemp` || exit 1
-  local suffixes
   local sums
   local all_sums
 
-  suffixes="populate_sysroot populate_lic package_write_ipk \
-            package_write_rpm package_write_deb package deploy"
+  # Total number of files including sstate-, .siginfo and .done files
+  total_files=`find $cache_dir -type f -name 'sstate*' | wc -l`
+  # Save all the state file list to a file
+  find $cache_dir -type f -name 'sstate*' | sort -u -o $cache_list
+
+  echo "Figuring out the suffixes in the sstate cache dir ... "
+  local sstate_suffixes="`sed 's%.*/sstate:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^_]*_\([^:]*\)\.tgz.*%\1%g' $cache_list | sort -u`"
+  echo "Done"
+  echo "The following suffixes have been found in the cache dir:"
+  echo $sstate_suffixes
 
   # Figure out all the md5sums in the stamps dir.
-  echo -n "Figuring out all the md5sums in stamps dir ... "
-  for i in $suffixes; do
+  echo "Figuring out all the md5sums in stamps dir ... "
+  for i in $sstate_suffixes; do
       # There is no "\.sigdata" but "_setcene" when it is mirrored
       # from the SSTATE_MIRRORS, use them to figure out the sum.
       sums=`find $stamps -maxdepth 3 -name "*.do_$i.*" \
@@ -309,12 +351,9 @@ rm_by_stamps (){
   done
   echo "Done"
 
-  # Save all the state file list to a file
-  find $cache_dir -name 'sstate-*.tgz' | sort -u -o $cache_list
-
-  echo -n "Figuring out the files which will be removed ... "
+  echo "Figuring out the files which will be removed ... "
   for i in $all_sums; do
-      grep ".*-${i}_.*" $cache_list >>$keep_list
+      grep ".*/sstate:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:${i}_.*" $cache_list >>$keep_list
   done
   echo "Done"
 
@@ -322,14 +361,14 @@ rm_by_stamps (){
       sort -u $keep_list -o $keep_list
       to_del=`comm -1 -3 $keep_list $cache_list`
       gen_rmlist $rm_list "$to_del"
-      let total_deleted=(`cat $rm_list | wc -w`)
+      let total_deleted=`cat $rm_list | sort -u | wc -w`
       if [ $total_deleted -gt 0 ]; then
-          [ $debug -gt 0 ] && cat $rm_list
+          [ $debug -gt 0 ] && cat $rm_list | sort -u
           read_confirm
           if [ "$confirm" = "y" -o "$confirm" = "Y" ]; then
               echo "Removing sstate cache files ... ($total_deleted files)"
               # Remove them one by one to avoid the argument list too long error
-              for i in `cat $rm_list`; do
+              for i in `cat $rm_list | sort -u`; do
                   rm -f $verbose $i
               done
               echo "$total_deleted files have been removed"
@@ -368,9 +407,14 @@ while [ -n "$1" ]; do
       fsym="y"
       shift
         ;;
+    --extra-archs=*)
+      extra_archs=`echo $1 | sed -e 's#^--extra-archs=##' -e 's#,# #g'`
+      [ -n "$extra_archs" ] || echo_error "Invalid extra arch parameter"
+      shift
+        ;;
     --extra-layer=*)
       extra_layers=`echo $1 | sed -e 's#^--extra-layer=##' -e 's#,# #g'`
-      [ -n "$extra_layers" ] || echo_error "Invalid extra layer $i"
+      [ -n "$extra_layers" ] || echo_error "Invalid extra layer parameter"
       for i in $extra_layers; do
           l=`readlink -e $i`
           if [ -d "$l" ]; then

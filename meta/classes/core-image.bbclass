@@ -2,13 +2,13 @@
 #
 # Copyright (C) 2007-2011 Linux Foundation
 
-LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=3f40d7994397109285ec7b81fdeb3b58 \
+LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=4d92cd373abda3937c2bc47fbc49d690 \
                     file://${COREBASE}/meta/COPYING.MIT;md5=3da9cfbcb788c80a0384361b4de20420"
 
 # IMAGE_FEATURES control content of the core reference images
 # 
-# By default we install packagegroup-core-boot and packagegroup-base packages - this gives us
-# working (console only) rootfs.
+# By default we install packagegroup-core-boot and packagegroup-base-extended packages;
+# this gives us working (console only) rootfs.
 #
 # Available IMAGE_FEATURES:
 #
@@ -30,22 +30,22 @@ LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=3f40d7994397109285ec7b81fdeb3
 # - dev-pkgs            - development packages (headers, etc.) for all installed packages in the rootfs
 # - dbg-pkgs            - debug symbol packages for all installed packages in the rootfs
 # - doc-pkgs            - documentation packages for all installed packages in the rootfs
+# - ptest-pkgs          - ptest packages for all ptest-enabled recipes
 # - read-only-rootfs    - tweaks an image to support read-only rootfs
 #
-PACKAGE_GROUP_x11 = "packagegroup-core-x11"
-PACKAGE_GROUP_x11-base = "packagegroup-core-x11-base"
-PACKAGE_GROUP_x11-sato = "packagegroup-core-x11-sato"
-PACKAGE_GROUP_tools-debug = "packagegroup-core-tools-debug"
-PACKAGE_GROUP_eclipse-debug = "packagegroup-core-eclipse-debug"
-PACKAGE_GROUP_tools-profile = "packagegroup-core-tools-profile"
-PACKAGE_GROUP_tools-testapps = "packagegroup-core-tools-testapps"
-PACKAGE_GROUP_tools-sdk = "packagegroup-core-sdk packagegroup-core-standalone-sdk-target"
-PACKAGE_GROUP_nfs-server = "packagegroup-core-nfs-server"
-PACKAGE_GROUP_ssh-server-dropbear = "packagegroup-core-ssh-dropbear"
-PACKAGE_GROUP_ssh-server-openssh = "packagegroup-core-ssh-openssh"
-PACKAGE_GROUP_package-management = "${ROOTFS_PKGMANAGE}"
-PACKAGE_GROUP_qt4-pkgs = "packagegroup-core-qt-demoapps"
-PACKAGE_GROUP_hwcodecs = "${MACHINE_HWCODECS}"
+FEATURE_PACKAGES_x11 = "packagegroup-core-x11"
+FEATURE_PACKAGES_x11-base = "packagegroup-core-x11-base"
+FEATURE_PACKAGES_x11-sato = "packagegroup-core-x11-sato"
+FEATURE_PACKAGES_tools-debug = "packagegroup-core-tools-debug"
+FEATURE_PACKAGES_eclipse-debug = "packagegroup-core-eclipse-debug"
+FEATURE_PACKAGES_tools-profile = "packagegroup-core-tools-profile"
+FEATURE_PACKAGES_tools-testapps = "packagegroup-core-tools-testapps"
+FEATURE_PACKAGES_tools-sdk = "packagegroup-core-sdk packagegroup-core-standalone-sdk-target"
+FEATURE_PACKAGES_nfs-server = "packagegroup-core-nfs-server"
+FEATURE_PACKAGES_ssh-server-dropbear = "packagegroup-core-ssh-dropbear"
+FEATURE_PACKAGES_ssh-server-openssh = "packagegroup-core-ssh-openssh"
+FEATURE_PACKAGES_qt4-pkgs = "packagegroup-core-qt-demoapps"
+FEATURE_PACKAGES_hwcodecs = "${MACHINE_HWCODECS}"
 
 
 # IMAGE_FEATURES_REPLACES_foo = 'bar1 bar2'
@@ -74,7 +74,7 @@ inherit image
 ROOTFS_POSTPROCESS_COMMAND += "rootfs_update_timestamp ; "
 
 # Zap the root password if debug-tweaks feature is not enabled
-ROOTFS_POSTPROCESS_COMMAND += '${@base_contains("IMAGE_FEATURES", "debug-tweaks", "", "zap_root_password ; ",d)}'
+ROOTFS_POSTPROCESS_COMMAND += '${@bb.utils.contains("IMAGE_FEATURES", "debug-tweaks", "", "zap_empty_root_password ; ",d)}'
 
 # Tweak the mount options for rootfs in /etc/fstab if read-only-rootfs is enabled
-ROOTFS_POSTPROCESS_COMMAND += '${@base_contains("IMAGE_FEATURES", "read-only-rootfs", "read_only_rootfs_hook; ", "",d)}'
+ROOTFS_POSTPROCESS_COMMAND += '${@bb.utils.contains("IMAGE_FEATURES", "read-only-rootfs", "read_only_rootfs_hook; ", "",d)}'

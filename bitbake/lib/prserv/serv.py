@@ -13,6 +13,7 @@ except ImportError:
 import bb.server.xmlrpc
 import prserv
 import prserv.db
+import errno
 
 logger = logging.getLogger("BitBake.PRserv")
 
@@ -37,8 +38,17 @@ singleton = None
 class PRServer(SimpleXMLRPCServer):
     def __init__(self, dbfile, logfile, interface, daemon=True):
         ''' constructor '''
-        SimpleXMLRPCServer.__init__(self, interface,
-                                    logRequests=False, allow_none=True)
+        import socket
+        try:
+            SimpleXMLRPCServer.__init__(self, interface,
+                                        logRequests=False, allow_none=True)
+        except socket.error:
+            ip=socket.gethostbyname(interface[0])
+            port=interface[1]
+            msg="PR Server unable to bind to %s:%s\n" % (ip, port)
+            sys.stderr.write(msg)
+            raise PRServiceConfigError
+
         self.dbfile=dbfile
         self.daemon=daemon
         self.logfile=logfile
@@ -66,11 +76,19 @@ class PRServer(SimpleXMLRPCServer):
         In addition, exception handling is done here.
 
         """
+        iter_count = 1
+        # With 60 iterations between syncs and a 0.5 second timeout between
+        # iterations, this will sync if dirty every ~30 seconds.
+        iterations_between_sync = 60
+
         while True:
             (request, client_address) = self.requestqueue.get()
             try:
                 self.finish_request(request, client_address)
                 self.shutdown_request(request)
+                iter_count = (iter_count + 1) % iterations_between_sync
+                if iter_count == 0:
+                    self.table.sync_if_dirty()
             except:
                 self.handle_error(request, client_address)
                 self.shutdown_request(request)
@@ -274,20 +292,37 @@ def stop_daemon(host, port):
         PRServerConnection(host, port).terminate()
     except:
         logger.critical("Stop PRService %s:%d failed" % (host,port))
-    time.sleep(0.5)
 
     try:
         if pid:
+            wait_timeout = 0
+            print("Waiting for pr-server to exit.")
+            while is_running(pid) and wait_timeout < 50:
+                time.sleep(0.1)
+                wait_timeout += 1
+
+            if is_running(pid):
+                print("Sending SIGTERM to pr-server.")
+                os.kill(pid,signal.SIGTERM)
+                time.sleep(0.1)
+
             if os.path.exists(pidfile):
                 os.remove(pidfile)
-            os.kill(pid,signal.SIGTERM)
-            time.sleep(0.1)
+
     except OSError as e:
         err = str(e)
         if err.find("No such process") <= 0:
             raise e
 
     return 0
+
+def is_running(pid):
+    try:
+        os.kill(pid, 0)
+    except OSError as err:
+        if err.errno == errno.ESRCH:
+            return False
+    return True
 
 def is_local_special(host, port):
     if host.strip().upper() == 'localhost'.upper() and (not port):

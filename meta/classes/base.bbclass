@@ -31,13 +31,10 @@ def oe_import(d):
         imported = __import__(toimport)
         inject(toimport.split(".", 1)[0], imported)
 
-python oe_import_eh () {
-    oe_import(e.data)
-    e.data.setVar("NATIVELSBSTRING", lsb_distro_identifier(e.data))
-}
+    return ""
 
-addhandler oe_import_eh
-oe_import_eh[eventmask] = "bb.event.ConfigParsed"
+# We need the oe module name space early (before INHERITs get added)
+OE_IMPORTED := "${@oe_import(d)}"
 
 def lsb_distro_identifier(d):
     adjust = d.getVar('LSB_DISTRO_ADJUST', True)
@@ -53,9 +50,13 @@ die() {
 	bbfatal "$*"
 }
 
-oe_runmake() {
+oe_runmake_call() {
 	bbnote ${MAKE} ${EXTRA_OEMAKE} "$@"
-	${MAKE} ${EXTRA_OEMAKE} "$@" || die "oe_runmake failed"
+	${MAKE} ${EXTRA_OEMAKE} "$@"
+}
+
+oe_runmake() {
+	oe_runmake_call "$@" || die "oe_runmake failed"
 }
 
 
@@ -96,17 +97,15 @@ PATH_prepend = "${@extra_path_elements(d)}"
 addtask fetch
 do_fetch[dirs] = "${DL_DIR}"
 do_fetch[file-checksums] = "${@bb.fetch.get_checksum_file_list(d)}"
+do_fetch[vardeps] += "SRCREV"
 python base_do_fetch() {
 
     src_uri = (d.getVar('SRC_URI', True) or "").split()
     if len(src_uri) == 0:
         return
 
-    localdata = bb.data.createCopy(d)
-    bb.data.update_data(localdata)
-
     try:
-        fetcher = bb.fetch2.Fetch(src_uri, localdata)
+        fetcher = bb.fetch2.Fetch(src_uri, d)
         fetcher.download()
     except bb.fetch2.BBFetchException as e:
         raise bb.build.FuncFailed(e)
@@ -120,13 +119,10 @@ python base_do_unpack() {
     if len(src_uri) == 0:
         return
 
-    localdata = bb.data.createCopy(d)
-    bb.data.update_data(localdata)
-
-    rootdir = localdata.getVar('WORKDIR', True)
+    rootdir = d.getVar('WORKDIR', True)
 
     try:
-        fetcher = bb.fetch2.Fetch(src_uri, localdata)
+        fetcher = bb.fetch2.Fetch(src_uri, d)
         fetcher.unpack(rootdir)
     except bb.fetch2.BBFetchException as e:
         raise bb.build.FuncFailed(e)
@@ -137,113 +133,6 @@ def pkgarch_mapping(d):
     if d.getVar("PKGARCHCOMPAT_ARMV7A", True):
         if d.getVar("TUNE_PKGARCH", True) == "armv7a-vfp-neon":
             d.setVar("TUNE_PKGARCH", "armv7a")
-
-def preferred_ml_updates(d):
-    # If any PREFERRED_PROVIDER or PREFERRED_VERSION are set,
-    # we need to mirror these variables in the multilib case;
-    multilibs = d.getVar('MULTILIBS', True) or ""
-    if not multilibs:
-        return
-
-    prefixes = []
-    for ext in multilibs.split():
-        eext = ext.split(':')
-        if len(eext) > 1 and eext[0] == 'multilib':
-            prefixes.append(eext[1])
-
-    versions = []
-    providers = []
-    for v in d.keys():
-        if v.startswith("PREFERRED_VERSION_"):
-            versions.append(v)
-        if v.startswith("PREFERRED_PROVIDER_"):
-            providers.append(v)
-
-    for v in versions:
-        val = d.getVar(v, False)
-        pkg = v.replace("PREFERRED_VERSION_", "")
-        if pkg.endswith(("-native", "-crosssdk")) or pkg.startswith(("nativesdk-", "virtual/nativesdk-")):
-            continue
-        if 'cross-canadian' in pkg:
-            for p in prefixes:
-                localdata = bb.data.createCopy(d)
-                override = ":virtclass-multilib-" + p
-                localdata.setVar("OVERRIDES", localdata.getVar("OVERRIDES", False) + override)
-                bb.data.update_data(localdata)
-                newname = localdata.expand(v)
-                if newname != v:
-                    newval = localdata.expand(val)
-                    d.setVar(newname, newval)
-            # Avoid future variable key expansion
-            vexp = d.expand(v)
-            if v != vexp and d.getVar(v, False):
-                d.renameVar(v, vexp)
-            continue
-        for p in prefixes:
-            newname = "PREFERRED_VERSION_" + p + "-" + pkg
-            if not d.getVar(newname, False):
-                d.setVar(newname, val)
-
-    for prov in providers:
-        val = d.getVar(prov, False)
-        pkg = prov.replace("PREFERRED_PROVIDER_", "")
-        if pkg.endswith(("-native", "-crosssdk")) or pkg.startswith(("nativesdk-", "virtual/nativesdk-")):
-            continue
-        if 'cross-canadian' in pkg:
-            for p in prefixes:
-                localdata = bb.data.createCopy(d)
-                override = ":virtclass-multilib-" + p
-                localdata.setVar("OVERRIDES", localdata.getVar("OVERRIDES", False) + override)
-                bb.data.update_data(localdata)
-                newname = localdata.expand(prov)
-                if newname != prov:
-                    newval = localdata.expand(val)
-                    d.setVar(newname, newval)
-            # Avoid future variable key expansion
-            provexp = d.expand(prov)
-            if prov != provexp and d.getVar(prov, False):
-                d.renameVar(prov, provexp)
-            continue
-        virt = ""
-        if pkg.startswith("virtual/"):
-            pkg = pkg.replace("virtual/", "")
-            virt = "virtual/"
-        for p in prefixes:
-            if pkg != "kernel":
-                newval = p + "-" + val
-
-            # implement variable keys
-            localdata = bb.data.createCopy(d)
-            override = ":virtclass-multilib-" + p
-            localdata.setVar("OVERRIDES", localdata.getVar("OVERRIDES", False) + override)
-            bb.data.update_data(localdata)
-            newname = localdata.expand(prov)
-            if newname != prov and not d.getVar(newname, False):
-                d.setVar(newname, localdata.expand(newval))
-
-            # implement alternative multilib name
-            newname = localdata.expand("PREFERRED_PROVIDER_" + virt + p + "-" + pkg)
-            if not d.getVar(newname, False):
-                d.setVar(newname, newval)
-        # Avoid future variable key expansion
-        provexp = d.expand(prov)
-        if prov != provexp and d.getVar(prov, False):
-            d.renameVar(prov, provexp)
-
-
-    mp = (d.getVar("MULTI_PROVIDER_WHITELIST", True) or "").split()
-    extramp = []
-    for p in mp:
-        if p.endswith(("-native", "-crosssdk")) or p.startswith(("nativesdk-", "virtual/nativesdk-")) or 'cross-canadian' in p:
-            continue
-        virt = ""
-        if p.startswith("virtual/"):
-            p = p.replace("virtual/", "")
-            virt = "virtual/"
-        for pref in prefixes:
-            extramp.append(virt + pref + "-" + p)
-    d.setVar("MULTI_PROVIDER_WHITELIST", " ".join(mp + extramp))
-
 
 def get_layers_branch_rev(d):
     layers = (d.getVar("BBLAYERS", True) or "").split()
@@ -289,12 +178,12 @@ def buildcfg_neededvars(d):
         bb.fatal('The following variable(s) were not set: %s\nPlease set them directly, or choose a MACHINE or DISTRO that sets them.' % ', '.join(pesteruser))
 
 addhandler base_eventhandler
-base_eventhandler[eventmask] = "bb.event.ConfigParsed bb.event.BuildStarted"
+base_eventhandler[eventmask] = "bb.event.ConfigParsed bb.event.BuildStarted bb.event.RecipePreFinalise"
 python base_eventhandler() {
     if isinstance(e, bb.event.ConfigParsed):
+        e.data.setVar("NATIVELSBSTRING", lsb_distro_identifier(e.data))
         e.data.setVar('BB_VERSION', bb.__version__)
         pkgarch_mapping(e.data)
-        preferred_ml_updates(e.data)
         oe.utils.features_backfill("DISTRO_FEATURES", e.data)
         oe.utils.features_backfill("MACHINE_FEATURES", e.data)
 
@@ -313,6 +202,18 @@ python base_eventhandler() {
 
         statusheader = e.data.getVar('BUILDCFG_HEADER', True)
         bb.plain('\n%s\n%s\n' % (statusheader, '\n'.join(statuslines)))
+
+    # This code is to silence warnings where the SDK variables overwrite the 
+    # target ones and we'd see dulpicate key names overwriting each other
+    # for various PREFERRED_PROVIDERS
+    if isinstance(e, bb.event.RecipePreFinalise):
+        if e.data.getVar("TARGET_PREFIX", True) == e.data.getVar("SDK_PREFIX", True):
+            e.data.delVar("PREFERRED_PROVIDER_virtual/${TARGET_PREFIX}binutils")
+            e.data.delVar("PREFERRED_PROVIDER_virtual/${TARGET_PREFIX}gcc-initial")
+            e.data.delVar("PREFERRED_PROVIDER_virtual/${TARGET_PREFIX}gcc")
+            e.data.delVar("PREFERRED_PROVIDER_virtual/${TARGET_PREFIX}g++")
+            e.data.delVar("PREFERRED_PROVIDER_virtual/${TARGET_PREFIX}compilerlibs")
+
 }
 
 addtask configure after do_patch
@@ -346,8 +247,6 @@ base_do_package() {
 }
 
 addtask build after do_populate_sysroot
-do_build = ""
-do_build[func] = "1"
 do_build[noexec] = "1"
 do_build[recrdeptask] += "do_deploy"
 do_build () {
@@ -405,7 +304,7 @@ python () {
             appends = bb.utils.explode_deps(d.expand(" ".join(appends)))
             newappends = []
             for a in appends:
-                if a.endswith("-native") or a.endswith("-cross"):
+                if a.endswith("-native") or ("-cross-" in a):
                     newappends.append(a)
                 elif a.startswith("virtual/"):
                     subs = a.split("/", 1)[1]
@@ -458,8 +357,12 @@ python () {
             appendVar('EXTRA_OECONF', extraconf)
 
     # If PRINC is set, try and increase the PR value by the amount specified
+    # The PR server is now the preferred way to handle PR changes based on
+    # the checksum of the recipe (including bbappend).  The PRINC is now
+    # obsolete.  Return a warning to the user.
     princ = d.getVar('PRINC', True)
     if princ and princ != "0":
+        bb.warn("Use of PRINC %s was detected in the recipe %s (or one of its .bbappends)\nUse of PRINC is deprecated.  The PR server should be used to automatically increment the PR.  See: https://wiki.yoctoproject.org/wiki/PR_Service." % (princ, d.getVar("FILE", True)))
         pr = d.getVar('PR', True)
         pr_prefix = re.search("\D+",pr)
         prval = re.search("\d+",pr)
@@ -485,14 +388,15 @@ python () {
     # If we're building a target package we need to use fakeroot (pseudo)
     # in order to capture permissions, owners, groups and special files
     if not bb.data.inherits_class('native', d) and not bb.data.inherits_class('cross', d):
-        d.setVarFlag('do_configure', 'umask', 022)
-        d.setVarFlag('do_compile', 'umask', 022)
+        d.setVarFlag('do_unpack', 'umask', '022')
+        d.setVarFlag('do_configure', 'umask', '022')
+        d.setVarFlag('do_compile', 'umask', '022')
         d.appendVarFlag('do_install', 'depends', ' virtual/fakeroot-native:do_populate_sysroot')
         d.setVarFlag('do_install', 'fakeroot', 1)
-        d.setVarFlag('do_install', 'umask', 022)
+        d.setVarFlag('do_install', 'umask', '022')
         d.appendVarFlag('do_package', 'depends', ' virtual/fakeroot-native:do_populate_sysroot')
         d.setVarFlag('do_package', 'fakeroot', 1)
-        d.setVarFlag('do_package', 'umask', 022)
+        d.setVarFlag('do_package', 'umask', '022')
         d.setVarFlag('do_package_setscene', 'fakeroot', 1)
         d.appendVarFlag('do_package_setscene', 'depends', ' virtual/fakeroot-native:do_populate_sysroot')
         d.setVarFlag('do_devshell', 'fakeroot', 1)
@@ -520,13 +424,15 @@ python () {
         bad_licenses = (d.getVar('INCOMPATIBLE_LICENSE', True) or "").split()
 
         check_license = False if pn.startswith("nativesdk-") else True
-        for t in ["-native", "-cross", "-cross-initial", "-cross-intermediate",
-              "-crosssdk-intermediate", "-crosssdk", "-crosssdk-initial",
-              "-cross-canadian-" + d.getVar('TRANSLATED_TARGET_ARCH', True)]:
-            if pn.endswith(t):
+        for t in ["-native", "-cross-${TARGET_ARCH}", "-cross-initial-${TARGET_ARCH}",
+              "-crosssdk-${SDK_ARCH}", "-crosssdk-initial-${SDK_ARCH}",
+              "-cross-canadian-${TRANSLATED_TARGET_ARCH}"]:
+            if pn.endswith(d.expand(t)):
                 check_license = False
 
         if check_license and bad_licenses:
+            bad_licenses = map(lambda l: canonical_license(d, l), bad_licenses)
+
             whitelist = []
             for lic in bad_licenses:
                 for w in ["HOSTTOOLS_WHITELIST_", "LGPLv2_WHITELIST_", "WHITELIST_"]:
@@ -572,6 +478,11 @@ python () {
     elif "osc://" in srcuri:
         d.appendVarFlag('do_fetch', 'depends', ' osc-native:do_populate_sysroot')
 
+    # *.lz4 should depends on lz4-native for unpacking
+    # Not endswith because of "*.patch.lz4;patch=1". Need bb.fetch.decodeurl in future
+    if '.lz4' in srcuri:
+        d.appendVarFlag('do_unpack', 'depends', ' lz4-native:do_populate_sysroot')
+
     # *.xz should depends on xz-native for unpacking
     # Not endswith because of "*.patch.xz;patch=1". Need bb.fetch.decodeurl in future
     if '.xz' in srcuri:
@@ -580,6 +491,10 @@ python () {
     # unzip-native should already be staged before unpacking ZIP recipes
     if ".zip" in srcuri:
         d.appendVarFlag('do_unpack', 'depends', ' unzip-native:do_populate_sysroot')
+
+    # file is needed by rpm2cpio.sh
+    if ".src.rpm" in srcuri:
+        d.appendVarFlag('do_unpack', 'depends', ' file-native:do_populate_sysroot')
 
     set_packagetriplet(d)
 
@@ -639,11 +554,8 @@ python do_cleanall() {
     if len(src_uri) == 0:
         return
 
-    localdata = bb.data.createCopy(d)
-    bb.data.update_data(localdata)
-
     try:
-        fetcher = bb.fetch2.Fetch(src_uri, localdata)
+        fetcher = bb.fetch2.Fetch(src_uri, d)
         fetcher.clean()
     except bb.fetch2.BBFetchException, e:
         raise bb.build.FuncFailed(e)

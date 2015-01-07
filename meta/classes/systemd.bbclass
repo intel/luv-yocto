@@ -9,16 +9,15 @@ SYSTEMD_PACKAGES_class-nativesdk ?= ""
 SYSTEMD_AUTO_ENABLE ??= "enable"
 
 # This class will be included in any recipe that supports systemd init scripts,
-# even if the systemd DISTRO_FEATURE isn't enabled.  As such don't make any
-# changes directly but check the DISTRO_FEATURES first.
+# even if systemd is not in DISTRO_FEATURES.  As such don't make any changes
+# directly but check the DISTRO_FEATURES first.
 python __anonymous() {
-    features = d.getVar("DISTRO_FEATURES", True).split()
     # If the distro features have systemd but not sysvinit, inhibit update-rcd
     # from doing any work so that pure-systemd images don't have redundant init
     # files.
-    if "systemd" in features:
+    if bb.utils.contains('DISTRO_FEATURES', 'systemd', True, False, d):
         d.appendVar("DEPENDS", " systemd-systemctl-native")
-        if "sysvinit" not in features:
+        if not bb.utils.contains('DISTRO_FEATURES', 'sysvinit', True, False, d):
             d.setVar("INHIBIT_UPDATERCD_BBCLASS", "1")
 }
 
@@ -39,20 +38,28 @@ fi
 }
 
 systemd_prerm() {
+OPTS=""
+
+if [ -n "$D" ]; then
+    OPTS="--root=$D"
+fi
+
 if type systemctl >/dev/null 2>/dev/null; then
 	if [ -z "$D" ]; then
 		systemctl stop ${SYSTEMD_SERVICE}
 	fi
 
-	systemctl disable ${SYSTEMD_SERVICE}
+	systemctl $OPTS disable ${SYSTEMD_SERVICE}
 fi
 }
 
 
 systemd_populate_packages[vardeps] += "systemd_prerm systemd_postinst"
+systemd_populate_packages[vardepsexclude] += "OVERRIDES"
+
 
 python systemd_populate_packages() {
-    if "systemd" not in d.getVar("DISTRO_FEATURES", True).split():
+    if not bb.utils.contains('DISTRO_FEATURES', 'systemd', True, False, d):
         return
 
     def get_package_var(d, var, pkg):
@@ -136,10 +143,7 @@ python systemd_populate_packages() {
         if has_exactly_one_service:
             has_exactly_one_service = len(get_package_var(d, 'SYSTEMD_SERVICE', systemd_packages).split()) == 1
 
-        keys = 'Also' # Conflicts??
-        if has_exactly_one_service:
-            # single service gets also the /dev/null dummies
-            keys = 'Also Conflicts'
+        keys = 'Also'
         # scan for all in SYSTEMD_SERVICE[]
         for pkg_systemd in systemd_packages.split():
             for service in get_package_var(d, 'SYSTEMD_SERVICE', pkg_systemd).split():
@@ -167,7 +171,7 @@ PACKAGESPLITFUNCS_prepend = "systemd_populate_packages "
 
 python rm_systemd_unitdir (){
     import shutil
-    if "systemd" not in d.getVar("DISTRO_FEATURES", True).split():
+    if not bb.utils.contains('DISTRO_FEATURES', 'systemd', True, False, d):
         systemd_unitdir = oe.path.join(d.getVar("D", True), d.getVar('systemd_unitdir', True))
         if os.path.exists(systemd_unitdir):
             shutil.rmtree(systemd_unitdir)
@@ -181,9 +185,9 @@ python rm_sysvinit_initddir (){
     import shutil
     sysv_initddir = oe.path.join(d.getVar("D", True), (d.getVar('INIT_D_DIR', True) or "/etc/init.d"))
 
-    if ("systemd" in d.getVar("DISTRO_FEATURES", True).split() and
-        "sysvinit" not in d.getVar("DISTRO_FEATURES", True).split() and
-        os.path.exists(sysv_initddir)):
+    if bb.utils.contains('DISTRO_FEATURES', 'systemd', True, False, d) and \
+        not bb.utils.contains('DISTRO_FEATURES', 'sysvinit', True, False, d) and \
+        os.path.exists(sysv_initddir):
         systemd_unitdir = oe.path.join(d.getVar("D", True), d.getVar('systemd_unitdir', True), "system")
 
         # If systemd_unitdir contains anything, delete sysv_initddir

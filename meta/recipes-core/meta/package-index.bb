@@ -1,4 +1,4 @@
-DESCRIPTION = "Rebuild the package index"
+SUMMARY = "Rebuilds the package index"
 LICENSE = "MIT"
 
 INHIBIT_DEFAULT_DEPS = "1"
@@ -12,7 +12,6 @@ do_compile[noexec] = "1"
 do_install[noexec] = "1"
 do_package[noexec] = "1"
 do_packagedata[noexec] = "1"
-do_package_write[noexec] = "1"
 do_package_write_ipk[noexec] = "1"
 do_package_write_rpm[noexec] = "1"
 do_package_write_deb[noexec] = "1"
@@ -21,10 +20,9 @@ do_populate_sysroot[noexec] = "1"
 do_package_index[nostamp] = "1"
 do_package_index[depends] += "${PACKAGEINDEXDEPS}"
 
-do_package_index() {
-	set -ex
-	${PACKAGEINDEXES}
-	set +ex
+python do_package_index() {
+    from oe.rootfs import generate_index_files
+    generate_index_files(d)
 }
 addtask do_package_index before do_build
 EXCLUDE_FROM_WORLD = "1"

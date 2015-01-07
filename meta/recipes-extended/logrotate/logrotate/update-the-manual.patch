@@ -1,0 +1,32 @@
+Update the manual
+
+Update the manual for rotating on different filesystems.
+
+Upstream-Status: Submitted
+
+Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
+---
+ logrotate.8 |    7 +++----
+ 1 files changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/logrotate.8 b/logrotate.8
+index 8b34167..5f15432 100644
+--- a/logrotate.8
++++ b/logrotate.8
+@@ -374,10 +374,9 @@ Do not rotate the log if it is empty (this overrides the \fBifempty\fR option).
+ .TP
+ \fBolddir \fIdirectory\fR
+ Logs are moved into \fIdirectory\fR for rotation. The \fIdirectory\fR
+-must be on the same physical device as the log file being rotated,
+-and is assumed to be relative to the directory holding the log file
+-unless an absolute path name is specified. When this option is used all
+-old versions of the log end up in \fIdirectory\fR.  This option may be
++is assumed to be relative to the directory holding the log file unless
++an absolute path name is specified. When this option is used all old
++versions of the log end up in \fIdirectory\fR. This option may be
+ overridden by the \fBnoolddir\fR option.
+ 
+ .TP
+-- 
+1.7.4.1
+

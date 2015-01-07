@@ -1,4 +1,4 @@
-DESCRIPTION = "UProbes kernel module for SystemTap"
+SUMMARY = "UProbes kernel module for SystemTap"
 
 require systemtap_git.inc
 
@@ -10,6 +10,8 @@ PR = "r1"
 ALLOW_EMPTY_${PN} = "1"
 
 inherit module-base gettext
+
+FILESEXTRAPATHS =. "${FILE_DIRNAME}/systemtap:"
 
 FILES_${PN} += "${datadir}/systemtap/runtime/uprobes"
 

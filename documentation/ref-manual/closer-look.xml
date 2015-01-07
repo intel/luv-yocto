@@ -33,13 +33,14 @@
             <listitem><para><emphasis>Source Files:</emphasis>
                 Upstream releases, local projects, and SCMs.</para></listitem>
             <listitem><para><emphasis>Build System:</emphasis>
-                Processes under the control of BitBake.
+                Processes under the control of
+                <ulink url='&YOCTO_DOCS_DEV_URL;#bitbake-term'>BitBake</ulink>.
                 This block expands on how BitBake fetches source, applies
                 patches, completes compilation, analyzes output for package
                 generation, creates and tests packages, generates images, and
                 generates cross-development tools.</para></listitem>
             <listitem><para><emphasis>Package Feeds:</emphasis>
-                Directories containing output packages (rpm, deb or ipk),
+                Directories containing output packages (RPM, DEB or IPK),
                 which are subsequently used in the construction of an image or
                 SDK, produced by the build system.
                 These feeds can also be copied and shared using a web server or
@@ -48,8 +49,6 @@
                 enabled.</para></listitem>
             <listitem><para><emphasis>Images:</emphasis>
                 Images produced by the development process.
-                Where do they go?
-                Can you mess with them (i.e. freely delete them or move them?).
                 </para></listitem>
             <listitem><para><emphasis>Application Development SDK:</emphasis>
                 Cross-development tools that are produced along with an image
@@ -256,7 +255,7 @@
 
         <para>
             When you launch your build with the
-            <filename>bitbake &lt;target&gt;</filename> command, BitBake
+            <filename>bitbake <replaceable>target</replaceable></filename> command, BitBake
             sorts out the configurations to ultimately define your build
             environment.
         </para>
@@ -352,7 +351,8 @@
                 Best practices dictate that you isolate these types of
                 configurations into their own layer.
                 Settings you provide in
-                <filename>conf/&lt;distro&gt;.conf</filename> override similar
+                <filename>conf/distro/<replaceable>distro</replaceable>.conf</filename> override
+                similar
                 settings that BitBake finds in your
                 <filename>conf/local.conf</filename> file in the Build
                 Directory.
@@ -375,7 +375,7 @@
                         This area holds configuration files for the
                         layer (<filename>conf/layer.conf</filename>),
                         the distribution
-                        (<filename>conf/distro/&lt;distro&gt;.conf</filename>),
+                        (<filename>conf/distro/<replaceable>distro</replaceable>.conf</filename>),
                         and any distribution-wide include files.
                         </para></listitem>
                     <listitem><para><emphasis>recipes-*:</emphasis>
@@ -408,7 +408,7 @@
             <para>
                 The BSP Layer's configuration directory contains
                 configuration files for the machine
-                (<filename>conf/machine/&lt;machine&gt;.conf</filename>) and,
+                (<filename>conf/machine/<replaceable>machine</replaceable>.conf</filename>) and,
                 of course, the layer (<filename>conf/layer.conf</filename>).
             </para>
 
@@ -545,7 +545,7 @@
             <para>
                 The canonical method through which to include a local project
                 is to use the
-                <link linkend='ref-classes-externalsrc'><filename>externalsrc.bbclass</filename></link>
+                <link linkend='ref-classes-externalsrc'><filename>externalsrc</filename></link>
                 class to include that local project.
                 You use either the <filename>local.conf</filename> or a
                 recipe's append file to override or set the
@@ -555,7 +555,7 @@
 
             <para>
                 For information on how to use the
-                <filename>externalsrc.bbclass</filename>, see the
+                <filename>externalsrc</filename> class, see the
                 "<link linkend='ref-classes-externalsrc'><filename>externalsrc.bbclass</filename></link>"
                 section.
             </para>
@@ -568,7 +568,9 @@
                 Another place the build system can get source files from is
                 through an SCM such as Git or Subversion.
                 In this case, a repository is cloned or checked out.
-                The <filename>do_fetch</filename> task inside BitBake uses
+                The
+                <link linkend='ref-tasks-fetch'><filename>do_fetch</filename></link>
+                task inside BitBake uses
                 the <link linkend='var-SRC_URI'><filename>SRC_URI</filename></link>
                 variable and the argument's prefix to determine the correct
                 fetcher module.
@@ -639,13 +641,13 @@
 
         <para>
             Package feeds are an intermediary step in the build process.
-            BitBake generates packages whose type is defined by the
+            BitBake generates packages whose types are defined by the
             <link linkend='var-PACKAGE_CLASSES'><filename>PACKAGE_CLASSES</filename></link>
             variable.
             Before placing the packages into package feeds,
             the build process validates them with generated output quality
             assurance checks through the
-            <link linkend='ref-classes-insane'><filename>insane.bbclass</filename></link>
+            <link linkend='ref-classes-insane'><filename>insane</filename></link>
             class.
         </para>
 
@@ -664,9 +666,16 @@
         </para>
 
         <para>
-            BitBake uses the <filename>do_package_write_*</filename> task to
+            BitBake uses the <filename>do_package_write_*</filename> tasks to
             place generated packages into the package holding area (e.g.
             <filename>do_package_write_ipk</filename> for IPK packages).
+            See the
+            "<link linkend='ref-tasks-package_write_deb'><filename>do_package_write_deb</filename></link>",
+            "<link linkend='ref-tasks-package_write_ipk'><filename>do_package_write_ipk</filename></link>",
+            "<link linkend='ref-tasks-package_write_rpm'><filename>do_package_write_rpm</filename></link>",
+            and
+            "<link linkend='ref-tasks-package_write_tar'><filename>do_package_write_tar</filename></link>"
+            sections for additional information.
         </para>
     </section>
 
@@ -674,11 +683,20 @@
         <title>BitBake</title>
 
         <para>
-            The OpenEmbedded build system uses BitBake to produce images.
+            The OpenEmbedded build system uses
+            <ulink url='&YOCTO_DOCS_DEV_URL;#bitbake-term'>BitBake</ulink>
+            to produce images.
             You can see from the
             <link linkend='general-yocto-environment-figure'>general Yocto Project Development Environment figure</link>,
             the BitBake area consists of several functional areas.
             This section takes a closer look at each of those areas.
+        </para>
+
+        <para>
+            Separate documentation exists for the BitBake tool.
+            See the
+            <ulink url='&YOCTO_DOCS_BB_URL;#bitbake-user-manual'>BitBake User Manual</ulink>
+            for reference material on BitBake.
         </para>
 
         <section id='source-fetching-dev-environment'>
@@ -691,9 +709,23 @@
             </para>
 
             <para>
-                The <filename>do_fetch</filename> and
-                <filename>do_unpack</filename> tasks fetch the source files
-                and unpack them into the work directory.
+                The
+                <link linkend='ref-tasks-fetch'><filename>do_fetch</filename></link>
+                and
+                <link linkend='ref-tasks-unpack'><filename>do_unpack</filename></link>
+                tasks fetch the source files and unpack them into the work
+                directory.
+                <note>
+                    For every local file (e.g. <filename>file://</filename>)
+                    that is part of a recipe's
+                    <link linkend='var-SRC_URI'><filename>SRC_URI</filename></link>
+                    statement, the OpenEmbedded build system takes a checksum
+                    of the file for the recipe and inserts the checksum into
+                    the signature for the <filename>do_fetch</filename>.
+                    If any local file has been modified, the
+                    <filename>do_fetch</filename> task and all tasks that
+                    depend on it are re-executed.
+                </note>
                 By default, everything is accomplished in the
                 <ulink url='&YOCTO_DOCS_DEV_URL;#build-directory'>Build Directory</ulink>,
                 which has a defined structure.
@@ -713,30 +745,33 @@
                 You can see the variables that define these directories
                 by looking at the figure:
                 <itemizedlist>
-                    <listitem><para><link linkend='var-TMPDIR'><filename>TMPDIR</filename></link>
+                    <listitem><para><link linkend='var-TMPDIR'><filename>TMPDIR</filename></link> -
+                        The base directory where the OpenEmbedded build system
+                        performs all its work during the build.
                         </para></listitem>
-                    <listitem><para><link linkend='var-PACKAGE_ARCH'><filename>PACKAGE_ARCH</filename></link>
+                    <listitem><para><link linkend='var-PACKAGE_ARCH'><filename>PACKAGE_ARCH</filename></link> -
+                        The architecture of the built package or packages.
                         </para></listitem>
-                    <listitem><para><link linkend='var-TARGET_OS'><filename>TARGET_OS</filename></link>
+                    <listitem><para><link linkend='var-TARGET_OS'><filename>TARGET_OS</filename></link> -
+                        The operating system of the target device.
                         </para></listitem>
-                    <listitem><para><link linkend='var-PN'><filename>PN</filename></link>
+                    <listitem><para><link linkend='var-PN'><filename>PN</filename></link> -
+                        The name of the built package.
                         </para></listitem>
-                    <listitem><para><link linkend='var-PV'><filename>PV</filename></link>
+                    <listitem><para><link linkend='var-PV'><filename>PV</filename></link> -
+                        The version of the recipe used to build the package.
                         </para></listitem>
-                    <listitem><para><link linkend='var-PR'><filename>PR</filename></link>
+                    <listitem><para><link linkend='var-PR'><filename>PR</filename></link> -
+                        The revision of the recipe used to build the package.
                         </para></listitem>
-                    <listitem><para><link linkend='var-WORKDIR'><filename>WORKDIR</filename></link>
+                    <listitem><para><link linkend='var-WORKDIR'><filename>WORKDIR</filename></link> -
+                        The location within <filename>TMPDIR</filename> where
+                        a specific package is built.
                         </para></listitem>
-                    <listitem><para><link linkend='var-S'><filename>S</filename></link>
+                    <listitem><para><link linkend='var-S'><filename>S</filename></link> -
+                        Contains the unpacked source files for a given recipe.
                         </para></listitem>
                 </itemizedlist>
-            </para>
-
-            <para>
-                Briefly, the <filename>S</filename> directory contains the
-                unpacked source files for a recipe.
-                The <filename>WORKDIR</filename> directory is where all the
-                building goes on for a given recipe.
             </para>
         </section>
 
@@ -750,7 +785,9 @@
             </para>
 
             <para>
-                The <filename>do_patch</filename> task processes recipes by
+                The
+                <link linkend='ref-tasks-patch'><filename>do_patch</filename></link>
+                task processes recipes by
                 using the
                 <link linkend='var-SRC_URI'><filename>SRC_URI</filename></link>
                 variable to locate applicable patch files, which by default
@@ -798,12 +835,14 @@
                         </para>
 
                         <para>The configurations handled by the
-                        <filename>do_configure</filename> task are specific
+                        <link linkend='ref-tasks-configure'><filename>do_configure</filename></link>
+                        task are specific
                         to source code configuration for the source code
                         being built by the recipe.</para>
 
-                        <para>If you are using
-                        <link linkend='ref-classes-autotools'><filename>autotools.bbclass</filename></link>,
+                        <para>If you are using the
+                        <link linkend='ref-classes-autotools'><filename>autotools</filename></link>
+                        class,
                         you can add additional configuration options by using
                         the <link linkend='var-EXTRA_OECONF'><filename>EXTRA_OECONF</filename></link>
                         variable.
@@ -814,7 +853,8 @@
                     <listitem><para><emphasis><filename>do_compile</filename>:</emphasis>
                         Once a configuration task has been satisfied, BitBake
                         compiles the source using the
-                        <filename>do_compile</filename> task.
+                        <link linkend='ref-tasks-compile'><filename>do_compile</filename></link>
+                        task.
                         Compilation occurs in the directory pointed to by the
                         <link linkend='var-B'><filename>B</filename></link>
                         variable.
@@ -824,7 +864,8 @@
                         directory.</para></listitem>
                     <listitem><para><emphasis><filename>do_install</filename>:</emphasis>
                         Once compilation is done, BitBake executes the
-                        <filename>do_install</filename> task.
+                        <link linkend='ref-tasks-install'><filename>do_install</filename></link>
+                        task.
                         This task copies files from the <filename>B</filename>
                         directory and places them in a holding area pointed to
                         by the
@@ -845,8 +886,11 @@
             </para>
 
             <para>
-                The <filename>do_package</filename> and
-                <filename>do_packagedata</filename> tasks combine to analyze
+                The
+                <link linkend='ref-tasks-package'><filename>do_package</filename></link>
+                and
+                <link linkend='ref-tasks-packagedata'><filename>do_packagedata</filename></link>
+                tasks combine to analyze
                 the files found in the
                 <link linkend='var-D'><filename>D</filename></link> directory
                 and split them into subsets based on available packages and
@@ -861,21 +905,30 @@
                 Working, staged, and intermediate results of the analysis
                 and package splitting process use these areas:
                 <itemizedlist>
-                    <listitem><para><link linkend='var-PKGD'><filename>PKGD</filename></link>
+                    <listitem><para><link linkend='var-PKGD'><filename>PKGD</filename></link> -
+                        The destination directory for packages before they are
+                        split.
                         </para></listitem>
-                    <listitem><para><link linkend='var-PKGDATA_DIR'><filename>PKGDATA_DIR</filename></link>
+                    <listitem><para><link linkend='var-PKGDATA_DIR'><filename>PKGDATA_DIR</filename></link> -
+                        A shared, global-state directory that holds data
+                        generated during the packaging process.
                         </para></listitem>
-                    <listitem><para><link linkend='var-PKGDESTWORK'><filename>PKGDESTWORK</filename></link>
+                    <listitem><para><link linkend='var-PKGDESTWORK'><filename>PKGDESTWORK</filename></link> -
+                        A temporary work area used by the
+                        <filename>do_package</filename> task.
                         </para></listitem>
-                    <listitem><para><link linkend='var-PKGDEST'><filename>PKGDEST</filename></link>
+                    <listitem><para><link linkend='var-PKGDEST'><filename>PKGDEST</filename></link> -
+                        The parent directory for packages after they have
+                        been split.
                         </para></listitem>
                 </itemizedlist>
                 The <link linkend='var-FILES'><filename>FILES</filename></link>
                 variable defines the files that go into each package in
                 <link linkend='var-PACKAGES'><filename>PACKAGES</filename></link>.
                 If you want details on how this is accomplished, you can
-                look at
-                <link linkend='ref-classes-package'><filename>package.bbclass</filename></link>.
+                look at the
+                <link linkend='ref-classes-package'><filename>package</filename></link>
+                class.
             </para>
 
             <para>
@@ -913,7 +966,9 @@
             <para>
                 The image generation process consists of several stages and
                 depends on many variables.
-                The <filename>do_rootfs</filename> task uses these key variables
+                The
+                <link linkend='ref-tasks-rootfs'><filename>do_rootfs</filename></link>
+                task uses these key variables
                 to help create the list of packages to actually install:
                 <itemizedlist>
                     <listitem><para><link linkend='var-IMAGE_INSTALL'><filename>IMAGE_INSTALL</filename></link>:
@@ -954,8 +1009,8 @@
                 If you are using a
                 <ulink url='&YOCTO_DOCS_DEV_URL;#creating-a-read-only-root-filesystem'>read-only root filesystem</ulink>,
                 all the post installation scripts must succeed during the
-                package installation phase since the root filesystem cannot be
-                written into.
+                package installation phase since the root filesystem is
+                read-only.
             </para>
 
             <para>
@@ -968,6 +1023,21 @@
                 A <filename>prelink</filename> process optimizes the dynamic
                 linking of shared libraries to reduce start up time of
                 executables.
+            </para>
+
+            <para>
+                Along with writing out the root filesystem image, the
+                <filename>do_rootfs</filename> task creates a manifest file
+                (<filename>.manifest</filename>) in the same directory as
+                the root filesystem image that lists out, line-by-line, the
+                installed packages.
+                This manifest file is useful for the
+                <link linkend='ref-classes-testimage'><filename>testimage</filename></link>
+                class, for example, to determine whether or not to run
+                specific tests.
+                See the
+                <link linkend='var-IMAGE_MANIFEST'><filename>IMAGE_MANIFEST</filename></link>
+                variable for additional information.
             </para>
 
             <para>
@@ -1007,6 +1077,12 @@
                 generation, see the
                 "<link linkend='cross-development-toolchain-generation'>Cross-Development Toolchain Generation</link>"
                 section.
+                For information on advantages gained when building a
+                cross-development toolchain using the
+                <link linkend='ref-tasks-populate_sdk'><filename>do_populate_sdk</filename></link>
+                task, see the
+                "<ulink url='&YOCTO_DOCS_ADT_URL;#optionally-building-a-toolchain-installer'>Optionally Building a Toolchain Installer</ulink>"
+                section in the Yocto Project Application Developer's Guide.
             </note>
 
             <para>
@@ -1055,7 +1131,7 @@
             root filesystem that are ready to boot on a target device.
             You can see from the
             <link linkend='general-yocto-environment-figure'>general Yocto Project Development Environment figure</link>
-            that BitBake output in part consists of images.
+            that BitBake output, in part, consists of images.
             This section is going to look more closely at this output:
             <imagedata fileref="figures/images.png" align="center" width="5.5in" depth="5.5in" />
         </para>
@@ -1069,7 +1145,7 @@
         <para>
             Images are written out to the
             <ulink url='&YOCTO_DOCS_DEV_URL;#build-directory'>Build Directory</ulink>
-            inside the <filename>tmp/deploy/images/&lt;machine&gt;/</filename>
+            inside the <filename>tmp/deploy/images/<replaceable>machine</replaceable>/</filename>
             folder as shown in the figure.
             This folder contains any files expected to be loaded on the
             target device.
@@ -1081,43 +1157,43 @@
             variable points to the appropriate directory containing images for
             the current configuration.
             <itemizedlist>
-                <listitem><para><filename>&lt;kernel-image&gt;</filename>:
+                <listitem><para><filename><replaceable>kernel-image</replaceable></filename>:
                     A kernel binary file.
                     The <link linkend='var-KERNEL_IMAGETYPE'><filename>KERNEL_IMAGETYPE</filename></link>
                     variable setting determines the naming scheme for the
                     kernel image file.
                     Depending on that variable, the file could begin with
                     a variety of naming strings.
-                    The <filename>deploy/images/&lt;machine&gt;</filename>
+                    The <filename>deploy/images/<replaceable>machine</replaceable></filename>
                     directory can contain multiple image files for the
                     machine.</para></listitem>
-                <listitem><para><filename>&lt;root-filesystem-image&gt;</filename>:
+                <listitem><para><filename><replaceable>root-filesystem-image</replaceable></filename>:
                     Root filesystems for the target device (e.g.
                     <filename>*.ext3</filename> or <filename>*.bz2</filename>
                     files).
                     The <link linkend='var-IMAGE_FSTYPES'><filename>IMAGE_FSTYPES</filename></link>
                     variable setting determines the root filesystem image
                     type.
-                    The <filename>deploy/images/&lt;machine&gt;</filename>
+                    The <filename>deploy/images/<replaceable>machine</replaceable></filename>
                     directory can contain multiple root filesystems for the
                     machine.</para></listitem>
-                <listitem><para><filename>&lt;kernel-modules&gt;</filename>:
+                <listitem><para><filename><replaceable>kernel-modules</replaceable></filename>:
                     Tarballs that contain all the modules built for the kernel.
                     Kernel module tarballs exist for legacy purposes and
                     can be suppressed by setting the
                     <link linkend='var-MODULE_TARBALL_DEPLOY'><filename>MODULE_TARBALL_DEPLOY</filename></link>
                     variable to "0".
-                    The <filename>deploy/images/&lt;machine&gt;</filename>
+                    The <filename>deploy/images/<replaceable>machine</replaceable></filename>
                     directory can contain multiple kernel module tarballs
                     for the machine.</para></listitem>
-                <listitem><para><filename>&lt;bootloaders&gt;</filename>:
+                <listitem><para><filename><replaceable>bootloaders</replaceable></filename>:
                     Bootloaders supporting the image, if applicable to the
                     target machine.
-                    The <filename>deploy/images/&lt;machine&gt;</filename>
+                    The <filename>deploy/images/<replaceable>machine</replaceable></filename>
                     directory can contain multiple bootloaders for the
                     machine.</para></listitem>
-                <listitem><para><filename>&lt;symlinks&gt;</filename>:
-                    The <filename>deploy/images/&lt;machine&gt;</filename>
+                <listitem><para><filename><replaceable>symlinks</replaceable></filename>:
+                    The <filename>deploy/images/<replaceable>machine</replaceable></filename>
                     folder contains
                     a symbolic link that points to the most recently built file
                     for each machine.
@@ -1204,7 +1280,7 @@
                     part of the SDK (i.e. the part that runs on
                     the <filename>SDKMACHINE</filename>).
                     When you use
-                    <filename>bitbake -c populate_sdk &lt;imagename&gt;</filename>
+                    <filename>bitbake -c populate_sdk <replaceable>imagename</replaceable></filename>
                     to create the SDK, a set of default packages
                     apply.
                     This variable allows you to add more packages.
@@ -1213,6 +1289,10 @@
                     Lists packages that make up the target part
                     of the SDK (i.e. the part built for the
                     target hardware).
+                    </para></listitem>
+                <listitem><para><link linkend='var-SDKPATH'><filename>SDKPATH</filename></link>:
+                    Defines the default SDK installation path offered by the
+                    installation script.
                     </para></listitem>
             </itemizedlist>
         </para>

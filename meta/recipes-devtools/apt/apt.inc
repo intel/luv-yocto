@@ -1,4 +1,4 @@
-DESCRIPTION = "Advanced front-end for dpkg."
+SUMMARY = "Advanced front-end for dpkg"
 LICENSE = "GPLv2.0+"
 SECTION = "base"
 
@@ -11,6 +11,7 @@ SRC_URI = "${DEBIAN_MIRROR}/main/a/apt/apt_${PV}.tar.gz \
            file://truncate-filename.patch \
            file://nodoc.patch \
            file://disable-configure-in-makefile.patch \
+           file://apt-0.9.9.4-CVE-2014-0478.patch \
            "
 
 inherit autotools gettext

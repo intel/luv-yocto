@@ -1,4 +1,4 @@
-SUMMARY = "GNU Project parser generator (yacc replacement)."
+SUMMARY = "GNU Project parser generator (yacc replacement)"
 DESCRIPTION = "Bison is a general-purpose parser generator that converts an annotated context-free grammar into \
 an LALR(1) or GLR parser for that grammar.  Bison is upward compatible with Yacc: all properly-written Yacc \
 grammars ought to work with Bison with no change. Anyone familiar with Yacc should be able to use Bison with \
@@ -22,7 +22,7 @@ SRC_URI[sha256sum] = "52f78aa4761a74ceb7fdf770f3554dd84308c3b93c4255e3a5c17558ec
 DEPENDS_class-native = "gettext-native"
 SRC_URI_class-native = "${BASE_SRC_URI}"
 
-inherit autotools gettext
+inherit autotools gettext texinfo
 acpaths = "-I ${S}/m4"
 
 do_configure_prepend () {

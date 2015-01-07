@@ -15,8 +15,8 @@ SRC_URI = "svn://svn.xiph.org/trunk;module=Tremor;rev=18221;protocol=http \
 
 S = "${WORKDIR}/Tremor"
 
-inherit autotools
+inherit autotools pkgconfig
 
-EXTRA_OECONF=" --enable-shared --disable-rpath  "
+EXTRA_OECONF = "--enable-shared"
 
 ARM_INSTRUCTION_SET = "arm"

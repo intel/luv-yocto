@@ -1,4 +1,4 @@
-DESCRIPTION = "The Libcroco project is an effort to build a generic Cascading Style Sheet (CSS) parsing and manipulation toolkit"
+SUMMARY = "Cascading Style Sheet (CSS) parsing and manipulation toolkit"
 HOMEPAGE = "http://www.gnome.org/"
 BUGTRACKER = "https://bugzilla.gnome.org/"
 
@@ -13,7 +13,9 @@ BBCLASSEXTEND = "native"
 EXTRA_OECONF += "--enable-Bsymbolic=auto"
 PR = "r1"
 
-inherit autotools pkgconfig gnomebase
+BINCONFIG = "${bindir}/croco-0.6-config"
+
+inherit autotools-brokensep pkgconfig gnomebase gtk-doc binconfig-disabled
 
 GNOME_COMPRESS_TYPE = "xz"
 

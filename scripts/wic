@@ -45,6 +45,30 @@ sys.path = sys.path + [lib_path]
 from image.help import *
 from image.engine import *
 
+def rootfs_dir_to_args(krootfs_dir):
+    """
+    Get a rootfs_dir dict and serialize to string
+    """
+    rootfs_dir = ''
+    for k, v in krootfs_dir.items():
+        rootfs_dir += ' '
+        rootfs_dir += '='.join([k, v])
+    return rootfs_dir.strip()
+
+def callback_rootfs_dir(option, opt, value, parser):
+    """
+    Build a dict using --rootfs_dir connection=dir
+    """
+    if not type(parser.values.rootfs_dir) is dict:
+        parser.values.rootfs_dir = dict()
+
+    if '=' in value:
+        (key, rootfs_dir) = value.split('=')
+    else:
+       key = 'ROOTFS_DIR'
+       rootfs_dir = value
+
+    parser.values.rootfs_dir[key] = rootfs_dir
 
 def wic_create_subcommand(args, usage_str):
     """
@@ -60,7 +84,8 @@ def wic_create_subcommand(args, usage_str):
     parser.add_option("-e", "--image-name", dest = "image_name",
                       action = "store", help = "name of the image to use the artifacts from e.g. core-image-sato")
     parser.add_option("-r", "--rootfs-dir", dest = "rootfs_dir",
-                      action = "store", help = "path to the /rootfs dir to use as the .wks rootfs source")
+                      action = "callback", callback = callback_rootfs_dir, type = "string",
+                      help = "path to the /rootfs dir to use as the .wks rootfs source")
     parser.add_option("-b", "--bootimg-dir", dest = "bootimg_dir",
                       action = "store", help = "path to the dir containing the boot artifacts (e.g. /EFI or /syslinux dirs) to use as the .wks bootimg source")
     parser.add_option("-k", "--kernel-dir", dest = "kernel_dir",
@@ -69,6 +94,8 @@ def wic_create_subcommand(args, usage_str):
                       action = "store", help = "path to the native sysroot containing the tools to use to build the image")
     parser.add_option("-p", "--skip-build-check", dest = "build_check",
                       action = "store_false", default = True, help = "skip the build check")
+    parser.add_option("-D", "--debug", dest = "debug", action = "store_true",
+                      default = False, help = "output debug information")
 
     (options, args) = parser.parse_args(args)
 
@@ -98,11 +125,17 @@ def wic_create_subcommand(args, usage_str):
 
     print "Creating image(s)...\n"
 
-    bootimg_dir = staging_data_dir = hdddir = ""
+    bitbake_env_lines = find_bitbake_env_lines(options.image_name)
+    if not bitbake_env_lines:
+        print "Couldn't get bitbake environment, exiting."
+        sys.exit(1)
+    set_bitbake_env_lines(bitbake_env_lines)
+
+    bootimg_dir = ""
 
     if options.image_name:
-        (rootfs_dir, kernel_dir, hdddir, staging_data_dir, native_sysroot) = \
-            find_artifacts(options.image_name)
+        (rootfs_dir, kernel_dir, bootimg_dir, native_sysroot) \
+            = find_artifacts(options.image_name)
 
     wks_file = args[0]
 
@@ -117,11 +150,13 @@ def wic_create_subcommand(args, usage_str):
         image_output_dir = options.outdir
 
     if not options.image_name:
-        rootfs_dir = options.rootfs_dir
+        rootfs_dir = ''
+        if 'ROOTFS_DIR' in options.rootfs_dir:
+            rootfs_dir = options.rootfs_dir['ROOTFS_DIR']
         bootimg_dir = options.bootimg_dir
         kernel_dir = options.kernel_dir
         native_sysroot = options.native_sysroot
-        if not os.path.isdir(rootfs_dir):
+        if rootfs_dir and not os.path.isdir(rootfs_dir):
             print "--roofs-dir (-r) not found, exiting\n"
             sys.exit(1)
         if not os.path.isdir(bootimg_dir):
@@ -137,8 +172,6 @@ def wic_create_subcommand(args, usage_str):
         not_found = not_found_dir = ""
         if not os.path.isdir(rootfs_dir):
             (not_found, not_found_dir) = ("rootfs-dir", rootfs_dir)
-        elif not os.path.isdir(hdddir) and not os.path.isdir(staging_data_dir):
-            (not_found, not_found_dir) = ("bootimg-dir", bootimg_dir)
         elif not os.path.isdir(kernel_dir):
             (not_found, not_found_dir) = ("kernel-dir", kernel_dir)
         elif not os.path.isdir(native_sysroot):
@@ -154,9 +187,16 @@ def wic_create_subcommand(args, usage_str):
                 (not_found, not_found_dir)
             sys.exit(1)
 
+    krootfs_dir = options.rootfs_dir
+    if krootfs_dir is None:
+         krootfs_dir = {}
+         krootfs_dir['ROOTFS_DIR'] = rootfs_dir
+
+    rootfs_dir = rootfs_dir_to_args(krootfs_dir)
+
     wic_create(args, wks_file, rootfs_dir, bootimg_dir, kernel_dir,
-               native_sysroot, hdddir, staging_data_dir, scripts_path,
-               image_output_dir, options.properties_file)
+               native_sysroot, scripts_path, image_output_dir,
+               options.debug, options.properties_file)
 
 
 def wic_list_subcommand(args, usage_str):
@@ -172,19 +212,47 @@ def wic_list_subcommand(args, usage_str):
 
     (options, args) = parser.parse_args(args)
 
+    bitbake_env_lines = find_bitbake_env_lines(None)
+    if not bitbake_env_lines:
+        print "Couldn't get bitbake environment, exiting."
+        sys.exit(1)
+    set_bitbake_env_lines(bitbake_env_lines)
+
     if not wic_list(args, scripts_path, options.properties_file):
         logging.error("Bad list arguments, exiting\n")
         parser.print_help()
         sys.exit(1)
 
 
+def wic_help_topic_subcommand(args, usage_str):
+    """
+    Command-line handling for help-only 'subcommands'.  This is
+    essentially a dummy command that doesn nothing but allow users to
+    use the existing subcommand infrastructure to display help on a
+    particular topic not attached to any particular subcommand.
+    """
+    pass
+
+
+wic_help_topic_usage = """
+"""
+
 subcommands = {
-    "create": [wic_create_subcommand,
-               wic_create_usage,
-               wic_create_help],
-    "list":   [wic_list_subcommand,
-               wic_list_usage,
-               wic_list_help],
+    "create":    [wic_create_subcommand,
+                  wic_create_usage,
+                  wic_create_help],
+    "list":      [wic_list_subcommand,
+                  wic_list_usage,
+                  wic_list_help],
+    "plugins":   [wic_help_topic_subcommand,
+                  wic_help_topic_usage,
+                  wic_plugins_help],
+    "overview":   [wic_help_topic_subcommand,
+                  wic_help_topic_usage,
+                  wic_overview_help],
+    "kickstart":  [wic_help_topic_subcommand,
+                  wic_help_topic_usage,
+                  wic_kickstart_help],
 }
 
 
@@ -197,15 +265,8 @@ def main():
                                    usage = wic_usage)
 
     parser.disable_interspersed_args()
-    parser.add_option("-D", "--debug", dest = "debug", action = "store_true",
-                      default = False, help = "output debug information")
 
     (options, args) = parser.parse_args()
-
-    loglevel = logging.INFO
-    if options.debug:
-        loglevel = logging.DEBUG
-    start_logging(loglevel)
 
     if len(args):
         if args[0] == "help":

@@ -4,12 +4,12 @@ HOMEPAGE = "http://packages.debian.org/ifupdown"
 SECTION = "base"
 LICENSE = "GPLv2"
 LIC_FILES_CHKSUM = "file://${WORKDIR}/copyright;md5=3dd6192d306f582dee7687da3d8748ab"
-PR = "r3"
+PR = "r7"
 
 inherit update-rc.d
 
 INITSCRIPT_NAME = "networking"
-INITSCRIPT_PARAMS = "start 40 S . stop 40 0 6 1 ."
+INITSCRIPT_PARAMS = "start 01 2 3 4 5 . stop 80 0 6 1 ."
 
 SRC_URI = "file://copyright \
            file://init \

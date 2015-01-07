@@ -1,4 +1,4 @@
-DESCRIPTION = "WebKitGTK+ is the port of the portable web rendering engine WebKitK to the GTK+ platform."
+SUMMARY = "WebKit web rendering engine for the GTK+ platform"
 HOMEPAGE = "http://www.webkitgtk.org/"
 BUGTRACKER = "http://bugs.webkit.org/"
 
@@ -15,7 +15,7 @@ ICU_LIB_powerpc = "pango"
 
 DEPENDS = "zlib enchant libsoup-2.4 curl libxml2 cairo libxslt libxt libidn gnutls \
            gtk+ gstreamer gst-plugins-base flex-native gperf-native perl-native-runtime sqlite3 ${ICU_LIB}"
-DEPENDS += " ${@base_contains('DISTRO_FEATURES', 'opengl', 'virtual/libgl', '', d)}"
+DEPENDS += " ${@bb.utils.contains('DISTRO_FEATURES', 'opengl', 'virtual/libgl', '', d)}"
 
 SRC_URI = "\
   http://www.webkitgtk.org/releases/webkit-${PV}.tar.xz \
@@ -31,8 +31,8 @@ SRC_URI = "\
 SRC_URI[md5sum] = "dcbf9d5e2e6391f857c29a57528b32a6"
 SRC_URI[sha256sum] = "ada02d636af61aed38f142d3cded662d141ce71264f624c4eb873621a74cc9e7"
 
-# webkit-gtk can NOT be built on MIPS64 with 64 bits userspace
-COMPATIBLE_HOST_mips64 = "mips64.*-linux-gnun32"
+# webkit-gtk can NOT be built on MIPS64 with n32 ABI
+COMPATIBLE_HOST_mips64 = "mips64.*-linux$"
 
 inherit autotools lib_package gtk-doc pkgconfig
 
@@ -47,7 +47,7 @@ EXTRA_OECONF = "\
                 --enable-link-prefetch \
                 --with-gtk=2.0 \
                 --disable-geolocation \
-                ${@base_contains('DISTRO_FEATURES', 'opengl', '--enable-webgl', '--disable-webgl', d)} \
+                ${@bb.utils.contains('DISTRO_FEATURES', 'opengl', '--enable-webgl', '--disable-webgl', d)} \
                 UNICODE_CFLAGS=-D_REENTRANT \
                "
 
@@ -85,7 +85,7 @@ CONFIGUREOPT_DEPTRACK = ""
 
 do_configure_append() {
 	# somethings wrong with icu, fix it up manually
-	for makefile in $(find ${S} -name "GNUmakefile") ; do
+	for makefile in $(find ${B} -name "GNUmakefile") ; do
 		sed -i s:-I/usr/include::g $makefile
 	done
 }

@@ -1,4 +1,4 @@
-SUMMARY = "The basic file, shell and text manipulation utilities."
+SUMMARY = "The basic file, shell and text manipulation utilities"
 DESCRIPTION = "The GNU Core Utilities provide the basic file, shell and text \
 manipulation utilities. These are the core utilities which are expected to exist on \
 every system."
@@ -11,7 +11,7 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=751419260aa954499f7abaabaa882bbe \
 PR = "r5"
 DEPENDS_class-native = "gettext-native"
 
-inherit autotools gettext
+inherit autotools gettext texinfo
 
 SRC_URI_BASE = "${GNU_MIRROR}/coreutils/${BP}.tar.bz2 \
            file://gnulib_m4.patch \
@@ -24,6 +24,7 @@ SRC_URI_BASE = "${GNU_MIRROR}/coreutils/${BP}.tar.bz2 \
            file://man-touch.patch \
            file://coreutils_fix_for_automake-1.12.patch \
            file://coreutils-build-with-acl.patch \
+           file://coreutils-fix-texinfo.patch \
            "
 
 SRC_URI = "${SRC_URI_BASE} file://fix_for_manpage_building.patch"
@@ -35,7 +36,7 @@ SRC_URI[sha256sum] = "89c2895ad157de50e53298b22d91db116ee4e1dd3fdf4019260254e2e3
 
 # acl is not a default feature
 #
-PACKAGECONFIG_class-target ??= "${@base_contains('DISTRO_FEATURES', 'acl', 'acl', '', d)}"
+PACKAGECONFIG_class-target ??= "${@bb.utils.contains('DISTRO_FEATURES', 'acl', 'acl', '', d)}"
 PACKAGECONFIG_class-native ??= ""
 
 # with, without, depends, rdepends
@@ -48,12 +49,12 @@ bindir_progs = "base64 basename cksum comm csplit cut dir dircolors dirname du \
                 env expand expr factor fmt fold groups head hostid id install \
                 join link logname md5sum mkfifo nice nl nohup od paste pathchk \
                 pinky pr printenv printf ptx readlink seq sha1sum sha224sum sha256sum \
-                sha384sum sha512sum shred shuf sort split stat sum tac tail tee test \
+                sha384sum sha512sum shred shuf sort split sum tac tail tee test \
                 tr tsort tty unexpand uniq unlink users vdir wc who whoami yes uptime"
 
 # hostname gets a special treatment and is not included in this
 base_bindir_progs = "cat chgrp chmod chown cp date dd echo false kill ln ls mkdir \
-                     mknod mv pwd rm rmdir sleep stty sync touch true uname hostname"
+                     mknod mv pwd rm rmdir sleep stty sync touch true uname hostname stat"
 
 sbindir_progs= "chroot"
 

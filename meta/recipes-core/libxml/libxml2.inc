@@ -18,21 +18,34 @@ SRC_URI = "ftp://xmlsoft.org/libxml2/libxml2-${PV}.tar.gz;name=libtar \
            file://ansidecl.patch \
            file://runtest.patch \
            file://run-ptest \
+           file://libxml2-CVE-2014-0191-fix.patch \
+           file://python-sitepackages-dir.patch \
+           file://libxml-m4-use-pkgconfig.patch \
           "
 
-inherit autotools pkgconfig binconfig pythonnative ptest
+BINCONFIG = "${bindir}/xml2-config"
 
-RDEPENDS_${PN}-ptest_append_libc-glibc += "eglibc-gconv-ebcdic-us eglibc-gconv-ibm1141"
+inherit autotools pkgconfig binconfig-disabled pythonnative ptest
+
+RDEPENDS_${PN}-ptest += "python-core"
+
+RDEPENDS_${PN}-ptest_append_libc-glibc += "glibc-gconv-ebcdic-us glibc-gconv-ibm1141"
 
 # We don't DEPEND on binutils for ansidecl.h so ensure we don't use the header
 do_configure_prepend () {
 	sed -i -e '/.*ansidecl.h.*/d' ${S}/configure.in
 }
 
-EXTRA_OECONF = "--without-python --without-debug --without-legacy --without-catalog --without-docbook --with-c14n --without-lzma --with-fexceptions"
-EXTRA_OECONF_class-native = "--with-python=${STAGING_BINDIR}/python --without-legacy --with-catalog --without-docbook --with-c14n --without-lzma"
-EXTRA_OECONF_class-nativesdk = "--with-python=${STAGING_BINDIR}/python --without-legacy --with-catalog --without-docbook --with-c14n --without-lzma"
-EXTRA_OECONF_linuxstdbase = "--without-python --with-debug --with-legacy --with-catalog --with-docbook --with-c14n --without-lzma"
+do_configure_prepend_class-nativesdk () {
+	# Ensure we get the correct site-packages path
+	export PYTHON_SITE_PACKAGES="${PYTHON_SITEPACKAGES_DIR}"
+}
+
+# WARNING: zlib is require for RPM use
+EXTRA_OECONF = "--without-python --without-debug --without-legacy --with-catalog --without-docbook --with-c14n --without-lzma --with-fexceptions"
+EXTRA_OECONF_class-native = "--with-python=${STAGING_BINDIR}/python --without-legacy --without-docbook --with-c14n --without-lzma --with-zlib"
+EXTRA_OECONF_class-nativesdk = "--with-python=${STAGING_BINDIR}/python --without-legacy --without-docbook --with-c14n --without-lzma --with-zlib"
+EXTRA_OECONF_linuxstdbase = "--without-python --with-debug --with-legacy --with-docbook --with-c14n --without-lzma --with-zlib"
 
 # required for pythong binding
 export HOST_SYS
@@ -48,10 +61,13 @@ python populate_packages_prepend () {
         d.setVar('PKG_libxml2', '${MLPREFIX}libxml2')
 }
 
-PACKAGES += "${PN}-utils"
+PACKAGES += "${PN}-utils ${PN}-python"
 
+FILES_${PN}-dbg += "${PYTHON_SITEPACKAGES_DIR}/.debug"
+FILES_${PN}-staticdev += "${PYTHON_SITEPACKAGES_DIR}/*.a"
 FILES_${PN}-dev += "${libdir}/xml2Conf.sh"
 FILES_${PN}-utils += "${bindir}/*"
+FILES_${PN}-python += "${PYTHON_SITEPACKAGES_DIR}"
 
 do_install_ptest () {
   cp -r ${WORKDIR}/xmlconf ${D}${PTEST_PATH}

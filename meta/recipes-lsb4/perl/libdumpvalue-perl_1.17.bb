@@ -1,10 +1,8 @@
-SUMMARY = "Perl module for provides screen dump of Perl data."
-DESCRIPTION = "Perl module for provides screen dump of Perl data."
+SUMMARY = "Perl module for provides screen dump of Perl data"
 
 HOMEPAGE = "http://search.cpan.org/~flora/Dumpvalue/"
 SECTION = "libs"
 LICENSE = "Artistic-1.0 | GPL-1.0+"
-PR = "r0"
 
 LIC_FILES_CHKSUM = "file://LICENSE;md5=f736bec5ada1fc5e39b2a8e7e06bbcbb"
 

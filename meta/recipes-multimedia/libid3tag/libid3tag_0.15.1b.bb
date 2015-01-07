@@ -1,4 +1,4 @@
-DESCRIPTION = "Library for interacting with ID3 tags."
+SUMMARY = "Library for interacting with ID3 tags in MP3 files"
 HOMEPAGE = "http://sourceforge.net/projects/mad/"
 BUGTRACKER = "http://sourceforge.net/tracker/?group_id=12349&atid=112349"
 LICENSE = "GPLv2+"
@@ -20,5 +20,3 @@ SRC_URI[sha256sum] = "63da4f6e7997278f8a3fef4c6a372d342f705051d1eeb6a46a86b03610
 S = "${WORKDIR}/libid3tag-${PV}"
 
 inherit autotools pkgconfig
-
-EXTRA_OECONF = "-enable-speed"

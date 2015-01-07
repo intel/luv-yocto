@@ -1,4 +1,5 @@
-DESCRIPTION = "The GNU internationalization library."
+SUMMARY = "Utilities and libraries for producing multi-lingual messages"
+DESCRIPTION = "GNU gettext is a set of tools that provides a framework to help other programs produce multi-lingual messages. These tools include a set of conventions about how programs should be written to support message catalogs, a directory and file naming organization for the message catalogs themselves, a runtime library supporting the retrieval of translated messages, and a few stand-alone programs to massage in various ways the sets of translatable and already translated strings."
 HOMEPAGE = "http://www.gnu.org/software/gettext/gettext.html"
 SECTION = "libs"
 LICENSE = "GPLv2"
@@ -29,7 +30,7 @@ SRC_URI[sha256sum] = "0bf850d1a079fb5a61f0a47b1a9efd35eb44032255375e1cedb0253bc2
 
 PARALLEL_MAKE = ""
 
-inherit autotools
+inherit autotools texinfo
 
 EXTRA_OECONF += "--without-lisp --disable-csharp --disable-openmp --without-emacs"
 acpaths = '-I ${S}/autoconf-lib-link/m4/ \
@@ -92,6 +93,17 @@ FILES_gettext-runtime-doc = "${mandir}/man1/gettext.* \
 
 do_install_append() {
 	rm -f ${D}${libdir}/preloadable_libintl.so
+}
+
+# Anyone inheriting gettext will have both gettext-native and gettext
+# available, and we don't want to use older macros from the target gettext in
+# a non-gplv3 build, so kill them and let dependent recipes rely on
+# gettext-native.
+
+SYSROOT_PREPROCESS_FUNCS += "remove_sysroot_m4_macros"
+
+remove_sysroot_m4_macros () {
+    rm -r "${SYSROOT_DESTDIR}${datadir}/aclocal"
 }
 
 BBCLASSEXTEND = "native nativesdk"

@@ -1,6 +1,6 @@
-DESCRIPTION = "Matchbox Window Manager Desktop"
+SUMMARY = "Matchbox Window Manager Desktop"
 HOMEPAGE = "http://matchbox-project.org/"
-BUGTRACKER = "http://bugzilla.openedhand.com/"
+BUGTRACKER = "http://bugzilla.yoctoproject.org/"
 
 LICENSE = "GPLv2+ & LGPLv2+"
 LIC_FILES_CHKSUM = "file://COPYING;md5=94d55d512a9ba36caa9b7df079bae19f \
@@ -12,7 +12,6 @@ DEPENDS = "gtk+ startup-notification dbus"
 SECTION = "x11/wm"
 SRCREV = "71e3e6e04271e9d5a14f1c231ef100c7f320134d"
 PV = "2.0+git${SRCPV}"
-PR = "r0"
 
 SRC_URI = "git://git.yoctoproject.org/${BPN}-2"
 

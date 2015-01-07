@@ -3,8 +3,7 @@
 
 require kmod.inc
 
-PV_append = "+git${SRCPV}"
-
+DEPENDS += "zlib"
 PROVIDES += "module-init-tools-insmod-static module-init-tools-depmod module-init-tools"
 RPROVIDES_${PN} += "module-init-tools-insmod-static module-init-tools-depmod module-init-tools"
 RCONFLICTS_${PN} += "module-init-tools-insmod-static module-init-tools-depmod module-init-tools"
@@ -34,6 +33,11 @@ do_install_append () {
 
         # install depmod.d file for search/ dir
         install -Dm644 "${WORKDIR}/depmod-search.conf" "${D}${base_libdir}/depmod.d/search.conf"
+
+        if ${@base_contains('DISTRO_FEATURES', 'ptest', 'true', 'false', d)}; then
+                find testsuite -name *.ko -exec tar rf testmodule.tar {} \;
+                find testsuite -name *.ko -exec rm -f {} \;
+        fi
 }
 
 do_compile_prepend() {
@@ -44,7 +48,10 @@ do_compile_ptest () {
         oe_runmake buildtest-TESTS rootfs
 }
 
-INHIBIT_PACKAGE_STRIP = "${@base_contains("DISTRO_FEATURES", "ptest", "1", "0", d)}"
+do_install_ptest () {
+        install testmodule.tar ${D}${PTEST_PATH}
+}
+
 INSANE_SKIP_${PN}-ptest = "arch"
 
 inherit update-alternatives
@@ -64,7 +71,8 @@ ALTERNATIVE_TARGET[lsmod] = "${base_bindir}/lsmod.${BPN}"
 
 ALTERNATIVE_LINK_NAME[depmod] = "${base_sbindir}/depmod"
 
-PACKAGES =+ "libkmod"
+PACKAGES =+ "libkmod ${PN}-bash-completion"
 
 FILES_libkmod = "${base_libdir}/libkmod*${SOLIBS} ${libdir}/libkmod*${SOLIBS}"
 FILES_${PN} += "${base_libdir}/depmod.d ${base_libdir}/modprobe.d"
+FILES_${PN}-bash-completion = "${datadir}/bash-completion"

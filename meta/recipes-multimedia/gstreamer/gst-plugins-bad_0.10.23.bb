@@ -17,7 +17,7 @@ EXTRA_OECONF += "--disable-experimental \
                  --disable-vdpau --disable-apexsink"
 
 PACKAGECONFIG ??= "bzip curl \
-                   ${@base_contains('DISTRO_FEATURES', 'x11', 'rsvg', '', d)}"
+                   ${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'rsvg', '', d)}"
 
 PACKAGECONFIG[bzip] = "--enable-bz2,--disable-bz2,bzip2"
 PACKAGECONFIG[curl] = "--enable-curl,--disable-curl,curl"
@@ -34,6 +34,10 @@ PACKAGECONFIG[sndfile] = "--enable-sndfile,--disable-sndfile,libsndfile1"
 PACKAGECONFIG[vp8] = "--enable-vp8,--disable-vp8,libvpx"
 PACKAGECONFIG[ass] = "--enable-assrender,--disable-assrender,libass"
 PACKAGECONFIG[openal] = "--enable-openal,--disable-openal,openal-soft"
+PACKAGECONFIG[schro] = "--enable-schro,--disable-schro,schroedinger"
+PACKAGECONFIG[dc1394] = "--enable-dc1394,--disable-dc1394,libdc1394"
+PACKAGECONFIG[faac] = "--enable-faac,--disable-faac,faac"
+PACKAGECONFIG[rtmp] = "--enable-rtmp,--disable-rtmp,rtmpdump"
 
 ARM_INSTRUCTION_SET = "arm"
 

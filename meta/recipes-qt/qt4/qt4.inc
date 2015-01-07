@@ -1,14 +1,14 @@
 inherit qmake_base
 
 DEPENDS += "qt4-tools-native freetype jpeg libpng zlib dbus openssl glib-2.0 gstreamer gst-plugins-base sqlite3 tiff icu"
-DEPENDS += "${@base_contains('DISTRO_FEATURES', 'pulseaudio', 'pulseaudio', '', d)}"
+DEPENDS += "${@bb.utils.contains('DISTRO_FEATURES', 'pulseaudio', 'pulseaudio', '', d)}"
 
 require qt4_arch.inc
 
 QT_DISTRO_FLAGS ?= "-no-accessibility -no-sm"
 QT_DISTRO_FLAGS_linuxstdbase = "-sm"
 
-QT_SQL_DRIVER_FLAGS ?= "-no-sql-ibase -no-sql-mysql -no-sql-psql -no-sql-odbc -plugin-sql-sqlite -system-sqlite"
+QT_SQL_DRIVER_FLAGS ?= "-no-sql-ibase -no-sql-mysql -no-sql-psql -no-sql-odbc -no-sql-sqlite2 -plugin-sql-sqlite -system-sqlite"
 
 QT_GLFLAGS ?= ""
 
@@ -18,7 +18,7 @@ QT_XML ?= "-xmlpatterns"
 QT_WEBKIT ?= "-webkit"
 QT_PHONON ?= "-phonon"
 QT_DBUS ?= "-qdbus"
-QT_MULTIMEDIA ?= "${@base_contains('DISTRO_FEATURES', 'pulseaudio', '-pulseaudio', '-no-pulseaudio', d)}"
+QT_MULTIMEDIA ?= "${@bb.utils.contains('DISTRO_FEATURES', 'pulseaudio', '-pulseaudio', '-no-pulseaudio', d)}"
  
 QT_CONFIG_FLAGS += "-release -no-cups -reduce-relocations \
                     -shared -no-nas-sound -no-nis \
@@ -134,7 +134,7 @@ FILES_${QT_BASE_NAME}-demos-doc = "${docdir}/${QT_DIR_NAME}/qch/qt.qch"
 RRECOMMENDS_${PN} = "${LIB_PACKAGES} ${OTHER_PACKAGES}"
 RRECOMMENDS_${PN}-dev = "${DEV_PACKAGES}"
 RRECOMMENDS_${PN}-dbg = "${DBG_PACKAGES}"
-RRECOMMENDS_${QT_BASE_LIB}core4_append_libc-glibc = " eglibc-gconv-utf-16"
+RRECOMMENDS_${QT_BASE_LIB}core4_append_libc-glibc = " glibc-gconv-utf-16"
 RRECOMMENDS_${QT_BASE_NAME}-demos += " \
             ${QT_BASE_NAME}-examples \
             ${QT_BASE_NAME}-plugin-sqldriver-sqlite \
@@ -185,8 +185,8 @@ FILES_${QT_BASE_NAME}-xmlpatterns          = "${bindir}/xmlpatterns*"
 FILES_${QT_BASE_NAME}-xmlpatterns-dbg      = "${bindir}/.debug/xmlpatterns*"
 FILES_${QT_BASE_NAME}-qml-plugins          = "${libdir}/${QT_DIR_NAME}/imports/* ${libdir}/${QT_DIR_NAME}/plugins/qmltooling/*"
 FILES_${QT_BASE_NAME}-qml-plugins-dbg      = "${libdir}/${QT_DIR_NAME}/imports/*/*/*/.debug/* ${libdir}/${QT_DIR_NAME}/imports/*/.debug ${libdir}/${QT_DIR_NAME}/plugins/qmltooling/.debug"
-INSANE_SKIP_${QT_BASE_NAME}-examples      += "libdir"
-INSANE_SKIP_${QT_BASE_NAME}-examples-dbg  += "libdir"
+INSANE_SKIP_${MLPREFIX}${QT_BASE_NAME}-examples      += "libdir"
+INSANE_SKIP_${MLPREFIX}${QT_BASE_NAME}-examples-dbg  += "libdir"
 
 # License options, to be set by the recipe if different values are needed
 QT_LICENSE_FILE ?= ""
@@ -275,7 +275,7 @@ do_compile() {
 python populate_packages_prepend() {
     translation_dir = d.expand('${datadir}/${QT_DIR_NAME}/translations/')
     translation_name = d.expand('${QT_BASE_NAME}-translation-%s')
-    do_split_packages(d, translation_dir, '^(assistant|designer|linguist|qt|qtconfig|qvfb)_(.*)\.qm$', translation_name, '${PN} translation for %s', extra_depends='' )
+    do_split_packages(d, translation_dir, '^(assistant|designer|linguist|qt|qtconfig|qvfb|qtscript)_(.*)\.qm$', translation_name, '${PN} translation for %s', extra_depends='' )
  
     phrasebook_dir = d.expand('${datadir}/${QT_DIR_NAME}/phrasebooks/')
     phrasebook_name = d.expand('${QT_BASE_NAME}-phrasebook-%s')

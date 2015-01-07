@@ -28,7 +28,7 @@
 
     <para>
         Collectively, these conditions allow you to easily use the toolchain
-        outside of the OpenEmbedded build environment on both autotools-based
+        outside of the OpenEmbedded build environment on both Autotools-based
         projects and Makefile-based projects.
         This chapter provides information for both these types of projects.
     </para>
@@ -48,7 +48,7 @@
         <title>Creating and Running a Project Based on GNU Autotools</title>
 
         <para>
-            Follow these steps to create a simple autotools-based project:
+            Follow these steps to create a simple Autotools-based project:
             <orderedlist>
                 <listitem><para><emphasis>Create your directory:</emphasis>
                     Create a clean directory for your project and then make
@@ -177,7 +177,7 @@
             Thus, the following command works:
             <literallayout class='monospaced'>
      $ ./configure --host=armv5te-poky-linux-gnueabi \
-        --with-libtool-sysroot=&lt;sysroot-dir&gt;
+        --with-libtool-sysroot=<replaceable>sysroot-dir</replaceable>
             </literallayout>
         </para>
 
@@ -185,14 +185,14 @@
             This single command updates your project and rebuilds it using the appropriate
             cross-toolchain tools.
             <note>
-                If <filename>configure</filename> script results in problems recognizing the
-                <filename>--with-libtool-sysroot=&lt;sysroot-dir&gt;</filename> option,
+                If the <filename>configure</filename> script results in problems recognizing the
+                <filename>--with-libtool-sysroot=</filename><replaceable>sysroot-dir</replaceable> option,
                 regenerate the script to enable the support by doing the following and then
                 run the script again:
                 <literallayout class='monospaced'>
      $ libtoolize --automake
      $ aclocal -I ${OECORE_NATIVE_SYSROOT}/usr/share/aclocal \
-        [-I &lt;dir_containing_your_project-specific_m4_macros&gt;]
+        [-I <replaceable>dir_containing_your_project-specific_m4_macros</replaceable>]
      $ autoconf
      $ autoheader
      $ automake -a

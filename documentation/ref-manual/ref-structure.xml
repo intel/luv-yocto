@@ -63,9 +63,8 @@
         </para>
 
         <para>
-            For more information on BitBake, see the BitBake documentation
-            included in the <filename>bitbake/doc/manual</filename> directory of the
-            <ulink url='&YOCTO_DOCS_DEV_URL;#source-directory'>Source Directory</ulink>.
+            For more information on BitBake, see the
+            <ulink url='&YOCTO_DOCS_BB_URL;'>BitBake User Manual</ulink>.
         </para>
     </section>
 
@@ -145,15 +144,19 @@
         </para>
     </section>
 
-    <section id='structure-meta-hob'>
-        <title><filename>meta-hob/</filename></title>
+    <section id='structure-meta-selftest'>
+        <title><filename>meta-selftest/</filename></title>
 
         <para>
-            This directory contains template recipes used by Hob,
-            which is a Yocto Project build user interface.
-            For more information on the Hob, see the
-            <ulink url='&YOCTO_HOME_URL;/tools-resources/projects/hob'>Hob Project</ulink>
-            web page.
+            This directory adds additional recipes and append files
+            used by the OpenEmbedded selftests to verify the behavior
+            of the build system.
+        </para>
+
+        <para>
+            You do not have to add this layer to your
+            <filename>bblayers.conf</filename> file unless you want to run the
+            selftests.
         </para>
     </section>
 
@@ -207,6 +210,42 @@
         </para>
 
         <para>
+            When you run this script, your Yocto Project environment is set
+            up, a
+            <ulink url='&YOCTO_DOCS_DEV_URL;#build-directory'>Build Directory</ulink>
+            is created, your working directory becomes the Build Directory,
+            and you are presented with a list of common BitBake targets.
+            Here is an example:
+            <literallayout class='monospaced'>
+     $ source oe-init-build-env
+
+     ### Shell environment set up for builds. ###
+
+     You can now run 'bitbake &lt;target&gt;'
+
+     Common targets are:
+         core-image-minimal
+         core-image-sato
+         meta-toolchain
+         adt-installer
+         meta-ide-support
+
+     You can also run generated qemu images with a command like 'runqemu qemux86'
+            </literallayout>
+            The script gets its default list of common targets from the
+            <filename>conf-notes.txt</filename> file, which is found in the
+            <filename>meta-yocto</filename> directory within the
+            <ulink url='&YOCTO_DOCS_DEV_URL;#source-directory'>Source Directory</ulink>.
+            Should you have custom distributions, it is very easy to modify
+            this configuration file to include your targets for your
+            distribution.
+            See the
+            "<ulink url='&YOCTO_DOCS_DEV_URL;#creating-a-custom-template-configuration-directory'>Creating a Custom Template Configuration Directory</ulink>"
+            section in the Yocto Project Development Manual for more
+            information.
+        </para>
+
+        <para>
             By default, running this script without a
             <ulink url='&YOCTO_DOCS_DEV_URL;#build-directory'>Build Directory</ulink>
             argument creates the <filename>build</filename> directory
@@ -220,6 +259,14 @@
             <literallayout class='monospaced'>
      $ source &OE_INIT_FILE; ~/mybuilds
             </literallayout>
+            The OpenEmbedded build system uses the template configuration
+            files, which are found by default in the
+            <filename>meta-yocto/conf</filename> directory in the
+            <ulink url='&YOCTO_DOCS_DEV_URL;#source-directory'>Source Directory</ulink>.
+            See the
+            "<ulink url='&YOCTO_DOCS_DEV_URL;#creating-a-custom-template-configuration-directory'>Creating a Custom Template Configuration Directory</ulink>"
+            section in the Yocto Project Development Manual for more
+            information.
             <note>
                 The OpenEmbedded build system does not support file or directory names that
                 contain spaces.
@@ -268,7 +315,7 @@
             commands.
             Following is the script syntax:
             <literallayout class='monospaced'>
-     $ source oe-init-build-env-memres &lt;port_number&gt; &lt;build_dir&gt;
+     $ source oe-init-build-env-memres <replaceable>port_number</replaceable> <replaceable>build_dir</replaceable>
             </literallayout>
             The script uses other scripts within the
             <filename>scripts</filename> directory to do the bulk of the work.
@@ -277,6 +324,44 @@
         <para>
             If you do not provide a port number with the script, the
             BitBake server at port "12345" is started.
+        </para>
+
+        <para>
+            When you run this script, your Yocto Project environment is set
+            up, a
+            <ulink url='&YOCTO_DOCS_DEV_URL;#build-directory'>Build Directory</ulink>
+            is created, your working directory becomes the Build Directory,
+            and you are presented with a list of common BitBake targets.
+            Here is an example:
+            <literallayout class='monospaced'>
+     $ source oe-init-build-env-memres
+     No port specified, using dynamically selected port
+
+     ### Shell environment set up for builds. ###
+
+     You can now run 'bitbake &lt;target&gt;'
+
+     Common targets are:
+         core-image-minimal
+         core-image-sato
+         meta-toolchain
+         adt-installer
+         meta-ide-support
+
+     You can also run generated qemu images with a command like 'runqemu qemux86'
+     Bitbake server started on demand as needed, use bitbake -m to shut it down
+            </literallayout>
+            The script gets its default list of common targets from the
+            <filename>conf-notes.txt</filename> file, which is found in the
+            <filename>meta-yocto</filename> directory within the
+            <ulink url='&YOCTO_DOCS_DEV_URL;#source-directory'>Source Directory</ulink>.
+            Should you have custom distributions, it is very easy to modify
+            this configuration file to include your targets for your
+            distribution.
+            See the
+            "<ulink url='&YOCTO_DOCS_DEV_URL;#creating-a-custom-template-configuration-directory'>Creating a Custom Template Configuration Directory</ulink>"
+            section in the Yocto Project Development Manual for more
+            information.
         </para>
 
         <para>
@@ -294,6 +379,14 @@
             <literallayout class='monospaced'>
      $ source oe-init-build-env-memres ~/mybuilds
             </literallayout>
+            The OpenEmbedded build system uses the template configuration
+            files, which are found by default in the
+            <filename>meta-yocto/conf</filename> directory in the
+            <ulink url='&YOCTO_DOCS_DEV_URL;#source-directory'>Source Directory</ulink>.
+            See the
+            "<ulink url='&YOCTO_DOCS_DEV_URL;#creating-a-custom-template-configuration-directory'>Creating a Custom Template Configuration Directory</ulink>"
+            section in the Yocto Project Development Manual for more
+            information.
             <note>
                 The OpenEmbedded build system does not support file or
                 directory names that contain spaces.
@@ -323,9 +416,36 @@
     <para>
         The OpenEmbedded build system creates the
         <ulink url='&YOCTO_DOCS_DEV_URL;#build-directory'>Build Directory</ulink>
-        during the build.
-        By default, this directory is named <filename>build</filename>.
+        when you run one of the build environment setup scripts (i.e.
+        <link linkend='structure-core-script'><filename>&OE_INIT_FILE;</filename></link>
+        or
+        <link linkend='structure-memres-core-script'><filename>oe-init-build-env-memres</filename></link>).
     </para>
+
+    <para>
+        If you do not give the Build Directory a specific name when you run
+        a setup script, the name defaults to <filename>build</filename>.
+    </para>
+
+    <para>
+        The
+        <link linkend='var-TOPDIR'><filename>TOPDIR</filename></link> variable
+        points to the Build Directory.
+    </para>
+
+    <section id='structure-build-buildhistory'>
+        <title><filename>build/buildhistory</filename></title>
+
+        <para>
+            The OpenEmbedded build system creates this directory when you
+            enable the build history feature.
+            The directory tracks build information into image, packages, and
+            SDK subdirectories.
+            For information on the build history feature, see the
+            "<link linkend='maintaining-build-output-quality'>Maintaining Build Output Quality</link>"
+            section.
+        </para>
+    </section>
 
     <section id='structure-build-conf-local.conf'>
         <title><filename>build/conf/local.conf</filename></title>
@@ -379,7 +499,7 @@
             the variable in the top-level build environment setup script as
             follows:
             <literallayout class='monospaced'>
-     TEMPLATECONF=&lt;your_layer&gt;/conf
+     TEMPLATECONF=<replaceable>your_layer</replaceable>/conf
             </literallayout>
             Once the build process gets the sample file, it uses
             <filename>sed</filename> to substitute final
@@ -434,7 +554,7 @@
             you can base your build from any layer by setting the variable in
             the top-level build environment setup script as follows:
             <literallayout class='monospaced'>
-     TEMPLATECONF=&lt;your_layer&gt;/conf
+     TEMPLATECONF=<replaceable>your_layer</replaceable>/conf
             </literallayout>
             Once the build process gets the sample file, it uses
             <filename>sed</filename> to substitute final
@@ -488,10 +608,18 @@
         <title><filename>build/tmp/</filename></title>
 
         <para>
-            This directory receives all of the OpenEmbedded build system's output.
+            The OpenEmbedded build system creates and uses this directory
+            for all the build system's output.
+            The
+            <link linkend='var-TMPDIR'><filename>TMPDIR</filename></link>
+            variable points to this directory.
+        </para>
+
+        <para>
             BitBake creates this directory if it does not exist.
-            As a last resort, to clean up a build and start it from scratch (other than the downloads),
-            you can remove everything in the <filename>tmp</filename> directory or get rid of the
+            As a last resort, to clean up a build and start it from scratch
+            (other than the downloads), you can remove everything in the
+            <filename>tmp</filename> directory or get rid of the
             directory completely.
             If you do, you should also completely remove the
             <filename>build/sstate-cache</filename> directory.
@@ -607,6 +735,35 @@
         </para>
     </section>
 
+    <section id='structure-build-tmp-deploy-sdk'>
+        <title><filename>build/tmp/deploy/sdk/</filename></title>
+
+        <para>
+            The OpenEmbedded build system creates this directory to hold
+            toolchain installer scripts, which when executed, install the
+            sysroot that matches your target hardware.
+            You can find out more about these installers in the
+            "<ulink url='&YOCTO_DOCS_ADT_URL;#optionally-building-a-toolchain-installer'>Optionally Building a Toolchain Installer</ulink>"
+            section in the Yocto Project Application Developer's Guide.
+        </para>
+    </section>
+
+    <section id='structure-build-tmp-sstate-control'>
+        <title><filename>build/tmp/sstate-control/</filename></title>
+
+        <para>
+            The OpenEmbedded build system uses this directory for the
+            shared state manifest files.
+            The shared state code uses these files to record the files
+            installed by each sstate task so that the files can be removed
+            when cleaning the recipe or when a newer version is about to
+            be installed.
+            The build system also uses the manifests to detect and produce
+            a warning when files from one task are overwriting those from
+            another.
+        </para>
+    </section>
+
     <section id='structure-build-tmp-sysroots'>
         <title><filename>build/tmp/sysroots/</filename></title>
 
@@ -642,8 +799,9 @@
         <para>
             This directory contains general logs that are not otherwise placed using the
             package's <filename><link linkend='var-WORKDIR'>WORKDIR</link></filename>.
-            Examples of logs are the output from the <filename>check_pkg</filename> or
-            <filename>distro_check</filename> tasks.
+            Examples of logs are the output from the
+            <filename>do_check_pkg</filename> or
+            <filename>do_distro_check</filename> tasks.
             Running a build does not necessarily mean this directory is created.
         </para>
     </section>
@@ -692,6 +850,20 @@
             The <filename>WORKDIR/image/</filename> directory is where "make
             install" places its output that is then split into sub-packages
             within <filename>WORKDIR/packages-split/</filename>.
+        </para>
+    </section>
+
+    <section id='structure-build-work-shared'>
+        <title><filename>build/tmp/work-shared/</filename></title>
+
+        <para>
+            For efficiency, the OpenEmbedded build system creates and uses
+            this directory to hold recipes that share a work directory with
+            other recipes.
+            In practice, this is only used for <filename>gcc</filename>
+            and its variants (e.g. <filename>gcc-cross</filename>,
+            <filename>libgcc</filename>, <filename>gcc-runtime</filename>,
+            and so forth).
         </para>
     </section>
 </section>
@@ -769,6 +941,21 @@
             <filename>SRCDATE</filename> definitions for applications that are configured here.
             An example of an alternative configuration might be <filename>poky-bleeding.conf</filename>.
             Although this file mainly inherits its configuration from Poky.
+        </para>
+    </section>
+
+    <section id='structure-meta-conf-machine-sdk'>
+        <title><filename>meta/conf/machine-sdk/</filename></title>
+
+        <para>
+            The OpenEmbedded build system searches this directory for
+            configuration files that correspond to the value of
+            <link linkend='var-SDKMACHINE'><filename>SDKMACHINE</filename></link>.
+            By default, 32-bit and 64-bit x86 files ship with the Yocto
+            Project that support some SDK hosts.
+            However, it is possible to extend that support to other SDK hosts
+            by adding additional configuration files in this subdirectory
+            within another layer.
         </para>
     </section>
 

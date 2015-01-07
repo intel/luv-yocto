@@ -2,16 +2,12 @@
 # difficult.  To work around the current version of the wrapper use:
 # BBFETCH2=True PSEUDO_BUILD=1 ../bitbake/bin/bitbake pseudo-native [-c CMD]
 
-DESCRIPTION = "Pseudo gives fake root capabilities to a normal user"
+SUMMARY = "Pseudo gives fake root capabilities to a normal user"
 HOMEPAGE = "http://git.yoctoproject.org/cgit/cgit.cgi/pseudo"
 LIC_FILES_CHKSUM = "file://COPYING;md5=243b725d71bb5df4a1e5920b344b86ad"
 SECTION = "base"
 LICENSE = "LGPL2.1"
-DEPENDS = "sqlite3"
-
-SRC_URI_append_class-nativesdk = " file://symver.patch"
-
-SRC_URI_append_class-native = " file://symver.patch"
+DEPENDS = "sqlite3 attr"
 
 FILES_${PN} = "${prefix}/lib/pseudo/lib*/libpseudo.so ${bindir}/* ${localstatedir}/pseudo ${prefix}/var/pseudo"
 FILES_${PN}-dbg += "${prefix}/lib/pseudo/lib*/.debug"
@@ -29,7 +25,7 @@ do_configure () {
 }
 
 NO32LIBS ??= "1"
-NO32LIBS_virtclass-nativesdk = "1"
+NO32LIBS_class-nativesdk = "1"
 
 # Compile for the local machine arch...
 do_compile () {

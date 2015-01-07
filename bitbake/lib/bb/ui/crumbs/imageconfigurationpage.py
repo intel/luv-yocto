@@ -304,13 +304,14 @@ class ImageConfigurationPage (HobPage):
         self.builder.window.set_cursor(None)
 
     def machine_combo_changed_cb(self, machine_combo):
-        self.builder.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.WATCH))
-        self.builder.wait(0.1) #wait for combo and cursor to update
         self.stopping = False
         self.builder.parsing_warnings = []
         combo_item = machine_combo.get_active_text()
         if not combo_item or combo_item == self.__dummy_machine__:
             return
+
+        self.builder.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.WATCH))
+        self.builder.wait(0.1) #wait for combo and cursor to update
 
         # remove __dummy_machine__ item from the store list after first user selection
         # because it is no longer valid
@@ -378,7 +379,7 @@ class ImageConfigurationPage (HobPage):
         selected_image = self.image_combo.get_active_text()
         if selected_image == self.__custom_image__:
             topdir = self.builder.get_topdir()
-            images_dir = topdir + "/recipes/images/"
+            images_dir = topdir + "/recipes/images/custom/"
             self.builder.ensure_dir(images_dir)
 
             dialog = RetrieveImageDialog(images_dir, "Select from my image recipes",
@@ -458,6 +459,7 @@ class ImageConfigurationPage (HobPage):
             for i in self.builder.parameters.image_black_pattern.split():
                 black_pattern.append(re.compile(i))
         black_pattern.append(re.compile("hob-image"))
+        black_pattern.append(re.compile("edited(-[0-9]*)*.bb$"))
 
         it = image_model.get_iter_first()
         self._image_combo_disconnect_signal()
@@ -544,7 +546,7 @@ class ImageConfigurationPage (HobPage):
         self.builder.just_bake()
 
     def edit_image_button_clicked_cb(self, button):
-        self.builder.configuration.initial_selected_image = self.builder.configuration.selected_image
+        self.builder.set_base_image()
         self.builder.show_recipes()
 
     def my_images_button_clicked_cb(self, button):

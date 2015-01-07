@@ -33,9 +33,82 @@ def check_indent(codestr):
     return codestr
 
 
+# Basically pickle, in python 2.7.3 at least, does badly with data duplication 
+# upon pickling and unpickling. Combine this with duplicate objects and things
+# are a mess.
+#
+# When the sets are originally created, python calls intern() on the set keys
+# which significantly improves memory usage. Sadly the pickle/unpickle process
+# doesn't call intern() on the keys and results in the same strings being duplicated
+# in memory. This also means pickle will save the same string multiple times in
+# the cache file.
+#
+# By having shell and python cacheline objects with setstate/getstate, we force
+# the object creation through our own routine where we can call intern (via internSet).
+#
+# We also use hashable frozensets and ensure we use references to these so that
+# duplicates can be removed, both in memory and in the resulting pickled data.
+#
+# By playing these games, the size of the cache file shrinks dramatically
+# meaning faster load times and the reloaded cache files also consume much less
+# memory. Smaller cache files, faster load times and lower memory usage is good.
+#
+# A custom getstate/setstate using tuples is actually worth 15% cachesize by
+# avoiding duplication of the attribute names!
+
+class SetCache(object):
+    def __init__(self):
+        self.setcache = {}
+
+    def internSet(self, items):
+        
+        new = []
+        for i in items:
+            new.append(intern(i))
+        s = frozenset(new)
+        if hash(s) in self.setcache:
+            return self.setcache[hash(s)]
+        self.setcache[hash(s)] = s
+        return s
+
+codecache = SetCache()
+
+class pythonCacheLine(object):
+    def __init__(self, refs, execs, contains):
+        self.refs = codecache.internSet(refs)
+        self.execs = codecache.internSet(execs)
+        self.contains = {}
+        for c in contains:
+            self.contains[c] = codecache.internSet(contains[c])
+
+    def __getstate__(self):
+        return (self.refs, self.execs, self.contains)
+
+    def __setstate__(self, state):
+        (refs, execs, contains) = state
+        self.__init__(refs, execs, contains)
+    def __hash__(self):
+        l = (hash(self.refs), hash(self.execs))
+        for c in sorted(self.contains.keys()):
+            l = l + (c, hash(self.contains[c]))
+        return hash(l)
+
+class shellCacheLine(object):
+    def __init__(self, execs):
+        self.execs = codecache.internSet(execs)
+
+    def __getstate__(self):
+        return (self.execs)
+
+    def __setstate__(self, state):
+        (execs) = state
+        self.__init__(execs)
+    def __hash__(self):
+        return hash(self.execs)
+
 class CodeParserCache(MultiProcessCache):
     cache_file_name = "bb_codeparser.dat"
-    CACHE_VERSION = 3
+    CACHE_VERSION = 7
 
     def __init__(self):
         MultiProcessCache.__init__(self)
@@ -44,29 +117,33 @@ class CodeParserCache(MultiProcessCache):
         self.pythoncacheextras = self.cachedata_extras[0]
         self.shellcacheextras = self.cachedata_extras[1]
 
+        # To avoid duplication in the codeparser cache, keep
+        # a lookup of hashes of objects we already have
+        self.pythoncachelines = {}
+        self.shellcachelines = {}
+
+    def newPythonCacheLine(self, refs, execs, contains):
+        cacheline = pythonCacheLine(refs, execs, contains)
+        h = hash(cacheline)
+        if h in self.pythoncachelines:
+            return self.pythoncachelines[h]
+        self.pythoncachelines[h] = cacheline
+        return cacheline
+
+    def newShellCacheLine(self, execs):
+        cacheline = shellCacheLine(execs)
+        h = hash(cacheline)
+        if h in self.shellcachelines:
+            return self.shellcachelines[h]
+        self.shellcachelines[h] = cacheline
+        return cacheline
+
     def init_cache(self, d):
         MultiProcessCache.init_cache(self, d)
 
         # cachedata gets re-assigned in the parent
         self.pythoncache = self.cachedata[0]
         self.shellcache = self.cachedata[1]
-
-    def compress_keys(self, data):
-        # When the dicts are originally created, python calls intern() on the set keys
-        # which significantly improves memory usage. Sadly the pickle/unpickle process
-        # doesn't call intern() on the keys and results in the same strings being duplicated
-        # in memory. This also means pickle will save the same string multiple times in
-        # the cache file. By interning the data here, the cache file shrinks dramatically
-        # meaning faster load times and the reloaded cache files also consume much less
-        # memory. This is worth any performance hit from this loops and the use of the
-        # intern() data storage.
-        # Python 3.x may behave better in this area
-        for h in data[0]:
-            data[0][h]["refs"] = self.internSet(data[0][h]["refs"])
-            data[0][h]["execs"] = self.internSet(data[0][h]["execs"])
-        for h in data[1]:
-            data[1][h]["execs"] = self.internSet(data[1][h]["execs"])
-        return
 
     def create_cachedata(self):
         data = [{}, {}]
@@ -100,8 +177,8 @@ class BufferedLogger(Logger):
         self.buffer = []
 
 class PythonParser():
-    getvars = ("d.getVar", "bb.data.getVar", "data.getVar", "d.appendVar", "d.prependVar")
-    containsfuncs = ("bb.utils.contains", "base_contains", "oe.utils.contains")
+    getvars = (".getVar", ".appendVar", ".prependVar")
+    containsfuncs = ("bb.utils.contains", "base_contains", "oe.utils.contains", "bb.utils.contains_any")
     execfuncs = ("bb.build.exec_func", "bb.build.exec_task")
 
     def warn(self, func, arg):
@@ -120,9 +197,15 @@ class PythonParser():
 
     def visit_Call(self, node):
         name = self.called_node_name(node.func)
-        if name in self.getvars or name in self.containsfuncs:
+        if name and name.endswith(self.getvars) or name in self.containsfuncs:
             if isinstance(node.args[0], ast.Str):
-                self.var_references.add(node.args[0].s)
+                varname = node.args[0].s
+                if name in self.containsfuncs and isinstance(node.args[1], ast.Str):
+                    if varname not in self.contains:
+                        self.contains[varname] = set()
+                    self.contains[varname].add(node.args[1].s)
+                else:                      
+                    self.references.add(node.args[0].s)
             else:
                 self.warn(node.func, node.args[0])
         elif name in self.execfuncs:
@@ -147,11 +230,11 @@ class PythonParser():
                 break
 
     def __init__(self, name, log):
-        self.var_references = set()
         self.var_execs = set()
+        self.contains = {}
         self.execs = set()
         self.references = set()
-        self.log = BufferedLogger('BitBake.Data.%s' % name, logging.DEBUG, log)
+        self.log = BufferedLogger('BitBake.Data.PythonParser', logging.DEBUG, log)
 
         self.unhandled_message = "in call of %s, argument '%s' is not a string literal"
         self.unhandled_message = "while parsing %s, %s" % (name, self.unhandled_message)
@@ -160,15 +243,20 @@ class PythonParser():
         h = hash(str(node))
 
         if h in codeparsercache.pythoncache:
-            self.references = codeparsercache.pythoncache[h]["refs"]
-            self.execs = codeparsercache.pythoncache[h]["execs"]
+            self.references = set(codeparsercache.pythoncache[h].refs)
+            self.execs = set(codeparsercache.pythoncache[h].execs)
+            self.contains = {}
+            for i in codeparsercache.pythoncache[h].contains:
+                self.contains[i] = set(codeparsercache.pythoncache[h].contains[i])
             return
 
         if h in codeparsercache.pythoncacheextras:
-            self.references = codeparsercache.pythoncacheextras[h]["refs"]
-            self.execs = codeparsercache.pythoncacheextras[h]["execs"]
+            self.references = set(codeparsercache.pythoncacheextras[h].refs)
+            self.execs = set(codeparsercache.pythoncacheextras[h].execs)
+            self.contains = {}
+            for i in codeparsercache.pythoncacheextras[h].contains:
+                self.contains[i] = set(codeparsercache.pythoncacheextras[h].contains[i])
             return
-
 
         code = compile(check_indent(str(node)), "<string>", "exec",
                        ast.PyCF_ONLY_AST)
@@ -177,12 +265,9 @@ class PythonParser():
             if n.__class__.__name__ == "Call":
                 self.visit_Call(n)
 
-        self.references.update(self.var_references)
-        self.references.update(self.var_execs)
+        self.execs.update(self.var_execs)
 
-        codeparsercache.pythoncacheextras[h] = {}
-        codeparsercache.pythoncacheextras[h]["refs"] = self.references
-        codeparsercache.pythoncacheextras[h]["execs"] = self.execs
+        codeparsercache.pythoncacheextras[h] = codeparsercache.newPythonCacheLine(self.references, self.execs, self.contains)
 
 class ShellParser():
     def __init__(self, name, log):
@@ -201,13 +286,21 @@ class ShellParser():
         h = hash(str(value))
 
         if h in codeparsercache.shellcache:
-            self.execs = codeparsercache.shellcache[h]["execs"]
+            self.execs = set(codeparsercache.shellcache[h].execs)
             return self.execs
 
         if h in codeparsercache.shellcacheextras:
-            self.execs = codeparsercache.shellcacheextras[h]["execs"]
+            self.execs = set(codeparsercache.shellcacheextras[h].execs)
             return self.execs
 
+        self._parse_shell(value)
+        self.execs = set(cmd for cmd in self.allexecs if cmd not in self.funcdefs)
+
+        codeparsercache.shellcacheextras[h] = codeparsercache.newShellCacheLine(self.execs)
+
+        return self.execs
+
+    def _parse_shell(self, value):
         try:
             tokens, _ = pyshyacc.parse(value, eof=True, debug=False)
         except pyshlex.NeedMore:
@@ -215,12 +308,6 @@ class ShellParser():
 
         for token in tokens:
             self.process_tokens(token)
-        self.execs = set(cmd for cmd in self.allexecs if cmd not in self.funcdefs)
-
-        codeparsercache.shellcacheextras[h] = {}
-        codeparsercache.shellcacheextras[h]["execs"] = self.execs
-
-        return self.execs
 
     def process_tokens(self, tokens):
         """Process a supplied portion of the syntax tree as returned by
@@ -294,7 +381,7 @@ class ShellParser():
 
                 if part[0] in ('`', '$('):
                     command = pyshlex.wordtree_as_string(part[1:-1])
-                    self.parse_shell(command)
+                    self._parse_shell(command)
 
                     if word[0] in ("cmd_name", "cmd_word"):
                         if word in words:
@@ -313,7 +400,7 @@ class ShellParser():
                     self.log.debug(1, self.unhandled_template % cmd)
                 elif cmd == "eval":
                     command = " ".join(word for _, word in words[1:])
-                    self.parse_shell(command)
+                    self._parse_shell(command)
                 else:
                     self.allexecs.add(cmd)
                 break

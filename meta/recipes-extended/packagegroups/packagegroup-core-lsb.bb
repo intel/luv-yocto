@@ -7,8 +7,6 @@ DESCRIPTION = "Packages required to satisfy the Linux Standard Base (LSB) specif
 PR = "r10"
 LICENSE = "MIT"
 
-COMPATIBLE_HOST_mips64 = "mips64.*-linux-gnun32"
-
 inherit packagegroup
 
 PACKAGES = "\
@@ -27,7 +25,6 @@ PACKAGES = "\
     "
 
 
-RPROVIDES_packagegroup-core-lsb = "task-core-lsb"
 RDEPENDS_packagegroup-core-lsb = "\
     packagegroup-core-sys-extended \
     packagegroup-core-db \
@@ -131,7 +128,7 @@ RDEPENDS_packagegroup-core-lsb-core = "\
     cups \
     diffutils \
     ed \
-    eglibc-utils \
+    glibc-utils \
     elfutils \
     file \
     findutils \
@@ -161,7 +158,7 @@ RDEPENDS_packagegroup-core-lsb-core = "\
     util-linux \
     xdg-utils \
     \
-    eglibc \
+    glibc \
     libgcc \
     libpam \
     libxml2 \
@@ -198,28 +195,33 @@ def get_libqt3(d):
         if 'qt3' in d.getVar('BBFILE_COLLECTIONS') or "":
             return 'libqt-mt3'
 
-        bb.warn('The meta-qt3 layer should be added, this layer provides Qt 3.x')
-        bb.warn('libraries. Its intended use is for passing LSB tests as Qt3 is')
-        bb.warn('a requirement for LSB')
+        bb.warn('The meta-qt3 layer should be added, this layer provides Qt 3.x' \
+                'libraries. Its intended use is for passing LSB tests as Qt3 is' \
+                'a requirement for LSB.')
     return ''
 
-SUMMARY_packagegroup-core-lsb-desktop = "LSB Desktop"
-DESCRIPTION_packagegroup-core-lsb-desktop = "Packages required to support libraries \
-    specified in the LSB Desktop specification"
-RDEPENDS_packagegroup-core-lsb-desktop = "\
+QT4PKGS = " \
     libqtcore4 \
     libqtgui4 \
     libqtsql4 \
     libqtsvg4 \
     libqtxml4 \
     libqtnetwork4 \
+    qt4-plugin-sqldriver-sqlite \
+    ${@bb.utils.contains("DISTRO_FEATURES", "opengl", "libqtopengl4", "", d)} \
+    "
+QT4PKGS_mips64 = ""
+
+SUMMARY_packagegroup-core-lsb-desktop = "LSB Desktop"
+DESCRIPTION_packagegroup-core-lsb-desktop = "Packages required to support libraries \
+    specified in the LSB Desktop specification"
+RDEPENDS_packagegroup-core-lsb-desktop = "\
     libxt \
     libxxf86vm \
     libdrm \
     libglu \
     libxi \
     libxtst \
-    qt4-plugin-sqldriver-sqlite \
     libx11-locale \
     xorg-minimal-fonts \
     gdk-pixbuf-loader-ico \
@@ -230,7 +232,7 @@ RDEPENDS_packagegroup-core-lsb-desktop = "\
     gtk+ \
     atk \
     libasound \
-    ${@base_contains("DISTRO_FEATURES", "opengl", "libqtopengl4", "", d)} \
+    ${QT4PKGS} \
     ${@get_libqt3(d)} \
 "
 
@@ -243,13 +245,13 @@ RDEPENDS_packagegroup-core-lsb-runtime-add = "\
     libxml-parser-perl \
     libxml-perl \
     libxml-sax-perl \
-    eglibc-localedatas \
-    eglibc-gconvs \
-    eglibc-charmaps \
-    eglibc-binaries \
-    eglibc-localedata-posix \
-    eglibc-extra-nss \
-    eglibc-pcprofile \
+    glibc-localedatas \
+    glibc-gconvs \
+    glibc-charmaps \
+    glibc-binaries \
+    glibc-localedata-posix \
+    glibc-extra-nss \
+    glibc-pcprofile \
     libclass-isa-perl \
     libenv-perl \
     libdumpvalue-perl \

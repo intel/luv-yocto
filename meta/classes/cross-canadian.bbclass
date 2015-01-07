@@ -9,7 +9,7 @@
 # or indirectly via dependency.  No need to be in 'world'.
 EXCLUDE_FROM_WORLD = "1"
 CLASSOVERRIDE = "class-cross-canadian"
-STAGING_BINDIR_TOOLCHAIN = "${STAGING_DIR_NATIVE}${bindir_native}/${SDK_ARCH}${SDK_VENDOR}-${SDK_OS}:${STAGING_DIR_NATIVE}${bindir_native}/${TUNE_PKGARCH}${TARGET_VENDOR}-${TARGET_OS}"
+STAGING_BINDIR_TOOLCHAIN = "${STAGING_DIR_NATIVE}${bindir_native}/${SDK_ARCH}${SDK_VENDOR}-${SDK_OS}:${STAGING_DIR_NATIVE}${bindir_native}/${TARGET_ARCH}${TARGET_VENDOR}-${TARGET_OS}"
 
 #
 # Update BASE_PACKAGE_ARCH and PACKAGE_ARCHS
@@ -27,9 +27,12 @@ python () {
     tarch = d.getVar("TARGET_ARCH", True)
     if tarch == "powerpc":
         tos = d.getVar("TARGET_OS", True)
-        if (tos != "linux" and tos != "linux-gnuspe"):
+        if (tos != "linux" and tos != "linux-gnuspe"
+            and tos != "linux-uclibc" and tos != "linux-uclibcspe"
+            and tos != "linux-musl" and tos != "linux-muslspe"):
             bb.fatal("Building cross-candian powerpc for an unknown TARGET_SYS (%s), please update cross-canadian.bbclass" % d.getVar("TARGET_SYS", True))
-        # Have to expand DEPENDS before we change the extensions
+        # This is a bit ugly. We need to zero LIBC/ABI extension which will change TARGET_OS
+        # however we need the old value in some variables. We expand those here first.
         d.setVar("DEPENDS", d.getVar("DEPENDS", True))
         d.setVar("STAGING_BINDIR_TOOLCHAIN", d.getVar("STAGING_BINDIR_TOOLCHAIN", True))
         for prefix in ["AR", "AS", "DLLTOOL", "CC", "CXX", "GCC", "LD", "LIPO", "NM", "OBJDUMP", "RANLIB", "STRIP", "WINDRES"]:
@@ -81,11 +84,12 @@ EXTRANATIVEPATH += "chrpath-native"
 # Path mangling needed by the cross packaging
 # Note that we use := here to ensure that libdir and includedir are
 # target paths.
-target_libdir := "${libdir}"
-target_includedir := "${includedir}"
-target_base_libdir := "${base_libdir}"
+target_base_prefix := "${base_prefix}"
 target_prefix := "${prefix}"
 target_exec_prefix := "${exec_prefix}"
+target_base_libdir = "${target_base_prefix}/${baselib}"
+target_libdir = "${target_exec_prefix}/${baselib}"
+target_includedir := "${includedir}"
 
 # Change to place files in SDKPATH
 base_prefix = "${SDKPATHNATIVE}"
@@ -107,6 +111,7 @@ export PKG_CONFIG_DIR = "${STAGING_DIR_HOST}${layout_libdir}/pkgconfig"
 export PKG_CONFIG_SYSROOT_DIR = "${STAGING_DIR_HOST}"
 
 do_populate_sysroot[stamp-extra-info] = ""
+do_packagedata[stamp-extra-info] = ""
 
 USE_NLS = "${SDKUSE_NLS}"
 
@@ -116,8 +121,8 @@ TARGET_ARCH[vardepsexclude] = "TUNE_ARCH"
 
 # If MLPREFIX is set by multilib code, shlibs
 # points to the wrong place so force it
-SHLIBSDIRS = "${PKGDATA_DIR}/nativesdk-shlibs"
-SHLIBSWORKDIR = "${PKGDATA_DIR}/nativesdk-shlibs"
+SHLIBSDIRS = "${PKGDATA_DIR}/nativesdk-shlibs2"
+SHLIBSWORKDIR = "${PKGDATA_DIR}/nativesdk-shlibs2"
 
 cross_canadian_bindirlinks () {
 	for i in ${CANADIANEXTRAOS}

@@ -1,4 +1,4 @@
-SUMMARY = "Universally Unique Identifier (UUID) library" 
+SUMMARY = "Universally Unique Identifier (UUID) library"
 DESCRIPTION = "OSSP uuid is a ISO-C:1999 application programming interface \
 (API) and corresponding command line interface (CLI) for the generation of \
 DCE 1.1, ISO/IEC 11578:1996 and RFC 4122 compliant Universally Unique \
@@ -17,7 +17,7 @@ LIC_FILES_CHKSUM = "file://README;beginline=30;endline=55;md5=b394fadb039bbfca6a
 
 PR = "r2"
 
-SRC_URI = "ftp://ftp.ossp.org/pkg/lib/uuid/uuid-1.6.2.tar.gz \
+SRC_URI = "http://gnome-build-stage-1.googlecode.com/files/uuid-1.6.2.tar.gz \
 	   file://0001-Change-library-name.patch \
 	   file://0002-uuid-preserve-m-option-status-in-v-option-handling.patch \
 	   file://0003-Fix-whatis-entries.patch \
@@ -25,6 +25,7 @@ SRC_URI = "ftp://ftp.ossp.org/pkg/lib/uuid/uuid-1.6.2.tar.gz \
 	   file://uuid-libtool.patch \
 	   file://uuid-nostrip.patch \
            file://install-pc.patch \
+           file://ldflags.patch \
 	  "
 SRC_URI[md5sum] = "5db0d43a9022a6ebbbc25337ae28942f"
 SRC_URI[sha256sum] = "11a615225baa5f8bb686824423f50e4427acd3f70d394765bdff32801f0fd5b0"
@@ -55,4 +56,4 @@ FILES_uuid = "${bindir}/uuid"
 FILES_${PN} = "${libdir}/libossp-uuid.so.16*"
 FILES_${PN}-dev += "${bindir}/uuid-config"
 
-BBCLASSEXTEND = "native"
+BBCLASSEXTEND = "native nativesdk"

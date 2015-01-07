@@ -1,4 +1,4 @@
-DESCRIPTION = "GNOME 2 default icon themes"
+SUMMARY = "GNOME 2 default icon themes"
 HOMEPAGE = "http://www.gnome.org/"
 BUGTRACKER = "https://bugzilla.gnome.org/"
 SECTION = "x11/gnome"
@@ -10,7 +10,7 @@ PR = "r5"
 
 DEPENDS = "icon-naming-utils-native glib-2.0 intltool-native libxml-simple-perl-native"
 
-inherit autotools perlnative gtk-icon-cache
+inherit autotools perlnative gtk-icon-cache pkgconfig
 
 SRC_URI = "${GNOME_MIRROR}/${BPN}/2.31/${BPN}-${PV}.tar.bz2 \
            file://iconpath-option.patch"

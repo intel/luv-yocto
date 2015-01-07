@@ -26,6 +26,10 @@ TARGET_PREFIX = "${BUILD_PREFIX}"
 TARGET_CC_ARCH = "${BUILD_CC_ARCH}"
 TARGET_LD_ARCH = "${BUILD_LD_ARCH}"
 TARGET_AS_ARCH = "${BUILD_AS_ARCH}"
+TARGET_CPPFLAGS = "${BUILD_CPPFLAGS}"
+TARGET_CFLAGS = "${BUILD_CFLAGS}"
+TARGET_CXXFLAGS = "${BUILD_CXXFLAGS}"
+TARGET_LDFLAGS = "${BUILD_LDFLAGS}"
 TARGET_FPU = ""
 
 HOST_ARCH = "${BUILD_ARCH}"
@@ -59,7 +63,7 @@ export CONFIG_SITE = "${COREBASE}/meta/site/native"
 # set the compiler as well. It could have been set to something else
 export CC = "${CCACHE}${HOST_PREFIX}gcc ${HOST_CC_ARCH}"
 export CXX = "${CCACHE}${HOST_PREFIX}g++ ${HOST_CC_ARCH}"
-export F77 = "${CCACHE}${HOST_PREFIX}g77 ${HOST_CC_ARCH}"
+export FC = "${CCACHE}${HOST_PREFIX}gfortran ${HOST_CC_ARCH}"
 export CPP = "${HOST_PREFIX}gcc ${HOST_CC_ARCH} -E"
 export LD = "${HOST_PREFIX}ld ${HOST_LD_ARCH} "
 export CCLD = "${CC}"
@@ -73,7 +77,12 @@ base_prefix = "${STAGING_DIR_NATIVE}"
 prefix = "${STAGING_DIR_NATIVE}${prefix_native}"
 exec_prefix = "${STAGING_DIR_NATIVE}${prefix_native}"
 
-libdir = "${STAGING_DIR_NATIVE}${libdir_native}"
+bindir = "${STAGING_BINDIR_NATIVE}"
+sbindir = "${STAGING_SBINDIR_NATIVE}"
+libdir = "${STAGING_LIBDIR_NATIVE}"
+includedir = "${STAGING_INCDIR_NATIVE}"
+sysconfdir = "${STAGING_ETCDIR_NATIVE}"
+datadir = "${STAGING_DATADIR_NATIVE}"
 
 baselib = "lib"
 
@@ -100,6 +109,7 @@ PKG_CONFIG_SYSROOT_DIR = ""
 # we dont want libc-uclibc or libc-glibc to kick in for native recipes
 LIBCOVERRIDE = ""
 CLASSOVERRIDE = "class-native"
+MACHINEOVERRIDES = ""
 
 PATH_prepend = "${COREBASE}/scripts/native-intercept:"
 
@@ -121,7 +131,7 @@ python native_virtclass_handler () {
         deps = bb.utils.explode_deps(deps)
         newdeps = []
         for dep in deps:
-            if dep.endswith("-cross"):
+            if "-cross-" in dep:
                 newdeps.append(dep.replace("-cross", "-native"))
             elif not dep.endswith("-native"):
                 newdeps.append(dep + "-native")
@@ -151,11 +161,13 @@ python native_virtclass_handler () {
 addhandler native_virtclass_handler
 native_virtclass_handler[eventmask] = "bb.event.RecipePreFinalise"
 
-do_package[noexec] = "1"
-do_packagedata[noexec] = "1"
-do_package_write_ipk[noexec] = "1"
-do_package_write_deb[noexec] = "1"
-do_package_write_rpm[noexec] = "1"
+deltask package
+deltask packagedata
+deltask package_qa
+deltask package_write_ipk
+deltask package_write_deb
+deltask package_write_rpm
+deltask package_write
 
 do_packagedata[stamp-extra-info] = ""
 do_populate_sysroot[stamp-extra-info] = ""

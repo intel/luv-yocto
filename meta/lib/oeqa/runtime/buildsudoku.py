@@ -1,4 +1,4 @@
-from oeqa.oetest import oeRuntimeTest
+from oeqa.oetest import oeRuntimeTest, skipModule
 from oeqa.utils.decorators import *
 from oeqa.utils.targetbuild import TargetBuildProject
 
@@ -10,11 +10,11 @@ class SudokuTest(oeRuntimeTest):
 
     @classmethod
     def setUpClass(self):
-        self.restartTarget("-m 512")
-        self.project = TargetBuildProject(oeRuntimeTest.tc.target,
+        self.project = TargetBuildProject(oeRuntimeTest.tc.target, oeRuntimeTest.tc.d,
                         "http://downloads.sourceforge.net/project/sudoku-savant/sudoku-savant/sudoku-savant-1.3/sudoku-savant-1.3.tar.bz2")
         self.project.download_archive()
 
+    @testcase(207)
     @skipUnlessPassed("test_ssh")
     def test_sudoku(self):
         self.assertEqual(self.project.run_configure(), 0,
@@ -26,4 +26,3 @@ class SudokuTest(oeRuntimeTest):
     @classmethod
     def tearDownClass(self):
         self.project.clean()
-        self.restartTarget()

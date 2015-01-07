@@ -13,9 +13,10 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=fbc093901857fcd118f065f900982c24 \
 
 SRC_URI = "http://gstreamer.freedesktop.org/src/gst-openmax/gst-openmax-${PV}.tar.bz2 \
            file://gcc_4.6.patch \
+           file://ptr-array.patch \
            "
 
-inherit autotools
+inherit autotools pkgconfig
 
 # Tell configure that this isn't a development snapshot so we don't want
 # -Werror (hopefully fixed in 0.10.2)

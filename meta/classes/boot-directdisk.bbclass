@@ -31,17 +31,17 @@ EXCLUDE_FROM_WORLD = "1"
 BOOTDD_VOLUME_ID   ?= "boot"
 BOOTDD_EXTRA_SPACE ?= "16384"
 
-EFI = "${@base_contains("MACHINE_FEATURES", "efi", "1", "0", d)}"
+EFI = "${@bb.utils.contains("MACHINE_FEATURES", "efi", "1", "0", d)}"
 EFI_PROVIDER ?= "grub-efi"
-EFI_CLASS = "${@base_contains("MACHINE_FEATURES", "efi", "${EFI_PROVIDER}", "", d)}"
+EFI_CLASS = "${@bb.utils.contains("MACHINE_FEATURES", "efi", "${EFI_PROVIDER}", "", d)}"
 
 # Include legacy boot if MACHINE_FEATURES includes "pcbios" or if it does not
 # contain "efi". This way legacy is supported by default if neither is
 # specified, maintaining the original behavior.
 def pcbios(d):
-    pcbios = base_contains("MACHINE_FEATURES", "pcbios", "1", "0", d)
+    pcbios = bb.utils.contains("MACHINE_FEATURES", "pcbios", "1", "0", d)
     if pcbios == "0":
-        pcbios = base_contains("MACHINE_FEATURES", "efi", "0", "1", d)
+        pcbios = bb.utils.contains("MACHINE_FEATURES", "efi", "0", "1", d)
     return pcbios
 
 def pcbios_class(d):
@@ -62,6 +62,8 @@ DISK_SIGNATURE ?= "${DISK_SIGNATURE_GENERATED}"
 SYSLINUX_ROOT ?= "root=/dev/sda2"
 SYSLINUX_TIMEOUT ?= "10"
 
+IS_VMDK = '${@bb.utils.contains("IMAGE_FSTYPES", "vmdk", "true", "false", d)}'
+
 boot_direct_populate() {
 	dest=$1
 	install -d $dest
@@ -69,10 +71,19 @@ boot_direct_populate() {
 	# Install bzImage, initrd, and rootfs.img in DEST for all loaders to use.
 	install -m 0644 ${STAGING_KERNEL_DIR}/bzImage $dest/vmlinuz
 
-	if [ -n "${INITRD}" ] && [ -s "${INITRD}" ]; then
-		install -m 0644 ${INITRD} $dest/initrd
+	# initrd is made of concatenation of multiple filesystem images
+	if [ -n "${INITRD}" ]; then
+		rm -f $dest/initrd
+		for fs in ${INITRD}
+		do
+			if [ -s "${fs}" ]; then
+				cat ${fs} >> $dest/initrd
+			else
+				bbfatal "${fs} is invalid. initrd image creation failed."
+			fi
+		done
+		chmod 0644 $dest/initrd
 	fi
-
 }
 
 build_boot_dd() {
@@ -87,6 +98,15 @@ build_boot_dd() {
 	fi
 	if [ "${EFI}" = "1" ]; then
 		efi_hddimg_populate $HDDDIR
+	fi
+
+	if [ "${IS_VMDK}" = "true" ]; then
+		if [ "x${AUTO_SYSLINUXMENU}" = "x1" ] ; then
+			install -m 0644 ${STAGING_DIR}/${MACHINE}/usr/share/syslinux/vesamenu.c32 $HDDDIR/${SYSLINUXDIR}/
+			if [ "x${SYSLINUX_SPLASH}" != "x" ] ; then
+				install -m 0644 ${SYSLINUX_SPLASH} $HDDDIR/${SYSLINUXDIR}/splash.lss
+			fi
+		fi
 	fi
 
 	BLOCKS=`du -bks $HDDDIR | cut -f 1`
@@ -120,6 +140,7 @@ build_boot_dd() {
 	parted $IMAGE mkpart primary fat16 0 ${END1}B
 	parted $IMAGE unit B mkpart primary ext2 ${END2}B ${END3}B
 	parted $IMAGE set 1 boot on 
+
 	parted $IMAGE print
 
 	awk "BEGIN { printf \"$(echo ${DISK_SIGNATURE} | fold -w 2 | tac | paste -sd '' | sed 's/\(..\)/\\x&/g')\" }" | \
@@ -129,8 +150,9 @@ build_boot_dd() {
 	if [ "${PCBIOS}" = "1" ]; then
 		dd if=${STAGING_DATADIR}/syslinux/mbr.bin of=$IMAGE conv=notrunc
 	fi
+
 	dd if=$HDDIMG of=$IMAGE conv=notrunc seek=1 bs=512
-	dd if=${ROOTFS} of=$IMAGE conv=notrunc seek=$OFFSET bs=512	
+	dd if=${ROOTFS} of=$IMAGE conv=notrunc seek=$OFFSET bs=512
 
 	cd ${DEPLOY_DIR_IMAGE}
 	rm -f ${DEPLOY_DIR_IMAGE}/${IMAGE_LINK_NAME}.hdddirect

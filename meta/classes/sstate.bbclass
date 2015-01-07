@@ -9,46 +9,58 @@ def generate_sstatefn(spec, hash, d):
     return hash[:2] + "/" + spec + hash
 
 SSTATE_PKGARCH    = "${PACKAGE_ARCH}"
-SSTATE_PKGSPEC    = "sstate-${PN}-${PACKAGE_ARCH}${TARGET_VENDOR}-${TARGET_OS}-${PV}-${PR}-${SSTATE_PKGARCH}-${SSTATE_VERSION}-"
+SSTATE_PKGSPEC    = "sstate:${PN}:${PACKAGE_ARCH}${TARGET_VENDOR}-${TARGET_OS}:${PV}:${PR}:${SSTATE_PKGARCH}:${SSTATE_VERSION}:"
+SSTATE_SWSPEC     = "sstate:${BPN}::${PV}:${PR}::${SSTATE_VERSION}:"
 SSTATE_PKGNAME    = "${SSTATE_EXTRAPATH}${@generate_sstatefn(d.getVar('SSTATE_PKGSPEC', True), d.getVar('BB_TASKHASH', True), d)}"
 SSTATE_PKG        = "${SSTATE_DIR}/${SSTATE_PKGNAME}"
 SSTATE_EXTRAPATH   = ""
 SSTATE_EXTRAPATHWILDCARD = ""
 SSTATE_PATHSPEC   = "${SSTATE_DIR}/${SSTATE_EXTRAPATHWILDCARD}*/${SSTATE_PKGSPEC}"
 
-SSTATE_DUPWHITELIST = "${DEPLOY_DIR_IMAGE}/ ${DEPLOY_DIR}/licenses/"
-# Also need to make cross recipes append to ${PN} and install once for any given PACAGE_ARCH so
-# can avoid multiple installs (e.g. routerstationpro+qemumips both using mips32)
-SSTATE_DUPWHITELIST += "${STAGING_LIBDIR_NATIVE}/${MULTIMACH_TARGET_SYS} ${STAGING_DIR_NATIVE}/usr/libexec/${MULTIMACH_TARGET_SYS} ${STAGING_BINDIR_NATIVE}/${MULTIMACH_TARGET_SYS} ${STAGING_DIR_NATIVE}${includedir_native}/gcc-build-internal-${MULTIMACH_TARGET_SYS}"
+# We don't want the sstate to depend on things like the distro string
+# of the system, we let the sstate paths take care of this.
+SSTATE_EXTRAPATH[vardepvalue] = ""
+
+# For multilib rpm the allarch packagegroup files can overwrite (in theory they're identical)
+SSTATE_DUPWHITELIST = "${DEPLOY_DIR_IMAGE}/ ${DEPLOY_DIR}/licenses/ ${DEPLOY_DIR_RPM}/all/"
 # Avoid docbook/sgml catalog warnings for now
 SSTATE_DUPWHITELIST += "${STAGING_ETCDIR_NATIVE}/sgml ${STAGING_DATADIR_NATIVE}/sgml"
 
 SSTATE_SCAN_FILES ?= "*.la *-config *_config"
 SSTATE_SCAN_CMD ?= 'find ${SSTATE_BUILDDIR} \( -name "${@"\" -o -name \"".join(d.getVar("SSTATE_SCAN_FILES", True).split())}" \) -type f'
 
-BB_HASHFILENAME = "${SSTATE_EXTRAPATH} ${SSTATE_PKGSPEC}"
+BB_HASHFILENAME = "${SSTATE_EXTRAPATH} ${SSTATE_PKGSPEC} ${SSTATE_SWSPEC}"
 
 SSTATE_MANMACH ?= "${SSTATE_PKGARCH}"
 
-SSTATEPREINSTFUNCS ?= ""
-SSTATEPOSTINSTFUNCS ?= ""
+SSTATECREATEFUNCS = "sstate_hardcode_path"
+SSTATEPOSTCREATEFUNCS = ""
+SSTATEPREINSTFUNCS = ""
+SSTATEPOSTUNPACKFUNCS = "sstate_hardcode_path_unpack"
+SSTATEPOSTINSTFUNCS = ""
 EXTRA_STAGING_FIXMES ?= ""
+
+SIGGEN_LOCKEDSIGS_CHECK_LEVEL ?= 'error'
 
 # Specify dirs in which the shell function is executed and don't use ${B}
 # as default dirs to avoid possible race about ${B} with other task.
 sstate_create_package[dirs] = "${SSTATE_BUILDDIR}"
 sstate_unpack_package[dirs] = "${SSTATE_INSTDIR}"
 
+# Do not run sstate_hardcode_path() in ${B}:
+# the ${B} maybe removed by cmake_do_configure() while
+# sstate_hardcode_path() running.
+sstate_hardcode_path[dirs] = "${SSTATE_BUILDDIR}"
+
 python () {
     if bb.data.inherits_class('native', d):
         d.setVar('SSTATE_PKGARCH', d.getVar('BUILD_ARCH'))
     elif bb.data.inherits_class('crosssdk', d):
-        d.setVar('SSTATE_PKGARCH', d.expand("${BUILD_ARCH}_${SDK_ARCH}"))
+        d.setVar('SSTATE_PKGARCH', d.expand("${BUILD_ARCH}_${SDK_ARCH}_${SDK_OS}"))
     elif bb.data.inherits_class('cross', d):
-        d.setVar('SSTATE_PKGARCH', d.expand("${BUILD_ARCH}_${TUNE_PKGARCH}"))
-        d.setVar('SSTATE_MANMACH', d.expand("${BUILD_ARCH}_${MACHINE}"))
+        d.setVar('SSTATE_PKGARCH', d.expand("${BUILD_ARCH}_${TARGET_ARCH}"))
     elif bb.data.inherits_class('nativesdk', d):
-        d.setVar('SSTATE_PKGARCH', d.expand("${SDK_ARCH}"))
+        d.setVar('SSTATE_PKGARCH', d.expand("${SDK_ARCH}_${SDK_OS}"))
     elif bb.data.inherits_class('cross-canadian', d):
         d.setVar('SSTATE_PKGARCH', d.expand("${SDK_ARCH}_${PACKAGE_ARCH}"))
     elif bb.data.inherits_class('allarch', d) and d.getVar("PACKAGE_ARCH", True) == "all":
@@ -68,18 +80,14 @@ python () {
 
     unique_tasks = set((d.getVar('SSTATETASKS', True) or "").split())
     d.setVar('SSTATETASKS', " ".join(unique_tasks))
-    namemap = []
     for task in unique_tasks:
-        namemap.append(d.getVarFlag(task, 'sstate-name'))
         d.prependVarFlag(task, 'prefuncs', "sstate_task_prefunc ")
         d.appendVarFlag(task, 'postfuncs', " sstate_task_postfunc")
-    d.setVar('SSTATETASKNAMES', " ".join(namemap))
 }
 
-def sstate_init(name, task, d):
+def sstate_init(task, d):
     ss = {}
     ss['task'] = task
-    ss['name'] = name
     ss['dirs'] = []
     ss['plaindirs'] = []
     ss['lockfiles'] = []
@@ -93,17 +101,22 @@ def sstate_state_fromvars(d, task = None):
             bb.fatal("sstate code running without task context?!")
         task = task.replace("_setscene", "")
 
-    name = d.getVarFlag("do_" + task, 'sstate-name', True)
+    if task.startswith("do_"):
+        task = task[3:]
     inputs = (d.getVarFlag("do_" + task, 'sstate-inputdirs', True) or "").split()
     outputs = (d.getVarFlag("do_" + task, 'sstate-outputdirs', True) or "").split()
     plaindirs = (d.getVarFlag("do_" + task, 'sstate-plaindirs', True) or "").split()
     lockfiles = (d.getVarFlag("do_" + task, 'sstate-lockfile', True) or "").split()
     lockfilesshared = (d.getVarFlag("do_" + task, 'sstate-lockfile-shared', True) or "").split()
     interceptfuncs = (d.getVarFlag("do_" + task, 'sstate-interceptfuncs', True) or "").split()
-    if not name or len(inputs) != len(outputs):
+    if not task or len(inputs) != len(outputs):
         bb.fatal("sstate variables not setup correctly?!")
 
-    ss = sstate_init(name, task, d)
+    if task == "populate_lic":
+        d.setVar("SSTATE_PKGSPEC", "${SSTATE_SWSPEC}")
+        d.setVar("SSTATE_EXTRAPATH", "")
+
+    ss = sstate_init(task, d)
     for i in range(len(inputs)):
         sstate_add(ss, inputs[i], outputs[i], d)
     ss['lockfiles'] = lockfiles
@@ -135,7 +148,7 @@ def sstate_install(ss, d):
     extrainf = d.getVarFlag("do_" + ss['task'], 'stamp-extra-info', True)
     if extrainf:
         d2.setVar("SSTATE_MANMACH", extrainf)
-    manifest = d2.expand("${SSTATE_MANFILEPREFIX}.%s" % ss['name'])
+    manifest = d2.expand("${SSTATE_MANFILEPREFIX}.%s" % ss['task'])
 
     if os.access(manifest, os.R_OK):
         bb.fatal("Package already staged (%s)?!" % manifest)
@@ -180,7 +193,29 @@ def sstate_install(ss, d):
                 if search_output != "":
                     match.append("Matched in %s" % search_output.rstrip())
     if match:
-        bb.warn("The recipe %s is trying to install files into a shared area when those files already exist. Those files and their manifest location are:\n   %s\nPlease verify which package should provide the above files." % (d.getVar('PN', True), "\n   ".join(match)))
+        bb.error("The recipe %s is trying to install files into a shared " \
+          "area when those files already exist. Those files and their manifest " \
+          "location are:\n   %s\nPlease verify which recipe should provide the " \
+          "above files.\nThe build has stopped as continuing in this scenario WILL " \
+          "break things, if not now, possibly in the future (we've seen builds fail " \
+          "several months later). If the system knew how to recover from this " \
+          "automatically it would however there are several different scenarios " \
+          "which can result in this and we don't know which one this is. It may be " \
+          "you have switched providers of something like virtual/kernel (e.g. from " \
+          "linux-yocto to linux-yocto-dev), in that case you need to execute the " \
+          "clean task for both recipes and it will resolve this error. It may be " \
+          "you changed DISTRO_FEATURES from systemd to udev or vice versa. Cleaning " \
+          "those recipes should again resolve this error however switching " \
+          "DISTRO_FEATURES on an existing build directory is not supported, you " \
+          "should really clean out tmp and rebuild (reusing sstate should be safe). " \
+          "It could be the overlapping files detected are harmless in which case " \
+          "adding them to SSTATE_DUPWHITELIST may be the correct solution. It could " \
+          "also be your build is including two different conflicting versions of " \
+          "things (e.g. bluez 4 and bluez 5 and the correct solution for that would " \
+          "be to resolve the conflict. If in doubt, please ask on the mailing list, " \
+          "sharing the error and filelist above." % \
+          (d.getVar('PN', True), "\n ".join(match)))
+        bb.fatal("If the above message is too much, the simpler version is you're advised to wipe out tmp and rebuild (reusing sstate is fine). That will likely fix things in most (but not all) cases.")
 
     # Write out the manifest
     f = open(manifest, "w")
@@ -207,6 +242,9 @@ def sstate_install(ss, d):
     for lock in locks:
         bb.utils.unlockfile(lock)
 
+sstate_install[vardepsexclude] += "SSTATE_DUPWHITELIST STATE_MANMACH SSTATE_MANFILEPREFIX"
+sstate_install[vardeps] += "${SSTATEPOSTINSTFUNCS}"
+
 def sstate_installpkg(ss, d):
     import oe.path
     import subprocess
@@ -218,9 +256,9 @@ def sstate_installpkg(ss, d):
         bb.utils.mkdirhier(dir)
         oe.path.remove(dir)
 
-    sstateinst = d.expand("${WORKDIR}/sstate-install-%s/" % ss['name'])
-    sstatefetch = d.getVar('SSTATE_PKGNAME', True) + '_' + ss['name'] + ".tgz"
-    sstatepkg = d.getVar('SSTATE_PKG', True) + '_' + ss['name'] + ".tgz"
+    sstateinst = d.expand("${WORKDIR}/sstate-install-%s/" % ss['task'])
+    sstatefetch = d.getVar('SSTATE_PKGNAME', True) + '_' + ss['task'] + ".tgz"
+    sstatepkg = d.getVar('SSTATE_PKG', True) + '_' + ss['task'] + ".tgz"
 
     if not os.path.exists(sstatepkg):
         pstaging_fetch(sstatefetch, sstatepkg, d)
@@ -234,16 +272,32 @@ def sstate_installpkg(ss, d):
     d.setVar('SSTATE_INSTDIR', sstateinst)
     d.setVar('SSTATE_PKG', sstatepkg)
 
-    for preinst in (d.getVar('SSTATEPREINSTFUNCS', True) or '').split():
-        bb.build.exec_func(preinst, d)
+    for f in (d.getVar('SSTATEPREINSTFUNCS', True) or '').split() + ['sstate_unpack_package'] + (d.getVar('SSTATEPOSTUNPACKFUNCS', True) or '').split():
+        bb.build.exec_func(f, d)
 
-    bb.build.exec_func('sstate_unpack_package', d)
+    for state in ss['dirs']:
+        prepdir(state[1])
+        os.rename(sstateinst + state[0], state[1])
+    sstate_install(ss, d)
 
+    for plain in ss['plaindirs']:
+        workdir = d.getVar('WORKDIR', True)
+        src = sstateinst + "/" + plain.replace(workdir, '')
+        dest = plain
+        bb.utils.mkdirhier(src)
+        prepdir(dest)
+        os.rename(src, dest)
+
+    return True
+
+python sstate_hardcode_path_unpack () {
     # Fixup hardcoded paths
     #
     # Note: The logic below must match the reverse logic in
     # sstate_hardcode_path(d)
+    import subprocess
 
+    sstateinst = d.getVar('SSTATE_INSTDIR', True)
     fixmefn =  sstateinst + "fixmepath"
     if os.path.isfile(fixmefn):
         staging = d.getVar('STAGING_DIR', True)
@@ -271,33 +325,20 @@ def sstate_installpkg(ss, d):
         # Need to remove this or we'd copy it into the target directory and may 
         # conflict with another writer
         os.remove(fixmefn)
-
-    for state in ss['dirs']:
-        prepdir(state[1])
-        os.rename(sstateinst + state[0], state[1])
-    sstate_install(ss, d)
-
-    for plain in ss['plaindirs']:
-        workdir = d.getVar('WORKDIR', True)
-        src = sstateinst + "/" + plain.replace(workdir, '')
-        dest = plain
-        bb.utils.mkdirhier(src)
-        prepdir(dest)
-        os.rename(src, dest)
-
-    return True
+}
 
 def sstate_clean_cachefile(ss, d):
     import oe.path
 
-    sstatepkgfile = d.getVar('SSTATE_PATHSPEC', True) + "*_" + ss['name'] + ".tgz*"
+    sstatepkgfile = d.getVar('SSTATE_PATHSPEC', True) + "*_" + ss['task'] + ".tgz*"
     bb.note("Removing %s" % sstatepkgfile)
     oe.path.remove(sstatepkgfile)
 
 def sstate_clean_cachefiles(d):
     for task in (d.getVar('SSTATETASKS', True) or "").split():
-        ss = sstate_state_fromvars(d, task[3:])
-        sstate_clean_cachefile(ss, d)
+        ld = d.createCopy()
+        ss = sstate_state_fromvars(ld, task)
+        sstate_clean_cachefile(ss, ld)
 
 def sstate_clean_manifest(manifest, d):
     import oe.path
@@ -326,12 +367,18 @@ def sstate_clean_manifest(manifest, d):
 
 def sstate_clean(ss, d):
     import oe.path
+    import glob
 
     d2 = d.createCopy()
+    stamp_clean = d.getVar("STAMPCLEAN", True)
     extrainf = d.getVarFlag("do_" + ss['task'], 'stamp-extra-info', True)
     if extrainf:
         d2.setVar("SSTATE_MANMACH", extrainf)
-    manifest = d2.expand("${SSTATE_MANFILEPREFIX}.%s" % ss['name'])
+        wildcard_stfile = "%s.do_%s*.%s" % (stamp_clean, ss['task'], extrainf)
+    else:
+        wildcard_stfile = "%s.do_%s*" % (stamp_clean, ss['task'])
+
+    manifest = d2.expand("${SSTATE_MANFILEPREFIX}.%s" % ss['task'])
 
     if os.path.exists(manifest):
         locks = []
@@ -345,15 +392,27 @@ def sstate_clean(ss, d):
         for lock in locks:
             bb.utils.unlockfile(lock)
 
-    stfile = d.getVar("STAMP", True) + ".do_" + ss['task']
-    oe.path.remove(stfile)
-    oe.path.remove(stfile + "_setscene")
-    if extrainf:
-        oe.path.remove(stfile + ".*" + extrainf)
-        oe.path.remove(stfile + "_setscene" + ".*" + extrainf)
-    else:
-        oe.path.remove(stfile + ".*")
-        oe.path.remove(stfile + "_setscene" + ".*")
+    # Remove the current and previous stamps, but keep the sigdata.
+    #
+    # The glob() matches do_task* which may match multiple tasks, for
+    # example: do_package and do_package_write_ipk, so we need to
+    # exactly match *.do_task.* and *.do_task_setscene.*
+    rm_stamp = '.do_%s.' % ss['task']
+    rm_setscene = '.do_%s_setscene.' % ss['task']
+    # For BB_SIGNATURE_HANDLER = "noop"
+    rm_nohash = ".do_%s" % ss['task']
+    for stfile in glob.glob(wildcard_stfile):
+        # Keep the sigdata
+        if ".sigdata." in stfile:
+            continue
+        # Preserve taint files in the stamps directory
+        if stfile.endswith('.taint'):
+            continue
+        if rm_stamp in stfile or rm_setscene in stfile or \
+                stfile.endswith(rm_nohash):
+            oe.path.remove(stfile)
+
+sstate_clean[vardepsexclude] = "SSTATE_MANFILEPREFIX"
 
 CLEANFUNCS += "sstate_cleanall"
 
@@ -364,15 +423,14 @@ python sstate_cleanall() {
     if not os.path.exists(manifest_dir):
         return
 
-    namemap = d.getVar('SSTATETASKNAMES', True).split()
     tasks = d.getVar('SSTATETASKS', True).split()
-    for name in namemap:
-        taskname = tasks[namemap.index(name)]
-        shared_state = sstate_state_fromvars(d, taskname[3:])
-        sstate_clean(shared_state, d)
+    for name in tasks:
+        ld = d.createCopy()
+        shared_state = sstate_state_fromvars(ld, name)
+        sstate_clean(shared_state, ld)
 }
 
-def sstate_hardcode_path(d):
+python sstate_hardcode_path () {
     import subprocess, platform
 
     # Need to remove hardcoded paths and fix these when we install the
@@ -390,7 +448,7 @@ def sstate_hardcode_path(d):
         sstate_grep_cmd = "grep -l -e '%s'" % (staging)
         sstate_sed_cmd = "sed -i -e 's:%s:FIXMESTAGINGDIR:g'" % (staging)
     elif bb.data.inherits_class('cross', d):
-        sstate_grep_cmd = "grep -l -e '(%s|%s)'" % (staging_target, staging)
+        sstate_grep_cmd = "grep -l -e '%s' -e '%s'" % (staging_target, staging)
         sstate_sed_cmd = "sed -i -e 's:%s:FIXMESTAGINGDIRTARGET:g; s:%s:FIXMESTAGINGDIR:g'" % (staging_target, staging)
     else:
         sstate_grep_cmd = "grep -l -e '%s'" % (staging_host)
@@ -426,6 +484,7 @@ def sstate_hardcode_path(d):
     else:
         bb.note("Replacing absolute paths in fixmepath file: '%s'" % (sstate_filelist_relative_cmd))
         subprocess.call(sstate_filelist_relative_cmd, shell=True)
+}
 
 def sstate_package(ss, d):
     import oe.path
@@ -453,8 +512,8 @@ def sstate_package(ss, d):
 
     tmpdir = d.getVar('TMPDIR', True)
 
-    sstatebuild = d.expand("${WORKDIR}/sstate-build-%s/" % ss['name'])
-    sstatepkg = d.getVar('SSTATE_PKG', True) + '_'+ ss['name'] + ".tgz"
+    sstatebuild = d.expand("${WORKDIR}/sstate-build-%s/" % ss['task'])
+    sstatepkg = d.getVar('SSTATE_PKG', True) + '_'+ ss['task'] + ".tgz"
     bb.utils.remove(sstatebuild, recurse=True)
     bb.utils.mkdirhier(sstatebuild)
     bb.utils.mkdirhier(os.path.dirname(sstatepkg))
@@ -483,9 +542,11 @@ def sstate_package(ss, d):
 
     d.setVar('SSTATE_BUILDDIR', sstatebuild)
     d.setVar('SSTATE_PKG', sstatepkg)
-    sstate_hardcode_path(d)
-    bb.build.exec_func('sstate_create_package', d)
-    
+
+    for f in (d.getVar('SSTATECREATEFUNCS', True) or '').split() + ['sstate_create_package'] + \
+             (d.getVar('SSTATEPOSTCREATEFUNCS', True) or '').split():
+        bb.build.exec_func(f, d)
+  
     bb.siggen.dump_this_task(sstatepkg + ".siginfo", d)
 
     return
@@ -568,7 +629,8 @@ sstate_create_package () {
 	if [ "$(ls -A)" ]; then
 		set +e
 		tar -czf $TFILE *
-		if [ $? -ne 0 ] && [ $? -ne 1 ]; then
+		ret=$?
+		if [ $ret -ne 0 ] && [ $ret -ne 1 ]; then
 			exit 1
 		fi
 		set -e
@@ -589,33 +651,44 @@ sstate_unpack_package () {
 	mkdir -p ${SSTATE_INSTDIR}
 	cd ${SSTATE_INSTDIR}
 	tar -xmvzf ${SSTATE_PKG}
+	# Use "! -w ||" to return true for read only files
+	[ ! -w ${SSTATE_PKG} ] || touch --no-dereference ${SSTATE_PKG}
 }
-
-# Need to inject information about classes not in the global configuration scope
-EXTRASSTATEMAPS += "do_deploy:deploy"
 
 BB_HASHCHECK_FUNCTION = "sstate_checkhashes"
 
 def sstate_checkhashes(sq_fn, sq_task, sq_hash, sq_hashfn, d):
 
     ret = []
-    mapping = {}
-    for t in d.getVar("SSTATETASKS", True).split():
-        mapping[t] = d.getVarFlag(t, "sstate-name", True)
-    for extra in d.getVar("EXTRASSTATEMAPS", True).split():
-        e = extra.split(":")
-        mapping[e[0]] = e[1]
+    missed = []
+
+    def getpathcomponents(task, d):
+        # Magic data from BB_HASHFILENAME
+        splithashfn = sq_hashfn[task].split(" ")
+        spec = splithashfn[1]
+        extrapath = splithashfn[0]
+
+        tname = sq_task[task][3:]
+
+        if tname in ["fetch", "unpack", "patch", "populate_lic", "preconfigure"] and splithashfn[2]:
+            spec = splithashfn[2]
+            extrapath = ""
+
+        return spec, extrapath, tname
+
 
     for task in range(len(sq_fn)):
-        spec = sq_hashfn[task].split(" ")[1]
-        extrapath = sq_hashfn[task].split(" ")[0]
 
-        sstatefile = d.expand("${SSTATE_DIR}/" + extrapath + generate_sstatefn(spec, sq_hash[task], d) + "_" + mapping[sq_task[task]] + ".tgz")
+        spec, extrapath, tname = getpathcomponents(task, d)
+
+        sstatefile = d.expand("${SSTATE_DIR}/" + extrapath + generate_sstatefn(spec, sq_hash[task], d) + "_" + tname + ".tgz.siginfo")
+
         if os.path.exists(sstatefile):
             bb.debug(2, "SState: Found valid sstate file %s" % sstatefile)
             ret.append(task)
             continue
         else:
+            missed.append(task)
             bb.debug(2, "SState: Looked for but didn't find file %s" % sstatefile)
 
     mirrors = d.getVar("SSTATE_MIRRORS", True)
@@ -639,9 +712,9 @@ def sstate_checkhashes(sq_fn, sq_task, sq_hash, sq_hashfn, d):
             if task in ret:
                 continue
 
-            spec = sq_hashfn[task].split(" ")[1]
-            extrapath = sq_hashfn[task].split(" ")[0]
-            sstatefile = d.expand(extrapath + generate_sstatefn(spec, sq_hash[task], d) + "_" + mapping[sq_task[task]] + ".tgz")
+            spec, extrapath, tname = getpathcomponents(task, d)
+
+            sstatefile = d.expand(extrapath + generate_sstatefn(spec, sq_hash[task], d) + "_" + tname + ".tgz.siginfo")
 
             srcuri = "file://" + sstatefile
             localdata.setVar('SRC_URI', srcuri)
@@ -652,9 +725,28 @@ def sstate_checkhashes(sq_fn, sq_task, sq_hash, sq_hashfn, d):
                 fetcher.checkstatus()
                 bb.debug(2, "SState: Successful fetch test for %s" % srcuri)
                 ret.append(task)
+                if task in missed:
+                    missed.remove(task)
             except:
+                missed.append(task)
                 bb.debug(2, "SState: Unsuccessful fetch test for %s" % srcuri)
                 pass     
+
+    inheritlist = d.getVar("INHERIT", True)
+    if "toaster" in inheritlist:
+        evdata = {'missed': [], 'found': []};
+        for task in missed:
+            spec, extrapath, tname = getpathcomponents(task, d)
+            sstatefile = d.expand(extrapath + generate_sstatefn(spec, sq_hash[task], d) + "_" + tname + ".tgz")
+            evdata['missed'].append( (sq_fn[task], sq_task[task], sq_hash[task], sstatefile ) )
+        for task in ret:
+            spec, extrapath, tname = getpathcomponents(task, d)
+            sstatefile = d.expand(extrapath + generate_sstatefn(spec, sq_hash[task], d) + "_" + tname + ".tgz")
+            evdata['found'].append( (sq_fn[task], sq_task[task], sq_hash[task], sstatefile ) )
+        bb.event.fire(bb.event.MetadataEvent("MissedSstate", evdata), d)
+
+    if hasattr(bb.parse.siggen, "checkhashes"):
+        bb.parse.siggen.checkhashes(missed, ret, sq_fn, sq_task, sq_hash, sq_hashfn, d)
 
     return ret
 
@@ -666,22 +758,13 @@ def setscene_depvalid(task, taskdependees, notneeded, d):
 
     bb.debug(2, "Considering setscene task: %s" % (str(taskdependees[task])))
 
-    def isNative(x):
-        return x.endswith("-native")
     def isNativeCross(x):
-        return x.endswith("-native") or x.endswith("-cross") or x.endswith("-cross-initial")
-    def isSafeDep(x):
-        if x in ["quilt-native", "autoconf-native", "automake-native", "gnu-config-native", "libtool-native", "pkgconfig-native", "gcc-cross", "binutils-cross", "gcc-cross-initial"]:
-            return True
-        return False
+        return x.endswith("-native") or "-cross-" in x or "-crosssdk" in x
+
     def isPostInstDep(x):
         if x in ["qemu-native", "gdk-pixbuf-native", "qemuwrapper-cross", "depmodwrapper-cross", "systemd-systemctl-native", "gtk-update-icon-cache-native"]:
             return True
         return False
-
-    # We can skip these "safe" dependencies since the aren't runtime dependencies, just build time
-    if isSafeDep(taskdependees[task][0]) and taskdependees[task][1] == "do_populate_sysroot":
-        return True
 
     # We only need to trigger populate_lic through direct dependencies
     if taskdependees[task][1] == "do_populate_lic":
@@ -694,15 +777,15 @@ def setscene_depvalid(task, taskdependees, notneeded, d):
         if dep in notneeded:
             continue
         # do_package_write_* and do_package doesn't need do_package
-        if taskdependees[task][1] == "do_package" and taskdependees[dep][1] in ['do_package', 'do_package_write_deb', 'do_package_write_ipk', 'do_package_write_rpm', 'do_packagedata']:
+        if taskdependees[task][1] == "do_package" and taskdependees[dep][1] in ['do_package', 'do_package_write_deb', 'do_package_write_ipk', 'do_package_write_rpm', 'do_packagedata', 'do_package_qa']:
             continue
         # do_package_write_* and do_package doesn't need do_populate_sysroot, unless is a postinstall dependency
-        if taskdependees[task][1] == "do_populate_sysroot" and taskdependees[dep][1] in ['do_package', 'do_package_write_deb', 'do_package_write_ipk', 'do_package_write_rpm', 'do_packagedata']:
+        if taskdependees[task][1] == "do_populate_sysroot" and taskdependees[dep][1] in ['do_package', 'do_package_write_deb', 'do_package_write_ipk', 'do_package_write_rpm', 'do_packagedata', 'do_package_qa']:
             if isPostInstDep(taskdependees[task][0]) and taskdependees[dep][1] in ['do_package_write_deb', 'do_package_write_ipk', 'do_package_write_rpm']:
                 return False
             continue
         # Native/Cross packages don't exist and are noexec anyway
-        if isNativeCross(taskdependees[dep][0]) and taskdependees[dep][1] in ['do_package_write_deb', 'do_package_write_ipk', 'do_package_write_rpm', 'do_packagedata']:
+        if isNativeCross(taskdependees[dep][0]) and taskdependees[dep][1] in ['do_package_write_deb', 'do_package_write_ipk', 'do_package_write_rpm', 'do_packagedata', 'do_package', 'do_package_qa']:
             continue
 
         # Consider sysroot depending on sysroot tasks
@@ -711,7 +794,7 @@ def setscene_depvalid(task, taskdependees, notneeded, d):
             if taskdependees[dep][0].endswith(("base-passwd", "shadow-sysroot")):
                 continue
             # Nothing need depend on libc-initial/gcc-cross-initial
-            if taskdependees[task][0].endswith("-initial"):
+            if "-initial" in taskdependees[task][0]:
                 continue
             # Native/Cross populate_sysroot need their dependencies
             if isNativeCross(taskdependees[task][0]) and isNativeCross(taskdependees[dep][0]):
@@ -734,4 +817,21 @@ def setscene_depvalid(task, taskdependees, notneeded, d):
         bb.debug(2, " Default setscene dependency fall through due to dependency: %s" % (str(taskdependees[dep])))
         return False
     return True
+
+addhandler sstate_eventhandler
+sstate_eventhandler[eventmask] = "bb.build.TaskSucceeded"
+python sstate_eventhandler() {
+    d = e.data
+    # When we write an sstate package we rewrite the SSTATE_PKG
+    spkg = d.getVar('SSTATE_PKG', True)
+    if not spkg.endswith(".tgz"):
+        taskname = d.getVar("BB_RUNTASK", True)[3:]
+        spec = d.getVar('SSTATE_PKGSPEC', True)
+        swspec = d.getVar('SSTATE_SWSPEC', True)
+        if taskname in ["fetch", "unpack", "patch", "populate_lic", "preconfigure"] and swspec:
+            d.setVar("SSTATE_PKGSPEC", "${SSTATE_SWSPEC}")
+            d.setVar("SSTATE_EXTRAPATH", "")
+        sstatepkg = d.getVar('SSTATE_PKG', True)
+        bb.siggen.dump_this_task(sstatepkg + '_' + taskname + ".tgz" ".siginfo", d)
+}
 
