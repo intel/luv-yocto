@@ -23,7 +23,7 @@ S = "${WORKDIR}/git"
 DEPENDS = "autoconf automake libtool libpcre json-c flex bison \
 	virtual/kernel "
 
-inherit autotools luv-test module-base
+inherit autotools-brokensep luv-test module-base
 
 do_unpack[depends] += "virtual/kernel:do_populate_sysroot"
 
