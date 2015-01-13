@@ -24,7 +24,7 @@ FILES_${PN}-dbg += "/usr/share/efivarfs-test/.debug"
 #This is the compilation area
 #we need to compile the self tests
 do_compile() {
-       make CROSS_COMPILE=${TARGET_PREFIX} -C tools/testing/selftests/efivarfs
+       make CROSS_COMPILE=${TARGET_PREFIX} -C ${S}/tools/testing/selftests/efivarfs
 }
 
 
