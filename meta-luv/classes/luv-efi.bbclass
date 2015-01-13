@@ -5,7 +5,7 @@
 # We install a couple of boot loaders and a splash image.
 #
 
-do_bootimg[depends] += "grub-efi-${TRANSLATED_TARGET_ARCH}-native:do_deploy"
+do_bootimg[depends] += "${MLPREFIX}grub-efi:do_deploy"
 
 EFI_LOADER_IMAGE = "${@base_conditional('TARGET_ARCH', 'x86_64', 'bootx64.efi', 'bootia32.efi', d)}"
 EFIDIR = "/EFI/BOOT"
