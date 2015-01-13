@@ -73,17 +73,17 @@ do_deploy() {
 
        install -d ${DEPLOYDIR}/bits
 
-       python -m compileall ${B}/boot/python
+       python -m compileall ${S}/boot/python
 
        # Set the mtime to zero in all bytecode files, since GRUB2 (and thus
        # the BITS implementation of fstat) doesn't support mtime.
-       find ${B}/boot/python -name '*.pyc' | while read bytecode ; do
+       find ${S}/boot/python -name '*.pyc' | while read bytecode ; do
            dd if=/dev/zero of=$bytecode bs=4 count=1 seek=1 conv=notrunc
        done
 
-       cp -r ${B}/boot/ ${DEPLOYDIR}/bits/
+       cp -r ${S}/boot/ ${DEPLOYDIR}/bits/
        cp ${WORKDIR}/bits-cfg.txt ${DEPLOYDIR}/bits/boot/
-       cp -r ${B}/efi ${DEPLOYDIR}/bits/
+       cp -r ${S}/efi ${DEPLOYDIR}/bits/
 }
 
 
