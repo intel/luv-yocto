@@ -1,0 +1,41 @@
+From 47843e674034226daee6549ce50744c27958bb85 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Thu, 15 Jan 2015 17:40:13 -0800
+Subject: [PATCH] efi_runtime: get_nextvariable: copy only the needed name
+ bytes
+
+We trust the name_size passed by the user_space. Thus, there is not
+need to copy from user more bytes than specified.
+
+Furthermore, this behavior could mask potential problems in the
+firmware: to start traversing the list of variable names, some firmware
+implementations may just blindly check if name[0] is '\0' without
+even checking if the size of the buffer passed by the operating system
+is at least 2 bytes (UEFI variable names are stored in strings of 2-byte
+characters). This behaviour is wrong as the firmware must not access
+memory beyond the name buffer. By providing a 1024-bytes buffer of
+zeroes we allow the name[0] == '\0' to pass, regardless of the size
+of the buffer.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ efi_runtime/efi_runtime.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/efi_runtime/efi_runtime.c b/efi_runtime/efi_runtime.c
+index e3eb4f2..fe5c40d 100644
+--- a/efi_runtime/efi_runtime.c
++++ b/efi_runtime/efi_runtime.c
+@@ -457,7 +457,8 @@ static long efi_runtime_get_nextvariablename(unsigned long arg)
+ 
+ 	convert_from_guid(&vendor, &vendor_guid);
+ 
+-	rv = get_ucs2_len(&name, pgetnextvariablename_local.VariableName, 1024);
++	rv = get_ucs2_len(&name, pgetnextvariablename_local.VariableName,
++			  name_size);
+ 	if (rv)
+ 		return rv;
+ 
+-- 
+1.9.1
+
