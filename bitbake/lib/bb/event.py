@@ -55,6 +55,7 @@ def get_class_handlers():
     return _handlers
 
 def set_class_handlers(h):
+    global _handlers
     _handlers = h
 
 def clean_class_handlers():
@@ -72,7 +73,7 @@ def execute_handler(name, handler, event, d):
     event.data = d
     try:
         ret = handler(event)
-    except bb.parse.SkipPackage:
+    except (bb.parse.SkipRecipe, bb.BBHandledException):
         raise
     except Exception:
         etype, value, tb = sys.exc_info()
@@ -94,10 +95,7 @@ def fire_class_handlers(event, d):
     evt_hmap = _event_handler_map.get(eid, {})
     for name, handler in _handlers.iteritems():
         if name in _catchall_handlers or name in evt_hmap:
-            try:
-                execute_handler(name, handler, event, d)
-            except Exception:
-                continue
+            execute_handler(name, handler, event, d)
 
 ui_queue = []
 @atexit.register
@@ -597,16 +595,19 @@ class MetadataEvent(Event):
     def __init__(self, eventtype, eventdata):
         Event.__init__(self)
         self.type = eventtype
-        self.data = eventdata
+        self._localdata = eventdata
 
 class SanityCheck(Event):
     """
-    Event to issue sanity check
+    Event to run sanity checks, either raise errors or generate events as return status.
     """
+    def __init__(self, generateevents = True):
+        Event.__init__(self)
+        self.generateevents = generateevents
 
 class SanityCheckPassed(Event):
     """
-    Event to indicate sanity check is passed
+    Event to indicate sanity check has passed
     """
 
 class SanityCheckFailed(Event):
@@ -620,8 +621,11 @@ class SanityCheckFailed(Event):
 
 class NetworkTest(Event):
     """
-    Event to start network test
+    Event to run network connectivity tests, either raise errors or generate events as return status.
     """
+    def __init__(self, generateevents = True):
+        Event.__init__(self)
+        self.generateevents = generateevents
 
 class NetworkTestPassed(Event):
     """

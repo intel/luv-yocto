@@ -8,6 +8,8 @@ MOUNT="/bin/mount"
 UMOUNT="/bin/umount"
 ISOLINUX=""
 
+ROOT_DISK=""
+
 # Copied from initramfs-framework. The core of this script probably should be
 # turned into initramfs-framework modules to reduce duplication.
 udev_daemon() {
@@ -49,6 +51,8 @@ read_args() {
         case $arg in
             root=*)
                 ROOT_DEVICE=$optarg ;;
+            rootimage=*)
+                ROOT_IMAGE=$optarg ;;
             rootfstype=*)
                 modprobe $optarg 2> /dev/null ;;
             LABEL=*)
@@ -78,18 +82,25 @@ boot_live_root() {
     udevadm settle --timeout=3 --quiet
     killall "${_UDEV_DAEMON##*/}" 2>/dev/null
 
+    # Allow for identification of the real root even after boot
+    mkdir -p  ${ROOT_MOUNT}/media/realroot
+    mount -n --move "/run/media/${ROOT_DISK}" ${ROOT_MOUNT}/media/realroot
+
     # Move the mount points of some filesystems over to
     # the corresponding directories under the real root filesystem.
-    for dir in `awk '/\/dev.* \/media/{print $2}' /proc/mounts`; do
-        mkdir -p  ${ROOT_MOUNT}/$dir
-        mount -n --move $dir ${ROOT_MOUNT}/$dir
+    for dir in `awk '/\/dev.* \/run\/media/{print $2}' /proc/mounts`; do
+        mkdir -p  ${ROOT_MOUNT}/media/${dir##*/}
+        mount -n --move $dir ${ROOT_MOUNT}/media/${dir##*/}
     done
     mount -n --move /proc ${ROOT_MOUNT}/proc
     mount -n --move /sys ${ROOT_MOUNT}/sys
     mount -n --move /dev ${ROOT_MOUNT}/dev
 
     cd $ROOT_MOUNT
-    exec switch_root -c /dev/console $ROOT_MOUNT /sbin/init
+
+    # busybox switch_root supports -c option
+    exec switch_root -c /dev/console $ROOT_MOUNT /sbin/init $CMDLINE ||
+        fatal "Couldn't switch_root, dropping to shell"
 }
 
 fatal() {
@@ -108,13 +119,15 @@ echo "Waiting for removable media..."
 C=0
 while true
 do
-  for i in `ls /media 2>/dev/null`; do
-      if [ -f /media/$i/$ROOT_IMAGE ] ; then
+  for i in `ls /run/media 2>/dev/null`; do
+      if [ -f /run/media/$i/$ROOT_IMAGE ] ; then
 		found="yes"
+		ROOT_DISK="$i"
 		break
-	  elif [ -f /media/$i/isolinux/$ROOT_IMAGE ]; then
+	  elif [ -f /run/media/$i/isolinux/$ROOT_IMAGE ]; then
 		found="yes"
 		ISOLINUX="isolinux"
+		ROOT_DISK="$i"
 		break	
       fi
   done
@@ -129,8 +142,8 @@ do
 	   echo "Mounted filesystems"
            mount | grep media
            echo "Available block devices"
-           ls /dev/sd*
-           fatal "Cannot find rootfs.img file in /media/* , dropping to a shell "
+           cat /proc/partitions
+           fatal "Cannot find $ROOT_IMAGE file in /run/media/* , dropping to a shell "
       fi
       C=$(( C + 1 ))
   fi
@@ -145,7 +158,7 @@ mount_and_boot() {
     mkdir $ROOT_MOUNT
     mknod /dev/loop0 b 7 0 2>/dev/null
 
-    if ! mount -o rw,loop,noatime,nodiratime /media/$i/$ISOLINUX/$ROOT_IMAGE $ROOT_MOUNT ; then
+    if ! mount -o rw,loop,noatime,nodiratime /run/media/$ROOT_DISK/$ISOLINUX/$ROOT_IMAGE $ROOT_MOUNT ; then
 	fatal "Could not mount rootfs image"
     fi
 
@@ -206,7 +219,7 @@ case $label in
 	mount_and_boot
 	;;
     install|install-efi)
-	if [ -f /media/$i/$ISOLINUX/$ROOT_IMAGE ] ; then
+	if [ -f /run/media/$i/$ISOLINUX/$ROOT_IMAGE ] ; then
 	    ./$label.sh $i/$ISOLINUX $ROOT_IMAGE $video_mode $vga_mode $console_params
 	else
 	    fatal "Could not find $label script"
@@ -214,5 +227,9 @@ case $label in
 
 	# If we're getting here, we failed...
 	fatal "Installation image failed"
+	;;
+    *)
+	# Not sure what boot label is provided.  Try to boot to avoid locking up.
+	mount_and_boot
 	;;
 esac

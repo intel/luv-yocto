@@ -69,6 +69,17 @@ class ConfigParameters(object):
             if bbpkgs:
                 self.options.pkgs_to_build.extend(bbpkgs.split())
 
+    def updateToServer(self, server):
+        options = {}
+        for o in ["abort", "tryaltconfigs", "force", "invalidate_stamp", 
+                  "verbose", "debug", "dry_run", "dump_signatures", 
+                  "debug_domains", "extra_assume_provided", "profile"]:
+            options[o] = getattr(self.options, o)
+
+        ret, error = server.runCommand(["updateConfig", options])
+        if error:
+                raise Exception("Unable to update the server configuration with local parameters: %s" % error)
+
     def parseActions(self):
         # Parse any commandline into actions
         action = {'action':None, 'msg':None}
@@ -124,9 +135,10 @@ class CookerConfiguration(object):
         self.profile = False
         self.nosetscene = False
         self.invalidate_stamp = False
-        self.dump_signatures = False
+        self.dump_signatures = []
         self.dry_run = False
         self.tracking = False
+        self.interface = []
 
         self.env = {}
 
@@ -226,10 +238,13 @@ class CookerDataBuilder(object):
         try:
             self.parseConfigurationFiles(self.prefiles, self.postfiles)
         except SyntaxError:
-            sys.exit(1)
+            raise bb.BBHandledException
+        except bb.data_smart.ExpansionError as e:
+            logger.error(str(e))
+            raise bb.BBHandledException
         except Exception:
             logger.exception("Error parsing configuration files")
-            sys.exit(1)
+            raise bb.BBHandledException
 
     def _findLayerConf(self, data):
         return findConfigFile("bblayers.conf", data)

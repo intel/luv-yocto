@@ -1,4 +1,4 @@
-DESCRIPTION = "Python bindings for DBus, a socket-based message bus system for interprocess communication"
+SUMMARY = "Python bindings for the DBus inter-process communication system"
 SECTION = "devel/python"
 HOMEPAGE = "http://www.freedesktop.org/Software/dbus"
 LICENSE = "MIT"
@@ -13,6 +13,10 @@ SRC_URI[sha256sum] = "e12c6c8b2bf3a9302f75166952cbe41d6b38c3441bbc6767dbd4989423
 S = "${WORKDIR}/dbus-python-${PV}"
 
 inherit distutils-base autotools pkgconfig
+
+PACKAGECONFIG ?= ""
+PACKAGECONFIG[docs] = "--enable-html-docs,--disable-html-docs,python-docutils-native"
+PACKAGECONFIG[api-docs] = "--enable-api-docs,--disable-api-docs,python-docutils-native python-epydoc-native"
 
 export BUILD_SYS
 export HOST_SYS

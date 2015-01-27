@@ -139,6 +139,8 @@ class DataNode(AstNode):
             data.setVar(key, val, **loginfo)
 
 class MethodNode(AstNode):
+    tr_tbl = string.maketrans('/.+-@%', '______')
+
     def __init__(self, filename, lineno, func_name, body):
         AstNode.__init__(self, filename, lineno)
         self.func_name = func_name
@@ -147,7 +149,7 @@ class MethodNode(AstNode):
     def eval(self, data):
         text = '\n'.join(self.body)
         if self.func_name == "__anonymous":
-            funcname = ("__anon_%s_%s" % (self.lineno, self.filename.translate(string.maketrans('/.+-@', '_____'))))
+            funcname = ("__anon_%s_%s" % (self.lineno, self.filename.translate(MethodNode.tr_tbl)))
             text = "def %s(d):\n" % (funcname) + text
             bb.methodpool.insert_method(funcname, text, self.filename)
             anonfuncs = data.getVar('__BBANONFUNCS') or []
@@ -235,29 +237,15 @@ class AddTaskNode(AstNode):
         self.after = after
 
     def eval(self, data):
-        var = self.func
-        if self.func[:3] != "do_":
-            var = "do_" + self.func
+        bb.build.addtask(self.func, self.before, self.after, data)
 
-        data.setVarFlag(var, "task", 1)
-        bbtasks = data.getVar('__BBTASKS') or []
-        if not var in bbtasks:
-            bbtasks.append(var)
-        data.setVar('__BBTASKS', bbtasks)
+class DelTaskNode(AstNode):
+    def __init__(self, filename, lineno, func):
+        AstNode.__init__(self, filename, lineno)
+        self.func = func
 
-        existing = data.getVarFlag(var, "deps") or []
-        if self.after is not None:
-            # set up deps for function
-            for entry in self.after.split():
-                if entry not in existing:
-                    existing.append(entry)
-        data.setVarFlag(var, "deps", existing)
-        if self.before is not None:
-            # set up things that depend on this func
-            for entry in self.before.split():
-                existing = data.getVarFlag(entry, "deps") or []
-                if var not in existing:
-                    data.setVarFlag(entry, "deps", [var] + existing)
+    def eval(self, data):
+        bb.build.deltask(self.func, data)
 
 class BBHandlerNode(AstNode):
     def __init__(self, filename, lineno, fns):
@@ -309,6 +297,13 @@ def handleAddTask(statements, filename, lineno, m):
 
     statements.append(AddTaskNode(filename, lineno, func, before, after))
 
+def handleDelTask(statements, filename, lineno, m):
+    func = m.group("func")
+    if func is None:
+        return
+
+    statements.append(DelTaskNode(filename, lineno, func))
+
 def handleBBHandlers(statements, filename, lineno, m):
     statements.append(BBHandlerNode(filename, lineno, m.group(1)))
 
@@ -333,7 +328,8 @@ def finalize(fn, d, variant = None):
     bb.data.update_data(d)
 
     tasklist = d.getVar('__BBTASKS') or []
-    bb.build.add_tasks(tasklist, d)
+    deltasklist = d.getVar('__BBDELTASKS') or []
+    bb.build.add_tasks(tasklist, deltasklist, d)
 
     bb.parse.siggen.finalise(fn, d, variant)
 
@@ -341,8 +337,10 @@ def finalize(fn, d, variant = None):
 
     bb.event.fire(bb.event.RecipeParsed(fn), d)
 
-def _create_variants(datastores, names, function):
+def _create_variants(datastores, names, function, onlyfinalise):
     def create_variant(name, orig_d, arg = None):
+        if onlyfinalise and name not in onlyfinalise:
+            return
         new_d = bb.data.createCopy(orig_d)
         function(arg or name, new_d)
         datastores[name] = new_d
@@ -379,7 +377,7 @@ def _expand_versions(versions):
 def multi_finalize(fn, d):
     appends = (d.getVar("__BBAPPEND", True) or "").split()
     for append in appends:
-        logger.debug(2, "Appending .bbappend file %s to %s", append, fn)
+        logger.debug(1, "Appending .bbappend file %s to %s", append, fn)
         bb.parse.BBHandler.handle(append, d, True)
 
     onlyfinalise = d.getVar("__ONLYFINALISE", False)
@@ -388,7 +386,7 @@ def multi_finalize(fn, d):
     d = bb.data.createCopy(safe_d)
     try:
         finalize(fn, d)
-    except bb.parse.SkipPackage as e:
+    except bb.parse.SkipRecipe as e:
         d.setVar("__SKIPPED", e.args[0])
     datastores = {"": safe_d}
 
@@ -431,10 +429,10 @@ def multi_finalize(fn, d):
             verfunc(pv, d, safe_d)
             try:
                 finalize(fn, d)
-            except bb.parse.SkipPackage as e:
+            except bb.parse.SkipRecipe as e:
                 d.setVar("__SKIPPED", e.args[0])
 
-        _create_variants(datastores, versions, verfunc)
+        _create_variants(datastores, versions, verfunc, onlyfinalise)
 
     extended = d.getVar("BBCLASSEXTEND", True) or ""
     if extended:
@@ -464,14 +462,14 @@ def multi_finalize(fn, d):
             bb.parse.BBHandler.inherit(extendedmap[name], fn, 0, d)
 
         safe_d.setVar("BBCLASSEXTEND", extended)
-        _create_variants(datastores, extendedmap.keys(), extendfunc)
+        _create_variants(datastores, extendedmap.keys(), extendfunc, onlyfinalise)
 
     for variant, variant_d in datastores.iteritems():
         if variant:
             try:
                 if not onlyfinalise or variant in onlyfinalise:
                     finalize(fn, variant_d, variant)
-            except bb.parse.SkipPackage as e:
+            except bb.parse.SkipRecipe as e:
                 variant_d.setVar("__SKIPPED", e.args[0])
 
     if len(datastores) > 1:

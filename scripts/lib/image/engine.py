@@ -37,12 +37,12 @@ import subprocess
 import shutil
 
 import os, sys, errno
-from mic import msger, creator
-from mic.utils import cmdln, misc, errors
-from mic.conf import configmgr
-from mic.plugin import pluginmgr
-from mic.__version__ import VERSION
-from mic.utils.oe.misc import *
+from wic import msger, creator
+from wic.utils import cmdln, misc, errors
+from wic.conf import configmgr
+from wic.plugin import pluginmgr
+from wic.__version__ import VERSION
+from wic.utils.oe.misc import *
 
 
 def verify_build_env():
@@ -60,29 +60,14 @@ def verify_build_env():
     return True
 
 
-def get_line_val(line, key):
-    """
-    Extract the value from the VAR="val" string
-    """
-    if line.startswith(key + "="):
-        stripped_line = line.split('=')[1]
-        stripped_line = stripped_line.replace('\"', '')
-        return stripped_line
-    return None
-
-
 def find_artifacts(image_name):
     """
     Gather the build artifacts for the current image (the image_name
     e.g. core-image-minimal) for the current MACHINE set in local.conf
     """
-    bitbake_env_cmd = "bitbake -e %s" % image_name
-    rc, bitbake_env_lines = exec_cmd(bitbake_env_cmd)
-    if rc != 0:
-        print "Couldn't get '%s' output, exiting." % bitbake_env_cmd
-        sys.exit(1)
+    bitbake_env_lines = get_bitbake_env_lines()
 
-    rootfs_dir = kernel_dir = hdddir = staging_data_dir = native_sysroot = ""
+    rootfs_dir = kernel_dir = bootimg_dir = native_sysroot = ""
 
     for line in bitbake_env_lines.split('\n'):
         if (get_line_val(line, "IMAGE_ROOTFS")):
@@ -91,20 +76,29 @@ def find_artifacts(image_name):
         if (get_line_val(line, "STAGING_KERNEL_DIR")):
             kernel_dir = get_line_val(line, "STAGING_KERNEL_DIR")
             continue
-        if (get_line_val(line, "HDDDIR")):
-            hdddir = get_line_val(line, "HDDDIR")
-            continue
-        if (get_line_val(line, "STAGING_DATADIR")):
-            staging_data_dir = get_line_val(line, "STAGING_DATADIR")
-            continue
         if (get_line_val(line, "STAGING_DIR_NATIVE")):
             native_sysroot = get_line_val(line, "STAGING_DIR_NATIVE")
             continue
 
-    return (rootfs_dir, kernel_dir, hdddir, staging_data_dir, native_sysroot)
+    return (rootfs_dir, kernel_dir, bootimg_dir, native_sysroot)
 
 
 CANNED_IMAGE_DIR = "lib/image/canned-wks" # relative to scripts
+SCRIPTS_CANNED_IMAGE_DIR = "scripts/" + CANNED_IMAGE_DIR
+
+def build_canned_image_list(dl):
+    layers_path = get_bitbake_var("BBLAYERS")
+    canned_wks_layer_dirs = []
+
+    if layers_path is not None:
+        for layer_path in layers_path.split():
+            path = os.path.join(layer_path, SCRIPTS_CANNED_IMAGE_DIR)
+            canned_wks_layer_dirs.append(path)
+
+    path = os.path.join(dl, CANNED_IMAGE_DIR)
+    canned_wks_layer_dirs.append(path)
+
+    return canned_wks_layer_dirs
 
 def find_canned_image(scripts_path, wks_file):
     """
@@ -112,15 +106,16 @@ def find_canned_image(scripts_path, wks_file):
 
     Return False if not found
     """
-    canned_wks_dir = os.path.join(scripts_path, CANNED_IMAGE_DIR)
+    layers_canned_wks_dir = build_canned_image_list(scripts_path)
 
-    for root, dirs, files in os.walk(canned_wks_dir):
-        for file in files:
-            if file.endswith("~") or file.endswith("#"):
-                continue
-            if file.endswith(".wks") and wks_file + ".wks" == file:
-                fullpath = os.path.join(canned_wks_dir, file)
-                return fullpath
+    for canned_wks_dir in layers_canned_wks_dir:
+        for root, dirs, files in os.walk(canned_wks_dir):
+            for file in files:
+                if file.endswith("~") or file.endswith("#"):
+                    continue
+                if file.endswith(".wks") and wks_file + ".wks" == file:
+                    fullpath = os.path.join(canned_wks_dir, file)
+                    return fullpath
     return None
 
 
@@ -128,32 +123,31 @@ def list_canned_images(scripts_path):
     """
     List the .wks files in the canned image dir, minus the extension.
     """
-    canned_wks_dir = os.path.join(scripts_path, CANNED_IMAGE_DIR)
+    layers_canned_wks_dir = build_canned_image_list(scripts_path)
 
-    for root, dirs, files in os.walk(canned_wks_dir):
-        for file in files:
-            if file.endswith("~") or file.endswith("#"):
-                continue
-            if file.endswith(".wks"):
-                fullpath = os.path.join(canned_wks_dir, file)
-                f = open(fullpath, "r")
-                lines = f.readlines()
-                for line in lines:
-                    desc = ""
-                    idx = line.find("short-description:")
-                    if idx != -1:
-                        desc = line[idx + len("short-description:"):].strip()
-                        break
-                basename = os.path.splitext(file)[0]
-                print "  %s\t\t%s" % (basename, desc)
+    for canned_wks_dir in layers_canned_wks_dir:
+        for root, dirs, files in os.walk(canned_wks_dir):
+            for file in files:
+                if file.endswith("~") or file.endswith("#"):
+                    continue
+                if file.endswith(".wks"):
+                    fullpath = os.path.join(canned_wks_dir, file)
+                    f = open(fullpath, "r")
+                    lines = f.readlines()
+                    for line in lines:
+                        desc = ""
+                        idx = line.find("short-description:")
+                        if idx != -1:
+                            desc = line[idx + len("short-description:"):].strip()
+                            break
+                    basename = os.path.splitext(file)[0]
+                    print "  %s\t\t%s" % (basename.ljust(30), desc)
 
 
 def list_canned_image_help(scripts_path, fullpath):
     """
     List the help and params in the specified canned image.
     """
-    canned_wks_dir = os.path.join(scripts_path, CANNED_IMAGE_DIR)
-
     f = open(fullpath, "r")
     lines = f.readlines()
     found = False
@@ -174,19 +168,26 @@ def list_canned_image_help(scripts_path, fullpath):
             break
 
 
-def wic_create(args, wks_file, rootfs_dir, bootimg_dir, kernel_dir,
-               native_sysroot, hdddir, staging_data_dir, scripts_path,
-               image_output_dir, properties_file, properties=None):
+def list_source_plugins():
     """
-    Create image
+    List the available source plugins i.e. plugins available for --source.
+    """
+    plugins = pluginmgr.get_source_plugins()
+
+    for plugin in plugins:
+        print "  %s" % plugin
+
+
+def wic_create(args, wks_file, rootfs_dir, bootimg_dir, kernel_dir,
+               native_sysroot, scripts_path, image_output_dir, debug,
+               properties_file, properties=None):
+    """Create image
 
     wks_file - user-defined OE kickstart file
     rootfs_dir - absolute path to the build's /rootfs dir
     bootimg_dir - absolute path to the build's boot artifacts directory
     kernel_dir - absolute path to the build's kernel directory
     native_sysroot - absolute path to the build's native sysroots dir
-    hdddir - absolute path to the build's HDDDIR dir
-    staging_data_dir - absolute path to the build's STAGING_DATA_DIR dir
     scripts_path - absolute path to /scripts dir
     image_output_dir - dirname to create for image
     properties_file - use values from this file if nonempty i.e no prompting
@@ -201,22 +202,14 @@ def wic_create(args, wks_file, rootfs_dir, bootimg_dir, kernel_dir,
     rootfs_dir:        IMAGE_ROOTFS
     kernel_dir:        STAGING_KERNEL_DIR
     native_sysroot:    STAGING_DIR_NATIVE
-    hdddir:            HDDDIR
-    staging_data_dir:  STAGING_DATA_DIR
 
-    In the above case, bootimg_dir remains unset and the image
-    creation code determines which of the passed-in directories to
-    use.
+    In the above case, bootimg_dir remains unset and the
+    plugin-specific image creation code is responsible for finding the
+    bootimg artifacts.
 
     In the case where the values are passed in explicitly i.e 'wic -e'
     is not used but rather the individual 'wic' options are used to
-    explicitly specify these values, hdddir and staging_data_dir will
-    be unset, but bootimg_dir must be explicit i.e. explicitly set to
-    either hdddir or staging_data_dir, depending on the image being
-    generated.  The other values (rootfs_dir, kernel_dir, and
-    native_sysroot) correspond to the same values found above via
-    'bitbake -e').
-
+    explicitly specify these values.
     """
     try:
         oe_builddir = os.environ["BUILDDIR"]
@@ -232,9 +225,10 @@ def wic_create(args, wks_file, rootfs_dir, bootimg_dir, kernel_dir,
     direct_args.insert(0, bootimg_dir)
     direct_args.insert(0, kernel_dir)
     direct_args.insert(0, native_sysroot)
-    direct_args.insert(0, hdddir)
-    direct_args.insert(0, staging_data_dir)
     direct_args.insert(0, "direct")
+
+    if debug:
+        msger.set_loglevel('debug')
 
     cr = creator.Creator()
 
@@ -254,6 +248,9 @@ def wic_list(args, scripts_path, properties_file):
     if len(args) == 1:
         if args[0] == "images":
             list_canned_images(scripts_path)
+            return True
+        elif args[0] == "source-plugins":
+            list_source_plugins()
             return True
         elif args[0] == "properties":
             return True

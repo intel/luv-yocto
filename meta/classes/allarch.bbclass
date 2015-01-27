@@ -22,11 +22,22 @@ python () {
         d.setVar("TARGET_CC_ARCH", "none")
         d.setVar("TARGET_LD_ARCH", "none")
         d.setVar("TARGET_AS_ARCH", "none")
+        d.setVar("TARGET_FPU", "")
+        d.setVar("TARGET_PREFIX", "")
         d.setVar("PACKAGE_EXTRA_ARCHS", "")
+        d.setVar("SDK_ARCH", "none")
+        d.setVar("SDK_CC_ARCH", "none")
+
+        # Avoid this being unnecessarily different due to nuances of
+        # the target machine that aren't important for "all" arch
+        # packages.
+        d.setVar("LDFLAGS", "")
 
         # No need to do shared library processing or debug symbol handling
         d.setVar("EXCLUDE_FROM_SHLIBS", "1")
         d.setVar("INHIBIT_PACKAGE_DEBUG_SPLIT", "1")
         d.setVar("INHIBIT_PACKAGE_STRIP", "1")
+    elif bb.data.inherits_class('packagegroup', d) and not bb.data.inherits_class('nativesdk', d):
+        bb.error("Please ensure recipe %s sets PACKAGE_ARCH before inherit packagegroup" % d.getVar("FILE", True))
 }
 

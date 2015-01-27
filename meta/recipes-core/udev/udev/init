@@ -14,6 +14,8 @@ export TZ=/etc/localtime
 [ -d /sys/class ] || exit 1
 [ -r /proc/mounts ] || exit 1
 [ -x @UDEVD@ ] || exit 1
+SYSCONF_CACHED="/etc/udev/cache.data"
+SYSCONF_TMP="/dev/shm/udev.cache"
 [ -f /etc/default/udev-cache ] && . /etc/default/udev-cache
 [ -f /etc/udev/udev.conf ] && . /etc/udev/udev.conf
 [ -f /etc/default/rcS ] && . /etc/default/rcS
@@ -54,8 +56,10 @@ case "$1" in
     }
     [ -e /dev/pts ] || mkdir -m 0755 /dev/pts
     [ -e /dev/shm ] || mkdir -m 1777 /dev/shm
-    mount -a -t tmpfs 2>/dev/null
-    mkdir -p /var/volatile/tmp
+    # the automount rule for udev needs /tmp directory available, as /tmp is a symlink
+    # to /var/tmp which in turn is a symlink to /var/volatile/tmp, we need to make sure
+    # /var/volatile/tmp directory to be available.
+    mkdir -m 1777 -p /var/volatile/tmp
 
     # Cache handling.
     # A list of files which are used as a criteria to judge whether the udev cache could be reused.
@@ -64,13 +68,13 @@ case "$1" in
             if [ -e $DEVCACHE ]; then
 		    readfiles $CMP_FILE_LIST
 		    NEWDATA="$READDATA"
-		    readfiles /etc/udev/cache.data
+		    readfiles "$SYSCONF_CACHED"
 		    OLDDATA="$READDATA"
 		    if [ "$OLDDATA" = "$NEWDATA" ]; then
-                            (cd /; tar xf $DEVCACHE > /dev/null 2>&1)
+                            tar xmf $DEVCACHE -C / -m
                             not_first_boot=1
                             [ "$VERBOSE" != "no" ] && echo "udev: using cache file $DEVCACHE"
-                            [ -e /dev/shm/udev.cache ] && rm -f /dev/shm/udev.cache
+                            [ -e $SYSCONF_TMP ] && rm -f "$SYSCONF_TMP"
                     else
 			    # Output detailed reason why the cached /dev is not used
 			    if [ "$VERBOSE" != "no" ]; then
@@ -79,14 +83,14 @@ case "$1" in
 				    echo "udev: olddata: $OLDDATA"
 				    echo "udev: newdata: $NEWDATA"
 			    fi
-			    echo "$NEWDATA" > /dev/shm/udev.cache
+			    echo "$NEWDATA" > "$SYSCONF_TMP"
                     fi
 	    else
 		    if [ "$ROOTFS_READ_ONLY" != "yes" ]; then
 			    # If rootfs is not read-only, it's possible that a new udev cache would be generated;
 			    # otherwise, we do not bother to read files.
 			    readfiles $CMP_FILE_LIST
-			    echo "$READDATA" > /dev/shm/udev.cache
+			    echo "$READDATA" > "$SYSCONF_TMP"
 		    fi
             fi
     fi
@@ -95,12 +99,17 @@ case "$1" in
     kill_udevd > "/dev/null" 2>&1
 
     # trigger the sorted events
-    echo -e '\000\000\000\000' > /proc/sys/kernel/hotplug
+    [ -e /proc/sys/kernel/hotplug ] && echo -e '\000' >/proc/sys/kernel/hotplug
     @UDEVD@ -d
 
     udevadm control --env=STARTUP=1
     if [ "$not_first_boot" != "" ];then
-            udevadm trigger --action=add --subsystem-nomatch=tty --subsystem-nomatch=mem --subsystem-nomatch=vc --subsystem-nomatch=vtconsole --subsystem-nomatch=misc --subsystem-nomatch=dcon --subsystem-nomatch=pci_bus  --subsystem-nomatch=graphics	 --subsystem-nomatch=backlight --subsystem-nomatch=video4linux	--subsystem-nomatch=platform
+            if [ "$PROBE_PLATFORM_BUS" != "yes" ]; then
+                PLATFORM_BUS_NOMATCH="--subsystem-nomatch=platform"
+            else
+                PLATFORM_BUS_NOMATCH=""
+            fi
+            udevadm trigger --action=add --subsystem-nomatch=tty --subsystem-nomatch=mem --subsystem-nomatch=vc --subsystem-nomatch=vtconsole --subsystem-nomatch=misc --subsystem-nomatch=dcon --subsystem-nomatch=pci_bus --subsystem-nomatch=graphics --subsystem-nomatch=backlight --subsystem-nomatch=video4linux $PLATFORM_BUS_NOMATCH
             (udevadm settle --timeout=3; udevadm control --env=STARTUP=)&
     else
             udevadm trigger --action=add

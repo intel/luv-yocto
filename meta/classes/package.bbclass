@@ -72,7 +72,7 @@ def legitimize_package_name(s):
     # Remaining package name validity fixes
     return s.lower().replace('_', '-').replace('@', '+').replace(',', '+').replace('/', '-')
 
-def do_split_packages(d, root, file_regex, output_pattern, description, postinst=None, recursive=False, hook=None, extra_depends=None, aux_files_pattern=None, postrm=None, allow_dirs=False, prepend=False, match_path=False, aux_files_pattern_verbatim=None, allow_links=False):
+def do_split_packages(d, root, file_regex, output_pattern, description, postinst=None, recursive=False, hook=None, extra_depends=None, aux_files_pattern=None, postrm=None, allow_dirs=False, prepend=False, match_path=False, aux_files_pattern_verbatim=None, allow_links=False, summary=None):
     """
     Used in .bb files to split up dynamically generated subpackages of a
     given package, usually plugins or modules.
@@ -116,6 +116,8 @@ def do_split_packages(d, root, file_regex, output_pattern, description, postinst
                       package name. Can be a single string item or a list
                       of strings for multiple items. Must include %s.
     allow_links    -- True to allow symlinks to be matched - default False
+    summary        -- Summary to set for each package. Must include %s;
+                      defaults to description if not set.
 
     """
 
@@ -124,7 +126,7 @@ def do_split_packages(d, root, file_regex, output_pattern, description, postinst
     # If the root directory doesn't exist, don't error out later but silently do
     # no splitting.
     if not os.path.exists(dvar + root):
-        return
+        return []
 
     ml = d.getVar("MLPREFIX", True)
     if ml:
@@ -161,6 +163,9 @@ def do_split_packages(d, root, file_regex, output_pattern, description, postinst
     if extra_depends == None:
         extra_depends = d.getVar("PN", True)
 
+    if not summary:
+        summary = description
+
     for o in sorted(objs):
         import re, stat
         if match_path:
@@ -183,8 +188,13 @@ def do_split_packages(d, root, file_regex, output_pattern, description, postinst
             else:
                 packages.append(pkg)
         oldfiles = d.getVar('FILES_' + pkg, True)
+        newfile = os.path.join(root, o)
+        # These names will be passed through glob() so if the filename actually
+        # contains * or ? (rare, but possible) we need to handle that specially
+        newfile = newfile.replace('*', '[*]')
+        newfile = newfile.replace('?', '[?]')
         if not oldfiles:
-            the_files = [os.path.join(root, o)]
+            the_files = [newfile]
             if aux_files_pattern:
                 if type(aux_files_pattern) is list:
                     for fp in aux_files_pattern:
@@ -198,15 +208,18 @@ def do_split_packages(d, root, file_regex, output_pattern, description, postinst
                 else:
                     the_files.append(aux_files_pattern_verbatim % m.group(1))
             d.setVar('FILES_' + pkg, " ".join(the_files))
-            if extra_depends != '':
-                d.appendVar('RDEPENDS_' + pkg, ' ' + extra_depends)
-            d.setVar('DESCRIPTION_' + pkg, description % on)
-            if postinst:
-                d.setVar('pkg_postinst_' + pkg, postinst)
-            if postrm:
-                d.setVar('pkg_postrm_' + pkg, postrm)
         else:
-            d.setVar('FILES_' + pkg, oldfiles + " " + os.path.join(root, o))
+            d.setVar('FILES_' + pkg, oldfiles + " " + newfile)
+        if extra_depends != '':
+            d.appendVar('RDEPENDS_' + pkg, ' ' + extra_depends)
+        if not d.getVar('DESCRIPTION_' + pkg, True):
+            d.setVar('DESCRIPTION_' + pkg, description % on)
+        if not d.getVar('SUMMARY_' + pkg, True):
+            d.setVar('SUMMARY_' + pkg, summary % on)
+        if postinst:
+            d.setVar('pkg_postinst_' + pkg, postinst)
+        if postrm:
+            d.setVar('pkg_postrm_' + pkg, postrm)
         if callable(hook):
             hook(f, pkg, file_regex, output_pattern, m.group(1))
 
@@ -224,9 +237,6 @@ python () {
 
         # shlibs requires any DEPENDS to have already packaged for the *.list files
         d.appendVarFlag('do_package', 'deptask', " do_packagedata")
-
-    elif not bb.data.inherits_class('image', d):
-        d.setVar("PACKAGERDEPTASK", "")
 }
 
 def splitdebuginfo(file, debugfile, debugsrcdir, sourcefile, d):
@@ -352,8 +362,22 @@ def get_package_mapping (pkg, basepkg, d):
 
     return pkg
 
+def get_package_additional_metadata (pkg_type, d):
+    base_key = "PACKAGE_ADD_METADATA"
+    for key in ("%s_%s" % (base_key, pkg_type.upper()), base_key):
+        if d.getVar(key) is None:
+            continue
+        d.setVarFlag(key, "type", "list")
+        if d.getVarFlag(key, "separator") is None:
+            d.setVarFlag(key, "separator", "\\n")
+        metadata_fields = [field.strip() for field in oe.data.typed_value(key, d)]
+        return "\n".join(metadata_fields).strip()
+
 def runtime_mapping_rename (varname, pkg, d):
     #bb.note("%s before: %s" % (varname, d.getVar(varname, True)))
+
+    if bb.data.inherits_class('packagegroup', d):
+        return
 
     new_depends = {}
     deps = bb.utils.explode_dep_versions2(d.getVar(varname, True) or "")
@@ -742,7 +766,7 @@ python split_and_strip_files () {
     # 16 - kernel module
     def isELF(path):
         type = 0
-        ret, result = oe.utils.getstatusoutput("file '%s'" % path)
+        ret, result = oe.utils.getstatusoutput("file \"%s\"" % path.replace("\"", "\\\""))
 
         if ret:
             msg = "split_and_strip_files: 'file %s' failed" % path
@@ -770,8 +794,7 @@ python split_and_strip_files () {
     kernmods = []
     libdir = os.path.abspath(dvar + os.sep + d.getVar("libdir", True))
     baselibdir = os.path.abspath(dvar + os.sep + d.getVar("base_libdir", True))
-    if (d.getVar('INHIBIT_PACKAGE_DEBUG_SPLIT', True) != '1') and \
-            (d.getVar('INHIBIT_PACKAGE_STRIP', True) != '1'):
+    if (d.getVar('INHIBIT_PACKAGE_STRIP', True) != '1'):
         for root, dirs, files in cpath.walk(dvar):
             for f in files:
                 file = os.path.join(root, f)
@@ -910,13 +933,7 @@ python split_and_strip_files () {
         for f in kernmods:
             sfiles.append((f, 16, strip))
 
-
-        import multiprocessing
-        nproc = multiprocessing.cpu_count()
-        pool = bb.utils.multiprocessingpool(nproc)
-        processed = list(pool.imap(oe.package.runstrip, sfiles))
-        pool.close()
-        pool.join()
+        oe.utils.multiprocess_exec(sfiles, oe.package.runstrip)
 
     #
     # End of strip
@@ -965,23 +982,28 @@ python populate_packages () {
             msg = "FILES variable for package %s contains '//' which is invalid. Attempting to fix this but you should correct the metadata.\n" % pkg
             package_qa_handle_error("files-invalid", msg, d)
             filesvar.replace("//", "/")
-        files = filesvar.split()
-        for file in files:
+
+        origfiles = filesvar.split()
+        files = []
+        for file in origfiles:
             if os.path.isabs(file):
                 file = '.' + file
             if not file.startswith("./"):
                 file = './' + file
+            globbed = glob.glob(file)
+            if globbed:
+                if [ file ] != globbed:
+                    files += globbed
+                    continue
+            files.append(file)
+
+        for file in files:
             if not cpath.islink(file):
                 if cpath.isdir(file):
                     newfiles =  [ os.path.join(file,x) for x in os.listdir(file) ]
                     if newfiles:
                         files += newfiles
                         continue
-            globbed = glob.glob(file)
-            if globbed:
-                if [ file ] != globbed:
-                    files += globbed
-                    continue
             if (not cpath.islink(file)) and (not cpath.exists(file)):
                 continue
             if file in seen:
@@ -1096,10 +1118,23 @@ python package_fixsymlinks () {
         d.setVar('RDEPENDS_' + pkg, bb.utils.join_deps(rdepends, commasep=False))
 }
 
+
+python package_package_name_hook() {
+    """
+    A package_name_hook function can be used to rewrite the package names by
+    changing PKG.  For an example, see debian.bbclass.
+    """
+    pass
+}
+
+EXPORT_FUNCTIONS package_name_hook
+
+
 PKGDESTWORK = "${WORKDIR}/pkgdata"
 
 python emit_pkgdata() {
     from glob import glob
+    import json
 
     def write_if_exists(f, pkg, var):
         def encode(str):
@@ -1110,19 +1145,11 @@ python emit_pkgdata() {
         val = d.getVar('%s_%s' % (var, pkg), True)
         if val:
             f.write('%s_%s: %s\n' % (var, pkg, encode(val)))
-            return
+            return val
         val = d.getVar('%s' % (var), True)
         if val:
             f.write('%s: %s\n' % (var, encode(val)))
-        return
-
-    def get_directory_size(dir):
-        if os.listdir(dir):
-            with os.popen('du -sk %s' % dir) as f:
-                size = int(f.readlines()[0].split('\t')[0])
-        else:
-            size = 0
-        return size
+        return val
 
     def write_extra_pkgs(variants, pn, packages, pkgdatadir):
         for variant in variants:
@@ -1163,33 +1190,35 @@ python emit_pkgdata() {
     workdir = d.getVar('WORKDIR', True)
 
     for pkg in packages.split():
-        items = {}
-        for files_list in pkgfiles[pkg]:
-             item_name = os.path.basename(files_list)
-             item_path = os.path.dirname(files_list)
-             if item_path not in items:
-                 items[item_path] = []
-             items[item_path].append(item_name)
-        subdata_file = pkgdatadir + "/runtime/%s" % pkg
-
         pkgval = d.getVar('PKG_%s' % pkg, True)
         if pkgval is None:
             pkgval = pkg
             d.setVar('PKG_%s' % pkg, pkg)
 
-        d.setVar('FILES_INFO', str(items))
+        pkgdestpkg = os.path.join(pkgdest, pkg)
+        files = {}
+        total_size = 0
+        for f in pkgfiles[pkg]:
+            relpth = os.path.relpath(f, pkgdestpkg)
+            fstat = os.lstat(f)
+            total_size += fstat.st_size
+            files[os.sep + relpth] = fstat.st_size
+        d.setVar('FILES_INFO', json.dumps(files))
 
+        subdata_file = pkgdatadir + "/runtime/%s" % pkg
         sf = open(subdata_file, 'w')
         write_if_exists(sf, pkg, 'PN')
+        write_if_exists(sf, pkg, 'PE')
         write_if_exists(sf, pkg, 'PV')
         write_if_exists(sf, pkg, 'PR')
+        write_if_exists(sf, pkg, 'PKGE')
         write_if_exists(sf, pkg, 'PKGV')
         write_if_exists(sf, pkg, 'PKGR')
         write_if_exists(sf, pkg, 'LICENSE')
         write_if_exists(sf, pkg, 'DESCRIPTION')
         write_if_exists(sf, pkg, 'SUMMARY')
         write_if_exists(sf, pkg, 'RDEPENDS')
-        write_if_exists(sf, pkg, 'RPROVIDES')
+        rprov = write_if_exists(sf, pkg, 'RPROVIDES')
         write_if_exists(sf, pkg, 'RRECOMMENDS')
         write_if_exists(sf, pkg, 'RSUGGESTS')
         write_if_exists(sf, pkg, 'RREPLACES')
@@ -1211,12 +1240,15 @@ python emit_pkgdata() {
         for dfile in (d.getVar('FILERDEPENDSFLIST_' + pkg, True) or "").split():
             write_if_exists(sf, pkg, 'FILERDEPENDS_' + dfile)
 
-        sf.write('%s_%s: %s\n' % ('PKGSIZE', pkg, get_directory_size(pkgdest + "/%s" % pkg)))
+        sf.write('%s_%s: %d\n' % ('PKGSIZE', pkg, total_size))
         sf.close()
 
-        # Symlinks needed for reverse lookups (from the final package name)
-        subdata_sym = pkgdatadir + "/runtime-reverse/%s" % pkgval
-        oe.path.symlink("../runtime/%s" % pkg, subdata_sym, True)
+        # Symlinks needed for rprovides lookup
+        if rprov:
+            for p in rprov.strip().split():
+                subdata_sym = pkgdatadir + "/runtime-rprovides/%s/%s" % (p, pkg)
+                bb.utils.mkdirhier(os.path.dirname(subdata_sym))
+                oe.path.symlink("../../runtime/%s" % pkg, subdata_sym, True)
 
         allow_empty = d.getVar('ALLOW_EMPTY_%s' % pkg, True)
         if not allow_empty:
@@ -1225,6 +1257,10 @@ python emit_pkgdata() {
         os.chdir(root)
         g = glob('*')
         if g or allow_empty == "1":
+            # Symlinks needed for reverse lookups (from the final package name)
+            subdata_sym = pkgdatadir + "/runtime-reverse/%s" % pkgval
+            oe.path.symlink("../runtime/%s" % pkg, subdata_sym, True)
+
             packagedfile = pkgdatadir + '/runtime/%s.packaged' % pkg
             open(packagedfile, 'w').close()
 
@@ -1236,7 +1272,7 @@ python emit_pkgdata() {
 
     bb.utils.unlockfile(lf)
 }
-emit_pkgdata[dirs] = "${PKGDESTWORK}/runtime ${PKGDESTWORK}/runtime-reverse"
+emit_pkgdata[dirs] = "${PKGDESTWORK}/runtime ${PKGDESTWORK}/runtime-reverse ${PKGDESTWORK}/runtime-rprovides"
 
 ldconfig_postinst_fragment() {
 if [ x"$D" = "x" ]; then
@@ -1274,12 +1310,7 @@ python package_do_filedeps() {
         for files in chunks(pkgfiles[pkg], 100):
             pkglist.append((pkg, files, rpmdeps, pkgdest))
 
-    import multiprocessing
-    nproc = multiprocessing.cpu_count()
-    pool =  bb.utils.multiprocessingpool(nproc)
-    processed = list(pool.imap(oe.package.filedeprunner, pkglist))
-    pool.close()
-    pool.join()
+    processed = oe.utils.multiprocess_exec( pkglist, oe.package.filedeprunner)
 
     provides_files = {}
     requires_files = {}
@@ -1308,11 +1339,12 @@ python package_do_filedeps() {
         d.setVar("FILERPROVIDESFLIST_" + pkg, " ".join(provides_files[pkg]))
 }
 
-SHLIBSDIRS = "${PKGDATA_DIR}/${MLPREFIX}shlibs"
-SHLIBSWORKDIR = "${PKGDESTWORK}/${MLPREFIX}shlibs"
+SHLIBSDIRS = "${PKGDATA_DIR}/${MLPREFIX}shlibs2"
+SHLIBSWORKDIR = "${PKGDESTWORK}/${MLPREFIX}shlibs2"
 
 python package_do_shlibs() {
     import re, pipes
+    import subprocess as sub
 
     exclude_shlibs = d.getVar('EXCLUDE_FROM_SHLIBS', 0)
     if exclude_shlibs:
@@ -1341,33 +1373,63 @@ python package_do_shlibs() {
     # Take shared lock since we're only reading, not writing
     lf = bb.utils.lockfile(d.expand("${PACKAGELOCK}"))
 
-    def linux_so(file):
+    def read_shlib_providers():
+        list_re = re.compile('^(.*)\.list$')
+        # Go from least to most specific since the last one found wins
+        for dir in reversed(shlibs_dirs):
+            bb.debug(2, "Reading shlib providers in %s" % (dir))
+            if not os.path.exists(dir):
+                continue
+            for file in os.listdir(dir):
+                m = list_re.match(file)
+                if m:
+                    dep_pkg = m.group(1)
+                    fd = open(os.path.join(dir, file))
+                    lines = fd.readlines()
+                    fd.close()
+                    for l in lines:
+                        s = l.strip().split(":")
+                        if s[0] not in shlib_provider:
+                            shlib_provider[s[0]] = {}
+                        shlib_provider[s[0]][s[1]] = (dep_pkg, s[2])
+
+    def linux_so(file, needed, sonames, renames, pkgver):
         needs_ldconfig = False
+        ldir = os.path.dirname(file).replace(pkgdest + "/" + pkg, '')
         cmd = d.getVar('OBJDUMP', True) + " -p " + pipes.quote(file) + " 2>/dev/null"
         fd = os.popen(cmd)
         lines = fd.readlines()
         fd.close()
+        rpath = []
+        for l in lines:
+            m = re.match("\s+RPATH\s+([^\s]*)", l)
+            if m:
+                rpaths = m.group(1).replace("$ORIGIN", ldir).split(":")
+                rpath = map(os.path.normpath, rpaths)
         for l in lines:
             m = re.match("\s+NEEDED\s+([^\s]*)", l)
             if m:
-                if m.group(1) not in needed[pkg]:
-                    needed[pkg].append(m.group(1))
+                dep = m.group(1)
+                if dep not in needed[pkg]:
+                    needed[pkg].append((dep, file, rpath))
             m = re.match("\s+SONAME\s+([^\s]*)", l)
             if m:
                 this_soname = m.group(1)
-                if not this_soname in sonames:
+                prov = (this_soname, ldir, pkgver)
+                if not prov in sonames:
                     # if library is private (only used by package) then do not build shlib for it
-                    if not private_libs or -1 == private_libs.find(this_soname):
-                        sonames.append(this_soname)
+                    if not private_libs or this_soname not in private_libs:
+                        sonames.append(prov)
                 if libdir_re.match(os.path.dirname(file)):
                     needs_ldconfig = True
                 if snap_symlinks and (os.path.basename(file) != this_soname):
                     renames.append((file, os.path.join(os.path.dirname(file), this_soname)))
         return needs_ldconfig
 
-    def darwin_so(file):
+    def darwin_so(file, needed, sonames, renames, pkgver):
         if not os.path.exists(file):
             return
+        ldir = os.path.dirname(file).replace(pkgdest + "/" + pkg, '')
 
         def get_combinations(base):
             #
@@ -1389,42 +1451,32 @@ python package_do_shlibs() {
             combos = get_combinations(name)
             for combo in combos:
                 if not combo in sonames:
-                    sonames.append(combo)
+                    prov = (combo, ldir, pkgver)
+                    sonames.append(prov)
         if file.endswith('.dylib') or file.endswith('.so'):
-            lafile = file.replace(os.path.join(pkgdest, pkg), d.getVar('PKGD', True))
-            # Drop suffix
-            lafile = lafile.rsplit(".",1)[0]
-            lapath = os.path.dirname(lafile)
-            lafile = os.path.basename(lafile)
-            # Find all combinations
-            combos = get_combinations(lafile)
-            for combo in combos:
-                if os.path.exists(lapath + '/' + combo + '.la'):
-                    break
-            lafile = lapath + '/' + combo + '.la'
+            rpath = []
+            p = sub.Popen([d.expand("${HOST_PREFIX}otool"), '-l', file],stdout=sub.PIPE,stderr=sub.PIPE)
+            err, out = p.communicate()
+            # If returned succesfully, process stderr for results
+            if p.returncode == 0:
+                for l in err.split("\n"):
+                    l = l.strip()
+                    if l.startswith('path '):
+                        rpath.append(l.split()[1])
 
-            #bb.note("Foo2: %s" % lafile)
-            #bb.note("Foo %s" % file)
-            if os.path.exists(lafile):
-                fd = open(lafile, 'r')
-                lines = fd.readlines()
-                fd.close()
-                for l in lines:
-                    m = re.match("\s*dependency_libs=\s*'(.*)'", l)
-                    if m:
-                        deps = m.group(1).split(" ")
-                        for dep in deps:
-                            #bb.note("Trying %s for %s" % (dep, pkg))
-                            name = None
-                            if dep.endswith(".la"):
-                                name = os.path.basename(dep).replace(".la", "")
-                            elif dep.startswith("-l"):
-                                name = dep.replace("-l", "lib")
-                            if pkg not in needed:
-                                needed[pkg] = []
-                            if name and name not in needed[pkg]:
-                                needed[pkg].append(name)
-                                #bb.note("Adding %s for %s" % (name, pkg))
+        p = sub.Popen([d.expand("${HOST_PREFIX}otool"), '-L', file],stdout=sub.PIPE,stderr=sub.PIPE)
+        err, out = p.communicate()
+        # If returned succesfully, process stderr for results
+        if p.returncode == 0:
+            for l in err.split("\n"):
+                l = l.strip()
+                if not l or l.endswith(":"):
+                    continue
+                if "is not an object file" in l:
+                    continue
+                name = os.path.basename(l.split()[0]).rsplit(".", 1)[0]
+                if name and name not in needed[pkg]:
+                     needed[pkg].append((name, file, []))
 
     if d.getVar('PACKAGE_SNAP_LIB_SYMLINKS', True) == "1":
         snap_symlinks = True
@@ -1438,8 +1490,11 @@ python package_do_shlibs() {
 
     needed = {}
     shlib_provider = {}
+    read_shlib_providers()
+
     for pkg in packages.split():
-        private_libs = d.getVar('PRIVATE_LIBS_' + pkg, True) or d.getVar('PRIVATE_LIBS', True)
+        private_libs = d.getVar('PRIVATE_LIBS_' + pkg, True) or d.getVar('PRIVATE_LIBS', True) or ""
+        private_libs = private_libs.split()
         needs_ldconfig = False
         bb.debug(2, "calculating shlib provides for %s" % pkg)
 
@@ -1457,23 +1512,28 @@ python package_do_shlibs() {
                 if cpath.islink(file):
                     continue
                 if targetos == "darwin" or targetos == "darwin8":
-                    darwin_so(file)
+                    darwin_so(file, needed, sonames, renames, pkgver)
                 elif os.access(file, os.X_OK) or lib_re.match(file):
-                    ldconfig = linux_so(file)
+                    ldconfig = linux_so(file, needed, sonames, renames, pkgver)
                     needs_ldconfig = needs_ldconfig or ldconfig
         for (old, new) in renames:
             bb.note("Renaming %s to %s" % (old, new))
             os.rename(old, new)
+            pkgfiles[pkg].remove(old)
+	    
         shlibs_file = os.path.join(shlibswork_dir, pkg + ".list")
-        shver_file = os.path.join(shlibswork_dir, pkg + ".ver")
         if len(sonames):
             fd = open(shlibs_file, 'w')
             for s in sonames:
-                fd.write(s + '\n')
-                shlib_provider[s] = (pkg, pkgver)
-            fd.close()
-            fd = open(shver_file, 'w')
-            fd.write(pkgver + '\n')
+                if s[0] in shlib_provider and s[1] in shlib_provider[s[0]]:
+                    (old_pkg, old_pkgver) = shlib_provider[s[0]][s[1]]
+                    if old_pkg != pkg:
+                        bb.warn('%s-%s was registered as shlib provider for %s, changing it to %s-%s because it was built later' % (old_pkg, old_pkgver, s[0], pkg, pkgver))
+                bb.debug(1, 'registering %s-%s as shlib provider for %s' % (pkg, pkgver, s[0]))
+                fd.write(s[0] + ':' + s[1] + ':' + s[2] + '\n')
+                if s[0] not in shlib_provider:
+                    shlib_provider[s[0]] = {}
+                shlib_provider[s[0]][s[1]] = (pkg, pkgver)
             fd.close()
         if needs_ldconfig and use_ldconfig:
             bb.debug(1, 'adding ldconfig call to postinst for %s' % pkg)
@@ -1482,32 +1542,13 @@ python package_do_shlibs() {
                 postinst = '#!/bin/sh\n'
             postinst += d.getVar('ldconfig_postinst_fragment', True)
             d.setVar('pkg_postinst_%s' % pkg, postinst)
-
-    list_re = re.compile('^(.*)\.list$')
-    # Go from least to most specific since the last one found wins
-    for dir in reversed(shlibs_dirs):
-        if not os.path.exists(dir):
-            continue
-        for file in os.listdir(dir):
-            m = list_re.match(file)
-            if m:
-                dep_pkg = m.group(1)
-                fd = open(os.path.join(dir, file))
-                lines = fd.readlines()
-                fd.close()
-                ver_file = os.path.join(dir, dep_pkg + '.ver')
-                lib_ver = None
-                if os.path.exists(ver_file):
-                    fd = open(ver_file)
-                    lib_ver = fd.readline().rstrip()
-                    fd.close()
-                for l in lines:
-                    shlib_provider[l.rstrip()] = (dep_pkg, lib_ver)
+        bb.debug(1, 'LIBNAMES: pkg %s sonames %s' % (pkg, sonames))
 
     bb.utils.unlockfile(lf)
 
     assumed_libs = d.getVar('ASSUME_SHLIBS', True)
     if assumed_libs:
+        libdir = d.getVar("libdir", True)
         for e in assumed_libs.split():
             l, dep_pkg = e.split(":")
             lib_ver = None
@@ -1515,29 +1556,50 @@ python package_do_shlibs() {
             if len(dep_pkg) == 2:
                 lib_ver = dep_pkg[1]
             dep_pkg = dep_pkg[0]
-            shlib_provider[l] = (dep_pkg, lib_ver)
+            if l not in shlib_provider:
+                shlib_provider[l] = {}
+            shlib_provider[l][libdir] = (dep_pkg, lib_ver)
+
+    libsearchpath = [d.getVar('libdir', True), d.getVar('base_libdir', True)]
 
     for pkg in packages.split():
         bb.debug(2, "calculating shlib requirements for %s" % pkg)
 
         deps = list()
         for n in needed[pkg]:
-            if n in shlib_provider.keys():
-                (dep_pkg, ver_needed) = shlib_provider[n]
+            # if n is in private libraries, don't try to search provider for it
+            # this could cause problem in case some abc.bb provides private
+            # /opt/abc/lib/libfoo.so.1 and contains /usr/bin/abc depending on system library libfoo.so.1
+            # but skipping it is still better alternative than providing own
+            # version and then adding runtime dependency for the same system library
+            if private_libs and n in private_libs:
+                bb.debug(2, '%s: Dependency %s covered by PRIVATE_LIBS' % (pkg, n[0]))
+                continue
+            if n[0] in shlib_provider.keys():
+                shlib_provider_path = list()
+                for k in shlib_provider[n[0]].keys():
+                    shlib_provider_path.append(k)
+                match = None
+                for p in n[2] + shlib_provider_path + libsearchpath:
+                    if p in shlib_provider[n[0]]:
+                        match = p
+                        break
+                if match:
+                    (dep_pkg, ver_needed) = shlib_provider[n[0]][match]
 
-                bb.debug(2, '%s: Dependency %s requires package %s' % (pkg, n, dep_pkg))
+                    bb.debug(2, '%s: Dependency %s requires package %s (used by files: %s)' % (pkg, n[0], dep_pkg, n[1]))
 
-                if dep_pkg == pkg:
+                    if dep_pkg == pkg:
+                        continue
+
+                    if ver_needed:
+                        dep = "%s (>= %s)" % (dep_pkg, ver_needed)
+                    else:
+                        dep = dep_pkg
+                    if not dep in deps:
+                        deps.append(dep)
                     continue
-
-                if ver_needed:
-                    dep = "%s (>= %s)" % (dep_pkg, ver_needed)
-                else:
-                    dep = dep_pkg
-                if not dep in deps:
-                    deps.append(dep)
-            else:
-                bb.note("Couldn't find shared library provider for %s" % n)
+            bb.note("Couldn't find shared library provider for %s, used by files: %s" % (n[0], n[1]))
 
         deps_file = os.path.join(pkgdest, pkg + ".shlibdeps")
         if os.path.exists(deps_file):
@@ -1800,7 +1862,7 @@ python package_depchains() {
 
 # Since bitbake can't determine which variables are accessed during package
 # iteration, we need to list them here:
-PACKAGEVARS = "FILES RDEPENDS RRECOMMENDS SUMMARY DESCRIPTION RSUGGESTS RPROVIDES RCONFLICTS PKG ALLOW_EMPTY pkg_postinst pkg_postrm INITSCRIPT_NAME INITSCRIPT_PARAMS DEBIAN_NOAUTONAME ALTERNATIVE PKGE PKGV PKGR USERADD_PARAM GROUPADD_PARAM"
+PACKAGEVARS = "FILES RDEPENDS RRECOMMENDS SUMMARY DESCRIPTION RSUGGESTS RPROVIDES RCONFLICTS PKG ALLOW_EMPTY pkg_postinst pkg_postrm INITSCRIPT_NAME INITSCRIPT_PARAMS DEBIAN_NOAUTONAME ALTERNATIVE PKGE PKGV PKGR USERADD_PARAM GROUPADD_PARAM CONFFILES"
 
 def gen_packagevar(d):
     ret = []
@@ -1875,9 +1937,9 @@ python do_package () {
     # Optimisations
     ###########################################################################
 
-    # Contunually rexpanding complex expressions is inefficient, particularly when
-    # we write to the datastore and invalidate the expansion cache. This code 
-    # pre-expands some frequently used variables
+    # Continually expanding complex expressions is inefficient, particularly
+    # when we write to the datastore and invalidate the expansion cache. This
+    # code pre-expands some frequently used variables
 
     def expandVar(x, d):
         d.setVar(x, d.getVar(x, True))
@@ -1922,11 +1984,10 @@ python do_package () {
 
 do_package[dirs] = "${SHLIBSWORKDIR} ${PKGDESTWORK} ${D}"
 do_package[vardeps] += "${PACKAGEBUILDPKGD} ${PACKAGESPLITFUNCS} ${PACKAGEFUNCS} ${@gen_packagevar(d)}"
-addtask package before do_build after do_install
+addtask package after do_install
 
 PACKAGELOCK = "${STAGING_DIR}/package-output.lock"
 SSTATETASKS += "do_package"
-do_package[sstate-name] = "package"
 do_package[cleandirs] = "${PKGDEST} ${PKGDESTWORK}"
 do_package[sstate-plaindirs] = "${PKGD} ${PKGDEST} ${PKGDESTWORK}"
 do_package[sstate-lockfile-shared] = "${PACKAGELOCK}"
@@ -1944,7 +2005,6 @@ do_packagedata () {
 addtask packagedata before do_build after do_package
 
 SSTATETASKS += "do_packagedata"
-do_packagedata[sstate-name] = "packagedata"
 do_packagedata[sstate-inputdirs] = "${PKGDESTWORK}"
 do_packagedata[sstate-outputdirs] = "${PKGDATA_DIR}"
 do_packagedata[sstate-lockfile-shared] = "${PACKAGELOCK}"
@@ -1954,15 +2014,6 @@ python do_packagedata_setscene () {
     sstate_setscene(d)
 }
 addtask do_packagedata_setscene
-
-# Dummy task to mark when all packaging is complete
-do_package_write () {
-	:
-}
-do_package_write[noexec] = "1"
-PACKAGERDEPTASK = "do_package_write"
-do_build[recrdeptask] += "${PACKAGERDEPTASK}"
-addtask package_write before do_build after do_packagedata
 
 #
 # Helper functions for the package writing classes
@@ -1977,7 +2028,4 @@ def mapping_rename_hook(d):
     runtime_mapping_rename("RDEPENDS", pkg, d)
     runtime_mapping_rename("RRECOMMENDS", pkg, d)
     runtime_mapping_rename("RSUGGESTS", pkg, d)
-    runtime_mapping_rename("RPROVIDES", pkg, d)
-    runtime_mapping_rename("RREPLACES", pkg, d)
-    runtime_mapping_rename("RCONFLICTS", pkg, d)
 

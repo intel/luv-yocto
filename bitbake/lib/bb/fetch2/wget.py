@@ -37,7 +37,7 @@ from   bb.fetch2 import runfetchcmd
 
 class Wget(FetchMethod):
     """Class to fetch urls via 'wget'"""
-    def supports(self, url, ud, d):
+    def supports(self, ud, d):
         """
         Check to see if a given url can be fetched with wget.
         """
@@ -58,40 +58,49 @@ class Wget(FetchMethod):
 
         ud.localfile = data.expand(urllib.unquote(ud.basename), d)
 
-    def download(self, uri, ud, d, checkonly = False):
+        self.basecmd = d.getVar("FETCHCMD_wget", True) or "/usr/bin/env wget -t 2 -T 30 -nv --passive-ftp --no-check-certificate"
+
+    def _runwget(self, ud, d, command, quiet):
+
+        logger.debug(2, "Fetching %s using command '%s'" % (ud.url, command))
+        bb.fetch2.check_network_access(d, command)
+        runfetchcmd(command, d, quiet)
+
+    def download(self, ud, d):
         """Fetch urls"""
 
-        basecmd = d.getVar("FETCHCMD_wget", True) or "/usr/bin/env wget -t 2 -T 30 -nv --passive-ftp --no-check-certificate"
+        fetchcmd = self.basecmd
 
-        if not checkonly and 'downloadfilename' in ud.parm:
+        if 'downloadfilename' in ud.parm:
             dldir = d.getVar("DL_DIR", True)
             bb.utils.mkdirhier(os.path.dirname(dldir + os.sep + ud.localfile))
-            basecmd += " -O " + dldir + os.sep + ud.localfile
+            fetchcmd += " -O " + dldir + os.sep + ud.localfile
 
-        if checkonly:
-            fetchcmd = d.getVar("CHECKCOMMAND_wget", True) or d.expand(basecmd + " --spider '${URI}'")
-        elif os.path.exists(ud.localpath):
+        uri = ud.url.split(";")[0]
+        if os.path.exists(ud.localpath):
             # file exists, but we didnt complete it.. trying again..
-            fetchcmd = d.getVar("RESUMECOMMAND_wget", True) or d.expand(basecmd + " -c -P ${DL_DIR} '${URI}'")
+            fetchcmd += d.expand(" -c -P ${DL_DIR} '%s'" % uri)
         else:
-            fetchcmd = d.getVar("FETCHCOMMAND_wget", True) or d.expand(basecmd + " -P ${DL_DIR} '${URI}'")
+            fetchcmd += d.expand(" -P ${DL_DIR} '%s'" % uri)
 
-        uri = uri.split(";")[0]
-
-        fetchcmd = fetchcmd.replace("${URI}", uri.split(";")[0])
-        fetchcmd = fetchcmd.replace("${FILE}", ud.basename)
-        if not checkonly:
-            logger.info("fetch " + uri)
-            logger.debug(2, "executing " + fetchcmd)
-        bb.fetch2.check_network_access(d, fetchcmd)
-        runfetchcmd(fetchcmd, d, quiet=checkonly)
+        self._runwget(ud, d, fetchcmd, False)
 
         # Sanity check since wget can pretend it succeed when it didn't
         # Also, this used to happen if sourceforge sent us to the mirror page
-        if not os.path.exists(ud.localpath) and not checkonly:
+        if not os.path.exists(ud.localpath):
             raise FetchError("The fetch command returned success for url %s but %s doesn't exist?!" % (uri, ud.localpath), uri)
+
+        if os.path.getsize(ud.localpath) == 0:
+            os.remove(ud.localpath)
+            raise FetchError("The fetch of %s resulted in a zero size file?! Deleting and failing since this isn't right." % (uri), uri)
 
         return True
 
-    def checkstatus(self, uri, ud, d):
-        return self.download(uri, ud, d, True)
+    def checkstatus(self, ud, d):
+
+        uri = ud.url.split(";")[0]
+        fetchcmd = self.basecmd + " --spider '%s'" % uri
+
+        self._runwget(ud, d, fetchcmd, True)
+
+        return True

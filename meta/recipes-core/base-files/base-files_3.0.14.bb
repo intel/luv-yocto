@@ -1,7 +1,7 @@
-SUMMARY = "Miscellaneous files for the base system."
+SUMMARY = "Miscellaneous files for the base system"
 DESCRIPTION = "The base-files package creates the basic system directory structure and provides a small set of key configuration files for the system."
 SECTION = "base"
-PR = "r73"
+PR = "r89"
 LICENSE = "GPLv2"
 LIC_FILES_CHKSUM = "file://licenses/GPL-2;md5=94d55d512a9ba36caa9b7df079bae19f"
 # Removed all license related tasks in this recipe as license.bbclass 
@@ -32,7 +32,7 @@ INHIBIT_DEFAULT_DEPS = "1"
 
 docdir_append = "/${P}"
 dirs1777 = "/tmp ${localstatedir}/volatile/tmp"
-dirs2775 = "/home ${prefix}/src ${localstatedir}/local"
+dirs2775 = ""
 dirs755 = "/bin /boot /dev ${sysconfdir} ${sysconfdir}/default \
            ${sysconfdir}/skel /lib /mnt /proc ${ROOT_HOME} /run /sbin \
            ${prefix} ${bindir} ${docdir} /usr/games ${includedir} \
@@ -43,13 +43,15 @@ dirs755 = "/bin /boot /dev ${sysconfdir} ${sysconfdir}/default \
            /sys ${localstatedir}/lib/misc ${localstatedir}/spool \
            ${localstatedir}/volatile \
            ${localstatedir}/volatile/log \
+           /home ${prefix}/src ${localstatedir}/local \
            /media"
-dirs3755 = "/srv  \
-            ${prefix}/local ${prefix}/local/bin ${prefix}/local/games \
-            ${prefix}/local/include ${prefix}/local/lib ${prefix}/local/sbin \
-            ${prefix}/local/share ${prefix}/local/src \
-            ${prefix}/lib/locale"
-dirs4775 = "/var/mail"
+
+dirs755-lsb = "/srv  \
+               ${prefix}/local ${prefix}/local/bin ${prefix}/local/games \
+               ${prefix}/local/include ${prefix}/local/lib ${prefix}/local/sbin \
+               ${prefix}/local/share ${prefix}/local/src \
+               ${prefix}/lib/locale"
+dirs2775-lsb = "/var/mail"
 
 volatiles = "log tmp"
 conffiles = "${sysconfdir}/debian_version ${sysconfdir}/host.conf \
@@ -72,7 +74,7 @@ do_install () {
 		install -m 1777 -d ${D}$d
 	done
 	for d in ${dirs2775}; do
-		install -m 2755 -d ${D}$d
+		install -m 2775 -d ${D}$d
 	done
 	for d in ${volatiles}; do
 		ln -sf volatile/$d ${D}${localstatedir}/$d
@@ -90,8 +92,8 @@ do_install () {
 	install -m 0644 ${WORKDIR}/fstab ${D}${sysconfdir}/fstab
 	install -m 0644 ${WORKDIR}/filesystems ${D}${sysconfdir}/filesystems
 	install -m 0644 ${WORKDIR}/usbd ${D}${sysconfdir}/default/usbd
-	sed -i "s#ROOTHOME#${ROOT_HOME}#" ${WORKDIR}/profile
 	install -m 0644 ${WORKDIR}/profile ${D}${sysconfdir}/profile
+	sed -i 's#ROOTHOME#${ROOT_HOME}#' ${D}${sysconfdir}/profile
 	install -m 0644 ${WORKDIR}/shells ${D}${sysconfdir}/shells
 	install -m 0755 ${WORKDIR}/share/dot.profile ${D}${sysconfdir}/skel/.profile
 	install -m 0755 ${WORKDIR}/share/dot.bashrc ${D}${sysconfdir}/skel/.bashrc
@@ -100,9 +102,14 @@ do_install () {
 	install -m 0644 ${WORKDIR}/host.conf ${D}${sysconfdir}/host.conf
 	install -m 0644 ${WORKDIR}/motd ${D}${sysconfdir}/motd
 
+	if [ "/usr/bin" != "${bindir}" ]; then
+		sed -i "s,/usr/bin/resize,${bindir}/resize," ${D}${sysconfdir}/profile
+	fi
+
 	ln -sf /proc/mounts ${D}${sysconfdir}/mtab
 }
 
+DISTRO_VERSION[vardepsexclude] += "DATE"
 do_install_basefilesissue () {
 	if [ "${hostname}" != "" ]; then
 		if [ -n "${MACHINE}" -a "${hostname}" = "openembedded" ]; then
@@ -128,12 +135,12 @@ do_install_basefilesissue () {
 }
 
 do_install_append_linuxstdbase() {
-	for d in ${dirs3755}; do
+	for d in ${dirs755-lsb}; do
                 install -m 0755 -d ${D}$d
         done
 
-	for d in ${dirs4775}; do
-                install -m 2755 -d ${D}$d
+	for d in ${dirs2775-lsb}; do
+                install -m 2775 -d ${D}$d
         done
 }
 
@@ -143,5 +150,5 @@ FILES_${PN}-doc = "${docdir} ${datadir}/common-licenses"
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
-CONFFILES_${PN} = "${sysconfdir}/fstab ${@['', '${sysconfdir}/hostname'][(d.getVar('hostname', True) != '')]}"
+CONFFILES_${PN} = "${sysconfdir}/fstab ${@['', '${sysconfdir}/hostname'][(d.getVar('hostname', True) != '')]} ${sysconfdir}/shells"
 

@@ -1,4 +1,5 @@
-SUMMARY = "A free software library and application for encoding video streams into the H.264/MPEG-4 AVC format"
+SUMMARY = "H.264/MPEG-4 AVC video encoder"
+DESCRIPTION = "A free software library and application for encoding video streams into the H.264/MPEG-4 AVC format."
 HOMEPAGE = "http://www.videolan.org/developers/x264.html"
 
 LICENSE = "GPLv2"
@@ -11,20 +12,22 @@ SRC_URI = "git://git.videolan.org/x264.git \
            file://don-t-default-to-cortex-a9-with-neon.patch \
            "
 
-SRCREV = "585324fee380109acd9986388f857f413a60b896"
+SRCREV = "ffc3ad4945da69f3caa2b40e4eed715a9a8d9526"
 
 PV = "r2265+git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
-inherit lib_package pkgconfig
+inherit lib_package pkgconfig perlnative
 
 X264_DISABLE_ASM = ""
 X264_DISABLE_ASM_armv4 = "--disable-asm"
 X264_DISABLE_ASM_armv5 = "--disable-asm"
+X264_DISABLE_ASM_powerpc = "${@bb.utils.contains("TUNE_FEATURES", "spe", "--disable-asm", "", d)}"
 
 EXTRA_OECONF = '--prefix=${prefix} \
                 --host=${HOST_SYS} \
+                --libdir=${libdir} \
                 --cross-prefix=${TARGET_PREFIX} \
                 --sysroot=${STAGING_DIR_TARGET} \
                 --enable-shared \

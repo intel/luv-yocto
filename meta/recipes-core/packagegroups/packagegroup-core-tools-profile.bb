@@ -7,16 +7,12 @@ LICENSE = "MIT"
 
 PR = "r3"
 
-inherit packagegroup
-
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
-# For backwards compatibility after rename
-RPROVIDES_${PN} = "task-core-tools-profile"
-RREPLACES_${PN} = "task-core-tools-profile"
-RCONFLICTS_${PN} = "task-core-tools-profile"
+inherit packagegroup
 
-PROFILE_TOOLS_X = "${@base_contains('DISTRO_FEATURES', 'x11', 'sysprof', '', d)}"
+PROFILE_TOOLS_X = "${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'sysprof', '', d)}"
+PROFILE_TOOLS_SYSTEMD = "${@bb.utils.contains('DISTRO_FEATURES', 'systemd', 'systemd-analyze', '', d)}"
 
 RRECOMMENDS_${PN} = "\
     perf \
@@ -24,6 +20,7 @@ RRECOMMENDS_${PN} = "\
     kernel-module-oprofile \
     blktrace \
     ${PROFILE_TOOLS_X} \
+    ${PROFILE_TOOLS_SYSTEMD} \
     "
 
 PROFILETOOLS = "\
@@ -56,6 +53,7 @@ LTTNGTOOLS_aarch64 = ""
 
 LTTNGMODULES = "lttng-modules"
 LTTNGMODULES_aarch64 = ""
+LTTNGMODULES_arm = ""
 
 BABELTRACE = "babeltrace"
 BABELTRACE_aarch64 = ""

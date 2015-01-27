@@ -23,6 +23,41 @@ SRC_URI = "http://gstreamer.freedesktop.org/src/${BPN}/${BPN}-${PV}.tar.bz2 \
            file://libav_e500mc.patch \
            file://libav_e5500.patch \
            file://gst-ffmpeg-CVE-2013-3674.patch \
+           file://0001-avformat-mpegtsenc-Check-data-array-size-in-mpegts_w.patch \
+           file://0001-vqavideo-check-chunk-sizes-before-reading-chunks.patch \
+           file://0001-avcodec-msrle-use-av_image_get_linesize-to-calculate.patch \
+           file://0001-huffyuvdec-Skip-len-0-cases.patch \
+           file://0001-huffyuvdec-Check-init_vlc-return-codes.patch \
+           file://0001-alsdec-check-block-length.patch \
+           file://0001-pgssubdec-check-RLE-size-before-copying.-Fix-out-of-.patch \
+           file://0001-atrac3dec-Check-coding-mode-against-channels.patch \
+           file://0001-eamad-fix-out-of-array-accesses.patch \
+           file://0001-mjpegdec-check-SE.patch \
+           file://0001-alac-fix-nb_samples-order-case.patch \
+           file://0001-h264-correct-ref-count-check-and-limit-fix-out-of-ar.patch \
+           file://0001-roqvideodec-check-dimensions-validity.patch \
+           file://0001-aacdec-check-channel-count.patch \
+           file://0001-pngdec-filter-dont-access-out-of-array-elements-at-t.patch \
+           file://0001-error_concealment-Check-that-the-picture-is-not-in-a.patch \
+           file://0001-vp3-fix-oob-read-for-negative-tokens-and-memleaks-on.patch \
+           file://0001-vp3-Copy-all-3-frames-for-thread-updates.patch \
+           file://0001-h264_sei-Fix-infinite-loop.patch \
+           file://0001-avcodec-parser-reset-indexes-on-realloc-failure.patch \
+           file://0001-avcodec-rpza-Perform-pointer-advance-and-checks-befo.patch \
+           file://gst-ffmpeg-CVE-2013-0855.patch \
+           file://0001-qdm2dec-fix-buffer-overflow.patch \
+           file://0001-huffyuvdec-check-width-more-completely-avoid-out-of-.patch \
+           file://0001-smackerdec-Check-that-the-last-indexes-are-within-th.patch \
+           file://0001-avcodec-dsputil-fix-signedness-in-sizeof-comparissio.patch \
+           file://0001-error-concealment-initialize-block-index.patch \
+           file://0001-qdm2-check-array-index-before-use-fix-out-of-array-a.patch \
+           file://0001-lavf-compute-probe-buffer-size-more-reliably.patch \
+           file://0001-ffserver-set-oformat.patch \
+           file://0001-h264-set-parameters-from-SPS-whenever-it-changes.patch \
+           file://0001-h264-skip-error-concealment-when-SPS-and-slices-are-.patch \
+           file://0001-avcodec-smc-fix-off-by-1-error.patch \
+           file://0002-avcodec-mjpegdec-check-bits-per-pixel-for-changes-si.patch \
+           ${@bb.utils.contains('PACKAGECONFIG', 'libav9', 'file://libav-9.patch', '', d)} \ 
 "
 
 SRC_URI[md5sum] = "7f5beacaf1312db2db30a026b36888c4"
@@ -49,6 +84,7 @@ EXTRA_OECONF = "${FFMPEG_EXTRA_CONFIGURE_COMMON}"
 PACKAGECONFIG ??= "external-libav"
 PACKAGECONFIG[external-libav] = "--with-system-ffmpeg,,libav"
 PACKAGECONFIG[orc] = "--enable-orc,--disable-orc,orc"
+PACKAGECONFIG[libav9] = ",,,"
 
 FILES_${PN} += "${libdir}/gstreamer-0.10/*.so"
 FILES_${PN}-dbg += "${libdir}/gstreamer-0.10/.debug"

@@ -1,4 +1,5 @@
 import unittest
+import re
 from oeqa.oetest import oeRuntimeTest, skipModule
 from oeqa.utils.decorators import *
 
@@ -9,51 +10,79 @@ def setUpModule():
             skipModule("systemd is not the init manager for this image")
 
 
-class SystemdBasicTest(oeRuntimeTest):
+class SystemdTest(oeRuntimeTest):
+
+    def systemctl(self, action = '', target = '', expected = 0, verbose = False):
+        command = 'systemctl %s %s' % (action, target)
+        status, output = self.target.run(command)
+        message = '\n'.join([command, output])
+        if status != expected and verbose:
+            message += self.target.run('systemctl status --full %s' % target)[1]
+        self.assertEqual(status, expected, message)
+        return output
+
+
+class SystemdBasicTests(SystemdTest):
 
     @skipUnlessPassed('test_ssh')
-    def test_systemd_version(self):
-        (status, output) = self.target.run('systemctl --version')
-        self.assertEqual(status, 0, msg="status and output: %s and %s" % (status,output))
+    def test_systemd_basic(self):
+        self.systemctl('--version')
 
-class SystemdTests(oeRuntimeTest):
-
-    @skipUnlessPassed('test_systemd_version')
-    def test_systemd_failed(self):
-        (status, output) = self.target.run('systemctl --failed | grep "0 loaded units listed"')
-        self.assertEqual(status, 0, msg="Failed systemd services: %s" % self.target.run('systemctl --failed')[1])
-
-    @skipUnlessPassed('test_systemd_version')
-    def test_systemd_service(self):
-        (status, output) = self.target.run('systemctl list-unit-files | grep "systemd-hostnamed.service"')
-        self.assertEqual(status, 0, msg="systemd-hostnamed.service service is not available.")
-
-    @skipUnlessPassed('test_systemd_service')
-    def test_systemd_stop(self):
-        self.target.run('systemctl stop systemd-hostnamed.service')
-        (status, output) = self.target.run('systemctl show systemd-hostnamed.service | grep "ActiveState" | grep "=inactive"')
-        self.assertEqual(status, 0, msg="systemd-hostnamed.service service could not be stopped.Status and output: %s and %s" % (status, output))
-
-    @skipUnlessPassed('test_systemd_stop')
-    @skipUnlessPassed('test_systemd_version')
-    def test_systemd_start(self):
-        self.target.run('systemctl start systemd-hostnamed.service')
-        (status, output) = self.target.run('systemctl show systemd-hostnamed.service | grep "ActiveState" | grep "=active"')
-        self.assertEqual(status, 0, msg="systemd-hostnamed.service service could not be started. Status and output: %s and %s" % (status, output))
-
-    @skipUnlessPassed('test_systemd_version')
-    def test_systemd_enable(self):
-        self.target.run('systemctl enable machineid.service')
-        (status, output) = self.target.run('systemctl is-enabled machineid.service')
-        self.assertEqual(output, 'enabled', msg="machineid.service service could not be enabled. Status and output: %s and %s" % (status, output))
-
-    @skipUnlessPassed('test_systemd_enable')
-    def test_systemd_disable(self):
-        self.target.run('systemctl disable machineid.service')
-        (status, output) = self.target.run('systemctl is-enabled machineid.service')
-        self.assertEqual(output, 'disabled', msg="machineid.service service could not be disabled. Status and output: %s and %s" % (status, output))
-
-    @skipUnlessPassed('test_systemd_version')
+    @testcase(551)
+    @skipUnlessPassed('test_system_basic')
     def test_systemd_list(self):
-        (status, output) = self.target.run('systemctl list-unit-files')
-        self.assertEqual(status, 0, msg="systemctl list-unit-files command failed. Status:  %s" % status)
+        self.systemctl('list-unit-files')
+
+    def settle(self):
+        """
+        Block until systemd has finished activating any units being activated,
+        or until two minutes has elapsed.
+
+        Returns a tuple, either (True, '') if all units have finished
+        activating, or (False, message string) if there are still units
+        activating (generally, failing units that restart).
+        """
+        import time
+        endtime = time.time() + (60 * 2)
+        while True:
+            status, output = self.target.run('systemctl --state=activating')
+            if "0 loaded units listed" in output:
+                return (True, '')
+            if time.time() >= endtime:
+                return (False, output)
+            time.sleep(10)
+
+    @testcase(550)
+    @skipUnlessPassed('test_systemd_basic')
+    def test_systemd_failed(self):
+        settled, output = self.settle()
+        self.assertTrue(settled, msg="Timed out waiting for systemd to settle:\n" + output)
+
+        output = self.systemctl('list-units', '--failed')
+        match = re.search("0 loaded units listed", output)
+        if not match:
+            output += self.systemctl('status --full --failed')
+        self.assertTrue(match, msg="Some systemd units failed:\n%s" % output)
+
+
+class SystemdServiceTests(SystemdTest):
+
+    @skipUnlessPassed('test_systemd_basic')
+    def test_systemd_status(self):
+        self.systemctl('status --full', 'avahi-daemon.service')
+
+    @testcase(695)
+    @skipUnlessPassed('test_systemd_status')
+    def test_systemd_stop_start(self):
+        self.systemctl('stop', 'avahi-daemon.service')
+        self.systemctl('is-active', 'avahi-daemon.service', expected=3, verbose=True)
+        self.systemctl('start','avahi-daemon.service')
+        self.systemctl('is-active', 'avahi-daemon.service', verbose=True)
+
+    @testcase(696)
+    @skipUnlessPassed('test_systemd_basic')
+    def test_systemd_disable_enable(self):
+        self.systemctl('disable', 'avahi-daemon.service')
+        self.systemctl('is-enabled', 'avahi-daemon.service', expected=1)
+        self.systemctl('enable', 'avahi-daemon.service')
+        self.systemctl('is-enabled', 'avahi-daemon.service')

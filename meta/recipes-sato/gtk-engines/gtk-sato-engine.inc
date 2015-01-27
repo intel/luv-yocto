@@ -1,6 +1,6 @@
-DESCRIPTION = "Sato theme engine for GTK"
+SUMMARY = "Sato theme engine for GTK+"
 HOMEPAGE = "http://www.o-hand.com"
-BUGTRACKER = "http://bugzilla.openedhand.com/"
+BUGTRACKER = "http://bugzilla.yoctoproject.org/"
 
 LICENSE = "LGPLv2.1 & LGPLv2+"
 
@@ -14,7 +14,7 @@ FILES_${PN}-dev = "${libdir}/gtk-2.0/*/engines/*.la"
 FILES_${PN}-dbg += " ${libdir}/gtk-2.0/*/engines/.debug"
 FILES_gtk-theme-sato = "${datadir}/icons ${datadir}/themes"
 
-inherit autotools  pkgconfig
+inherit autotools-brokensep pkgconfig
 
 do_configure_prepend() {
 	for i in `ls gtk-common`; do

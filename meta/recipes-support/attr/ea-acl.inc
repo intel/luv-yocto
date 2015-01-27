@@ -3,7 +3,7 @@
 SRC_URI += "file://relative-libdir.patch;striplevel=0 \
            "
 
-inherit autotools gettext
+inherit autotools-brokensep gettext
 
 # the package comes with a custom config.h.in, it cannot be
 # overwritten by autoheader
@@ -34,8 +34,8 @@ FILES_lib${BPN}-doc = "${mandir}/man2 \
 
 BBCLASSEXTEND = "native"
 # Only append ldflags for target recipe and if USE_NLS is enabled
-LDFLAGS_append_libc-uclibc = "${@['', ' -lintl '][(d.getVar('PN', True) == d.getVar('BPN', True)) and (d.getVar('USE_NLS', True) == 'yes')]}"
-EXTRA_OECONF_append_libc-uclibc = "${@['', ' --disable-gettext '][(d.getVar('PN', True) == d.getVar('BPN', True)) and (d.getVar('USE_NLS', True) == 'no')]}"
+LDFLAGS_append_libc-uclibc_class-target = "${@['', ' -lintl '][(d.getVar('USE_NLS', True) == 'yes')]}"
+EXTRA_OECONF_append_libc-uclibc_class-target = "${@['', ' --disable-gettext '][(d.getVar('USE_NLS', True) == 'no')]}"
 
 fix_symlink () {
 	if test "${libdir}" = "${base_libdir}" ; then

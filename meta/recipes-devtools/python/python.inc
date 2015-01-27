@@ -1,4 +1,4 @@
-DESCRIPTION = "The Python Programming Language"
+SUMMARY = "The Python Programming Language"
 HOMEPAGE = "http://www.python.org"
 LICENSE = "PSFv2"
 SECTION = "devel/python"
@@ -14,7 +14,7 @@ SRC_URI[sha256sum] = "726457e11cb153adc3f428aaf1901fc561a374c30e5e7da6742c0742a3
 
 PYTHON_MAJMIN = "2.7"
 
-inherit autotools
+inherit autotools-brokensep
 
 PYTHONLSBOPTS = "--with-wctype-functions"
 PYTHONLSBOPTS_linuxstdbase = "ac_cv_sizeof_off_t=8"
@@ -22,10 +22,10 @@ PYTHONLSBOPTS_linuxstdbase = "ac_cv_sizeof_off_t=8"
 EXTRA_OECONF = "\
   --with-threads \
   --with-pymalloc \
-  --with-cyclic-gc \
-  --without-cxx \
+  --without-cxx-main \
   --with-signal-module \
   --enable-shared \
-  --enable-ipv6=${@base_contains('DISTRO_FEATURES', 'ipv6', 'yes', 'no', d)} \
+  --enable-ipv6=${@bb.utils.contains('DISTRO_FEATURES', 'ipv6', 'yes', 'no', d)} \
+  ac_cv_header_bluetooth_bluetooth_h=no ac_cv_header_bluetooth_h=no \
   ${PYTHONLSBOPTS} \
 "

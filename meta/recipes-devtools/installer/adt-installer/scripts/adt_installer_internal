@@ -64,6 +64,23 @@ get_sudo_app()
   fi
 }
 
+# this function accepts arch_type (x86, x86_64, arm, ppc, mips) as the first
+# argument, returning the location of the target rootfs
+get_target_rootfs_location() {
+	[ -z "$1" ] && return
+
+	arch_type=$1
+	# rootfs extraction directory
+	target_sysroot_var="\$YOCTOADT_TARGET_SYSROOT_LOC_$arch_type"
+	target_sysroot=`eval echo $target_sysroot_var`
+
+	if [ "$target_sysroot" == "" ]; then
+		return
+	else
+		echo "`readlink -m $target_sysroot`"
+	fi
+}
+
 
 #let us install a qemu-native firstly
 #installation step 2
@@ -114,8 +131,8 @@ fi
 
 echo_info "Updating opkg..."
 $OPKG_CMD -f $OPKG_CONFIG_FILE -o $NATIVE_INSTALL_DIR update &>> $YOCTOADT_INSTALL_LOG_FILE
-echo_info "opkg update process ended..."
 check_result
+echo_info "opkg update process ended..."
 
 #install below must sdk-host packages
 OPKG_INSTALL_CMD="$OPKG_CMD "
@@ -134,9 +151,26 @@ for target_type in $YOCTOADT_TARGETS; do
   echo_info "Installing cross canadian packages for $machine ..."
   $OPKG_INSTALL_NATIVE_CMD packagegroup-cross-canadian-$machine &>> $YOCTOADT_INSTALL_LOG_FILE
   check_result
+
+  target_sysroot=`get_target_rootfs_location $target_type`
+  [ -z "$target_sysroot" ] && continue
+
+  # get the environment setup script paths: original (the one before relocation)
+  # and relocated
+  env_script_original=`$OPKG_CMD -f $OPKG_CONFIG_FILE -o $NATIVE_INSTALL_DIR files meta-environment-$machine|\
+							grep environment-setup`
+  env_script_relocated=$INSTALL_FOLDER/${env_script_original##*/}
+
+  # opkg will not install packagegroup-cross-canadian package if it was already
+  # installed. So, the environment script is in one place or the other.
+  [ -e "$INSTALL_FOLDER/$env_script_original" ] && env_script=$INSTALL_FOLDER/$env_script_original
+  [ -e "$env_script_original" ] && env_script=$env_script_original
+  [ -e "$env_script_relocated" ] && env_script=$env_script_relocated
+
+  $SUDO sed -i -e "s%SDKTARGETSYSROOT=.*%SDKTARGETSYSROOT=$target_sysroot%g" $env_script
 done
 
-if [ "$YOCTOADT_QEMU" == "Y" ] || [ "$YOCTOADT_QEMU" = "y" ]; then
+if [ "$YOCTOADT_QEMU" == "Y" ] || [ "$YOCTOADT_QEMU" == "y" ]; then
   echo_info "\nInstalling qemu native ..."
   $OPKG_INSTALL_NATIVE_CMD nativesdk-qemu &>> $YOCTOADT_INSTALL_LOG_FILE
   check_result
@@ -146,7 +180,7 @@ fi
 
 if [ "$YOCTOADT_NFS_UTIL" == "Y" ] || [ "$YOCTOADT_NFS_UTIL" == "y" ]; then
   echo_info "\nInstalling unfs ..."
-  $OPKG_INSTALL_NATIVE_CMD nativesdk-unfs-server &>> $YOCTOADT_INSTALL_LOG_FILE
+  $OPKG_INSTALL_NATIVE_CMD nativesdk-unfs3 &>> $YOCTOADT_INSTALL_LOG_FILE
   check_result
 fi
 
@@ -180,6 +214,8 @@ if [ -d $NATIVE_INSTALL_DIR/$DEFAULT_INSTALL_FOLDER ]; then
         # go to the next directory
         dir=$(dirname $dir)
     done
+    # Step 3: Rewrite the *.list files to contain the correct paths
+    $SUDO find $NATIVE_INSTALL_DIR/var/lib/opkg -type f -exec sed -i -e '#^$DEFAULT_INSTALL_FOLDER#$NATIVE_INSTALL_DIR#' {} \;
 fi
 
 # Link the ld.so.cache file into the hosts filesystem
@@ -232,15 +268,8 @@ echo_info "\nSuccessfully installed selected native ADT!"
 install_target()
 {
 
-# rootfs extraction directory
-target_sysroot_var="\$YOCTOADT_TARGET_SYSROOT_LOC_$1"
-target_sysroot=`eval echo $target_sysroot_var`
-
-if [ "$target_sysroot" == "" ]; then
-  return 0
-else
-  target_sysroot=`readlink -m $target_sysroot`
-fi
+target_sysroot=`get_target_rootfs_location $1`
+[ -z "$target_sysroot" ] && return 0
 
 target_sysroot_image_var="\$YOCTOADT_TARGET_SYSROOT_IMAGE_$1"
 target_sysroot_image=`eval echo $target_sysroot_image_var`
@@ -261,23 +290,6 @@ SUDO=$(get_sudo_app $target_sysroot)
 
 $SUDO scripts/extract_rootfs $sysroot_image_name $target_sysroot $OECORE_NATIVE_SYSROOT $user_inst_type
 check_result
-
-echo_info "Updating environment script with target sysroot location."
-if [ "$1" == "x86"  ]; then
-  env_filename=`ls $INSTALL_FOLDER/environment-setup-i586*`
-else
-  env_filename=`ls $INSTALL_FOLDER/environment-setup-$1*`
-fi
-
-if [ ! -z "$env_filename" ]; then
-  SUDO=$(get_sudo_app $INSTALL_FOLDER)
-  $SUDO sed -i -e "s%##SDKTARGETSYSROOT##%$target_sysroot%g" $env_filename
-else
-  echo_info "[ADT_INST] Error: Failed to find environment script for arch: $1"
-  return 1 
-fi
-
-
 }
 
 
@@ -292,7 +304,7 @@ user_inst_type=$1
 install_native_sdk $user_inst_type
 check_result
 
-for arch_type in $YOCTOADT_SUPPORTED_TARGETS; do
+for arch_type in $YOCTOADT_TARGETS; do
   install_target $arch_type
   check_result
 done

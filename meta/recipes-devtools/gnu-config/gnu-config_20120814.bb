@@ -8,10 +8,10 @@ DEPENDS_class-native = "perl-native-runtime"
 
 INHIBIT_DEFAULT_DEPS = "1"
 
-PR = "r0"
 
 SRC_URI = "http://downloads.yoctoproject.org/releases/gnu-config/gnu-config-${PV}.tar.bz2 \
 	   file://config-guess-uclibc.patch \
+	   file://musl-support.patch \
            file://gnu-configize.in"
 
 SRC_URI[md5sum] = "bcfca5a2bb39edad4aae5a65efc84094"

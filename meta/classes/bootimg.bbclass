@@ -18,7 +18,7 @@
 # an hdd)
 
 # External variables (also used by syslinux.bbclass)
-# ${INITRD} - indicates a filesystem image to use as an initrd (optional)
+# ${INITRD} - indicates a list of filesystem images to concatenate and use as an initrd (optional)
 # ${COMPRESSISO} - Transparent compress ISO, reduce size ~40% if set to 1
 # ${NOISO}  - skip building the ISO image if set to 1
 # ${NOHDD}  - skip building the HDD image if set to 1
@@ -42,17 +42,17 @@ COMPRESSISO ?= "0"
 BOOTIMG_VOLUME_ID   ?= "boot"
 BOOTIMG_EXTRA_SPACE ?= "512"
 
-EFI = "${@base_contains("MACHINE_FEATURES", "efi", "1", "0", d)}"
+EFI = "${@bb.utils.contains("MACHINE_FEATURES", "efi", "1", "0", d)}"
 EFI_PROVIDER ?= "grub-efi"
-EFI_CLASS = "${@base_contains("MACHINE_FEATURES", "efi", "${EFI_PROVIDER}", "", d)}"
+EFI_CLASS = "${@bb.utils.contains("MACHINE_FEATURES", "efi", "${EFI_PROVIDER}", "", d)}"
 
 # Include legacy boot if MACHINE_FEATURES includes "pcbios" or if it does not
 # contain "efi". This way legacy is supported by default if neither is
 # specified, maintaining the original behavior.
 def pcbios(d):
-    pcbios = base_contains("MACHINE_FEATURES", "pcbios", "1", "0", d)
+    pcbios = bb.utils.contains("MACHINE_FEATURES", "pcbios", "1", "0", d)
     if pcbios == "0":
-        pcbios = base_contains("MACHINE_FEATURES", "efi", "0", "1", d)
+        pcbios = bb.utils.contains("MACHINE_FEATURES", "efi", "0", "1", d)
     return pcbios
 
 PCBIOS = "${@pcbios(d)}"
@@ -67,9 +67,19 @@ populate() {
 
 	# Install bzImage, initrd, and rootfs.img in DEST for all loaders to use.
 	install -m 0644 ${STAGING_KERNEL_DIR}/bzImage ${DEST}/vmlinuz
-
-	if [ -n "${INITRD}" ] && [ -s "${INITRD}" ]; then
-		install -m 0644 ${INITRD} ${DEST}/initrd
+	
+	# initrd is made of concatenation of multiple filesystem images
+	if [ -n "${INITRD}" ]; then
+		rm -f ${DEST}/initrd
+		for fs in ${INITRD}
+		do
+			if [ -s "${fs}" ]; then
+				cat ${fs} >> ${DEST}/initrd
+			else
+				bbfatal "${fs} is invalid. initrd image creation failed."
+			fi
+		done
+		chmod 0644 ${DEST}/initrd
 	fi
 
 	if [ -n "${ROOTFS}" ] && [ -s "${ROOTFS}" ]; then
@@ -80,10 +90,19 @@ populate() {
 
 build_iso() {
 	# Only create an ISO if we have an INITRD and NOISO was not set
-	if [ -z "${INITRD}" ] || [ ! -s "${INITRD}" ] || [ "${NOISO}" = "1" ]; then
+	if [ -z "${INITRD}" ] || [ "${NOISO}" = "1" ]; then
 		bbnote "ISO image will not be created."
 		return
 	fi
+	# ${INITRD} is a list of multiple filesystem images
+	for fs in ${INITRD}
+	do
+		if [ ! -s "${fs}" ]; then
+			bbnote "ISO image will not be created. ${fs} is invalid."
+			return
+		fi
+	done
+
 
 	populate ${ISODIR}
 
@@ -240,5 +259,9 @@ python do_bootimg() {
     bb.build.exec_func('build_hddimg', d)
     bb.build.exec_func('build_iso', d)
 }
+
+IMAGE_TYPEDEP_iso = "ext3"
+IMAGE_TYPEDEP_hddimg = "ext3"
+IMAGE_TYPES_MASKED += "iso hddimg"
 
 addtask bootimg before do_build

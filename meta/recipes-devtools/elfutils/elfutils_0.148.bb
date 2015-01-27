@@ -1,4 +1,4 @@
-DESCRIPTION = "A collection of utilities and DSOs to handle compiled objects."
+SUMMARY = "Utilities and libraries for handling compiled object files"
 HOMEPAGE = "https://fedorahosted.org/elfutils"
 SECTION = "base"
 LICENSE = "(GPL-2+ & Elfutils-Exception)"
@@ -32,6 +32,7 @@ SRC_URI += "\
 	file://dso-link-change.patch \
 	file://nm-Fix-size-passed-to-snprintf-for-invalid-sh_name-case.patch \
 	file://elfutils-ar-c-fix-num-passed-to-memset.patch \
+	file://Fix_elf_cvt_gunhash.patch \
 "
 # Only apply when building uclibc based target recipe
 SRC_URI_append_libc-uclibc = " file://uclibc-support.patch"

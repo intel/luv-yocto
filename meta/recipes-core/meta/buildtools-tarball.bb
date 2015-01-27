@@ -2,46 +2,29 @@ DESCRIPTION = "SDK type target for building a standalone tarball containing pyth
                tarball can be used to run bitbake builds on systems which don't meet the usual version requirements."
 SUMMARY = "Standalone tarball for running builds on systems with inadequate software"
 LICENSE = "MIT"
-LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=3f40d7994397109285ec7b81fdeb3b58 \
+LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=4d92cd373abda3937c2bc47fbc49d690 \
                     file://${COREBASE}/meta/COPYING.MIT;md5=3da9cfbcb788c80a0384361b4de20420"
 
 TOOLCHAIN_TARGET_TASK ?= ""
 
 TOOLCHAIN_HOST_TASK ?= "\
     nativesdk-python-core \
-    nativesdk-python-textutils \
-    nativesdk-python-sqlite3 \
-    nativesdk-python-pickle \
-    nativesdk-python-logging \
-    nativesdk-python-elementtree \
-    nativesdk-python-curses \
-    nativesdk-python-compile \
-    nativesdk-python-compiler \
-    nativesdk-python-fcntl \
-    nativesdk-python-shell \
+    nativesdk-python-modules \
     nativesdk-python-misc \
-    nativesdk-python-multiprocessing \
-    nativesdk-python-subprocess \
-    nativesdk-python-xmlrpc \
-    nativesdk-python-netclient \
-    nativesdk-python-netserver \
-    nativesdk-python-distutils \
-    nativesdk-python-unixadmin \
-    nativesdk-python-compression \
-    nativesdk-python-json \
-    nativesdk-python-unittest \
-    nativesdk-python-mmap \
-    nativesdk-python-difflib \
-    nativesdk-python-pprint \
     nativesdk-python-git \
-    nativesdk-python-pkgutil \
     nativesdk-ncurses-terminfo-base \
     nativesdk-chrpath \
     nativesdk-tar \
+    nativesdk-buildtools-perl-dummy \
     nativesdk-git \
+    nativesdk-git-perltools \
     nativesdk-pigz \
     nativesdk-make \
+    nativesdk-wget \
+    nativesdk-ca-certificates \
     "
+
+SDK_PACKAGE_ARCHS =+ "buildtools-dummy-${SDKPKGSUFFIX}"
 
 TOOLCHAIN_OUTPUTNAME ?= "${SDK_NAME}-buildtools-nativesdk-standalone-${DISTRO_VERSION}"
 
@@ -67,4 +50,6 @@ create_sdk_files_append () {
 	# so instead of exporting the variable, we use a comment here.
 	echo '#OECORE_NATIVE_SYSROOT="${SDKPATHNATIVE}"' >> $script
 	toolchain_create_sdk_version ${SDK_OUTPUT}/${SDKPATH}/version-${SDK_SYS}
+
+	echo 'export GIT_SSL_CAINFO="${SDKPATHNATIVE}${sysconfdir}/ssl/certs/ca-certificates.crt"' >>$script
 }

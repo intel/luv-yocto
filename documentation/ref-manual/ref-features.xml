@@ -7,8 +7,8 @@
 
     <para>
         This chapter provides a reference of shipped machine and distro features
-        you can include as part of the image, a reference on image types you can
-        build, and a reference on feature backfilling.
+        you can include as part of your image, a reference on image features you can
+        select, and a reference on feature backfilling.
     </para>
 
     <para>
@@ -16,7 +16,10 @@
         should be included in the generated images.
         Distributions can select which features they want to support through the
         <filename><link linkend='var-DISTRO_FEATURES'>DISTRO_FEATURES</link></filename>
-        variable, which is set in the <filename>poky.conf</filename> distribution configuration file.
+        variable, which is set or appended to in a distribution's configuration file such as
+        <filename>poky.conf</filename>,
+        <filename>poky-tiny.conf</filename>,
+        <filename>poky-lsb.conf</filename> and so forth.
         Machine features are set in the
         <filename><link linkend='var-MACHINE_FEATURES'>MACHINE_FEATURES</link></filename>
         variable, which is set in the machine configuration file and
@@ -39,9 +42,73 @@
         changed based on a given feature:
         <literallayout class='monospaced'>
      $ cd poky
-     $ git grep 'contains.*MACHINE_FEATURES.*&lt;feature&gt;'
+     $ git grep 'contains.*MACHINE_FEATURES.*<replaceable>feature</replaceable>'
         </literallayout>
     </para>
+
+    <section id='ref-features-machine'>
+        <title>Machine Features</title>
+
+        <para>
+            The items below are features you can use with
+            <link linkend='var-MACHINE_FEATURES'><filename>MACHINE_FEATURES</filename></link>.
+            Features do not have a one-to-one correspondence to packages, and they can
+            go beyond simply controlling the installation of a package or packages.
+            Sometimes a feature can influence how certain recipes are built.
+            For example, a feature might determine whether a particular configure option
+            is specified within the
+            <link linkend='ref-tasks-configure'><filename>do_configure</filename></link>
+            task for a particular recipe.
+        </para>
+
+        <para>
+            This feature list only represents features as shipped with the Yocto Project metadata:
+            <itemizedlist>
+                <listitem><para><emphasis>acpi:</emphasis> Hardware has ACPI (x86/x86_64 only)
+                    </para></listitem>
+                <listitem><para><emphasis>alsa:</emphasis> Hardware has ALSA audio drivers
+                    </para></listitem>
+                <listitem><para><emphasis>apm:</emphasis> Hardware uses APM (or APM emulation)
+                    </para></listitem>
+                <listitem><para><emphasis>bluetooth:</emphasis> Hardware has integrated BT
+                    </para></listitem>
+                <listitem><para><emphasis>efi:</emphasis> Support for booting through EFI
+                    </para></listitem>
+                <listitem><para><emphasis>ext2:</emphasis> Hardware HDD or Microdrive
+                    </para></listitem>
+                <listitem><para><emphasis>irda:</emphasis> Hardware has IrDA support
+                    </para></listitem>
+                <listitem><para><emphasis>keyboard:</emphasis> Hardware has a keyboard
+                    </para></listitem>
+                <listitem><para><emphasis>pcbios:</emphasis> Support for booting through BIOS
+                    </para></listitem>
+                <listitem><para><emphasis>pci:</emphasis> Hardware has a PCI bus
+                    </para></listitem>
+                <listitem><para><emphasis>pcmcia:</emphasis> Hardware has PCMCIA or CompactFlash sockets
+                    </para></listitem>
+                <listitem><para><emphasis>phone:</emphasis> Mobile phone (voice) support
+                    </para></listitem>
+                <listitem><para><emphasis>qvga:</emphasis> Machine has a QVGA (320x240) display
+                    </para></listitem>
+                <listitem><para><emphasis>rtc:</emphasis> Machine has a Real-Time Clock
+                    </para></listitem>
+                <listitem><para><emphasis>screen:</emphasis> Hardware has a screen
+                    </para></listitem>
+                <listitem><para><emphasis>serial:</emphasis> Hardware has serial support (usually RS232)
+                    </para></listitem>
+                <listitem><para><emphasis>touchscreen:</emphasis> Hardware has a touchscreen
+                    </para></listitem>
+                <listitem><para><emphasis>usbgadget:</emphasis> Hardware is USB gadget device capable
+                    </para></listitem>
+                <listitem><para><emphasis>usbhost:</emphasis> Hardware is USB Host capable
+                    </para></listitem>
+                <listitem><para><emphasis>vfat:</emphasis> FAT file system support
+                    </para></listitem>
+                <listitem><para><emphasis>wifi:</emphasis> Hardware has integrated WiFi
+                    </para></listitem>
+            </itemizedlist>
+        </para>
+    </section>
 
     <section id='ref-features-distro'>
         <title>Distro Features</title>
@@ -54,8 +121,9 @@
             and they can go beyond simply controlling the installation of a
             package or packages.
             In most cases, the presence or absence of a feature translates to
-            the appropriate option supplied to the configure script during
-            <filename>do_configure</filename> for the recipes that optionally
+            the appropriate option supplied to the configure script during the
+            <link linkend='ref-tasks-configure'><filename>do_configure</filename></link>
+            task for the recipes that optionally
             support the feature.
         </para>
 
@@ -78,6 +146,9 @@
                     bluetooth support (integrated BT only).</para></listitem>
                 <listitem><para><emphasis>cramfs:</emphasis> Include CramFS
                     support.</para></listitem>
+                <listitem><para><emphasis>directfb:</emphasis>
+                    Include DirectFB support.
+                    </para></listitem>
                 <listitem><para><emphasis>ext2:</emphasis> Include tools for
                     supporting for devices with internal HDD/Microdrive for
                     storing files (instead of Flash only devices).
@@ -126,57 +197,8 @@
                     supports it.</para></listitem>
                 <listitem><para><emphasis>wifi:</emphasis> Include WiFi support
                     (integrated only).</para></listitem>
-            </itemizedlist>
-        </para>
-    </section>
-
-    <section id='ref-features-machine'>
-        <title>Machine Features</title>
-
-        <para>
-            The items below are features you can use with
-            <link linkend='var-MACHINE_FEATURES'><filename>MACHINE_FEATURES</filename></link>.
-            Features do not have a one-to-one correspondence to packages, and they can
-            go beyond simply controlling the installation of a package or packages.
-            Sometimes a feature can influence how certain recipes are built.
-            For example, a feature might determine whether a particular configure option
-            is specified within <filename>do_configure</filename> for a particular
-            recipe.
-        </para>
-
-        <para>
-            This feature list only represents features as shipped with the Yocto Project metadata:
-            <itemizedlist>
-                <listitem><para><emphasis>acpi:</emphasis> Hardware has ACPI (x86/x86_64 only)
-                    </para></listitem>
-                <listitem><para><emphasis>alsa:</emphasis> Hardware has ALSA audio drivers
-                    </para></listitem>
-                <listitem><para><emphasis>apm:</emphasis> Hardware uses APM (or APM emulation)
-                    </para></listitem>
-                <listitem><para><emphasis>bluetooth:</emphasis> Hardware has integrated BT
-                    </para></listitem>
-                <listitem><para><emphasis>ext2:</emphasis> Hardware HDD or Microdrive
-                    </para></listitem>
-                <listitem><para><emphasis>irda:</emphasis> Hardware has IrDA support
-                    </para></listitem>
-                <listitem><para><emphasis>keyboard:</emphasis> Hardware has a keyboard
-                    </para></listitem>
-                <listitem><para><emphasis>pci:</emphasis> Hardware has a PCI bus
-                    </para></listitem>
-                <listitem><para><emphasis>pcmcia:</emphasis> Hardware has PCMCIA or CompactFlash sockets
-                    </para></listitem>
-                <listitem><para><emphasis>screen:</emphasis> Hardware has a screen
-                    </para></listitem>
-                <listitem><para><emphasis>serial:</emphasis> Hardware has serial support (usually RS232)
-                    </para></listitem>
-                <listitem><para><emphasis>touchscreen:</emphasis> Hardware has a touchscreen
-                    </para></listitem>
-                <listitem><para><emphasis>usbgadget:</emphasis> Hardware is USB gadget device capable
-                    </para></listitem>
-                <listitem><para><emphasis>usbhost:</emphasis> Hardware is USB Host capable
-                    </para></listitem>
-                <listitem><para><emphasis>wifi:</emphasis> Hardware has integrated WiFi
-                    </para></listitem>
+                <listitem><para><emphasis>x11:</emphasis> Include the X server
+                    and libraries.</para></listitem>
             </itemizedlist>
         </para>
     </section>
@@ -185,51 +207,100 @@
         <title>Image Features</title>
 
         <para>
-            The contents of images generated by the OpenEmbedded build system can be controlled by the
-            <filename><link linkend='var-IMAGE_FEATURES'>IMAGE_FEATURES</link></filename>
-            and <filename><link linkend='var-EXTRA_IMAGE_FEATURES'>EXTRA_IMAGE_FEATURES</link></filename>
+            The contents of images generated by the OpenEmbedded build system
+            can be controlled by the
+            <link linkend='var-IMAGE_FEATURES'><filename>IMAGE_FEATURES</filename></link>
+            and
+            <link linkend='var-EXTRA_IMAGE_FEATURES'><filename>EXTRA_IMAGE_FEATURES</filename></link>
             variables that you typically configure in your image recipes.
             Through these variables, you can add several different
-            predefined packages such as development utilities or packages with debug
-            information needed to investigate application problems or profile applications.
+            predefined packages such as development utilities or packages with
+            debug information needed to investigate application problems or
+            profile applications.
         </para>
 
         <para>
-            Current list of
-            <filename>IMAGE_FEATURES</filename> contains the following:
+            The following image features are available for all images:
             <itemizedlist>
-                <listitem><para><emphasis>dbg-pkgs:</emphasis> Installs debug symbol packages for all packages
-                    installed in a given image.</para></listitem>
-                <listitem><para><emphasis>dev-pkgs:</emphasis> Installs development packages (headers and
-                    extra library links) for all packages installed in a given image.</para></listitem>
-                <listitem><para><emphasis>doc-pkgs:</emphasis> Installs documentation packages for all packages
-                    installed in a given image.</para></listitem>
-                <listitem><para><emphasis>nfs-server:</emphasis> Installs an NFS server.</para></listitem>
-                <listitem><para><emphasis>read-only-rootfs:</emphasis> Creates
-                    an image whose root filesystem is read-only.
+                <listitem><para><emphasis>dbg-pkgs:</emphasis>
+                    Installs debug symbol packages for all packages installed
+                    in a given image.
+                    </para></listitem>
+                <listitem><para><emphasis>debug-tweaks:</emphasis>
+                    Makes an image suitable for development (e.g.
+                    allows root logins without passwords).
+                    </para></listitem>
+                <listitem><para><emphasis>dev-pkgs:</emphasis>
+                    Installs development packages (headers and extra library
+                    links) for all packages installed in a given image.
+                    </para></listitem>
+                <listitem><para><emphasis>doc-pkgs:</emphasis> Installs
+                    documentation packages for all packages installed in a
+                    given image.
+                    </para></listitem>
+                <listitem><para><emphasis>package-management:</emphasis>
+                    Installs package management tools and preserves the package
+                    manager database.
+                    </para></listitem>
+                <listitem><para><emphasis>ptest-pkgs:</emphasis>
+                    Installs ptest packages for all ptest-enabled recipes.
+                    </para></listitem>
+                <listitem><para><emphasis>read-only-rootfs:</emphasis>
+                    Creates an image whose root filesystem is read-only.
                     See the
                     "<ulink url='&YOCTO_DOCS_DEV_URL;#creating-a-read-only-root-filesystem'>Creating a Read-Only Root Filesystem</ulink>"
                     section in the Yocto Project Development Manual for more
-                    information.</para></listitem>
-                <listitem><para><emphasis>splash:</emphasis> Enables showing a splash screen during boot.
-                    By default, this screen is provided by <filename>psplash</filename>, which does
-                    allow customization.
-                    If you prefer to use an alternative splash screen package, you can do so by
-                    setting the <filename>SPLASH</filename> variable
-                    to a different package name (or names) within the image recipe or at the distro
-                    configuration level.</para></listitem>
-                <listitem><para><emphasis>ssh-server-dropbear:</emphasis> Installs the Dropbear minimal
-                    SSH server.
+                    information.
                     </para></listitem>
-                <listitem><para><emphasis>ssh-server-openssh:</emphasis> Installs the OpenSSH SSH server,
-                    which is more full-featured than Dropbear.
-                    Note that if both the OpenSSH SSH server and the Dropbear minimal SSH server
-                    are present in <filename>IMAGE_FEATURES</filename>, then OpenSSH will take
-                    precedence and Dropbear will not be installed.</para></listitem>
-                <listitem><para><emphasis>staticdev-pkgs:</emphasis> Installs static development
-                    packages (i.e. static libraries containing <filename>*.a</filename> files) for all
-                    packages installed in a given image.</para></listitem>
-                <listitem><para><emphasis>tools-debug:</emphasis> Installs debugging tools such as
+                <listitem><para><emphasis>splash:</emphasis>
+                    Enables showing a splash screen during boot.
+                    By default, this screen is provided by
+                    <filename>psplash</filename>, which does allow
+                    customization.
+                    If you prefer to use an alternative splash screen package,
+                    you can do so by setting the <filename>SPLASH</filename>
+                    variable to a different package name (or names) within the
+                    image recipe or at the distro configuration level.
+                    </para></listitem>
+                <listitem><para><emphasis>staticdev-pkgs:</emphasis>
+                    Installs static development packages, which are
+                    static libraries (i.e. <filename>*.a</filename> files), for
+                    all packages installed in a given image.
+                    </para></listitem>
+            </itemizedlist>
+        </para>
+
+        <para>
+            Some image features are available only when you inherit the
+            <link linkend='ref-classes-core-image'><filename>core-image</filename></link>
+            class.
+            The current list of these valid features is as follows:
+            <itemizedlist>
+                <listitem><para><emphasis>eclipse-debug:</emphasis> Provides
+                    Eclipse remote debugging support.
+                    </para></listitem>
+                <listitem><para><emphasis>hwcodecs:</emphasis> Installs
+                    hardware acceleration codecs.
+                    </para></listitem>
+                <listitem><para><emphasis>nfs-server:</emphasis>
+                    Installs an NFS server.
+                    </para></listitem>
+                <listitem><para><emphasis>qt4-pkgs:</emphasis>
+                    Supports Qt4/X11 and demo applications.
+                    </para></listitem>
+                <listitem><para><emphasis>ssh-server-dropbear:</emphasis>
+                    Installs the Dropbear minimal SSH server.
+                    </para></listitem>
+                <listitem><para><emphasis>ssh-server-openssh:</emphasis>
+                    Installs the OpenSSH SSH server, which is more
+                    full-featured than Dropbear.
+                    Note that if both the OpenSSH SSH server and the Dropbear
+                    minimal SSH server are present in
+                    <filename>IMAGE_FEATURES</filename>, then OpenSSH will take
+                    precedence and Dropbear will not be installed.
+                    </para></listitem>
+                <listitem><para><emphasis>tools-debug:</emphasis>
+                    Installs debugging tools such as
                     <filename>strace</filename> and <filename>gdb</filename>.
                     For information on GDB, see the
                     "<ulink url='&YOCTO_DOCS_DEV_URL;#platdev-gdb-remotedebug'>Debugging With the GNU Project Debugger (GDB) Remotely</ulink>"
@@ -237,23 +308,33 @@
                     For information on tracing and profiling, see the
                     <ulink url='&YOCTO_DOCS_PROF_URL;'>Yocto Project Profiling and Tracing Manual</ulink>.
                     </para></listitem>
-                <listitem><para><emphasis>tools-profile:</emphasis> Installs profiling tools such as
-                    <filename>oprofile</filename>, <filename>exmap</filename>, and
-                    <filename>LTTng</filename>.
+                <listitem><para><emphasis>tools-profile:</emphasis>
+                    Installs profiling tools such as
+                    <filename>oprofile</filename>, <filename>exmap</filename>,
+                    and <filename>LTTng</filename>.
                     For general information on user-space tools, see the
                     "<ulink url='&YOCTO_DOCS_ADT_URL;#user-space-tools'>User-Space Tools</ulink>"
-                    section in the Yocto Project Application Developer's Guide.</para></listitem>
-                <listitem><para><emphasis>tools-sdk:</emphasis> Installs a full SDK that runs on the device.
+                    section in the Yocto Project Application Developer's
+                    Guide.
                     </para></listitem>
-                <listitem><para><emphasis>tools-testapps:</emphasis> Installs device testing tools (e.g.
-                    touchscreen debugging).</para></listitem>
-                <listitem><para><emphasis>x11:</emphasis> Installs the X server</para></listitem>
-                <listitem><para><emphasis>x11-base:</emphasis> Installs the X server with a
-                    minimal environment.</para></listitem>
-                <listitem><para><emphasis>x11-sato:</emphasis> Installs the OpenedHand Sato environment.
+                <listitem><para><emphasis>tools-sdk:</emphasis>
+                    Installs a full SDK that runs on the device.
+                    </para></listitem>
+                <listitem><para><emphasis>tools-testapps:</emphasis>
+                    Installs device testing tools (e.g. touchscreen debugging).
+                    </para></listitem>
+                <listitem><para><emphasis>x11:</emphasis>
+                    Installs the X server.
+                    </para></listitem>
+                <listitem><para><emphasis>x11-base:</emphasis>
+                    Installs the X server with a minimal environment.
+                    </para></listitem>
+                <listitem><para><emphasis>x11-sato:</emphasis>
+                    Installs the OpenedHand Sato environment.
                     </para></listitem>
             </itemizedlist>
         </para>
+
     </section>
 
     <section id='ref-features-backfill'>

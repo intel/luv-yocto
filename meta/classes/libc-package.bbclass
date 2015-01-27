@@ -36,10 +36,10 @@ python __anonymous () {
                 d.setVar("GLIBC_INTERNAL_USE_BINARY_LOCALE", "compile")
                 break
 
-    distro_features = (d.getVar('DISTRO_FEATURES', True) or '').split()
-
     # try to fix disable charsets/locales/locale-code compile fail
-    if 'libc-charsets' in distro_features and 'libc-locales' in distro_features and 'libc-locale-code' in distro_features:
+    if bb.utils.contains('DISTRO_FEATURES', 'libc-charsets', True, False, d) and \
+            bb.utils.contains('DISTRO_FEATURES', 'libc-locales', True, False, d) and \
+            bb.utils.contains('DISTRO_FEATURES', 'libc-locale-code', True, False, d):
         d.setVar('PACKAGE_NO_GCONV', '0')
     else:
         d.setVar('PACKAGE_NO_GCONV', '1')
@@ -268,6 +268,7 @@ python package_do_split_gconvs () {
             locale_arch_options = { \
                 "arm":     " --uint32-align=4 --little-endian ", \
                 "armeb":   " --uint32-align=4 --big-endian ",    \
+                "aarch64_be": " --uint32-align=4 --big-endian ",    \
                 "sh4":     " --uint32-align=4 --big-endian ",    \
                 "powerpc": " --uint32-align=4 --big-endian ",    \
                 "powerpc64": " --uint32-align=4 --big-endian ",  \

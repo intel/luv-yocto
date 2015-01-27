@@ -1,4 +1,4 @@
-DESCRIPTION = "neon is an HTTP and WebDAV client library, with a C interface."
+SUMMARY = "An HTTP and WebDAV client library with a C interface"
 HOMEPAGE = "http://www.webdav.org/neon/"
 SECTION = "libs"
 LICENSE = "LGPLv2+"
@@ -14,7 +14,9 @@ SRC_URI = "http://www.webdav.org/${BPN}/${BPN}-${PV}.tar.gz \
 SRC_URI[md5sum] = "fb60b3a124eeec441937a812c456fd94"
 SRC_URI[sha256sum] = "2962cfcb5d30f3272e3d2fa0e473434419770a3801afe3d46e5d1650787990c2"
 
-inherit autotools binconfig lib_package pkgconfig
+BINCONFIG = "${bindir}/neon-config"
+
+inherit autotools binconfig-disabled lib_package pkgconfig
 
 EXTRA_OECONF = "--with-ssl=gnutls --with-libxml2 --with-expat --enable-shared"
 EXTRA_OECONF += "--without-gssapi"

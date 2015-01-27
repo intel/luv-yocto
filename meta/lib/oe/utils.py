@@ -41,19 +41,6 @@ def version_less_or_equal(variable, checkvalue, truevalue, falsevalue, d):
     else:
         return falsevalue
 
-def contains(variable, checkvalues, truevalue, falsevalue, d):
-    val = d.getVar(variable, True)
-    if not val:
-        return falsevalue
-    val = set(val.split())
-    if isinstance(checkvalues, basestring):
-        checkvalues = set(checkvalues.split())
-    else:
-        checkvalues = set(checkvalues)
-    if checkvalues.issubset(val):
-        return truevalue
-    return falsevalue
-
 def both_contain(variable1, variable2, checkvalue, d):
     if d.getVar(variable1,1).find(checkvalue) != -1 and d.getVar(variable2,1).find(checkvalue) != -1:
         return checkvalue
@@ -61,7 +48,7 @@ def both_contain(variable1, variable2, checkvalue, d):
         return ""
 
 def prune_suffix(var, suffixes, d):
-    # See if var ends with any of the suffixes listed and 
+    # See if var ends with any of the suffixes listed and
     # remove it if found
     for suffix in suffixes:
         if var.endswith(suffix):
@@ -150,3 +137,46 @@ def trim_version(version, num_parts=2):
     parts = version.split(".")
     trimmed = ".".join(parts[:num_parts])
     return trimmed
+
+def cpu_count():
+    import multiprocessing
+    return multiprocessing.cpu_count()
+
+def execute_pre_post_process(d, cmds):
+    if cmds is None:
+        return
+
+    for cmd in cmds.strip().split(';'):
+        cmd = cmd.strip()
+        if cmd != '':
+            bb.note("Executing %s ..." % cmd)
+            bb.build.exec_func(cmd, d)
+
+def multiprocess_exec(commands, function):
+    import signal
+    import multiprocessing
+
+    if not commands:
+        return []
+
+    def init_worker():
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+    nproc = min(multiprocessing.cpu_count(), len(commands))
+    pool = bb.utils.multiprocessingpool(nproc, init_worker)
+    imap = pool.imap(function, commands)
+
+    try:
+        res = list(imap)
+        pool.close()
+        pool.join()
+        results = []
+        for result in res:
+            if result is not None:
+                results.append(result)
+        return results
+
+    except KeyboardInterrupt:
+        pool.terminate()
+        pool.join()
+        raise

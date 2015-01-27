@@ -87,10 +87,12 @@ do_install () {
 	oe_libinstall -a libwrap ${D}${libdir}
 	oe_libinstall -C shared -so libwrap ${D}${base_libdir}
 
-	rel_lib_prefix=`echo ${libdir} | sed 's,\(^/\|\)[^/][^/]*,..,g'`
-	libname=`readlink ${D}${base_libdir}/libwrap.so | xargs basename`
-	ln -s ${rel_lib_prefix}${base_libdir}/${libname} ${D}${libdir}/libwrap.so
-	rm -f ${D}${base_libdir}/libwrap.so
+	if [ "${libdir}" != "${base_libdir}" ] ; then
+		rel_lib_prefix=`echo ${libdir} | sed 's,\(^/\|\)[^/][^/]*,..,g'`
+		libname=`readlink ${D}${base_libdir}/libwrap.so | xargs basename`
+		ln -s ${rel_lib_prefix}${base_libdir}/${libname} ${D}${libdir}/libwrap.so
+		rm -f ${D}${base_libdir}/libwrap.so
+	fi
 
 	install -d ${D}${sbindir}
 	for b in ${BINS}; do
@@ -117,5 +119,10 @@ do_install () {
 
 	install -d ${D}${includedir}
 	install -m 0644 tcpd.h ${D}${includedir}/
+
+	install -d ${D}${sysconfdir}
+	touch ${D}${sysconfdir}/hosts.allow
+	touch ${D}${sysconfdir}/hosts.deny
 }
 
+FILES_${PN} += "${sysconfdir}/hosts.allow ${sysconfdir}/hosts.deny"

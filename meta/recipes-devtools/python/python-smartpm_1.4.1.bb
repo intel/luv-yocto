@@ -8,7 +8,7 @@ SECTION = "devel/python"
 LICENSE = "GPLv2"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=393a5ca445f6965873eca0259a17f833"
 
-DEPENDS = "python rpm gettext-native"
+DEPENDS = "python rpm gettext-native python-rpm"
 PR = "r9"
 SRCNAME = "smart"
 
@@ -32,7 +32,8 @@ SRC_URI = "\
           file://smart-config-ignore-all-recommends.patch \
           file://smart-attempt.patch \
           file://smart-filename-NAME_MAX.patch \
-          "
+          file://smart-rpm4-fixes.patch \
+         "
 
 SRC_URI[md5sum] = "573ef32ba177a6b3c4bf7ef04873fcb6"
 SRC_URI[sha256sum] = "b1d519ddb43d60f293b065c28870a5d9e8b591cd49e8c68caea48ace91085eba"
@@ -48,6 +49,10 @@ GTK_RDEP = "${PN}-interface-gtk"
 RPM_RDEP_class-native = ""
 QT_RDEP_class-native = ""
 GTK_RDEP_class-native = ""
+
+RPM_RDEP_class-nativesdk = ""
+QT_RDEP_class-nativesdk = ""
+GTK_RDEP_class-nativesdk = ""
 
 PACKAGECONFIG[rpm] = ",,rpm,${RPM_RDEP}"
 PACKAGECONFIG[qt4] = ",,qt4-x11,${QT_RDEP}"
@@ -81,16 +86,16 @@ do_install_append() {
    # Disable zypper channel support
    rm -f ${D}${libdir}/python*/site-packages/smart/plugins/zyppchannelsync.py*
 
-   if [ -z "${@base_contains('PACKAGECONFIG', 'rpm', 'rpm', '', d)}" ]; then
+   if [ -z "${@bb.utils.contains('PACKAGECONFIG', 'rpm', 'rpm', '', d)}" ]; then
       rm -f ${D}${libdir}/python*/site-packages/smart/plugins/rpmdir.py*
       rm -rf ${D}${libdir}/python*/site-packages/smart/backends/rpm
    fi
 
-   if [ -z "${@base_contains('PACKAGECONFIG', 'qt4', 'qt4', '', d)}" ]; then
+   if [ -z "${@bb.utils.contains('PACKAGECONFIG', 'qt4', 'qt4', '', d)}" ]; then
       rm -rf ${D}${libdir}/python*/site-packages/smart/interfaces/qt4
    fi
 
-   if [ -z "${@base_contains('PACKAGECONFIG', 'gtk+', 'gtk', '', d)}" ]; then
+   if [ -z "${@bb.utils.contains('PACKAGECONFIG', 'gtk+', 'gtk', '', d)}" ]; then
       rm -rf ${D}${libdir}/python*/site-packages/smart/interfaces/gtk
    fi
 }
@@ -111,9 +116,9 @@ do_install_append_class-nativesdk() {
 }
 
 PACKAGES = "${PN}-dev ${PN}-dbg ${PN}-doc smartpm \
-            ${@base_contains('PACKAGECONFIG', 'rpm', '${PN}-backend-rpm', '', d)} \
-            ${@base_contains('PACKAGECONFIG', 'qt4', '${PN}-interface-qt4', '', d)} \
-            ${@base_contains('PACKAGECONFIG', 'gtk', '${PN}-interface-gtk', '', d)} \
+            ${@bb.utils.contains('PACKAGECONFIG', 'rpm', '${PN}-backend-rpm', '', d)} \
+            ${@bb.utils.contains('PACKAGECONFIG', 'qt4', '${PN}-interface-qt4', '', d)} \
+            ${@bb.utils.contains('PACKAGECONFIG', 'gtk', '${PN}-interface-gtk', '', d)} \
             ${PN}-interface-images ${PN}"
 
 RDEPENDS_smartpm = "${PN}"
@@ -138,5 +143,5 @@ FILES_${PN}-interface-qt4 = "${libdir}/python*/site-packages/smart/interfaces/qt
 FILES_${PN}-interface-gtk = "${libdir}/python*/site-packages/smart/interfaces/gtk"
 FILES_${PN}-interface-images = "${datadir}/${baselib}/python*/site-packages/smart/interfaces/images"
 
-BBCLASSEXTEND = "native"
+BBCLASSEXTEND = "native nativesdk"
 

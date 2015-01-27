@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load projecttags %}
+{% load humanize %}
+{% block pagecontent %}
+<div class="row-fluid">
+				<div class="span6">
+				<div class="page-header">
+					<h1>Create a new project</h1>
+				</div>
+				<div class="container-fluid">
+		{% if alert %}
+			<div class="alert alert-error row-fluid" role="alert">{{alert}}</div>
+		{% endif %}
+				</div>
+					<form method="POST">{% csrf_token %}
+						<fieldset>
+							<label>Project name <span class="muted">(required)</span></label>
+							<input type="text" class="input-xlarge" required name="projectname" value="{{projectname}}">
+							<label class="project-form">
+								Project owner
+					<i class="icon-question-sign get-help" title="The go-to person for this project"></i>
+							</label>
+							<input type="text" name="username" value="{{username}}">
+							<label class="project-form">Owner's email</label>
+							<input type="email" class="input-large" name="email" value="{{email}}">
+							<label class="project-form">
+								Yocto Project version
+								<i class="icon-question-sign get-help" title="This sets the branch for the Yocto Project core layers (meta, meta-yocto and meta-yocto-bsp), and for the layers you use from the OpenEmbedded Metadata Index"></i>
+							</label>
+							<select name="projectversion" id="projectversion">
+	{% for release in releases %}
+		<option value="{{release.id}}"{%if projectversion == release.id %} selected{%endif%}>{{release.name}} ({{release.description}})</option>
+	{% endfor %}
+							</select>
+						</fieldset>
+
+						<div class="form-actions">
+							<input type="submit" class="btn btn-primary btn-large" value="Create project"/>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+{% endblock %}

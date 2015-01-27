@@ -1,4 +1,4 @@
-DESCRIPTION = "A simple tool to wait for a specific signal over DBus"
+SUMMARY = "A simple tool to wait for a specific signal over DBus"
 HOMEPAGE = "http://git.yoctoproject.org/cgit/cgit.cgi/dbus-wait"
 SECTION = "base"
 LICENSE = "GPLv2"
@@ -14,4 +14,4 @@ SRC_URI = "git://git.yoctoproject.org/${BPN}"
 
 S = "${WORKDIR}/git"
 
-inherit autotools
+inherit autotools pkgconfig

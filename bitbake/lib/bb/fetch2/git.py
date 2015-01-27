@@ -44,6 +44,11 @@ Supported SRC_URI options are:
    checkout code and tracking branch requirements.
    The default is "0", set bareclone=1 if needed.
 
+- nobranch
+   Don't check the SHA validation for branch. set this option for the recipe
+   referring to commit which is valid in tag instead of branch.
+   The default is "0", set nobranch=1 if needed.
+
 """
 
 #Copyright (C) 2005 Richard Purdie
@@ -73,7 +78,7 @@ class Git(FetchMethod):
     def init(self, d):
         pass
 
-    def supports(self, url, ud, d):
+    def supports(self, ud, d):
         """
         Check to see if a given url can be fetched with git.
         """
@@ -101,11 +106,14 @@ class Git(FetchMethod):
 
         ud.rebaseable = ud.parm.get("rebaseable","0") == "1"
 
+        ud.nobranch = ud.parm.get("nobranch","0") == "1"
+
         # bareclone implies nocheckout
         ud.bareclone = ud.parm.get("bareclone","0") == "1"
         if ud.bareclone:
             ud.nocheckout = 1
   
+        ud.unresolvedrev = {}
         branches = ud.parm.get("branch", "master").split(',')
         if len(branches) != len(ud.names):
             raise bb.fetch2.ParameterError("The number of name and branch parameters is not balanced", ud.url)
@@ -113,8 +121,9 @@ class Git(FetchMethod):
         for name in ud.names:
             branch = branches[ud.names.index(name)]
             ud.branches[name] = branch
+            ud.unresolvedrev[name] = branch
 
-        ud.basecmd = data.getVar("FETCHCMD_git", d, True) or "git"
+        ud.basecmd = data.getVar("FETCHCMD_git", d, True) or "git -c core.fsyncobjectfiles=0"
 
         ud.write_tarballs = ((data.getVar("BB_GENERATE_MIRROR_TARBALLS", d, True) or "0") != "0") or ud.rebaseable
 
@@ -124,8 +133,8 @@ class Git(FetchMethod):
             # Ensure anything that doesn't look like a sha256 checksum/revision is translated into one
             if not ud.revisions[name] or len(ud.revisions[name]) != 40  or (False in [c in "abcdef0123456789" for c in ud.revisions[name]]):
                 if ud.revisions[name]:
-                    ud.branches[name] = ud.revisions[name]
-                ud.revisions[name] = self.latest_revision(ud.url, ud, d, name)
+                    ud.unresolvedrev[name] = ud.revisions[name]
+                ud.revisions[name] = self.latest_revision(ud, d, name)
 
         gitsrcname = '%s%s' % (ud.host.replace(':','.'), ud.path.replace('/', '.').replace('*', '.'))
         # for rebaseable git repo, it is necessary to keep mirror tar ball
@@ -142,21 +151,21 @@ class Git(FetchMethod):
 
         ud.localfile = ud.clonedir
 
-    def localpath(self, url, ud, d):
+    def localpath(self, ud, d):
         return ud.clonedir
 
-    def need_update(self, u, ud, d):
+    def need_update(self, ud, d):
         if not os.path.exists(ud.clonedir):
             return True
         os.chdir(ud.clonedir)
         for name in ud.names:
-            if not self._contains_ref(ud.revisions[name], d):
+            if not self._contains_ref(ud, d, name):
                 return True
         if ud.write_tarballs and not os.path.exists(ud.fullmirror):
             return True
         return False
 
-    def try_premirror(self, u, ud, d):
+    def try_premirror(self, ud, d):
         # If we don't do this, updating an existing checkout with only premirrors
         # is not possible
         if d.getVar("BB_FETCH_PREMIRRORONLY", True) is not None:
@@ -165,7 +174,7 @@ class Git(FetchMethod):
             return False
         return True
 
-    def download(self, loc, ud, d):
+    def download(self, ud, d):
         """Fetch url"""
 
         if ud.user:
@@ -197,7 +206,7 @@ class Git(FetchMethod):
         # Update the checkout if needed
         needupdate = False
         for name in ud.names:
-            if not self._contains_ref(ud.revisions[name], d):
+            if not self._contains_ref(ud, d, name):
                 needupdate = True
         if needupdate:
             try: 
@@ -213,8 +222,12 @@ class Git(FetchMethod):
             runfetchcmd("%s prune-packed" % ud.basecmd, d)
             runfetchcmd("%s pack-redundant --all | xargs -r rm" % ud.basecmd, d)
             ud.repochanged = True
+        os.chdir(ud.clonedir)
+        for name in ud.names:
+            if not self._contains_ref(ud, d, name):
+                raise bb.fetch2.FetchError("Unable to find revision %s in branch %s even from upstream" % (ud.revisions[name], ud.branches[name]))
 
-    def build_mirror_data(self, url, ud, d):
+    def build_mirror_data(self, ud, d):
         # Generate a mirror tarball if needed
         if ud.write_tarballs and (ud.repochanged or not os.path.exists(ud.fullmirror)):
             # it's possible that this symlink points to read-only filesystem with PREMIRROR
@@ -262,7 +275,7 @@ class Git(FetchMethod):
             os.symlink(ud.clonedir, indirectiondir)
             clonedir = indirectiondir
 
-        runfetchcmd("git clone %s %s/ %s" % (cloneflags, clonedir, destdir), d)
+        runfetchcmd("%s clone %s %s/ %s" % (ud.basecmd, cloneflags, clonedir, destdir), d)
         if not ud.nocheckout:
             os.chdir(destdir)
             if subdir != "":
@@ -277,48 +290,67 @@ class Git(FetchMethod):
 
         bb.utils.remove(ud.localpath, True)
         bb.utils.remove(ud.fullmirror)
+        bb.utils.remove(ud.fullmirror + ".done")
 
     def supports_srcrev(self):
         return True
 
-    def _contains_ref(self, tag, d):
-        basecmd = data.getVar("FETCHCMD_git", d, True) or "git"
-        cmd = "%s log --pretty=oneline -n 1 %s -- 2> /dev/null | wc -l" % (basecmd, tag)
-        output = runfetchcmd(cmd, d, quiet=True)
+    def _contains_ref(self, ud, d, name):
+        cmd = ""
+        if ud.nobranch:
+            cmd = "%s log --pretty=oneline -n 1 %s -- 2> /dev/null | wc -l" % (
+                ud.basecmd, ud.revisions[name])
+        else:
+            cmd =  "%s branch --contains %s --list %s 2> /dev/null | wc -l" % (
+                ud.basecmd, ud.revisions[name], ud.branches[name])
+        try:
+            output = runfetchcmd(cmd, d, quiet=True)
+        except bb.fetch2.FetchError:
+            return False
         if len(output.split()) > 1:
             raise bb.fetch2.FetchError("The command '%s' gave output with more then 1 line unexpectedly, output: '%s'" % (cmd, output))
         return output.split()[0] != "0"
 
-    def _revision_key(self, url, ud, d, name):
+    def _revision_key(self, ud, d, name):
         """
         Return a unique key for the url
         """
-        return "git:" + ud.host + ud.path.replace('/', '.') + ud.branches[name]
+        return "git:" + ud.host + ud.path.replace('/', '.') + ud.unresolvedrev[name]
 
-    def _latest_revision(self, url, ud, d, name):
+    def _lsremote(self, ud, d, search):
         """
-        Compute the HEAD revision for the url
+        Run git ls-remote with the specified search string
         """
         if ud.user:
             username = ud.user + '@'
         else:
             username = ""
 
-        basecmd = data.getVar("FETCHCMD_git", d, True) or "git"
         cmd = "%s ls-remote %s://%s%s%s %s" % \
-              (basecmd, ud.proto, username, ud.host, ud.path, ud.branches[name])
+              (ud.basecmd, ud.proto, username, ud.host, ud.path, search)
         if ud.proto.lower() != 'file':
             bb.fetch2.check_network_access(d, cmd)
         output = runfetchcmd(cmd, d, True)
         if not output:
-            raise bb.fetch2.FetchError("The command %s gave empty output unexpectedly" % cmd, url)
+            raise bb.fetch2.FetchError("The command %s gave empty output unexpectedly" % cmd, ud.url)
+        return output
+
+    def _latest_revision(self, ud, d, name):
+        """
+        Compute the HEAD revision for the url
+        """
+        if ud.unresolvedrev[name][:5] == "refs/":
+            search = "%s %s^{}" % (ud.unresolvedrev[name], ud.unresolvedrev[name])
+        else:
+            search = "refs/heads/%s refs/tags/%s^{}" % (ud.unresolvedrev[name], ud.unresolvedrev[name])
+        output = self._lsremote(ud, d, search)
         return output.split()[0]
 
-    def _build_revision(self, url, ud, d, name):
+    def _build_revision(self, ud, d, name):
         return ud.revisions[name]
 
-    def checkstatus(self, uri, ud, d):
-        fetchcmd = "%s ls-remote %s" % (ud.basecmd, uri)
+    def checkstatus(self, ud, d):
+        fetchcmd = "%s ls-remote %s" % (ud.basecmd, ud.url)
         try:
             runfetchcmd(fetchcmd, d, quiet=True)
             return True

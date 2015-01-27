@@ -9,6 +9,8 @@ class ClassExtender(object):
             return name
         if name.startswith("rtld"):
             return name
+        if name.endswith("-crosssdk"):
+            return name
         if name.endswith("-" + self.extname):
             name = name.replace("-" + self.extname, "")
         if name.startswith("virtual/"):
@@ -52,23 +54,35 @@ class ClassExtender(object):
         return newdata
 
     def map_depends(self, dep):
-        if dep.endswith(("-native", "-native-runtime", "-crosssdk")) or ('nativesdk-' in dep) or ('cross-canadian' in dep):
+        if dep.endswith(("-native", "-native-runtime")) or ('nativesdk-' in dep) or ('cross-canadian' in dep) or ('-crosssdk-' in dep):
             return dep
         else:
+            # Do not extend for that already have multilib prefix
+            var = self.d.getVar("MULTILIB_VARIANTS", True)
+            if var:
+                var = var.split()
+                for v in var:
+                    if dep.startswith(v):
+                        return dep
             return self.extend_name(dep)
 
     def map_depends_variable(self, varname, suffix = ""):
+        # We need to preserve EXTENDPKGV so it can be expanded correctly later
         if suffix:
             varname = varname + "_" + suffix
+        orig = self.d.getVar("EXTENDPKGV", False)
+        self.d.setVar("EXTENDPKGV", "EXTENDPKGV")
         deps = self.d.getVar(varname, True)
         if not deps:
+            self.d.setVar("EXTENDPKGV", orig)
             return
         deps = bb.utils.explode_dep_versions2(deps)
         newdeps = {}
         for dep in deps:
             newdeps[self.map_depends(dep)] = deps[dep]
 
-        self.d.setVar(varname, bb.utils.join_deps(newdeps, False))
+        self.d.setVar(varname, bb.utils.join_deps(newdeps, False).replace("EXTENDPKGV", "${EXTENDPKGV}"))
+        self.d.setVar("EXTENDPKGV", orig)
 
     def map_packagevars(self):
         for pkg in (self.d.getVar("PACKAGES", True).split() + [""]):
@@ -96,9 +110,9 @@ class ClassExtender(object):
 
 class NativesdkClassExtender(ClassExtender):
     def map_depends(self, dep):
-        if dep.endswith(("-native", "-native-runtime", "-cross", "-crosssdk")) or ('nativesdk-' in dep):
-            return dep
-        elif dep.endswith(("-gcc-intermediate", "-gcc-initial", "-gcc", "-g++")):
+        if dep.endswith(("-gcc-initial", "-gcc", "-g++")):
             return dep + "-crosssdk"
+        elif dep.endswith(("-native", "-native-runtime")) or ('nativesdk-' in dep) or ('-cross-' in dep) or ('-crosssdk-' in dep):
+            return dep
         else:
             return self.extend_name(dep)

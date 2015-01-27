@@ -1,4 +1,4 @@
-DESCRIPTION = "utilities for access control list"
+SUMMARY = "Utilities for managing POSIX Access Control Lists"
 HOMEPAGE = "http://savannah.nongnu.org/projects/acl/"
 SECTION = "libs"
 
@@ -9,7 +9,10 @@ LIC_FILES_CHKSUM = "file://doc/COPYING;md5=c781d70ed2b4d48995b790403217a249 \
                     file://doc/COPYING.LGPL;md5=9e9a206917f8af112da634ce3ab41764"
 
 DEPENDS = "attr"
-SRC_URI = "http://download.savannah.gnu.org/releases/acl/${BP}.src.tar.gz"
+SRC_URI = "${SAVANNAH_GNU_MIRROR}/acl/${BP}.src.tar.gz \
+           file://run-ptest \
+           file://acl-fix-the-order-of-expected-output-of-getfacl.patch \
+"
 
 require ea-acl.inc
 
@@ -24,3 +27,13 @@ do_install_append() {
 	sed -i ${D}${libdir}/libacl.la -e \
 	    s,^libdir=\'${base_libdir}\'$,libdir=\'${libdir}\',
 }
+
+inherit ptest
+
+do_install_ptest() {
+	tar -cf - test/ --exclude nfs | ( cd ${D}${PTEST_PATH} && tar -xf - )
+	mkdir ${D}${PTEST_PATH}/include
+	cp ${S}/include/builddefs ${S}/include/buildmacros ${S}/include/buildrules ${D}${PTEST_PATH}/include/
+}
+
+RDEPENDS_${PN}-ptest = "bash coreutils perl perl-module-filehandle perl-module-getopt-std perl-module-posix shadow"

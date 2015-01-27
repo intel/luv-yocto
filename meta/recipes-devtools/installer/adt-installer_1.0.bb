@@ -21,23 +21,24 @@
 # THE SOFTWARE.
 
 
-DESCRIPTION = "Meta package for creating sdk installer tarball"
-LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=3f40d7994397109285ec7b81fdeb3b58 \
+SUMMARY = "Application Development Toolkit"
+DESCRIPTION = "Creates the Application Development Toolkit (ADT) installer tarball"
+HOMEPAGE = "http://www.yoctoproject.org/tools-resources/projects/application-development-toolkit-adt"
+LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=4d92cd373abda3937c2bc47fbc49d690 \
                     file://${COREBASE}/meta/COPYING.MIT;md5=3da9cfbcb788c80a0384361b4de20420"
 LICENSE = "MIT"
 
 PACKAGES = ""
+INHIBIT_DEFAULT_DEPS = "1"
 
 PR = "r11"
 
 ADT_DEPLOY = "${TMPDIR}/deploy/sdk/"
 ADT_DIR = "${WORKDIR}/adt-installer/"
-YOCTOADT_VERSION = "${SDK_VERSION}"
-S = "${WORKDIR}/trunk"
+S = "${WORKDIR}/opkg-${PV}"
 
-SRCREV = "596"
-PV = "0.1.8+svnr${SRCPV}"
-SRC_URI = "svn://opkg.googlecode.com/svn;module=trunk;protocol=http \
+PV = "0.2.0"
+SRC_URI = "https://opkg.googlecode.com/files/opkg-${PV}.tar.gz \
            file://wget_cache.patch \
            file://adt_installer \
            file://scripts/adt_installer_internal \
@@ -49,7 +50,13 @@ SRC_URI = "svn://opkg.googlecode.com/svn;module=trunk;protocol=http \
            file://opkg/conf/opkg-sdk-i686.conf \
 	  "
 
+SRC_URI[md5sum] = "e8a6fd34fb2529191fe09dc14c934cc3"
+SRC_URI[sha256sum] = "81b7055eb4c12c5e5652339305c9236cf357890717d4bea063963f3f434d966f"
+
 ADTREPO ?= "http://adtrepo.yoctoproject.org/${SDK_VERSION}"
+
+# This recipe makes no sense as a multilib
+MULTILIBS = ""
 
 do_populate_adt[umask] = "022"
 
@@ -61,13 +68,12 @@ fakeroot do_populate_adt () {
 	mkdir -p ${ADT_DIR}/opkg/build
 	cp -r opkg ${ADT_DIR}/
 	sed -i -e 's#ADTREPO_URL#${ADTREPO}#' ${ADT_DIR}/opkg/conf/*.conf
-	cp -r trunk ${ADT_DIR}/opkg/build/
-	mv ${ADT_DIR}/opkg/build/trunk ${ADT_DIR}/opkg/build/opkg-svn
+	cp -r opkg-${PV} ${ADT_DIR}/opkg/build/
+	mv ${ADT_DIR}/opkg/build/opkg-${PV} ${ADT_DIR}/opkg/build/opkg-svn
 	rm -rf ${ADT_DIR}/opkg/build/opkg-svn/patches ${ADT_DIR}/opkg/build/opkg-svn/.pc
 	cp -r scripts ${ADT_DIR}/
 	cp adt_installer ${ADT_DIR}
 	cp adt_installer.conf ${ADT_DIR}
-	sed -i -e 's#YOCTOADT_VERSION#${SDK_VERSION}#' ${ADT_DIR}/adt_installer.conf
 	sed -i -e 's#ADTREPO#${ADTREPO}#' ${ADT_DIR}/adt_installer.conf
 	echo 'SDK_VENDOR=${SDK_VENDOR}' >> ${ADT_DIR}/scripts/data_define
 	echo 'DEFAULT_INSTALL_FOLDER=${SDKPATH}' >> ${ADT_DIR}/scripts/data_define
@@ -81,7 +87,6 @@ do_configure[noexec] = "1"
 do_compile[noexec] = "1"
 do_package[noexec] = "1"
 do_packagedata[noexec] = "1"
-do_package_write[noexec] = "1"
 do_package_write_ipk[noexec] = "1"
 do_package_write_rpm[noexec] = "1"
 do_package_write_deb[noexec] = "1"

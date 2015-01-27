@@ -381,13 +381,13 @@
                 build/tmp/deploy/rpm/* on the host system. Find the
                 busybox-dbg-...rpm file and copy it to the target. For example:
                 <literallayout class='monospaced'>
-     [trz@empanada core2]$ scp /home/trz/yocto/crownbay-tracing-dbg/build/tmp/deploy/rpm/core2/busybox-dbg-1.20.2-r2.core2.rpm root@192.168.1.31:
+     [trz@empanada core2]$ scp /home/trz/yocto/crownbay-tracing-dbg/build/tmp/deploy/rpm/core2_32/busybox-dbg-1.20.2-r2.core2_32.rpm root@192.168.1.31:
      root@192.168.1.31's password:
-     busybox-dbg-1.20.2-r2.core2.rpm                     100% 1826KB   1.8MB/s   00:01
+     busybox-dbg-1.20.2-r2.core2_32.rpm                     100% 1826KB   1.8MB/s   00:01
                 </literallayout>
                 Now install the debug rpm on the target:
                 <literallayout class='monospaced'>
-     root@crownbay:~# rpm -i busybox-dbg-1.20.2-r2.core2.rpm
+     root@crownbay:~# rpm -i busybox-dbg-1.20.2-r2.core2_32.rpm
                 </literallayout>
                 Now that the debuginfo is installed, we see that the busybox
                 entries now display their functions symbolically:
@@ -842,7 +842,7 @@
                 idea.  One of the first projects to do this was IBM's DProbes
                 dpcc compiler, an ANSI C compiler which targeted a low-level
                 assembly language running on an in-kernel interpreter on the
-                target system.  This is exactly analagous to what Sun's DTrace
+                target system.  This is exactly analogous to what Sun's DTrace
                 did, except that DTrace invented its own language for the purpose.
                 Systemtap, heavily inspired by DTrace, also created its own
                 one-off language, but rather than running the product on an
@@ -1275,7 +1275,7 @@
             </para>
 
             <informalexample>
-                <emphasis>Tying it Together:</emphasis> The trace events subsystem accomodate static
+                <emphasis>Tying it Together:</emphasis> The trace events subsystem accommodate static
                 and dynamic tracepoints in exactly the same way - there's no
                 difference as far as the infrastructure is concerned.  See the
                 ftrace section for more details on the trace event subsystem.
@@ -2169,15 +2169,14 @@
 
      ### Shell environment set up for builds. ###
 
-     You can now run 'bitbake &lt;target&gt;'
+     You can now run 'bitbake <replaceable>target</replaceable>'
 
      Common targets are:
-        core-image-minimal
-        core-image-sato
-        meta-toolchain
-        meta-toolchain-sdk
-        adt-installer
-        meta-ide-support
+         core-image-minimal
+         core-image-sato
+         meta-toolchain
+         adt-installer
+         meta-ide-support
 
      You can also run generated qemu images with a command like 'runqemu qemux86'
             </literallayout>
@@ -3025,7 +3024,7 @@
                 First cd into the build directory that contains the hello
                 executable:
                 <literallayout class='monospaced'>
-     $ cd build/tmp/work/core2-poky-linux/lttng-ust/2.0.5-r0/git/tests/hello/.libs
+     $ cd build/tmp/work/core2_32-poky-linux/lttng-ust/2.0.5-r0/git/tests/hello/.libs
                 </literallayout>
                 Copy that over to the target machine:
                 <literallayout class='monospaced'>
@@ -3258,15 +3257,25 @@
         <title>Documentation</title>
 
         <para>
-            There doesn't seem to be any current documentation covering
-            LTTng 2.0, but maybe that's because the project is in transition.
-            The LTTng 2.0 website, however, is here:
-            <ulink url='http://lttng.org/lttng2.0'>LTTng Project</ulink>
+            You can find the primary LTTng Documentation on the
+            <ulink url='https://lttng.org/docs/'>LTTng Documentation</ulink>
+            site.
+            The documentation on this site is appropriate for intermediate to
+            advanced software developers who are working in a Linux environment
+            and are interested in efficient software tracing.
         </para>
 
         <para>
-            You can access extensive help information on how to use the
-            LTTng plug-in to search and analyze captured traces via the
+            For information on LTTng in general, visit the
+            <ulink url='http://lttng.org/lttng2.0'>LTTng Project</ulink>
+            site.
+            You can find a "Getting Started" link on this site that takes
+            you to an LTTng Quick Start.
+        </para>
+
+        <para>
+            Finally, you can access extensive help information on how to use
+            the LTTng plug-in to search and analyze captured traces via the
             Eclipse help system:
             <literallayout class='monospaced'>
      Help | Help Contents | LTTng Plug-in User Guide

@@ -10,7 +10,7 @@ SRCREV="dc4ad1532e59fd1a185d6b90d1c2a92cf8713f40"
 
 S = "${WORKDIR}/git"
 
-DEPENDS="util-linux-native iasl-native"
+DEPENDS_class-native="util-linux-native iasl-native"
 
 # OVMF has trouble building with the default optimization of -O2.
 BUILD_OPTIMIZATION="-pipe"
@@ -57,3 +57,5 @@ do_install() {
     install -m 0755 ${build_dir}/FV/OVMF.fd \
 	${D}${datadir}/ovmf/bios.bin
 }
+
+BBCLASSEXTEND = "native"

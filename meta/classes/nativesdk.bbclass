@@ -4,9 +4,11 @@ EXCLUDE_FROM_WORLD = "1"
 
 STAGING_BINDIR_TOOLCHAIN = "${STAGING_DIR_NATIVE}${bindir_native}/${SDK_ARCH}${SDK_VENDOR}-${SDK_OS}"
 
-# we dont want libc-uclibc or libc-glibc to kick in for nativesdk recipes
-LIBCOVERRIDE = ""
+# libc for the SDK can be different to that of the target
+NATIVESDKLIBC ?= "libc-glibc"
+LIBCOVERRIDE = ":${NATIVESDKLIBC}"
 CLASSOVERRIDE = "class-nativesdk"
+MACHINEOVERRIDES = ""
 
 #
 # Update PACKAGE_ARCH and PACKAGE_ARCHS
@@ -41,7 +43,7 @@ TARGET_CC_ARCH = "${SDK_CC_ARCH}"
 TARGET_LD_ARCH = "${SDK_LD_ARCH}"
 TARGET_AS_ARCH = "${SDK_AS_ARCH}"
 TARGET_FPU = ""
-EXTRA_OECONF_FPU = ""
+EXTRA_OECONF_GCC_FLOAT = ""
 
 CPPFLAGS = "${BUILDSDK_CPPFLAGS}"
 CFLAGS = "${BUILDSDK_CFLAGS}"
@@ -81,6 +83,7 @@ python () {
     clsextend.map_depends_variable("DEPENDS")
     clsextend.map_packagevars()
     clsextend.map_variable("PROVIDES")
+    clsextend.map_regexp_variable("PACKAGES_DYNAMIC")
 }
 
 addhandler nativesdk_virtclass_handler

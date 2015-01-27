@@ -211,28 +211,26 @@ class SimpleSettingsDialog (CrumbsDialog, SettingsUIHelper):
 
     def response_cb(self, dialog, response_id):
         if response_id == gtk.RESPONSE_YES:
-            # Check that all proxy entries have a corresponding port
-            for proxy, port in zip(self.all_proxy_addresses, self.all_proxy_ports):
-                if proxy.get_text() and not port.get_text():
-                    lbl = "<b>Enter all port numbers</b>\n\n"
-                    msg = "Proxy servers require a port number. Please make sure you have entered a port number for each proxy server."
-                    dialog = CrumbsMessageDialog(self, lbl, gtk.STOCK_DIALOG_WARNING, msg)
-                    button = dialog.add_button("Close", gtk.RESPONSE_OK)
-                    HobButton.style_button(button)
-                    response = dialog.run()
-                    dialog.destroy()
-                    self.emit_stop_by_name("response")
-                    return
+            if self.proxy_checkbox.get_active():
+                # Check that all proxy entries have a corresponding port
+                for proxy, port in zip(self.all_proxy_addresses, self.all_proxy_ports):
+                    if proxy.get_text() and not port.get_text():
+                        lbl = "<b>Enter all port numbers</b>"
+                        msg = "Proxy servers require a port number. Please make sure you have entered a port number for each proxy server."
+                        dialog = CrumbsMessageDialog(self, lbl, gtk.MESSAGE_WARNING, msg)
+                        button = dialog.add_button("Close", gtk.RESPONSE_OK)
+                        HobButton.style_button(button)
+                        response = dialog.run()
+                        dialog.destroy()
+                        self.emit_stop_by_name("response")
+                        return
 
         self.configuration.dldir = self.dldir_text.get_text()
         self.configuration.sstatedir = self.sstatedir_text.get_text()
         self.configuration.sstatemirror = ""
         for mirror in self.sstatemirrors_list:
             if mirror[1] != "" and mirror[2].startswith("file://"):
-                if mirror[1].endswith("\\1"):
-                    smirror = mirror[2] + " " + mirror[1] + " \\n "
-                else:
-                    smirror = mirror[2] + " " + mirror[1] + "\\1 \\n "
+                smirror = mirror[2] + " " + mirror[1] + " \\n "
                 self.configuration.sstatemirror += smirror
         self.configuration.bbthread = self.bb_spinner.get_value_as_int()
         self.configuration.pmake = self.pmake_spinner.get_value_as_int()

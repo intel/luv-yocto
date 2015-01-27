@@ -114,7 +114,7 @@ NFSRUNNING="false"
 ORIG_STTY=$(stty -g)
 
 if [ "$SLIRP_ENABLED" = "yes" ]; then
-    KERNEL_NETWORK_CMD=""
+    KERNEL_NETWORK_CMD="ip=dhcp"
     QEMU_TAP_CMD=""
     QEMU_UI_OPTIONS="-show-cursor -usb -usbdevice wacom-tablet"
     if [ "$KVM_ACTIVE" = "yes" ]; then
@@ -178,6 +178,10 @@ else
         USE_PRECONF_TAP="no"
         for tap in $POSSIBLE; do
             LOCKFILE="$LOCKDIR/$tap"
+            if [ -e "$LOCKFILE.skip" ]; then
+                echo "Found $LOCKFILE.skip, skipping $tap"
+                continue
+            fi
             echo "Acquiring lockfile for $tap..."
             acquire_lock $LOCKFILE
             if [ $? -eq 0 ]; then
@@ -214,7 +218,7 @@ else
             fi 
         else
             echo "Using preconfigured tap device '$TAP'"
-            echo "If this is not intended, use flock on $LOCKFILE.lock to make runqemu skip $TAP."
+            echo "If this is not intended, touch $LOCKFILE.skip to make runqemu skip $TAP."
         fi
 
         cleanup() {
@@ -301,14 +305,23 @@ if [ "$FSTYPE" != "nfs" -a "$FSTYPE" != "vmdk" -a ! -f "$ROOTFS" ]; then
     return 1
 fi
 
-if [ "$FSTYPE" = "nfs" ]; then
+if [ "$NFS_SERVER" = "" ]; then
     NFS_SERVER="192.168.7.1"
+    if [ "$SLIRP_ENABLED" = "yes" ]; then
+	NFS_SERVER="10.0.2.2"
+    fi
+fi
+
+if [ "$FSTYPE" = "nfs" ]; then
     NFS_DIR=`echo $ROOTFS | sed 's/^[^:]*:\(.*\)/\1/'`
+    if [ "$NFS_INSTANCE" = "" ] ; then
+	NFS_INSTANCE=0
+    fi
     MOUNTD_RPCPORT=$[ 21111 + $NFS_INSTANCE ]
     NFSD_RPCPORT=$[ 11111 + $NFS_INSTANCE ]
     NFSD_PORT=$[ 3049 + 2 * $NFS_INSTANCE ]
     MOUNTD_PORT=$[ 3048 + 2 * $NFS_INSTANCE ]
-    UNFS_OPTS="nfsvers=2,mountprog=$MOUNTD_RPCPORT,nfsprog=$NFSD_RPCPORT,udp,port=$NFSD_PORT,mountport=$MOUNTD_PORT"
+    UNFS_OPTS="nfsvers=3,port=$NFSD_PORT,mountprog=$MOUNTD_RPCPORT,nfsprog=$NFSD_RPCPORT,udp,mountport=$MOUNTD_PORT"
 
     PSEUDO_LOCALSTATEDIR=~/.runqemu-sdk/pseudo
     export PSEUDO_LOCALSTATEDIR
@@ -317,15 +330,9 @@ if [ "$FSTYPE" = "nfs" ]; then
     echo "runqemu-export-rootfs restart $ROOTFS"
     runqemu-export-rootfs restart $ROOTFS
     if [ $? != 0 ]; then
-        cleanup
         return 1
     fi
     NFSRUNNING="true"
-fi
-
-if [ "$NFS_SERVER" = "" ]; then
-    NFS_SERVER="192.168.7.1"
-    NFS_DIR=$ROOTFS
 fi
 
 if [ "$MACHINE" = "qemuarm" -o "$MACHINE" = "qemuarmv6" -o "$MACHINE" = "qemuarmv7" ]; then
@@ -357,12 +364,19 @@ fi
 
 if [ "$MACHINE" = "qemux86" ]; then
     QEMU=qemu-system-i386
-    if $OVERRIDE_VGA; then
+    if [ "$KVM_ACTIVE" = "yes" ]; then
+        CPU_SUBTYPE=kvm32
+    else
+        CPU_SUBTYPE=qemu32
+    fi
+    if [ ! -z "$vga_option" ]; then
+        QEMU_UI_OPTIONS="$QEMU_UI_OPTIONS"
+    else
         QEMU_UI_OPTIONS="$QEMU_UI_OPTIONS -vga vmware"
     fi
     if [ "${FSTYPE:0:3}" = "ext" -o "$FSTYPE" = "btrfs" ]; then
         KERNCMDLINE="vga=0 uvesafb.mode_option=640x480-32 root=$DROOT rw mem=$QEMU_MEMORY $KERNEL_NETWORK_CMD"
-        QEMUOPTIONS="$QEMU_NETWORK_CMD $ROOTFS_OPTIONS $QEMU_UI_OPTIONS"
+        QEMUOPTIONS="$QEMU_NETWORK_CMD -cpu $CPU_SUBTYPE $ROOTFS_OPTIONS $QEMU_UI_OPTIONS"
     fi
     if [ "$FSTYPE" = "nfs" ]; then
         if [ "$NFS_SERVER" = "192.168.7.1" -a ! -d "$NFS_DIR" ]; then
@@ -383,12 +397,19 @@ fi
 
 if [ "$MACHINE" = "qemux86-64" ]; then
     QEMU=qemu-system-x86_64
-    if $OVERRIDE_VGA; then
+    if [ "$KVM_ACTIVE" = "yes" ]; then
+        CPU_SUBTYPE=kvm64
+    else
+        CPU_SUBTYPE=core2duo
+    fi
+    if [ ! -z "$vga_option" ]; then
+        QEMU_UI_OPTIONS="$QEMU_UI_OPTIONS"
+    else
         QEMU_UI_OPTIONS="$QEMU_UI_OPTIONS -vga vmware"
     fi
     if [ "${FSTYPE:0:3}" = "ext" -o "$FSTYPE" = "btrfs" ]; then
         KERNCMDLINE="vga=0 uvesafb.mode_option=640x480-32 root=$DROOT rw mem=$QEMU_MEMORY $KERNEL_NETWORK_CMD"
-        QEMUOPTIONS="$QEMU_NETWORK_CMD $ROOTFS_OPTIONS $QEMU_UI_OPTIONS"
+        QEMUOPTIONS="$QEMU_NETWORK_CMD -cpu $CPU_SUBTYPE $ROOTFS_OPTIONS $QEMU_UI_OPTIONS"
     fi
     if [ "$FSTYPE" = "nfs" ]; then
         if [ "x$ROOTFS" = "x" ]; then
@@ -400,10 +421,10 @@ if [ "$MACHINE" = "qemux86-64" ]; then
             return 1
         fi
         KERNCMDLINE="root=/dev/nfs nfsroot=$NFS_SERVER:$NFS_DIR,$UNFS_OPTS rw $KERNEL_NETWORK_CMD mem=$QEMU_MEMORY"
-        QEMUOPTIONS="$QEMU_NETWORK_CMD $QEMU_UI_OPTIONS"
+        QEMUOPTIONS="$QEMU_NETWORK_CMD -cpu $CPU_SUBTYPE $QEMU_UI_OPTIONS"
     fi
     if [ "$FSTYPE" = "vmdk" ]; then
-        QEMUOPTIONS="$QEMU_NETWORK_CMD $QEMU_UI_OPTIONS"
+        QEMUOPTIONS="$QEMU_NETWORK_CMD -cpu $CPU_SUBTYPE $QEMU_UI_OPTIONS"
     fi
     # Currently oprofile's event based interrupt mode doesn't work(Bug #828) in
     # qemux86 and qemux86-64. We can use timer interrupt mode for now.
@@ -431,9 +452,7 @@ if [ "$MACHINE" = "qemumips" -o "$MACHINE" = "qemumipsel" -o "$MACHINE" = "qemum
        qemumips64) QEMU=qemu-system-mips64 ;;
     esac
     MACHINE_SUBTYPE=malta
-    if $OVERRIDE_VGA; then
-        QEMU_UI_OPTIONS="-vga cirrus $QEMU_UI_OPTIONS"
-    fi
+    QEMU_UI_OPTIONS="-vga cirrus $QEMU_UI_OPTIONS"
     if [ "${FSTYPE:0:3}" = "ext" -o "$FSTYPE" = "btrfs" ]; then
         #KERNCMDLINE="root=/dev/hda console=ttyS0 console=tty0 $KERNEL_NETWORK_CMD mem=$QEMU_MEMORY"
         KERNCMDLINE="root=/dev/hda rw console=ttyS0 console=tty $KERNEL_NETWORK_CMD mem=$QEMU_MEMORY"
@@ -530,8 +549,8 @@ if [ "$MACHINE" = "qemuzynq" ]; then
 fi
 
 if [ "x$RAMFS" = "xtrue" ]; then
-    QEMUOPTIONS="-initrd $ROOTFS"
-    KERNCMDLINE="root=/dev/ram0 debugshell"
+    QEMUOPTIONS="-initrd $ROOTFS -nographic"
+    KERNCMDLINE="root=/dev/ram0 console=ttyS0 debugshell"
 fi
 
 if [ "x$ISOFS" = "xtrue" ]; then

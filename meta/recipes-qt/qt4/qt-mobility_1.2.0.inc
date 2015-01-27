@@ -1,8 +1,8 @@
 HOMEPAGE = "http://qt-project.org/"
 DEPENDS = "gstreamer util-linux"
 
-PACKAGECONFIG ??= "${@base_contains('DISTRO_FEATURES', 'pulseaudio', 'pulseaudio', '', d)} \
-                   ${@base_contains('DISTRO_FEATURES', 'bluetooth', 'bluetooth', '', d)}"
+PACKAGECONFIG ??= "${@bb.utils.contains('DISTRO_FEATURES', 'pulseaudio', 'pulseaudio', '', d)} \
+                   ${@bb.utils.contains('DISTRO_FEATURES', 'bluetooth', 'bluetooth', '', d)}"
 PACKAGECONFIG[bluetooth] = ",,bluez4"
 PACKAGECONFIG[pulseaudio] = ",,pulseaudio"
 
@@ -11,13 +11,14 @@ LIC_FILES_CHKSUM = "file://LICENSE.LGPL;md5=fbc093901857fcd118f065f900982c24 \
 		    file://LGPL_EXCEPTION.txt;md5=411080a56ff917a5a1aa08c98acae354"
 
 FILESEXTRAPATHS =. "${FILE_DIRNAME}/qt-mobility-${PV}:"
-SRC_URI = "http://get.qt.nokia.com/qt/add-ons/qt-mobility-opensource-src-${PV}.tar.gz \
+SRC_URI = "http://pkgs.fedoraproject.org/repo/pkgs/qt-mobility/qt-mobility-opensource-src-${PV}.tar.gz/ea5db5a8d3dd4709c2926dceda646bd8/qt-mobility-opensource-src-${PV}.tar.gz \
            file://qt-mobility-configure.patch \
            file://0001-gstvideoconnector-fixed-buffers-allocation.patch \
            file://0002-Remove-unnecessary-rpaths-from-qml_device-example.patch \
            file://qt-mobility-no-opengl.patch \
            file://gcc-scope.patch \
            file://qt-mobility-no-xvideo.patch \
+           file://fix_metaobjectbuilder_build_err.patch \
            file://0001-fix-embedded-usage-doesn-t-work-outside-of-Qt.patch \
 	   "
 
@@ -64,12 +65,12 @@ maemo5-contacts_enabled = no
 maemo5-calendar_enabled = no
 maemo6-landmarks_enabled = no
 bme_enabled = no
-bluez_enabled = ${@base_contains('PACKAGECONFIG', 'bluetooth', 'yes', 'no', d)}
+bluez_enabled = ${@bb.utils.contains('PACKAGECONFIG', 'bluetooth', 'yes', 'no', d)}
 proj_enabled = no
 gstreamer-photography_enabled = no
 gstreamer-appsrc_enabled = yes
 blkid_enabled = yes
-pulseaudio_enabled = ${@base_contains('PACKAGECONFIG', 'pulseaudio', 'yes', 'no', d)}
+pulseaudio_enabled = ${@bb.utils.contains('PACKAGECONFIG', 'pulseaudio', 'yes', 'no', d)}
 udev_enabled = yes
 iphb_enabled = no
 nfc_symbian_enabled = no
@@ -88,12 +89,6 @@ EOF
 	echo QT_MOBILITY_DEMOS = ${qtm_demos} >>./config.pri
 	echo QT_CONFIG ${qtm_glflags} >>./config.pri
 	echo CONFIG += ${qtm_embedded} >>./config.pri
-}
-
-do_compile_prepend() {
-	for NAME in `find ./ -name Makefile` ; do
-	    sed -e 's:-Wl,-rpath-link,${libdir}::g' -i $NAME 
-	done
 }
 
 do_install() {

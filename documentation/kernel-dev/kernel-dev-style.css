@@ -313,6 +313,13 @@ a:hover {
   /*font-weight: bold;*/
 }
 
+/* This style defines how the permalink character
+   appears by itself and when hovered over with
+   the mouse. */
+
+[alt='Permalink'] { color: #eee; }
+[alt='Permalink']:hover { color: black; }
+
 
 div.informalfigure,
 div.informalexample,
@@ -793,7 +800,6 @@ div.sect2 .titlepage .title {
 
 h1.title {
   background-color: transparent;
-  background-image: url("figures/yocto-project-bw.png");
   background-repeat: no-repeat;
   height: 256px;
   text-indent: -9000px;

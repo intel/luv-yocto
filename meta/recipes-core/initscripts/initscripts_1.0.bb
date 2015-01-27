@@ -3,7 +3,7 @@ DESCRIPTION = "Initscripts provide the basic system startup initialization scrip
 SECTION = "base"
 LICENSE = "GPLv2"
 LIC_FILES_CHKSUM = "file://COPYING;md5=751419260aa954499f7abaabaa882bbe"
-PR = "r141"
+PR = "r155"
 
 INHIBIT_DEFAULT_DEPS = "1"
 
@@ -41,9 +41,14 @@ KERNEL_VERSION = ""
 
 inherit update-alternatives
 DEPENDS_append = " update-rc.d-native"
+DEPENDS_append = " ${@bb.utils.contains('DISTRO_FEATURES','systemd','systemd-systemctl-native','',d)}"
 
-ALTERNATIVE_PRIORITY = "90"
-ALTERNATIVE_${PN} = "functions"
+PACKAGES =+ "${PN}-functions"
+RDEPENDS_${PN} = "${PN}-functions"
+FILES_${PN}-functions = "${sysconfdir}/init.d/functions*"
+
+ALTERNATIVE_PRIORITY_${PN}-functions = "90"
+ALTERNATIVE_${PN}-functions = "functions"
 ALTERNATIVE_LINK_NAME[functions] = "${sysconfdir}/init.d/functions"
 
 HALTARGS ?= "-d -f"
@@ -108,16 +113,16 @@ do_install () {
 	update-rc.d -r ${D} rmnologin.sh start 99 2 3 4 5 .
 	update-rc.d -r ${D} sendsigs start 20 0 6 .
 	update-rc.d -r ${D} urandom start 30 S 0 6 .
-	update-rc.d -r ${D} umountnfs.sh start 31 0 6 .
+	update-rc.d -r ${D} umountnfs.sh start 31 0 1 6 .
 	update-rc.d -r ${D} umountfs start 40 0 6 .
 	update-rc.d -r ${D} reboot start 90 6 .
 	update-rc.d -r ${D} halt start 90 0 .
 	update-rc.d -r ${D} save-rtc.sh start 25 0 6 .
 	update-rc.d -r ${D} banner.sh start 02 S .
 	update-rc.d -r ${D} checkroot.sh start 06 S .
-	update-rc.d -r ${D} mountall.sh start 35 S .
+	update-rc.d -r ${D} mountall.sh start 03 S .
 	update-rc.d -r ${D} hostname.sh start 39 S .
-	update-rc.d -r ${D} mountnfs.sh start 45 S .
+	update-rc.d -r ${D} mountnfs.sh start 15 2 3 4 5 .
 	update-rc.d -r ${D} bootmisc.sh start 55 S .
 	update-rc.d -r ${D} sysfs.sh start 02 S .
 	update-rc.d -r ${D} populate-volatile.sh start 37 S .
@@ -129,4 +134,31 @@ do_install () {
 	# We wish to have /var/log ready at this stage so execute this after
 	# populate-volatile.sh
 	update-rc.d -r ${D} dmesg.sh start 38 S .
+}
+
+MASKED_SCRIPTS = " \
+  banner \
+  bootmisc \
+  checkfs \
+  checkroot \
+  devpts \
+  dmesg \
+  hostname \
+  mountall \
+  mountnfs \
+  populate-volatile \
+  read-only-rootfs-hook \
+  rmnologin \
+  sysfs \
+  urandom"
+
+pkg_postinst_${PN} () {
+	if ${@bb.utils.contains('DISTRO_FEATURES','systemd','true','false',d)}; then
+		if [ -n "$D" ]; then
+			OPTS="--root=$D"
+		fi
+		for SERVICE in ${MASKED_SCRIPTS}; do
+			systemctl $OPTS mask $SERVICE.service
+		done
+	fi
 }

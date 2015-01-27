@@ -1,7 +1,6 @@
-SUMMARY = "libjpeg is a library for handling the JPEG (JFIF) image format."
+SUMMARY = "libjpeg is a library for handling the JPEG (JFIF) image format"
 DESCRIPTION = "libjpeg contains a library for handling the JPEG (JFIF) image format, as well as related programs for accessing the libjpeg functions."
 HOMEPAGE = "http://www.ijg.org/"
-BUGTRACKER = ""
 
 LICENSE ="BSD-3-Clause"
 LIC_FILES_CHKSUM = "file://README;md5=4f46756b064c225fae088903300e5c98"
@@ -45,12 +44,8 @@ FILES_jpeg-tools = 	"${bindir}/*"
 BBCLASSEXTEND = "native"
 
 pkg_postinst_${PN}_linuxstdbase () {
-    if [ "$D" = "" ]; then
-        if [ ! -e ${libdir}/libjpeg.so.62 ]; then
-            JPEG=`find ${libdir} -type f -name libjpeg.so.\*.\*.\*`
-            ln -sf `basename $JPEG` ${libdir}/libjpeg.so.62
-        fi
-    else
-        exit 1
+    if [ ! -e $D${libdir}/libjpeg.so.62 ]; then
+        JPEG=`find $D${libdir} -type f -name libjpeg.so.\*.\*.\*`
+        ln -sf `basename $JPEG` $D${libdir}/libjpeg.so.62
     fi
 }

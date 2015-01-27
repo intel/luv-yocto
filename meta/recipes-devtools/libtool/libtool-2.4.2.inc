@@ -33,7 +33,7 @@ do_compile_prepend () {
 	./config.status
 }
 
-inherit autotools
+inherit autotools texinfo
 EXTRA_AUTORECONF = "--exclude=libtoolize"
 
 DEPENDS = "libtool-native"
@@ -50,4 +50,4 @@ FILES_libltdl-dev = "${libdir}/libltdl${SOLIBSDEV} ${includedir}"
 FILES_libltdl-staticdev = "${libdir}/libltdl.a"
 FILES_libltdl-dbg = "${libdir}/.debug/"
 
-EXTRA_OECONF = "--with-sysroot"
+export CONFIG_SHELL="/bin/bash"

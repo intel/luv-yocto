@@ -1,8 +1,8 @@
-SRCREV="f22cca4722fa66e424562e69f4afa2bca0af871d"
+SRCREV = "48a0006012679ff0eda6f256da958d73a924fb57"
 
 PV = "0.9.33+git${SRCPV}"
 
-FILESPATH = "${@base_set_filespath([ '${FILE_DIRNAME}/uclibc-git' ], d)}"
+FILESEXTRAPATHS =. "${FILE_DIRNAME}/uclibc-git:"
 
 SRC_URI = "git://uclibc.org/uClibc.git;branch=master \
 	file://uClibc.machine \
@@ -21,6 +21,9 @@ SRC_URI = "git://uclibc.org/uClibc.git;branch=master \
 	file://0001-nptl-atfork-Hide-pthread_atfork-in-shared-versions.patch \
 	file://0001-librt-Use-nodefaultlibs-instead-of-nostdlib.patch \
 	file://0001-Revert-utent.c-wtent.c-move-functions-from-utxent.c.patch \
-	file://0001-add-posix_fadvise-for-arm.patch \
+	file://0001-Add-eventfd_read-and-eventfd_write.patch \
+	file://0002-wire-setns-syscall.patch \
+	file://0001-Define-IPTOS_CLASS_-macros-according-to-RFC-2474.patch \
+	file://0001-timex-Sync-with-glibc.patch \
 	"
 S = "${WORKDIR}/git"

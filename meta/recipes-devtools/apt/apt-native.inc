@@ -1,7 +1,7 @@
 require apt.inc
 inherit native
 
-DEPENDS += "dpkg-native gettext-native"
+DEPENDS += "dpkg-native gettext-native db-native curl-native"
 PACKAGES = ""
 USE_NLS = "yes"
 
@@ -39,6 +39,7 @@ do_install_base () {
 	install -m 0755 bin/apt-cache ${D}${bindir}/
 	install -m 0755 bin/apt-sortpkgs ${D}${bindir}/
 	install -m 0755 bin/apt-extracttemplates ${D}${bindir}/
+	install -m 0755 bin/apt-ftparchive ${D}${bindir}/
 
 	eval `cat environment.mak | grep ^GLIBC_VER | sed -e's, = ,=,'`
 	eval `cat environment.mak | grep ^LIBSTDCPP_VER | sed -e's, = ,=,'`

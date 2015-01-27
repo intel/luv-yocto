@@ -2,7 +2,6 @@
 # Copyright (C) 2004-2006, Advanced Micro Devices, Inc.  All Rights Reserved
 # Released under the MIT license (see packages/COPYING)
 SUMMARY = "DOS FAT Filesystem Utilities"
-DESCRIPTION = "DOS FAT Filesystem Utilities"
 
 SECTION = "base"
 LICENSE = "GPLv2"
@@ -28,7 +27,7 @@ SRC_URI[sha256sum] = "0eac6d12388b3d9ed78684529c1b0d9346fa2abbe406c4d4a3eb5a023c
 CFLAGS_append = " -D_FILE_OFFSET_BITS=64"
 
 do_install () {
-	oe_runmake "PREFIX=${D}" "SBINDIR=${D}${sbindir}" \
+	oe_runmake "PREFIX=${D}" "SBINDIR=${D}${base_sbindir}" \
 		   "MANDIR=${D}${mandir}/man8" install
 }
 

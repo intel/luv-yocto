@@ -1,4 +1,4 @@
-SUMMARY = "An abstraction layer for touchscreen panel events."
+SUMMARY = "An abstraction layer for touchscreen panel events"
 DESCRIPTION = "Tslib is an abstraction layer for touchscreen panel \
 events, as well as a filter stack for the manipulation of those events. \
 Tslib is generally used on embedded devices to provide a common user \
@@ -31,8 +31,6 @@ do_install_append() {
 	install -d ${D}${sysconfdir}/profile.d/
 	install -m 0755 ${WORKDIR}/tslib.sh ${D}${sysconfdir}/profile.d/
 }
-
-SRC_URI_OVERRIDES_PACKAGE_ARCH = "0"
 
 # People should consider using udev's /dev/input/touchscreen0 symlink
 # instead of detect-stylus

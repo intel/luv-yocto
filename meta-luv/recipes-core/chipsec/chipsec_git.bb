@@ -13,7 +13,7 @@ SRC_URI = "git://github.com/chipsec/chipsec.git \
     file://0005-tool-setup.py-Delete-Windows-drivers-from-data_files.patch \
     file://chipsec file://luv-parser-chipsec"
 
-SRCREV="v1.1.0"
+SRCREV="e7fc17caffcce09bf8a674d7eb760326e17b0974"
 
 DEPENDS = "virtual/kernel python-core"
 RDEPENDS_${PN} = "python python-shell python-stringold python-xml \

@@ -5,10 +5,10 @@ LICENSE = "GPLv2+"
 SECTION = "console/utils"
 
 SRC_URI = "http://pagesperso-orange.fr/sebastien.godard/sysstat-${PV}.tar.gz \
-		   file://99_sysstat \
-		   file://0001-Update-Makefile-to-allow-for-parallel-execution.patch "
+           file://99_sysstat \
+          "
 
-inherit autotools gettext
+inherit autotools-brokensep gettext
 
 EXTRA_OECONF += "--disable-sensors"
 EXTRA_OEMAKE += 'LFLAGS=""'

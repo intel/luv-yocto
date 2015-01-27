@@ -13,17 +13,21 @@ DEPENDS += "ncurses"
 
 SRC_URI = "${GNU_MIRROR}/readline/${BPN}-${PV}.tar.gz;name=archive \
            file://configure-fix.patch \
-           file://norpath.patch \
-           file://acinclude.m4"
+           file://config-dirent-symbols.patch \
+           file://norpath.patch"
 
 S = "${WORKDIR}/${BPN}-${PV}"
 
-inherit autotools
+inherit autotools texinfo
+
+EXTRA_AUTORECONF += "--exclude=autoheader"
 
 LEAD_SONAME = "libreadline.so"
 
 do_configure_prepend () {
-	install -m 0644 ${WORKDIR}/acinclude.m4 ${S}/
+	if [ ! -e ${S}/acinclude.m4 ]; then
+		cat ${S}/aclocal.m4 > ${S}/acinclude.m4
+	fi
 }
 
 do_install_append () {

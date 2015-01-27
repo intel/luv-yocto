@@ -23,13 +23,14 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
-#Based on functions from the base bb module, Copyright 2003 Holger Schurig
+# Based on functions from the base bb module, Copyright 2003 Holger Schurig
 
 import os
 import sys
 import logging
 import shlex
 import glob
+import time
 import bb
 import bb.msg
 import bb.process
@@ -41,9 +42,8 @@ logger = logging.getLogger('BitBake.Build')
 
 NULL = open(os.devnull, 'r+')
 
-
-# When we execute a python function we'd like certain things
-# in all namespaces, hence we add them to __builtins__
+# When we execute a Python function, we'd like certain things
+# in all namespaces, hence we add them to __builtins__.
 # If we do not do this and use the exec globals, they will
 # not be available to subfunctions.
 __builtins__['bb'] = bb
@@ -75,6 +75,7 @@ class TaskBase(event.Event):
         self.taskfile = d.getVar("FILE", True)
         self.taskname = self._task
         self.logfile = logfile
+        self.time = time.time()
         event.Event.__init__(self)
         self._message = "recipe %s: task %s: %s" % (d.getVar("PF", True), t, self.getDisplayName())
 
@@ -91,6 +92,9 @@ class TaskBase(event.Event):
 
 class TaskStarted(TaskBase):
     """Task execution started"""
+    def __init__(self, t, logfile, taskflags, d):
+        super(TaskStarted, self).__init__(t, logfile, d)
+        self.taskflags = taskflags
 
 class TaskSucceeded(TaskBase):
     """Task execution completed"""
@@ -138,7 +142,7 @@ class LogTee(object):
         self.outfile.flush()
 
 def exec_func(func, d, dirs = None):
-    """Execute an BB 'function'"""
+    """Execute a BB 'function'"""
 
     body = d.getVar(func)
     if not body:
@@ -151,6 +155,7 @@ def exec_func(func, d, dirs = None):
     if cleandirs:
         for cdir in d.expand(cleandirs).split():
             bb.utils.remove(cdir, True)
+            bb.utils.mkdirhier(cdir)
 
     if dirs is None:
         dirs = flags.get('dirs')
@@ -169,7 +174,7 @@ def exec_func(func, d, dirs = None):
 
     lockflag = flags.get('lockfiles')
     if lockflag:
-        lockfiles = [d.expand(f) for f in lockflag.split()]
+        lockfiles = [f for f in d.expand(lockflag).split()]
     else:
         lockfiles = None
 
@@ -222,7 +227,7 @@ def exec_func_python(func, d, runfile, cwd=None):
     code = _functionfmt.format(function=func, body=d.getVar(func, True))
     bb.utils.mkdirhier(os.path.dirname(runfile))
     with open(runfile, 'w') as script:
-        script.write(code)
+        bb.data.emit_func_python(func, script, d)
 
     if cwd:
         try:
@@ -236,10 +241,9 @@ def exec_func_python(func, d, runfile, cwd=None):
     try:
         comp = utils.better_compile(code, func, bbfile)
         utils.better_exec(comp, {"d": d}, code, bbfile)
+    except (bb.parse.SkipRecipe, bb.build.FuncFailed):
+        raise
     except:
-        if sys.exc_info()[0] in (bb.parse.SkipPackage, bb.build.FuncFailed):
-            raise
-
         raise FuncFailed(func, None)
     finally:
         bb.debug(2, "Python function %s finished" % func)
@@ -250,19 +254,8 @@ def exec_func_python(func, d, runfile, cwd=None):
             except OSError:
                 pass
 
-def exec_func_shell(func, d, runfile, cwd=None):
-    """Execute a shell function from the metadata
-
-    Note on directory behavior.  The 'dirs' varflag should contain a list
-    of the directories you need created prior to execution.  The last
-    item in the list is where we will chdir/cd to.
-    """
-
-    # Don't let the emitted shell script override PWD
-    d.delVarFlag('PWD', 'export')
-
-    with open(runfile, 'w') as script:
-        script.write('''#!/bin/sh\n
+def shell_trap_code():
+    return '''#!/bin/sh\n
 # Emit a useful diagnostic if something fails:
 bb_exit_handler() {
     ret=$?
@@ -278,7 +271,21 @@ bb_exit_handler() {
 }
 trap 'bb_exit_handler' 0
 set -e
-''')
+'''
+
+def exec_func_shell(func, d, runfile, cwd=None):
+    """Execute a shell function from the metadata
+
+    Note on directory behavior.  The 'dirs' varflag should contain a list
+    of the directories you need created prior to execution.  The last
+    item in the list is where we will chdir/cd to.
+    """
+
+    # Don't let the emitted shell script override PWD
+    d.delVarFlag('PWD', 'export')
+
+    with open(runfile, 'w') as script:
+        script.write(shell_trap_code())
 
         bb.data.emit_func(func, script, d)
 
@@ -323,7 +330,7 @@ def _task_data(fn, task, d):
     localdata.setVar('BB_FILENAME', fn)
     localdata.setVar('BB_CURRENTTASK', task[3:])
     localdata.setVar('OVERRIDES', 'task-%s:%s' %
-                     (task[3:], d.getVar('OVERRIDES', False)))
+                     (task[3:].replace('_', '-'), d.getVar('OVERRIDES', False)))
     localdata.finalize()
     bb.data.expandKeys(localdata)
     return localdata
@@ -409,7 +416,7 @@ def _exec_task(fn, task, d, quieterr):
     os.dup2(logfile.fileno(), oso[1])
     os.dup2(logfile.fileno(), ose[1])
 
-    # Ensure python logging goes to the logfile
+    # Ensure Python logging goes to the logfile
     handler = logging.StreamHandler(logfile)
     handler.setFormatter(logformatter)
     # Always enable full debug output into task logfiles
@@ -422,7 +429,9 @@ def _exec_task(fn, task, d, quieterr):
     localdata.setVar('BB_LOGFILE', logfn)
     localdata.setVar('BB_RUNTASK', task)
 
-    event.fire(TaskStarted(task, logfn, localdata), localdata)
+    flags = localdata.getVarFlags(task)
+
+    event.fire(TaskStarted(task, logfn, flags, localdata), localdata)
     try:
         for func in (prefuncs or '').split():
             exec_func(func, localdata)
@@ -467,12 +476,12 @@ def _exec_task(fn, task, d, quieterr):
     return 0
 
 def exec_task(fn, task, d, profile = False):
-    try: 
+    try:
         quieterr = False
         if d.getVarFlag(task, "quieterrors") is not None:
             quieterr = True
 
-        if profile: 
+        if profile:
             profname = "profile-%s.log" % (d.getVar("PN", True) + "-" + task)
             try:
                 import cProfile as profile
@@ -496,7 +505,7 @@ def exec_task(fn, task, d, profile = False):
             event.fire(failedevent, d)
         return 1
 
-def stamp_internal(taskname, d, file_name):
+def stamp_internal(taskname, d, file_name, baseonly=False):
     """
     Internal stamp helper function
     Makes sure the stamp directory exists
@@ -516,6 +525,9 @@ def stamp_internal(taskname, d, file_name):
         stamp = d.getVarFlag(taskflagname, 'stamp-base', True) or d.getVar('STAMP', True)
         file_name = d.getVar('BB_FILENAME', True)
         extrainfo = d.getVarFlag(taskflagname, 'stamp-extra-info', True) or ""
+
+    if baseonly:
+        return stamp
 
     if not stamp:
         return
@@ -570,7 +582,7 @@ def make_stamp(task, d, file_name = None):
             if name.endswith('.taint'):
                 continue
             os.unlink(name)
-    
+
     stamp = stamp_internal(task, d, file_name)
     # Remove the file and recreate to force timestamp
     # change on broken NFS filesystems
@@ -581,8 +593,9 @@ def make_stamp(task, d, file_name = None):
     # If we're in task context, write out a signature file for each task
     # as it completes
     if not task.endswith("_setscene") and task != "do_setscene" and not file_name:
+        stampbase = stamp_internal(task, d, None, True)
         file_name = d.getVar('BB_FILENAME', True)
-        bb.parse.siggen.dump_sigtask(file_name, task, d.getVar('STAMP', True), True)
+        bb.parse.siggen.dump_sigtask(file_name, task, stampbase, True)
 
 def del_stamp(task, d, file_name = None):
     """
@@ -617,7 +630,7 @@ def stampfile(taskname, d, file_name = None):
     """
     return stamp_internal(taskname, d, file_name)
 
-def add_tasks(tasklist, d):
+def add_tasks(tasklist, deltasklist, d):
     task_deps = d.getVar('_task_deps')
     if not task_deps:
         task_deps = {}
@@ -628,6 +641,10 @@ def add_tasks(tasklist, d):
 
     for task in tasklist:
         task = d.expand(task)
+
+        if task in deltasklist:
+            continue
+
         d.setVarFlag(task, 'task', 1)
 
         if not task in task_deps['tasks']:
@@ -659,9 +676,36 @@ def add_tasks(tasklist, d):
     # don't assume holding a reference
     d.setVar('_task_deps', task_deps)
 
-def remove_task(task, kill, d):
-    """Remove an BB 'task'.
+def addtask(task, before, after, d):
+    if task[:3] != "do_":
+        task = "do_" + task
 
-       If kill is 1, also remove tasks that depend on this task."""
+    d.setVarFlag(task, "task", 1)
+    bbtasks = d.getVar('__BBTASKS') or []
+    if not task in bbtasks:
+        bbtasks.append(task)
+    d.setVar('__BBTASKS', bbtasks)
 
-    d.delVarFlag(task, 'task')
+    existing = d.getVarFlag(task, "deps") or []
+    if after is not None:
+        # set up deps for function
+        for entry in after.split():
+            if entry not in existing:
+                existing.append(entry)
+    d.setVarFlag(task, "deps", existing)
+    if before is not None:
+        # set up things that depend on this func
+        for entry in before.split():
+            existing = d.getVarFlag(entry, "deps") or []
+            if task not in existing:
+                d.setVarFlag(entry, "deps", [task] + existing)
+
+def deltask(task, d):
+    if task[:3] != "do_":
+        task = "do_" + task
+
+    bbtasks = d.getVar('__BBDELTASKS') or []
+    if not task in bbtasks:
+        bbtasks.append(task)
+    d.setVar('__BBDELTASKS', bbtasks)
+

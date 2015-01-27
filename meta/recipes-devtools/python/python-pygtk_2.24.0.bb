@@ -1,4 +1,4 @@
-DESCRIPTION = "Python GTK+ 2.17.x Bindings"
+SUMMARY = "Python bindings for the GTK+ UI toolkit"
 SECTION = "devel/python"
 # needs gtk+ 2.17.x
 DEPENDS = "gtk+ libglade python-pycairo python-pygobject"
@@ -15,6 +15,7 @@ SRC_URI = "ftp://ftp.gnome.org/pub/gnome/sources/pygtk/2.24/${SRCNAME}-${PV}.tar
            file://fix-gtkunixprint.patch \
            file://prevent_to_get_display_during_import.patch \
            file://nodocs.patch \
+	   file://fix-pygtk-2.0.pc.patch \
            file://acinclude.m4 \
            file://update-dependences-of-defs.c.patch"
 
@@ -39,15 +40,30 @@ do_configure_prepend() {
 	sed -i 's:tests docs:tests:' ${S}/Makefile.am
 }
 
-# dirty fix #1: remove dependency on python-pygobject-dev
-do_install_append() {
-	find ${D} -name "*.la"|xargs rm -f
-	rm -f ${D}/${bindir}/pygtk-codegen-2.0
-	rm -rf ${D}/${libdir}/pkgconfig
-}
-
 # dirty fix #2: fix build system paths leaking in
-require fix-path.inc
+do_install_append() {
+        for i in `find ${D} -name "*.py"` ; do \
+            sed -i -e s:${D}::g $i
+        done
+
+        for i in `find ${D} -name "*.la"` ; do \
+            sed -i -e s:${STAGING_LIBDIR}:${libdir}:g $i
+        done
+
+        if test -e ${D}${bindir} ; then
+            for i in ${D}${bindir}/* ; do \
+                sed -i -e s:${STAGING_BINDIR_NATIVE}:${bindir}:g $i
+            done
+        fi
+
+        if test -e ${D}${sbindir} ; then
+            for i in ${D}${sbindir}/* ; do \
+                sed -i -e s:${STAGING_BINDIR_NATIVE}:${bindir}:g $i
+            done
+        fi
+
+	sed -i -e '1s|^#!.*python|#!/usr/bin/env python|' ${D}${bindir}/pygtk-demo
+}
 
 PACKAGES =+ "${PN}-demo"
 FILES_${PN}-demo = " ${bindir}/pygtk-demo ${libdir}/pygtk "

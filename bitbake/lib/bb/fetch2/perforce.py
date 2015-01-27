@@ -37,7 +37,7 @@ from   bb.fetch2 import logger
 from   bb.fetch2 import runfetchcmd
 
 class Perforce(FetchMethod):
-    def supports(self, url, ud, d):
+    def supports(self, ud, d):
         return ud.type in ['p4']
 
     def doparse(url, d):
@@ -48,7 +48,7 @@ class Perforce(FetchMethod):
             (user, pswd, host, port) = path.split('@')[0].split(":")
             path = path.split('@')[1]
         else:
-            (host, port) = data.getVar('P4PORT', d).split(':')
+            (host, port) = d.getVar('P4PORT').split(':')
             user = ""
             pswd = ""
 
@@ -81,7 +81,7 @@ class Perforce(FetchMethod):
         if host:
             p4opt += " -p %s" % (host)
 
-        p4date = data.getVar("P4DATE", d, True)
+        p4date = d.getVar("P4DATE", True)
         if "revision" in parm:
             depot += "#%s" % (parm["revision"])
         elif "label" in parm:
@@ -89,7 +89,7 @@ class Perforce(FetchMethod):
         elif p4date:
             depot += "@%s" % (p4date)
 
-        p4cmd = data.getVar('FETCHCOMMAND_p4', d, True)
+        p4cmd = d.getVar('FETCHCMD_p4', True) or "p4"
         logger.debug(1, "Running %s%s changes -m 1 %s", p4cmd, p4opt, depot)
         p4file, errors = bb.process.run("%s%s changes -m 1 %s" % (p4cmd, p4opt, depot))
         cset = p4file.strip()
@@ -103,29 +103,22 @@ class Perforce(FetchMethod):
     def urldata_init(self, ud, d):
         (host, path, user, pswd, parm) = Perforce.doparse(ud.url, d)
 
-        # If a label is specified, we use that as our filename
-
+        base_path = path.replace('/...', '')
+        base_path = self._strip_leading_slashes(base_path)
+        
         if "label" in parm:
-            ud.localfile = "%s.tar.gz" % (parm["label"])
-            return
+            version = parm["label"]
+        else:
+            version = Perforce.getcset(d, path, host, user, pswd, parm)
 
-        base = path
-        which = path.find('/...')
-        if which != -1:
-            base = path[:which-1]
+        ud.localfile = data.expand('%s+%s+%s.tar.gz' % (host, base_path.replace('/', '.'), version), d)
 
-        base = self._strip_leading_slashes(base)
-
-        cset = Perforce.getcset(d, path, host, user, pswd, parm)
-
-        ud.localfile = data.expand('%s+%s+%s.tar.gz' % (host, base.replace('/', '.'), cset), d)
-
-    def download(self, loc, ud, d):
+    def download(self, ud, d):
         """
         Fetch urls
         """
 
-        (host, depot, user, pswd, parm) = Perforce.doparse(loc, d)
+        (host, depot, user, pswd, parm) = Perforce.doparse(ud.url, d)
 
         if depot.find('/...') != -1:
             path = depot[:depot.find('/...')]
@@ -133,10 +126,6 @@ class Perforce(FetchMethod):
             path = depot
 
         module = parm.get('module', os.path.basename(path))
-
-        localdata = data.createCopy(d)
-        data.setVar('OVERRIDES', "p4:%s" % data.getVar('OVERRIDES', localdata), localdata)
-        data.update_data(localdata)
 
         # Get the p4 command
         p4opt = ""
@@ -149,16 +138,16 @@ class Perforce(FetchMethod):
         if host:
             p4opt += " -p %s" % (host)
 
-        p4cmd = data.getVar('FETCHCOMMAND', localdata, True)
+        p4cmd = d.getVar('FETCHCMD_p4', True) or "p4"
 
         # create temp directory
         logger.debug(2, "Fetch: creating temporary directory")
-        bb.utils.mkdirhier(data.expand('${WORKDIR}', localdata))
-        data.setVar('TMPBASE', data.expand('${WORKDIR}/oep4.XXXXXX', localdata), localdata)
-        tmpfile, errors = bb.process.run(data.getVar('MKTEMPDIRCMD', localdata, True) or "false")
+        bb.utils.mkdirhier(d.expand('${WORKDIR}'))
+        mktemp = d.getVar("FETCHCMD_p4mktemp", True) or d.expand("mktemp -d -q '${WORKDIR}/oep4.XXXXXX'")
+        tmpfile, errors = bb.process.run(mktemp)
         tmpfile = tmpfile.strip()
         if not tmpfile:
-            raise FetchError("Fetch: unable to create temporary directory.. make sure 'mktemp' is in the PATH.", loc)
+            raise FetchError("Fetch: unable to create temporary directory.. make sure 'mktemp' is in the PATH.", ud.url)
 
         if "label" in parm:
             depot = "%s@%s" % (depot, parm["label"])
@@ -167,13 +156,13 @@ class Perforce(FetchMethod):
             depot = "%s@%s" % (depot, cset)
 
         os.chdir(tmpfile)
-        logger.info("Fetch " + loc)
+        logger.info("Fetch " + ud.url)
         logger.info("%s%s files %s", p4cmd, p4opt, depot)
         p4file, errors = bb.process.run("%s%s files %s" % (p4cmd, p4opt, depot))
         p4file = [f.rstrip() for f in p4file.splitlines()]
 
         if not p4file:
-            raise FetchError("Fetch: unable to get the P4 files from %s" % depot, loc)
+            raise FetchError("Fetch: unable to get the P4 files from %s" % depot, ud.url)
 
         count = 0
 
@@ -191,7 +180,7 @@ class Perforce(FetchMethod):
 
         if count == 0:
             logger.error()
-            raise FetchError("Fetch: No files gathered from the P4 fetch", loc)
+            raise FetchError("Fetch: No files gathered from the P4 fetch", ud.url)
 
         runfetchcmd("tar -czf %s %s" % (ud.localpath, module), d, cleanup = [ud.localpath])
         # cleanup

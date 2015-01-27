@@ -37,6 +37,7 @@ from collections import defaultdict
 import bb, bb.exceptions, bb.command
 from bb import utils, data, parse, event, cache, providers, taskdata, runqueue
 import Queue
+import signal
 import prserv.serv
 
 logger      = logging.getLogger("BitBake")
@@ -81,7 +82,7 @@ class SkippedPackage:
 
 
 class CookerFeatures(object):
-    _feature_list = [HOB_EXTRA_CACHES, SEND_DEPENDS_TREE] = range(2)
+    _feature_list = [HOB_EXTRA_CACHES, SEND_DEPENDS_TREE, BASEDATASTORE_TRACKING, SEND_SANITYEVENTS] = range(4)
 
     def __init__(self):
         self._features=set()
@@ -110,14 +111,16 @@ class BBCooker:
     Manages one bitbake build run
     """
 
-    def __init__(self, configuration):
+    def __init__(self, configuration, featureSet = []):
         self.recipecache = None
         self.skiplist = {}
         self.featureset = CookerFeatures()
+        for f in featureSet:
+            self.featureset.setFeature(f)
 
         self.configuration = configuration
 
-        self.loadConfigurationData()
+        self.initConfigurationData()
 
         # Take a lock so only one copy of bitbake can run against a given build
         # directory at a time
@@ -125,6 +128,14 @@ class BBCooker:
         self.lock = bb.utils.lockfile(lockfile, False, False)
         if not self.lock:
             bb.fatal("Only one copy of bitbake should be run against a build directory")
+        try:
+            self.lock.seek(0)
+            self.lock.truncate()
+            if len(configuration.interface) >= 2:
+                self.lock.write("%s:%s\n" % (configuration.interface[0], configuration.interface[1]));
+            self.lock.flush()
+        except:
+            pass
 
         # TOSTOP must not be set or our children will hang when they output
         fd = sys.stdout.fileno()
@@ -141,11 +152,35 @@ class BBCooker:
 
         self.parser = None
 
+        signal.signal(signal.SIGTERM, self.sigterm_exception)
+        # Let SIGHUP exit as SIGTERM
+        signal.signal(signal.SIGHUP, self.sigterm_exception)
+
+    def sigterm_exception(self, signum, stackframe):
+        if signum == signal.SIGTERM:
+            bb.warn("Cooker recieved SIGTERM, shutting down...")
+        elif signum == signal.SIGHUP:
+            bb.warn("Cooker recieved SIGHUP, shutting down...")
+        self.state = state.forceshutdown
+
+    def setFeatures(self, features):
+        # we only accept a new feature set if we're in state initial, so we can reset without problems
+        if self.state != state.initial:
+            raise Exception("Illegal state for feature set change")
+        original_featureset = list(self.featureset)
+        for feature in features:
+            self.featureset.setFeature(feature)
+        bb.debug(1, "Features set %s (was %s)" % (original_featureset, list(self.featureset)))
+        if (original_featureset != list(self.featureset)):
+            self.reset()
+
     def initConfigurationData(self):
 
         self.state = state.initial
-
         self.caches_array = []
+
+        if CookerFeatures.BASEDATASTORE_TRACKING in self.featureset:
+            self.enableDataTracking()
 
         all_extra_cache_names = []
         # We hardcode all known cache types in a single place, here.
@@ -166,18 +201,6 @@ class BBCooker:
                 sys.exit("FATAL: Failed to import extra cache class '%s'." % cache_name)
 
         self.databuilder = bb.cookerdata.CookerDataBuilder(self.configuration, False)
-        self.data = self.databuilder.data
-
-    def enableDataTracking(self):
-        self.configuration.tracking = True
-        self.data.enableTracking()
-
-    def disableDataTracking(self):
-        self.configuration.tracking = False
-        self.data.disableTracking()
-
-    def loadConfigurationData(self):
-        self.initConfigurationData()
         self.databuilder.parseBaseConfiguration()
         self.data = self.databuilder.data
         self.data_hash = self.databuilder.data_hash
@@ -188,6 +211,19 @@ class BBCooker:
         self.event_data = bb.data.createCopy(self.data)
         bb.data.update_data(self.event_data)
         bb.parse.init_parser(self.event_data)
+
+        if CookerFeatures.BASEDATASTORE_TRACKING in self.featureset:
+            self.disableDataTracking()
+
+    def enableDataTracking(self):
+        self.configuration.tracking = True
+        if hasattr(self, "data"):
+            self.data.enableTracking()
+
+    def disableDataTracking(self):
+        self.configuration.tracking = False
+        if hasattr(self, "data"):
+            self.data.disableTracking()
 
     def modifyConfigurationVar(self, var, val, default_file, op):
         if op == "append":
@@ -202,20 +238,11 @@ class BBCooker:
         #add append var operation to the end of default_file
         default_file = bb.cookerdata.findConfigFile(default_file, self.data)
 
-        with open(default_file, 'r') as f:
-            contents = f.readlines()
-        f.close()
-
-        total = ""
-        for c in contents:
-            total += c
-
-        total += "#added by hob"
+        total = "#added by hob"
         total += "\n%s += \"%s\"\n" % (var, val)
 
-        with open(default_file, 'w') as f:
+        with open(default_file, 'a') as f:
             f.write(total)
-        f.close()
 
         #add to history
         loginfo = {"op":append, "file":default_file, "line":total.count("\n")}
@@ -244,7 +271,6 @@ class BBCooker:
             if topdir in conf_file:
                 with open(conf_file, 'r') as f:
                     contents = f.readlines()
-                f.close()
 
                 lines = self.data.varhistory.get_variable_lines(var, conf_file)
                 for line in lines:
@@ -270,12 +296,8 @@ class BBCooker:
                         for ii in range(begin_line, end_line):
                             contents[ii] = "#" + contents[ii]
 
-                total = ""
-                for c in contents:
-                    total += c
                 with open(conf_file, 'w') as f:
-                    f.write(total)
-                f.close()
+                    f.writelines(contents)
 
         if replaced == False:
             #remove var from history
@@ -284,21 +306,12 @@ class BBCooker:
             #add var to the end of default_file
             default_file = bb.cookerdata.findConfigFile(default_file, self.data)
 
-            with open(default_file, 'r') as f:
-                contents = f.readlines()
-            f.close()
-
-            total = ""
-            for c in contents:
-                total += c
-
             #add the variable on a single line, to be easy to replace the second time
-            total += "\n#added by hob"
+            total = "\n#added by hob"
             total += "\n%s %s \"%s\"\n" % (var, op, val)
 
-            with open(default_file, 'w') as f:
+            with open(default_file, 'a') as f:
                 f.write(total)
-            f.close()
 
             #add to history
             loginfo = {"op":set, "file":default_file, "line":total.count("\n")}
@@ -312,7 +325,6 @@ class BBCooker:
             if topdir in conf_file:
                 with open(conf_file, 'r') as f:
                     contents = f.readlines()
-                f.close()
 
                 lines = self.data.varhistory.get_variable_lines(var, conf_file)
                 for line in lines:
@@ -334,13 +346,11 @@ class BBCooker:
                         contents[begin_line] = "\n"
                     #remove var from history
                     self.data.varhistory.del_var_history(var, conf_file, line)
+                    #remove variable
+                    self.data.delVar(var)
 
-                total = ""
-                for c in contents:
-                    total += c
                 with open(conf_file, 'w') as f:
-                    f.write(total)
-                f.close()
+                    f.writelines(contents)
 
     def createConfigFile(self, name):
         path = os.getcwd()
@@ -348,7 +358,6 @@ class BBCooker:
         open(confpath, 'w').close()
 
     def parseConfiguration(self):
-
         # Set log file verbosity
         verboselogs = bb.utils.to_boolean(self.data.getVar("BB_VERBOSE_LOGS", "0"))
         if verboselogs:
@@ -366,6 +375,10 @@ class BBCooker:
         self.recipecache = bb.cache.CacheData(self.caches_array)
 
         self.handleCollections( self.data.getVar("BBFILE_COLLECTIONS", True) )
+
+    def updateConfigOpts(self,options):
+        for o in options:
+            setattr(self.configuration, o, options[o])
 
     def runCommands(self, server, data, abort):
         """
@@ -398,7 +411,7 @@ class BBCooker:
 
     def showEnvironment(self, buildfile = None, pkgs_to_build = []):
         """
-        Show the outer or per-package environment
+        Show the outer or per-recipe environment
         """
         fn = None
         envdata = None
@@ -469,9 +482,14 @@ class BBCooker:
         current = 0
         runlist = []
         for k in fulltargetlist:
+            ktask = task
+            if ":do_" in k:
+                k2 = k.split(":do_")
+                k = k2[0]
+                ktask = k2[1]
             taskdata.add_provider(localdata, self.recipecache, k)
             current += 1
-            runlist.append([k, "do_%s" % task])
+            runlist.append([k, "do_%s" % ktask])
             bb.event.fire(bb.event.TreeDataPreparationProgress(current, len(fulltargetlist)), self.data)
         taskdata.add_unresolved(localdata, self.recipecache)
         bb.event.fire(bb.event.TreeDataPreparationCompleted(len(fulltargetlist)), self.data)
@@ -511,6 +529,7 @@ class BBCooker:
         depend_tree["packages"] = {}
         depend_tree["rdepends-pkg"] = {}
         depend_tree["rrecs-pkg"] = {}
+        depend_tree["layer-priorities"] = self.recipecache.bbfile_config_priorities
 
         for task in xrange(len(rq.rqdata.runq_fnid)):
             taskname = rq.rqdata.runq_task[task]
@@ -522,6 +541,7 @@ class BBCooker:
                 depend_tree["pn"][pn] = {}
                 depend_tree["pn"][pn]["filename"] = fn
                 depend_tree["pn"][pn]["version"] = version
+                depend_tree["pn"][pn]["inherits"] = self.recipecache.inherits.get(fn, None)
 
                 # if we have extra caches, list all attributes they bring in
                 extra_info = []
@@ -726,14 +746,9 @@ class BBCooker:
         logger.info("Task dependencies saved to 'task-depends.dot'")
 
     def show_appends_with_no_recipes( self ):
-        recipes = set(os.path.basename(f)
-                      for f in self.recipecache.pkg_fn.iterkeys())
-        recipes |= set(os.path.basename(f)
-                      for f in self.skiplist.iterkeys())
-        appended_recipes = self.collection.appendlist.iterkeys()
         appends_without_recipes = [self.collection.appendlist[recipe]
-                                   for recipe in appended_recipes
-                                   if recipe not in recipes]
+                                   for recipe in self.collection.appendlist
+                                   if recipe not in self.collection.appliedappendlist]
         if appends_without_recipes:
             appendlines = ('  %s' % append
                            for appends in appends_without_recipes
@@ -812,7 +827,6 @@ class BBCooker:
         or to find all machine configuration files one could call:
         findFilesMatchingInDir(self, 'conf/machines', 'conf')
         """
-        import re
 
         matches = []
         p = re.compile(re.escape(filepattern))
@@ -1083,7 +1097,6 @@ class BBCooker:
 
         self.buildSetVars()
 
-        self.recipecache = bb.cache.CacheData(self.caches_array)
         infos = bb.cache.Cache.parse(fn, self.collection.get_file_appends(fn), \
                                      self.data,
                                      self.caches_array)
@@ -1130,10 +1143,13 @@ class BBCooker:
 
         def buildFileIdle(server, rq, abort):
 
+            msg = None
             if abort or self.state == state.forceshutdown:
                 rq.finish_runqueue(True)
+                msg = "Forced shutdown"
             elif self.state == state.shutdown:
                 rq.finish_runqueue(False)
+                msg = "Stopped build"
             failures = 0
             try:
                 retval = rq.execute_runqueue()
@@ -1146,7 +1162,7 @@ class BBCooker:
 
             if not retval:
                 bb.event.fire(bb.event.BuildCompleted(len(rq.rqdata.runq_fnid), buildname, item, failures), self.event_data)
-                self.command.finishAsyncCommand()
+                self.command.finishAsyncCommand(msg)
                 return False
             if retval is True:
                 return True
@@ -1160,10 +1176,13 @@ class BBCooker:
         """
 
         def buildTargetsIdle(server, rq, abort):
+            msg = None
             if abort or self.state == state.forceshutdown:
                 rq.finish_runqueue(True)
+                msg = "Forced shutdown"
             elif self.state == state.shutdown:
                 rq.finish_runqueue(False)
+                msg = "Stopped build"
             failures = 0
             try:
                 retval = rq.execute_runqueue()
@@ -1176,7 +1195,7 @@ class BBCooker:
 
             if not retval:
                 bb.event.fire(bb.event.BuildCompleted(len(rq.rqdata.runq_fnid), buildname, targets, failures), self.data)
-                self.command.finishAsyncCommand()
+                self.command.finishAsyncCommand(msg)
                 return False
             if retval is True:
                 return True
@@ -1202,7 +1221,10 @@ class BBCooker:
             try:
                 v = self.data.getVar(k, True)
                 if not k.startswith("__") and not isinstance(v, bb.data_smart.DataSmart):
-                    dump[k] = { 'v' : v }
+                    dump[k] = {
+    'v' : v ,
+    'history' : self.data.varhistory.variable(k),
+                    }
                     for d in flaglist:
                         dump[k][d] = self.data.getVarFlag(k, d)
             except Exception as e:
@@ -1224,13 +1246,18 @@ class BBCooker:
             else:
                 dest = image
 
+        basename = False
         if base_image:
             with open(base_image, 'r') as f:
                 require_line = f.readline()
+                p = re.compile("IMAGE_BASENAME *=")
+                for line in f:
+                    if p.search(line):
+                        basename = True
 
         with open(dest, "w") as imagefile:
             if base_image is None:
-                imagefile.write("inherit image\n")
+                imagefile.write("inherit core-image\n")
             else:
                 topdir = self.data.getVar("TOPDIR")
                 if topdir in base_image:
@@ -1245,6 +1272,11 @@ class BBCooker:
             description_var = "DESCRIPTION = \"" + description + "\"\n"
             imagefile.write(description_var)
 
+            if basename:
+                # If this is overwritten in a inherited image, reset it to default
+                image_basename = "IMAGE_BASENAME = \"${PN}\"\n"
+                imagefile.write(image_basename)
+
         self.state = state.initial
         if timestamp:
             return timestr
@@ -1255,11 +1287,14 @@ class BBCooker:
             return
 
         if self.state in (state.shutdown, state.forceshutdown):
-            self.parser.shutdown(clean=False, force = True)
+            if hasattr(self.parser, 'shutdown'):
+                self.parser.shutdown(clean=False, force = True)
             raise bb.BBHandledException()
 
         if self.state != state.parsing:
             self.parseConfiguration ()
+            if CookerFeatures.SEND_SANITYEVENTS in self.featureset:
+                bb.event.fire(bb.event.SanityCheck(False), self.data)
 
             ignore = self.data.getVar("ASSUME_PROVIDED", True) or ""
             self.recipecache.ignored_dependencies = set(ignore.split())
@@ -1294,6 +1329,11 @@ class BBCooker:
 
         if len(pkgs_to_build) == 0:
             raise NothingToBuild
+
+        ignore = (self.data.getVar("ASSUME_PROVIDED", True) or "").split()
+        for pkg in pkgs_to_build:
+            if pkg in ignore:
+                parselog.warn("Explicit target \"%s\" is in ASSUME_PROVIDED, ignoring" % pkg)
 
         if 'world' in pkgs_to_build:
             self.buildWorldTargetList()
@@ -1337,11 +1377,8 @@ class BBCooker:
     def finishcommand(self):
         self.state = state.initial
 
-    def initialize(self):
-        self.initConfigurationData()
-
     def reset(self):
-        self.loadConfigurationData()
+        self.initConfigurationData()
 
 def server_main(cooker, func, *args):
     cooker.pre_serve()
@@ -1378,6 +1415,7 @@ class CookerExit(bb.event.Event):
 class CookerCollectFiles(object):
     def __init__(self, priorities):
         self.appendlist = {}
+        self.appliedappendlist = []
         self.bbfile_config_priorities = priorities
 
     def calc_bbfile_priority( self, filename, matched = None ):
@@ -1406,7 +1444,7 @@ class CookerCollectFiles(object):
             for ignored in ('SCCS', 'CVS', '.svn'):
                 if ignored in dirs:
                     dirs.remove(ignored)
-            found += [os.path.join(dir, f) for f in files if (f.endswith('.bb') or f.endswith('.bbappend'))]
+            found += [os.path.join(dir, f) for f in files if (f.endswith(['.bb', '.bbappend']))]
 
         return found
 
@@ -1494,10 +1532,14 @@ class CookerCollectFiles(object):
         """
         Returns a list of .bbappend files to apply to fn
         """
+        filelist = []
         f = os.path.basename(fn)
-        if f in self.appendlist:
-            return self.appendlist[f]
-        return []
+        for bbappend in self.appendlist:
+            if (bbappend == f) or ('%' in bbappend and bbappend.startswith(f[:bbappend.index('%')])):
+                self.appliedappendlist.append(bbappend)
+                for filename in self.appendlist[bbappend]:
+                    filelist.append(filename)
+        return filelist
 
     def collection_priorities(self, pkgfns):
 

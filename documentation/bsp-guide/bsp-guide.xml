@@ -80,8 +80,23 @@
             </revision>
             <revision>
                 <revnumber>1.5.1</revnumber>
-                <date>Sometime in 2013</date>
+                <date>January 2014</date>
                 <revremark>Released with the Yocto Project 1.5.1 Release.</revremark>
+            </revision>
+            <revision>
+                <revnumber>1.6</revnumber>
+                <date>April 2014</date>
+                <revremark>Released with the Yocto Project 1.6 Release.</revremark>
+            </revision>
+            <revision>
+                <revnumber>1.7</revnumber>
+                <date>October 2014</date>
+                <revremark>Released with the Yocto Project 1.7 Release.</revremark>
+            </revision>
+            <revision>
+                <revnumber>1.7.1</revnumber>
+                <date>January 2015</date>
+                <revremark>Released with the Yocto Project 1.7.1 Release.</revremark>
             </revision>
         </revhistory>
 

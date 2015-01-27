@@ -1,3 +1,4 @@
+SUMMARY = "Character encoding support library"
 DESCRIPTION = "GNU libiconv - libiconv is for you if your application needs to support \
 multiple character encodings, but that support lacks from your system."
 HOMEPAGE = "http://www.gnu.org/software/libiconv"
@@ -24,8 +25,8 @@ inherit autotools pkgconfig gettext
 python __anonymous() {
     if d.getVar("TARGET_OS", True) != "linux":
         return
-    if d.getVar("TCLIBC", True) == "eglibc":
-        raise bb.parse.SkipPackage("libiconv is provided for use with uClibc only - eglibc already provides iconv")
+    if d.getVar("TCLIBC", True) == "glibc":
+        raise bb.parse.SkipPackage("libiconv is provided for use with uClibc only - glibc already provides iconv")
 }
 
 EXTRA_OECONF += "--enable-shared --enable-static --enable-relocatable"
@@ -33,7 +34,7 @@ EXTRA_OECONF += "--enable-shared --enable-static --enable-relocatable"
 LEAD_SONAME = "libiconv.so"
 
 do_configure_prepend () {
-	rm -f m4/libtool.m4 m4/ltoptions.m4 m4/ltsugar.m4 m4/ltversion.m4 m4/lt~obsolete.m4 libcharset/m4/libtool.m4 libcharset/m4/ltoptions.m4 libcharset/m4/ltsugar.m4 libcharset/m4/ltversion.m4 libcharset/m4/lt~obsolete.m4
+	rm -f ${S}/m4/libtool.m4 ${S}/m4/ltoptions.m4 ${S}/m4/ltsugar.m4 ${S}/m4/ltversion.m4 ${S}/m4/lt~obsolete.m4 ${S}/libcharset/m4/libtool.m4 ${S}/libcharset/m4/ltoptions.m4 ${S}/libcharset/m4/ltsugar.m4 ${S}/libcharset/m4/ltversion.m4 ${S}/libcharset/m4/lt~obsolete.m4
 }
 
 do_configure_append () {

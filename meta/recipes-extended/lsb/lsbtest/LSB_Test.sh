@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Copyright (C) 2012 Wind River Systems, Inc.
 #
@@ -29,7 +29,7 @@ EOF
 fi
 
 ARCH=`uname -m`
-if [ ${ARCH} != "i686" ] && [ ${ARCH} != "x86_64" ] && [ ${ARCH} != "ppc" ]
+if [ ${ARCH} != "i686" ] && [ ${ARCH} != "x86_64" ] && [ ${ARCH} != "ppc" ] && [ ${ARCH} != "ppc64" ]
 then
 	echo "Error: Unsupported architecture"
 	exit 1
@@ -272,11 +272,20 @@ then
 fi
 
 if ! `grep -F -q "noarch-suse" ${PLATFORM_FILE}`; then
-	if [ ${ARCH} == i686 ];then
+	if [ ${ARCH} = i686 ];then
 		echo "i486-suse" >> ${PLATFORM_FILE}
 		echo "i486-noarch" >> ${PLATFORM_FILE}
 		echo "i486-pc" >> ${PLATFORM_FILE}
 		echo "noarch-suse" >> ${PLATFORM_FILE}
+	elif [ ${ARCH} = x86_64 ]; then
+		echo "i486-suse" >> ${PLATFORM_FILE}
+		echo "i486-noarch" >> ${PLATFORM_FILE}
+		echo "i486-pc" >> ${PLATFORM_FILE}
+		echo "i486-.*-linux.*" >> ${PLATFORM_FILE}
+		echo "noarch-suse" >> ${PLATFORM_FILE}
+		echo "${ARCH}-suse" >> ${PLATFORM_FILE}
+		echo "${ARCH}-noarch" >> ${PLATFORM_FILE}
+		echo "${ARCH}-pc" >> ${PLATFORM_FILE}
 	else
 		echo "${ARCH}-suse" >> ${PLATFORM_FILE}
 		echo "${ARCH}-noarch" >> ${PLATFORM_FILE}
@@ -435,11 +444,13 @@ else
 	echo "Fail to creat Dirnames file"
 fi
 
+[ -x /sbin/ldconfig ] && {
 echo ""
 echo "---------------------------------"
 echo "Update cache"
-ldconfig
+/sbin/ldconfig
 check;
+}
 
 # Check loop device
 if [ ! -b /dev/loop0 ]
@@ -474,6 +485,11 @@ localedef -i it_IT -f ISO-8859-1 it_IT
 localedef -i ja_JP -f EUC-JP ja_JP.eucjp
 localedef -i se_NO -f UTF-8 se_NO.UTF-8
 localedef -i ta_IN -f UTF-8 ta_IN
+localedef -i es_ES -f ISO-8859-1 es_ES
+localedef -i fr_FR@euro -f ISO-8859-1 fr_FR@euro
+localedef -i is_IS -f UTF-8 is_IS.UTF-8
+localedef -i zh_TW -f BIG5 zh_TW.BIG5
+localedef -i en_US -f ISO-8859-15 en_US.ISO-8859-15
 
 echo ""
 echo "Installation done!"

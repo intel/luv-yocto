@@ -5,7 +5,7 @@
 # Provide syslinux specific functions for building bootable images.
 
 # External variables
-# ${INITRD} - indicates a filesystem image to use as an initrd (optional)
+# ${INITRD} - indicates a list of filesystem images to concatenate and use as an initrd (optional)
 # ${ROOTFS} - indicates a filesystem image to include as the root filesystem (optional)
 # ${AUTO_SYSLINUXMENU} - set this to 1 to enable creating an automatic menu
 # ${LABELS} - a list of targets for the automatic config
@@ -15,8 +15,9 @@
 # ${SYSLINUX_DEFAULT_CONSOLE} - set to "console=ttyX" to change kernel boot default console
 # ${SYSLINUX_SERIAL} - Set an alternate serial port or turn off serial with empty string
 # ${SYSLINUX_SERIAL_TTY} - Set alternate console=tty... kernel boot argument
+# ${SYSLINUX_KERNEL_ARGS} - Add additional kernel arguments
 
-do_bootimg[depends] += "syslinux:do_populate_sysroot \
+do_bootimg[depends] += "${MLPREFIX}syslinux:do_populate_sysroot \
                         syslinux-native:do_populate_sysroot"
 
 SYSLINUXCFG  = "${S}/syslinux.cfg"
@@ -162,6 +163,10 @@ python build_syslinux_cfg () {
         for btype in btypes:
             cfgfile.write('LABEL %s%s\nKERNEL /vmlinuz\n' % (btype[0], label))
 
+            exargs = d.getVar('SYSLINUX_KERNEL_ARGS', True)
+            if exargs:
+                btype[1] += " " + exargs
+
             append = localdata.getVar('APPEND', True)
             initrd = localdata.getVar('INITRD', True)
 
@@ -179,3 +184,4 @@ python build_syslinux_cfg () {
 
     cfgfile.close()
 }
+build_syslinux_cfg[vardeps] += "APPEND"

@@ -227,14 +227,20 @@ class Configuration:
             handler.set_var_in_file("DEPENDS", self.selected_recipes, "local.conf")
             handler.set_var_in_file("IMAGE_INSTALL", self.user_selected_packages, "local.conf")
         # proxy
-        handler.set_var_in_file("enable_proxy", self.enable_proxy, "local.conf")
-        handler.set_var_in_file("use_same_proxy", self.same_proxy, "local.conf")
-        handler.set_var_in_file("http_proxy", self.combine_proxy("http"), "local.conf")
-        handler.set_var_in_file("https_proxy", self.combine_proxy("https"), "local.conf")
-        handler.set_var_in_file("ftp_proxy", self.combine_proxy("ftp"), "local.conf")
-        handler.set_var_in_file("all_proxy", self.combine_proxy("socks"), "local.conf")
-        handler.set_var_in_file("CVS_PROXY_HOST", self.combine_host_only("cvs"), "local.conf")
-        handler.set_var_in_file("CVS_PROXY_PORT", self.combine_port_only("cvs"), "local.conf")
+        if self.enable_proxy == True:
+            handler.set_var_in_file("http_proxy", self.combine_proxy("http"), "local.conf")
+            handler.set_var_in_file("https_proxy", self.combine_proxy("https"), "local.conf")
+            handler.set_var_in_file("ftp_proxy", self.combine_proxy("ftp"), "local.conf")
+            handler.set_var_in_file("all_proxy", self.combine_proxy("socks"), "local.conf")
+            handler.set_var_in_file("CVS_PROXY_HOST", self.combine_host_only("cvs"), "local.conf")
+            handler.set_var_in_file("CVS_PROXY_PORT", self.combine_port_only("cvs"), "local.conf")
+        else:
+            handler.set_var_in_file("http_proxy", "", "local.conf")
+            handler.set_var_in_file("https_proxy", "", "local.conf")
+            handler.set_var_in_file("ftp_proxy", "", "local.conf")
+            handler.set_var_in_file("all_proxy", "", "local.conf")
+            handler.set_var_in_file("CVS_PROXY_HOST", "", "local.conf")
+            handler.set_var_in_file("CVS_PROXY_PORT", "", "local.conf")
 
     def __str__(self):
         s = "VERSION: '%s', BBLAYERS: '%s', MACHINE: '%s', DISTRO: '%s', DL_DIR: '%s'," % \
@@ -374,7 +380,6 @@ class Builder(gtk.Window):
         super(Builder, self).__init__()
 
         self.hob_image = "hob-image"
-        self.hob_toolchain = "hob-toolchain"
 
         # handler
         self.handler = hobHandler
@@ -441,6 +446,7 @@ class Builder(gtk.Window):
         self.handler.connect("recipe-populated",         self.handler_recipe_populated_cb)
         self.handler.connect("package-populated",        self.handler_package_populated_cb)
 
+        self.handler.append_to_bbfiles("${TOPDIR}/recipes/images/custom/*.bb")
         self.handler.append_to_bbfiles("${TOPDIR}/recipes/images/*.bb")
         self.initiate_new_build_async()
 
@@ -528,9 +534,9 @@ class Builder(gtk.Window):
         self.generate_configuration()
 
     def update_config_async(self):
-        self.switch_page(self.MACHINE_SELECTION)
         self.set_user_config()
         self.generate_configuration()
+        self.switch_page(self.MACHINE_SELECTION)
 
     def sanity_check(self):
         self.handler.trigger_sanity_check()
@@ -591,7 +597,6 @@ class Builder(gtk.Window):
             image = self.configuration.selected_image
         self.handler.generate_image(image,
                                     base_image,
-                                    self.hob_toolchain,
                                     packages,
                                     toolchain_packages,
                                     self.configuration.default_task)
@@ -704,7 +709,6 @@ class Builder(gtk.Window):
         self.set_user_config_proxies()
 
     def set_user_config(self):
-        self.handler.reset_cooker()
         # set bb layers
         self.handler.set_bblayers(self.configuration.layers)
         # set local configuration
@@ -733,6 +737,11 @@ class Builder(gtk.Window):
         if params:
             self.configuration.update(params)
             self.parameters.update(params)
+
+    def set_base_image(self):
+        self.configuration.initial_selected_image = self.configuration.selected_image
+        if self.configuration.selected_image != self.recipe_model.__custom_image__:
+            self.hob_image = self.configuration.selected_image + "-edited"
 
     def reset(self):
         self.configuration.curr_mach = ""
@@ -794,8 +803,8 @@ class Builder(gtk.Window):
                 self.generate_image_async(True)
 
     def show_error_dialog(self, msg):
-        lbl = "<b>Hob found an error</b>\n"
-        dialog = CrumbsMessageDialog(self, lbl, gtk.STOCK_DIALOG_ERROR, msg)
+        lbl = "<b>Hob found an error</b>"
+        dialog = CrumbsMessageDialog(self, lbl, gtk.MESSAGE_ERROR, msg)
         button = dialog.add_button("Close", gtk.RESPONSE_OK)
         HobButton.style_button(button)
         response = dialog.run()
@@ -811,10 +820,9 @@ class Builder(gtk.Window):
         dialog.destroy()
 
     def show_network_error_dialog(self):
-        lbl = "<b>Hob cannot connect to the network</b>\n"
-        msg = "Please check your network connection. If you are using a proxy server, please make sure it is configured correctly."
-        lbl = lbl + "%s\n\n" % glib.markup_escape_text(msg)
-        dialog = CrumbsMessageDialog(self, lbl, gtk.STOCK_DIALOG_ERROR)
+        lbl = "<b>Hob cannot connect to the network</b>"
+        msg = msg + "Please check your network connection. If you are using a proxy server, please make sure it is configured correctly."
+        dialog = CrumbsMessageDialog(self, lbl, gtk.MESSAGE_ERROR, msg)
         button = dialog.add_button("Close", gtk.RESPONSE_OK)
         HobButton.style_button(button)
         button = dialog.add_button("Proxy settings", gtk.RESPONSE_CANCEL)
@@ -959,7 +967,7 @@ class Builder(gtk.Window):
             if selected_image == self.recipe_model.__custom_image__:
                 if self.configuration.initial_selected_image != selected_image:
                     version = self.recipe_model.get_custom_image_version()
-                linkname = 'hob-image' + version+ "-" + self.configuration.curr_mach
+                linkname = self.hob_image + version + "-" + self.configuration.curr_mach
             else:
                 linkname = selected_image + '-' + self.configuration.curr_mach
             image_extension = self.get_image_extension()
@@ -1037,7 +1045,7 @@ class Builder(gtk.Window):
         self.build_failed()
 
     def handler_no_provider_cb(self, running_build, msg):
-        dialog = CrumbsMessageDialog(self, glib.markup_escape_text(msg), gtk.STOCK_DIALOG_INFO)
+        dialog = CrumbsMessageDialog(self, glib.markup_escape_text(msg), gtk.MESSAGE_INFO)
         button = dialog.add_button("Close", gtk.RESPONSE_OK)
         HobButton.style_button(button)
         dialog.run()
@@ -1100,9 +1108,10 @@ class Builder(gtk.Window):
     def build_packages(self):
         _, all_recipes = self.recipe_model.get_selected_recipes()
         if not all_recipes:
-            lbl = "<b>No selections made</b>\nYou have not made any selections"
-            lbl = lbl + " so there isn't anything to bake at this time."
-            dialog = CrumbsMessageDialog(self, lbl, gtk.STOCK_DIALOG_INFO)
+            lbl = "<b>No selections made</b>"
+            msg = "You have not made any selections"
+            msg = msg + " so there isn't anything to bake at this time."
+            dialog = CrumbsMessageDialog(self, lbl, gtk.MESSAGE_INFO, msg)
             button = dialog.add_button("Close", gtk.RESPONSE_OK)
             HobButton.style_button(button)
             dialog.run()
@@ -1113,9 +1122,10 @@ class Builder(gtk.Window):
     def build_image(self):
         selected_packages = self.package_model.get_selected_packages()
         if not selected_packages:      
-            lbl = "<b>No selections made</b>\nYou have not made any selections"
-            lbl = lbl + " so there isn't anything to bake at this time."
-            dialog = CrumbsMessageDialog(self, lbl, gtk.STOCK_DIALOG_INFO)
+            lbl = "<b>No selections made</b>"
+            msg = "You have not made any selections"
+            msg = msg + " so there isn't anything to bake at this time."
+            dialog = CrumbsMessageDialog(self, lbl, gtk.MESSAGE_INFO, msg)
             button = dialog.add_button("Close", gtk.RESPONSE_OK)
             HobButton.style_button(button)
             dialog.run()
@@ -1129,9 +1139,10 @@ class Builder(gtk.Window):
 
         # If no base image and no selected packages don't build anything
         if not (selected_packages or selected_image != self.recipe_model.__custom_image__):
-            lbl = "<b>No selections made</b>\nYou have not made any selections"
-            lbl = lbl + " so there isn't anything to bake at this time."
-            dialog = CrumbsMessageDialog(self, lbl, gtk.STOCK_DIALOG_INFO)
+            lbl = "<b>No selections made</b>"
+            msg = "You have not made any selections"
+            msg = msg + " so there isn't anything to bake at this time."
+            dialog = CrumbsMessageDialog(self, lbl, gtk.MESSAGE_INFO, msg)
             button = dialog.add_button("Close", gtk.RESPONSE_OK)
             HobButton.style_button(button)
             dialog.run()
@@ -1215,8 +1226,9 @@ class Builder(gtk.Window):
         response = dialog.run()
         if response == gtk.RESPONSE_YES:
             if not dialog.image_names:
-                lbl = "<b>No selections made</b>\nYou have not made any selections"
-                crumbs_dialog = CrumbsMessageDialog(self, lbl, gtk.STOCK_DIALOG_INFO)
+                lbl = "<b>No selections made</b>"
+                msg = "You have not made any selections"
+                crumbs_dialog = CrumbsMessageDialog(self, lbl, gtk.MESSAGE_INFO, msg)
                 button = crumbs_dialog.add_button("Close", gtk.RESPONSE_OK)
                 HobButton.style_button(button)
                 crumbs_dialog.run()
@@ -1303,7 +1315,7 @@ class Builder(gtk.Window):
     def deploy_image(self, image_name):
         if not image_name:
             lbl = "<b>Please select an image to deploy.</b>"
-            dialog = CrumbsMessageDialog(self, lbl, gtk.STOCK_DIALOG_INFO)
+            dialog = CrumbsMessageDialog(self, lbl, gtk.MESSAGE_INFO)
             button = dialog.add_button("Close", gtk.RESPONSE_OK)
             HobButton.style_button(button)
             dialog.run()
@@ -1349,8 +1361,8 @@ class Builder(gtk.Window):
 
     def runqemu_image(self, image_name, kernel_name):
         if not image_name or not kernel_name:
-            lbl = "<b>Please select an %s to launch in QEMU.</b>" % ("kernel" if image_name else "image")
-            dialog = CrumbsMessageDialog(self, lbl, gtk.STOCK_DIALOG_INFO)
+            lbl = "<b>Please select %s to launch in QEMU.</b>" % ("a kernel" if image_name else "an image")
+            dialog = CrumbsMessageDialog(self, lbl, gtk.MESSAGE_INFO)
             button = dialog.add_button("Close", gtk.RESPONSE_OK)
             HobButton.style_button(button)
             dialog.run()
@@ -1371,38 +1383,23 @@ class Builder(gtk.Window):
             cmdline += "runqemu " + kernel_path + " " + image_path + "\"\'"
             subprocess.Popen(shlex.split(cmdline))
         else:
-            lbl = "<b>Path error</b>\nOne of your paths is wrong,"
-            lbl = lbl + " please make sure the following paths exist:\n"
-            lbl = lbl + "image path:" + image_path + "\n"
-            lbl = lbl + "kernel path:" + kernel_path + "\n"
-            lbl = lbl + "source environment path:" + source_env_path + "\n"
-            lbl = lbl + "tmp path: " + tmp_path + "."
-            lbl = lbl + "You may be missing either xterm or vte for terminal services."
-            dialog = CrumbsMessageDialog(self, lbl, gtk.STOCK_DIALOG_ERROR)
+            lbl = "<b>Path error</b>"
+            msg = "One of your paths is wrong,"
+            msg = msg + " please make sure the following paths exist:\n"
+            msg = msg + "image path:" + image_path + "\n"
+            msg = msg + "kernel path:" + kernel_path + "\n"
+            msg = msg + "source environment path:" + source_env_path + "\n"
+            msg = msg + "tmp path: " + tmp_path + "."
+            msg = msg + "You may be missing either xterm or vte for terminal services."
+            dialog = CrumbsMessageDialog(self, lbl, gtk.MESSAGE_ERROR, msg)
             button = dialog.add_button("Close", gtk.RESPONSE_OK)
             HobButton.style_button(button)
             dialog.run()
             dialog.destroy()
 
-    def show_packages(self, ask=True):
-        _, selected_recipes = self.recipe_model.get_selected_recipes()
-        if selected_recipes and ask:
-            lbl = "<b>Package list may be incomplete!</b>\nDo you want to build selected recipes"
-            lbl = lbl + " to get a full list or just view the existing packages?"
-            dialog = CrumbsMessageDialog(self, lbl, gtk.STOCK_DIALOG_INFO)
-            button = dialog.add_button("View packages", gtk.RESPONSE_NO)
-            HobAltButton.style_button(button)
-            button = dialog.add_button("Build packages", gtk.RESPONSE_YES)
-            HobButton.style_button(button)
-            dialog.set_default_response(gtk.RESPONSE_YES)
-            response = dialog.run()
-            dialog.destroy()
-            if response == gtk.RESPONSE_YES:
-                self.generate_packages_async(True)
-            else:
-                self.switch_page(self.PACKAGE_SELECTION)
-        else:
-            self.switch_page(self.PACKAGE_SELECTION)
+    def show_packages(self):
+        self.package_details_page.refresh_tables()
+        self.switch_page(self.PACKAGE_SELECTION)
 
     def show_recipes(self):
         self.switch_page(self.RECIPE_SELECTION)
@@ -1415,26 +1412,28 @@ class Builder(gtk.Window):
 
     def stop_build(self):
         if self.stopping:
-            lbl = "<b>Force Stop build?</b>\nYou've already selected Stop once,"
-            lbl = lbl + " would you like to 'Force Stop' the build?\n\n"
-            lbl = lbl + "This will stop the build as quickly as possible but may"
-            lbl = lbl + " well leave your build directory in an  unusable state"
-            lbl = lbl + " that requires manual steps to fix.\n"
-            dialog = CrumbsMessageDialog(self, lbl, gtk.STOCK_DIALOG_WARNING)
+            lbl = "<b>Force Stop build?</b>"
+            msg = "You've already selected Stop once,"
+            msg = msg + " would you like to 'Force Stop' the build?\n\n"
+            msg = msg + "This will stop the build as quickly as possible but may"
+            msg = msg + " well leave your build directory in an  unusable state"
+            msg = msg + " that requires manual steps to fix."
+            dialog = CrumbsMessageDialog(self, lbl, gtk.MESSAGE_WARNING, msg)
             button = dialog.add_button("Cancel", gtk.RESPONSE_CANCEL)
             HobAltButton.style_button(button)
             button = dialog.add_button("Force Stop", gtk.RESPONSE_YES)
             HobButton.style_button(button)
         else:
-            lbl = "<b>Stop build?</b>\n\nAre you sure you want to stop this"
-            lbl = lbl + " build?\n\n'Stop' will stop the build as soon as all in"
-            lbl = lbl + " progress build tasks are finished. However if a"
-            lbl = lbl + " lengthy compilation phase is in progress this may take"
-            lbl = lbl + " some time.\n\n"
-            lbl = lbl + "'Force Stop' will stop the build as quickly as"
-            lbl = lbl + " possible but may well leave your build directory in an"
-            lbl = lbl + " unusable state that requires manual steps to fix."
-            dialog = CrumbsMessageDialog(self, lbl, gtk.STOCK_DIALOG_WARNING)
+            lbl = "<b>Stop build?</b>"
+            msg = "Are you sure you want to stop this"
+            msg = msg + " build?\n\n'Stop' will stop the build as soon as all in"
+            msg = msg + " progress build tasks are finished. However if a"
+            msg = msg + " lengthy compilation phase is in progress this may take"
+            msg = msg + " some time.\n\n"
+            msg = msg + "'Force Stop' will stop the build as quickly as"
+            msg = msg + " possible but may well leave your build directory in an"
+            msg = msg + " unusable state that requires manual steps to fix."
+            dialog = CrumbsMessageDialog(self, lbl, gtk.MESSAGE_WARNING, msg)
             button = dialog.add_button("Cancel", gtk.RESPONSE_CANCEL)
             HobAltButton.style_button(button)
             button = dialog.add_button("Force stop", gtk.RESPONSE_YES)

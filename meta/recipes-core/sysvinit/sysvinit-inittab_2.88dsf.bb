@@ -1,8 +1,8 @@
-DESCRIPTION = "Inittab for sysvinit"
+SUMMARY = "Inittab configuration for SysVinit"
 LICENSE = "GPLv2"
 LIC_FILES_CHKSUM = "file://${COREBASE}/meta/files/common-licenses/GPL-2.0;md5=801f80980d171dd6425610833a22dbe6"
 
-PR = "r9"
+PR = "r10"
 
 SRC_URI = "file://inittab"
 
@@ -23,7 +23,7 @@ do_install() {
     do
 	j=`echo ${i} | sed s/\;/\ /g`
 	label=`echo ${i} | sed -e 's/^.*;tty//' -e 's/;.*//'`
-	echo "$label:12345:respawn:${base_sbindir}/getty ${j}" >> ${D}${sysconfdir}/inittab
+	echo "$label:12345:respawn:${base_sbindir}/getty -L ${j}" >> ${D}${sysconfdir}/inittab
     done
 
     if [ "${USE_VT}" = "1" ]; then
@@ -54,7 +54,7 @@ if [ "x$D" = "x" ] && [ -e /proc/consoles ]; then
 	for i in $tmp
 	do
 		j=`echo ${i} | sed s/^.*\;//g`
-		if [ -z "`cat /proc/consoles | grep ${j}`" ]; then
+		if [ -z "`grep ${j} /proc/consoles`" ]; then
 			sed -i /^.*${j}$/d /etc/inittab
 		fi
 	done

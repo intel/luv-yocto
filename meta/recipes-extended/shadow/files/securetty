@@ -9,16 +9,35 @@ ttyS2
 ttyS3
 
 # ARM AMBA SoCs
+ttyAM0
+ttyAM1
+ttyAM2
+ttyAM3
 ttyAMA0
 ttyAMA1
 ttyAMA2
 ttyAMA3
+
+# QCOM Socs
+ttyHSL0
+ttyHSL1
+ttyHSL2
+ttyHSL3
+ttyMSM0
+ttyMSM1
+ttyMSM2
 
 # Samsung ARM SoCs
 ttySAC0
 ttySAC1
 ttySAC2
 ttySAC3
+
+# STM SoCs
+ttyAS0
+ttyAS1
+ttyAS2
+ttyAS3
 
 # TI OMAP SoCs
 ttyO0
@@ -124,18 +143,10 @@ tty62
 tty63
 
 # Local X displays (allows empty passwords with pam_unix's nullok_secure)
-:0
-:0.0
-:0.1
-:1
-:1.0
-:1.1
-:2
-:2.0
-:2.1
-:3
-:3.0
-:3.1
+pts/0
+pts/1
+pts/2
+pts/3
 
 # Embedded Freescale i.MX ports
 ttymxc0
@@ -144,6 +155,14 @@ ttymxc2
 ttymxc3
 ttymxc4
 ttymxc5
+
+# Freescale lpuart ports
+ttyLP0
+ttyLP1
+ttyLP2
+ttyLP3
+ttyLP4
+ttyLP5
 
 # Standard serial ports, with devfs
 tts/0

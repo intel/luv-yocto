@@ -1,4 +1,4 @@
-from oeqa.oetest import oeRuntimeTest
+from oeqa.oetest import oeRuntimeTest, skipModule
 from oeqa.utils.decorators import *
 from oeqa.utils.targetbuild import TargetBuildProject
 
@@ -10,11 +10,11 @@ class BuildCvsTest(oeRuntimeTest):
 
     @classmethod
     def setUpClass(self):
-        self.restartTarget("-m 512")
-        self.project = TargetBuildProject(oeRuntimeTest.tc.target,
+        self.project = TargetBuildProject(oeRuntimeTest.tc.target, oeRuntimeTest.tc.d,
                         "http://ftp.gnu.org/non-gnu/cvs/source/feature/1.12.13/cvs-1.12.13.tar.bz2")
         self.project.download_archive()
 
+    @testcase(205)
     @skipUnlessPassed("test_ssh")
     def test_cvs(self):
         self.assertEqual(self.project.run_configure(), 0,
@@ -29,4 +29,3 @@ class BuildCvsTest(oeRuntimeTest):
     @classmethod
     def tearDownClass(self):
         self.project.clean()
-        self.restartTarget()

@@ -1,4 +1,4 @@
-SUMMARY = "Tiny versions of many common UNIX utilities in a single small executable."
+SUMMARY = "Tiny versions of many common UNIX utilities in a single small executable"
 DESCRIPTION = "BusyBox combines tiny versions of many common UNIX utilities into a single small executable. It provides minimalist replacements for most of the utilities you usually find in GNU fileutils, shellutils, etc. The utilities in BusyBox generally have fewer options than their full-featured GNU cousins; however, the options that are included provide the expected functionality and behave very much like their GNU counterparts. BusyBox provides a fairly complete POSIX environment for any small or embedded system."
 HOMEPAGE = "http://www.busybox.net"
 BUGTRACKER = "https://bugs.busybox.net/"
@@ -17,12 +17,13 @@ BUSYBOX_SPLIT_SUID ?= "1"
 
 export EXTRA_CFLAGS = "${CFLAGS}"
 export EXTRA_LDFLAGS = "${LDFLAGS}"
+export EXTRA_OEMAKE += "'LD=${CCLD}'"
 
 PACKAGES =+ "${PN}-httpd ${PN}-udhcpd ${PN}-udhcpc ${PN}-syslog ${PN}-mdev ${PN}-hwclock"
 
 FILES_${PN}-httpd = "${sysconfdir}/init.d/busybox-httpd /srv/www"
 FILES_${PN}-syslog = "${sysconfdir}/init.d/syslog* ${sysconfdir}/syslog-startup.conf* ${sysconfdir}/syslog.conf* ${systemd_unitdir}/system/syslog.service ${sysconfdir}/default/busybox-syslog"
-FILES_${PN}-mdev = "${sysconfdir}/init.d/mdev ${sysconfdir}/mdev.conf"
+FILES_${PN}-mdev = "${sysconfdir}/init.d/mdev ${sysconfdir}/mdev.conf ${sysconfdir}/mdev/*"
 FILES_${PN}-udhcpd = "${sysconfdir}/init.d/busybox-udhcpd"
 FILES_${PN}-udhcpc = "${sysconfdir}/udhcpc.d ${datadir}/udhcpc"
 FILES_${PN}-hwclock = "${sysconfdir}/init.d/hwclock.sh"
@@ -47,11 +48,11 @@ RRECOMMENDS_${PN} = "${PN}-syslog ${PN}-udhcpc"
 inherit cml1 systemd update-rc.d ptest
 
 # internal helper
-def busybox_cfg(feature, features, tokens, cnf, rem):
+def busybox_cfg(feature, tokens, cnf, rem):
 	if type(tokens) == type(""):
 		tokens = [tokens]
 	rem.extend(['/^[# ]*' + token + '[ =]/d' for token in tokens])
-	if type(features) == type([]) and feature in features:
+	if feature:
 		cnf.extend([token + '=y' for token in tokens])
 	else:
 		cnf.extend(['# ' + token + ' is not set' for token in tokens])
@@ -59,15 +60,14 @@ def busybox_cfg(feature, features, tokens, cnf, rem):
 # Map distro features to config settings
 def features_to_busybox_settings(d):
 	cnf, rem = ([], [])
-	distro_features = d.getVar('DISTRO_FEATURES', True).split()
-	busybox_cfg('ipv6', distro_features, 'CONFIG_FEATURE_IPV6', cnf, rem)
-	busybox_cfg('largefile', distro_features, 'CONFIG_LFS', cnf, rem)
-	busybox_cfg('largefile', distro_features, 'CONFIG_FDISK_SUPPORT_LARGE_DISKS', cnf, rem)
-	busybox_cfg('nls',  distro_features, 'CONFIG_LOCALE_SUPPORT', cnf, rem)
-	busybox_cfg('ipv4', distro_features, 'CONFIG_FEATURE_IFUPDOWN_IPV4', cnf, rem)
-	busybox_cfg('ipv6', distro_features, 'CONFIG_FEATURE_IFUPDOWN_IPV6', cnf, rem)
-	busybox_cfg('wifi', distro_features, 'CONFIG_RFKILL', cnf, rem)
-	busybox_cfg('bluetooth', distro_features, 'CONFIG_RFKILL', cnf, rem)
+	busybox_cfg(bb.utils.contains('DISTRO_FEATURES', 'ipv6', True, False, d), 'CONFIG_FEATURE_IPV6', cnf, rem)
+	busybox_cfg(bb.utils.contains('DISTRO_FEATURES', 'largefile', True, False, d), 'CONFIG_LFS', cnf, rem)
+	busybox_cfg(bb.utils.contains('DISTRO_FEATURES', 'largefile', True, False, d), 'CONFIG_FDISK_SUPPORT_LARGE_DISKS', cnf, rem)
+	busybox_cfg(bb.utils.contains('DISTRO_FEATURES', 'nls', True, False, d), 'CONFIG_LOCALE_SUPPORT', cnf, rem)
+	busybox_cfg(bb.utils.contains('DISTRO_FEATURES', 'ipv4', True, False, d), 'CONFIG_FEATURE_IFUPDOWN_IPV4', cnf, rem)
+	busybox_cfg(bb.utils.contains('DISTRO_FEATURES', 'ipv6', True, False, d), 'CONFIG_FEATURE_IFUPDOWN_IPV6', cnf, rem)
+	busybox_cfg(bb.utils.contains('DISTRO_FEATURES', 'wifi', True, False, d), 'CONFIG_RFKILL', cnf, rem)
+	busybox_cfg(bb.utils.contains('DISTRO_FEATURES', 'bluetooth', True, False, d), 'CONFIG_RFKILL', cnf, rem)
 	return "\n".join(cnf), "\n".join(rem)
 
 # X, Y = ${@features_to_uclibc_settings(d)}
@@ -84,8 +84,8 @@ configmangle = '/CROSS_COMPILER_PREFIX/d; \
 		'
 OE_FEATURES := "${@features_to_busybox_conf(d)}"
 OE_DEL      := "${@features_to_busybox_del(d)}"
-DO_IPv4 := "${@base_contains('DISTRO_FEATURES', 'ipv4', 1, 0, d)}"
-DO_IPv6 := "${@base_contains('DISTRO_FEATURES', 'ipv6', 1, 0, d)}"
+DO_IPv4 := "${@bb.utils.contains('DISTRO_FEATURES', 'ipv4', 1, 0, d)}"
+DO_IPv6 := "${@bb.utils.contains('DISTRO_FEATURES', 'ipv6', 1, 0, d)}"
 
 python () {
   if "${OE_DEL}":
@@ -119,6 +119,7 @@ do_prepare_config () {
 	  {if(net==2&&$0 !~ /^#/&&$1){print("# "$1" is not set")}else{print}}' \
 		  ${S}/.config.oe-tmp > ${S}/.config
 	fi
+	sed -i 's/CONFIG_IFUPDOWN_UDHCPC_CMD_OPTIONS="-R -n"/CONFIG_IFUPDOWN_UDHCPC_CMD_OPTIONS="-R -b"/' ${S}/.config
 }
 
 # returns all the elements from the src uri that are .cfg files
@@ -189,7 +190,9 @@ do_install () {
 			install -m 0755 ${B}/busybox.nosuid ${D}${base_bindir}
 			install -m 0644 ${S}/busybox.links.suid ${D}${sysconfdir}
 			install -m 0644 ${S}/busybox.links.nosuid ${D}${sysconfdir}
-			ln -sf busybox.nosuid ${D}${base_bindir}/sh
+			if grep -q "CONFIG_FEATURE_SH_IS_ASH=y" ${B}/.config; then
+				ln -sf busybox.nosuid ${D}${base_bindir}/sh
+			fi
 			# Keep a default busybox for people who want to invoke busybox directly.
 			# This is also useful for the on device upgrade. Because we want
 			# to use the busybox command in postinst.
@@ -201,7 +204,9 @@ do_install () {
 				install -m 0755 ${B}/busybox ${D}${base_bindir}
 			fi
 			install -m 0644 ${S}/busybox.links ${D}${sysconfdir}
-			ln -sf busybox ${D}${base_bindir}/sh
+			if grep -q "CONFIG_FEATURE_SH_IS_ASH=y" ${B}/.config; then
+				ln -sf busybox ${D}${base_bindir}/sh
+			fi
 			# We make this symlink here to eliminate the error when upgrading together
 			# with busybox-syslog. Without this symlink, the opkg may think of the
 			# busybox.nosuid as obsolete and remove it, resulting in dead links like
@@ -263,26 +268,31 @@ do_install () {
                install -m 0755 ${WORKDIR}/mdev ${D}${sysconfdir}/init.d/mdev
                if grep "CONFIG_FEATURE_MDEV_CONF=y" ${B}/.config; then
                        install -m 644 ${WORKDIR}/mdev.conf ${D}${sysconfdir}/mdev.conf
+                       install -d ${D}${sysconfdir}/mdev
+                       install -m 0755 ${WORKDIR}/find-touchscreen.sh ${D}${sysconfdir}/mdev
                fi
 	fi
 
-    if ${@base_contains('DISTRO_FEATURES','systemd','true','false',d)}; then
-        install -d ${D}${systemd_unitdir}/system
-        sed 's,@base_sbindir@,${base_sbindir},g' < ${WORKDIR}/busybox-syslog.service.in \
-            > ${D}${systemd_unitdir}/system/busybox-syslog.service
-        sed 's,@base_sbindir@,${base_sbindir},g' < ${WORKDIR}/busybox-klogd.service.in \
-            > ${D}${systemd_unitdir}/system/busybox-klogd.service
-
-        if [ -f ${WORKDIR}/busybox-syslog.default ] ; then
-            install -d ${D}${sysconfdir}/default
-            install -m 0644 ${WORKDIR}/busybox-syslog.default ${D}${sysconfdir}/default/busybox-syslog
+    if ${@bb.utils.contains('DISTRO_FEATURES','systemd','true','false',d)}; then
+        if grep -q "CONFIG_SYSLOGD=y" ${B}/.config; then
+            install -d ${D}${systemd_unitdir}/system
+            sed 's,@base_sbindir@,${base_sbindir},g' < ${WORKDIR}/busybox-syslog.service.in \
+		> ${D}${systemd_unitdir}/system/busybox-syslog.service
+            if [ -f ${WORKDIR}/busybox-syslog.default ] ; then
+		install -d ${D}${sysconfdir}/default
+		install -m 0644 ${WORKDIR}/busybox-syslog.default ${D}${sysconfdir}/default/busybox-syslog
+            fi
+            ln -sf /dev/null ${D}${systemd_unitdir}/system/syslog.service
         fi
-
-        ln -sf /dev/null ${D}${systemd_unitdir}/system/syslog.service
+        if grep -q "CONFIG_KLOGD=y" ${B}/.config; then
+            install -d ${D}${systemd_unitdir}/system
+            sed 's,@base_sbindir@,${base_sbindir},g' < ${WORKDIR}/busybox-klogd.service.in \
+		> ${D}${systemd_unitdir}/system/busybox-klogd.service
+        fi
     fi
 
     # Remove the sysvinit specific configuration file for systemd systems to avoid confusion
-    if ${@base_contains('DISTRO_FEATURES', 'sysvinit', 'false', 'true', d)}; then
+    if ${@bb.utils.contains('DISTRO_FEATURES', 'sysvinit', 'false', 'true', d)}; then
 	rm -f ${D}${sysconfdir}/syslog-startup.conf.${BPN}
     fi
 }
@@ -295,7 +305,7 @@ ALTERNATIVE_${PN}-syslog += "syslog-conf"
 ALTERNATIVE_LINK_NAME[syslog-conf] = "${sysconfdir}/syslog.conf"
 
 python () {
-    if 'sysvinit' in d.getVar("DISTRO_FEATURES", True).split():
+    if bb.utils.contains('DISTRO_FEATURES', 'sysvinit', True, False, d):
         pn = d.getVar('PN', True)
         d.appendVar('ALTERNATIVE_%s-syslog' % (pn), ' syslog-init')
         d.setVarFlag('ALTERNATIVE_LINK_NAME', 'syslog-init', '%s/init.d/syslog' % (d.getVar('sysconfdir', True)))

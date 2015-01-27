@@ -13,7 +13,9 @@ PR = "r2"
 
 SRC_URI = "http://gstreamer.freedesktop.org/src/gstreamer/gstreamer-${PV}.tar.bz2 \
            file://check_fix.patch \
-           file://gst-inspect-check-error.patch"
+           file://gst-inspect-check-error.patch \
+           file://0001-baseparse-Fix-self-comparison-always-evaluates-to-tr.patch \
+"
 
 SRC_URI[md5sum] = "a0cf7d6877f694a1a2ad2b4d1ecb890b"
 SRC_URI[sha256sum] = "e556a529e0a8cf1cd0afd0cab2af5488c9524e7c3f409de29b5d82bb41ae7a30"
@@ -21,7 +23,13 @@ SRC_URI[sha256sum] = "e556a529e0a8cf1cd0afd0cab2af5488c9524e7c3f409de29b5d82bb41
 inherit autotools pkgconfig gettext
 
 GSTREAMER_DEBUG ?= "--disable-debug"
-EXTRA_OECONF = "--disable-docs-build --disable-dependency-tracking --with-check=no --disable-examples --disable-tests --disable-valgrind ${GSTREAMER_DEBUG}"
+EXTRA_OECONF = "--disable-docbook --disable-gtk-doc \
+            --disable-dependency-tracking --disable-check \
+            --disable-examples --disable-tests \
+            --disable-valgrind ${GSTREAMER_DEBUG} \
+            "
+
+CACHED_CONFIGUREVARS += "ac_cv_header_valgrind_valgrind_h=no"
 
 # apply gstreamer hack after Makefile.in.in in source is replaced by our version from
 # ${STAGING_DATADIR_NATIVE}/gettext/po/Makefile.in.in, but before configure is executed

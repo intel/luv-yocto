@@ -52,10 +52,10 @@ def getMountedDev(path):
     parentDev = os.stat(path).st_dev
     currentDev = parentDev
     # When the current directory's device is different from the
-    # parrent's, then the current directory is a mount point
+    # parent's, then the current directory is a mount point
     while parentDev == currentDev:
         mountPoint = path
-        # Use dirname to get the parrent's directory
+        # Use dirname to get the parent's directory
         path = os.path.dirname(path)
         # Reach the "/"
         if path == mountPoint:
@@ -77,7 +77,7 @@ def getDiskData(BBDirs, configuration):
     """Prepare disk data for disk space monitor"""
 
     # Save the device IDs, need the ID to be unique (the dictionary's key is
-    # unique), so that when more than one directories are located in the same
+    # unique), so that when more than one directory is located on the same
     # device, we just monitor it once
     devDict = {}
     for pathSpaceInode in BBDirs.split():
@@ -187,11 +187,11 @@ class diskMonitor:
                 if self.spaceInterval and self.inodeInterval:
                     self.enableMonitor = True
                     # These are for saving the previous disk free space and inode, we
-                    # use them to avoid print too many warning messages
+                    # use them to avoid printing too many warning messages
                     self.preFreeS = {}
                     self.preFreeI = {}
-                    # This is for STOPTASKS and ABORT, to avoid print the message repeatly
-                    # during waiting the tasks to finish
+                    # This is for STOPTASKS and ABORT, to avoid printing the message
+                    # repeatedly while waiting for the tasks to finish
                     self.checked = {}
                     for k in self.devDict:
                         self.preFreeS[k] = 0
@@ -239,11 +239,9 @@ class diskMonitor:
                 freeInode = st.f_favail
 
                 if minInode and freeInode < minInode:
-                    # Some fs formats' (e.g., btrfs) statvfs.f_files (inodes) is
-                    # zero, this is a feature of the fs, we disable the inode
-                    # checking for such a fs.
+                    # Some filesystems use dynamic inodes so can't run out
+                    # (e.g. btrfs). This is reported by the inode count being 0.
                     if st.f_files == 0:
-                        logger.info("Inode check for %s is unavaliable, will remove it from disk monitor" % path)
                         self.devDict[k][2] = None
                         continue
                     # Always show warning, the self.checked would always be False if the action is WARN

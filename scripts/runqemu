@@ -68,6 +68,8 @@ SCRIPT_QEMU_OPT=""
 SCRIPT_QEMU_EXTRA_OPT=""
 SCRIPT_KERNEL_OPT=""
 SERIALSTDIO=""
+KVM_ENABLED="no"
+KVM_ACTIVE="no"
 
 # Determine whether the file is a kernel or QEMU image, and set the
 # appropriate variables
@@ -103,7 +105,6 @@ process_filename() {
 
 # Parse command line args without requiring specific ordering. It's a
 # bit more complex, but offers a great user experience.
-KVM_ENABLED="no"
 while true; do
     arg=${1}
     case "$arg" in
@@ -152,6 +153,9 @@ while true; do
 	"biosdir="*)
             CUSTOMBIOSDIR="${arg##biosdir=}"
 	    ;;
+        "biosfilename="*)
+            SCRIPT_QEMU_OPT="$SCRIPT_QEMU_OPT -bios ${arg##biosfilename=}"
+            ;;
         "qemuparams="*)
             SCRIPT_QEMU_EXTRA_OPT="${arg##qemuparams=}"
 
@@ -159,6 +163,7 @@ while true; do
             # to use simplified options instead
             serial_option=`expr "$SCRIPT_QEMU_EXTRA_OPT" : '.*\(-serial\)'`
             kvm_option=`expr "$SCRIPT_QEMU_EXTRA_OPT" : '.*\(-enable-kvm\)'`
+            vga_option=`expr "$SCRIPT_QEMU_EXTRA_OPT" : '.*\(-vga\)'`
             [ ! -z "$serial_option" -o ! -z "$kvm_option" ] && \
                 echo "Please use simplified serial or kvm options instead"
             ;;
@@ -268,11 +273,7 @@ if [ "x$KVM_ENABLED" = "xyes" ]; then
         exit 1;
     fi
     if [ -w /dev/kvm -a -r /dev/kvm ]; then
-        if [ "x$MACHINE" = "xqemux86" ]; then
-            SCRIPT_QEMU_OPT="$SCRIPT_QEMU_OPT -enable-kvm -cpu kvm32"
-        elif [ "x$MACHINE" = "xqemux86-64" ]; then
-            SCRIPT_QEMU_OPT="$SCRIPT_QEMU_OPT -enable-kvm -cpu kvm64"
-        fi
+        SCRIPT_QEMU_OPT="$SCRIPT_QEMU_OPT -enable-kvm"
         KVM_ACTIVE="yes"
     else
         echo "You have no rights on /dev/kvm."
@@ -281,10 +282,12 @@ if [ "x$KVM_ENABLED" = "xyes" ]; then
         exit 1;
     fi
     if [ ! -w /dev/vhost-net -o ! -r /dev/vhost-net ]; then
-        echo "You have no rights on /dev/vhost-net."
-        echo "Please change the ownership of this file as described at:"
-        echo "$YOCTO_PARAVIRT_KVM_WIKI";
-        exit 1;
+	if [ "$SLIRP_ENABLED" != "yes" ] ; then
+            echo "You have no rights on /dev/vhost-net."
+            echo "Please change the ownership of this file as described at:"
+            echo "$YOCTO_PARAVIRT_KVM_WIKI";
+            exit 1;
+	fi
     fi
 fi
 
@@ -355,10 +358,10 @@ setup_path_vars() {
 
         MACHINE=$MACHINE bitbake -e > $BITBAKE_ENV_TMPFILE
         if [ -z "$OE_TMPDIR" ] ; then
-            OE_TMPDIR=`cat $BITBAKE_ENV_TMPFILE | sed -n 's/^TMPDIR=\"\(.*\)\"/\1/p'`
+            OE_TMPDIR=`sed -n 's/^TMPDIR=\"\(.*\)\"/\1/p' $BITBAKE_ENV_TMPFILE`
         fi
         if [ -z "$DEPLOY_DIR_IMAGE" ] ; then
-            DEPLOY_DIR_IMAGE=`cat $BITBAKE_ENV_TMPFILE | sed -n 's/^DEPLOY_DIR_IMAGE=\"\(.*\)\"/\1/p'`
+            DEPLOY_DIR_IMAGE=`sed -n 's/^DEPLOY_DIR_IMAGE=\"\(.*\)\"/\1/p' $BITBAKE_ENV_TMPFILE`
         fi
         if [ -z "$OE_TMPDIR" ]; then
             # Check for errors from bitbake that the user needs to know about
@@ -391,8 +394,6 @@ setup_sysroot() {
 
         OECORE_NATIVE_SYSROOT=$OE_TMPDIR/sysroots/$BUILD_SYS
     fi 
-
-    OECORE_MACHINE_SYSROOT=$OE_TMPDIR/sysroots/$MACHINE
 }
 
 # Locate a rootfs image to boot which matches our expected
@@ -404,18 +405,11 @@ findimage() {
 
     # Sort rootfs candidates by modification time - the most
     # recently created one is the one we most likely want to boot.
-    filenames=`ls -t $where/*-image*$machine.$extension 2>/dev/null | xargs`
-    for name in $filenames; do
-        case $name in
-        *core-image-sato* | \
-        *core-image-lsb* | \
-        *core-image-basic* | \
-        *core-image-minimal* )
-            ROOTFS=$name
-            return
-            ;;
-        esac
-    done
+    filename=`ls -t1 $where/*-image*$machine.$extension 2>/dev/null | head -n1`
+    if [ "x$filename" != "x" ]; then
+        ROOTFS=$filename
+        return
+    fi
 
     echo "Couldn't find a $machine rootfs image in $where."
     exit 1
@@ -474,7 +468,9 @@ if [ -z "$ROOTFS" -a "x$FSTYPE" != "xvmdk" ]; then
         error "Unable to determine default rootfs for MACHINE [$MACHINE]"
     fi
 fi
-# ROOTFS is now set for all cases
+# ROOTFS is now set for all cases, now expand it to be an absolute path, it should exist at this point
+
+ROOTFS=`readlink -f $ROOTFS`
 
 echo ""
 echo "Continuing with the following parameters:"
@@ -494,26 +490,19 @@ if [ ! -f "$INTERNAL_SCRIPT" -o ! -r "$INTERNAL_SCRIPT" ]; then
 INTERNAL_SCRIPT=`which runqemu-internal`
 fi
 
-OVERRIDE_VGA="true"
-
 # Specify directory for BIOS, VGA BIOS and keymaps
 if [ ! -z "$CUSTOMBIOSDIR" ]; then
-    if [ -d "$OECORE_MACHINE_SYSROOT/$CUSTOMBIOSDIR" ]; then
-        echo "Assuming biosdir is $OECORE_MACHINE_SYSROOT/$CUSTOMBIOSDIR"
-        SCRIPT_QEMU_OPT="$SCRIPT_QEMU_OPT -L $OECORE_MACHINE_SYSROOT/$CUSTOMBIOSDIR"
+    if [ -d "$OECORE_NATIVE_SYSROOT/$CUSTOMBIOSDIR" ]; then
+        echo "Assuming biosdir is $OECORE_NATIVE_SYSROOT/$CUSTOMBIOSDIR"
+        SCRIPT_QEMU_OPT="$SCRIPT_QEMU_OPT -L $OECORE_NATIVE_SYSROOT/$CUSTOMBIOSDIR"
     else
         if [ ! -d "$CUSTOMBIOSDIR" ]; then
             echo "Custom BIOS directory not found. Tried: $CUSTOMBIOSDIR"
-            echo "and $OECORE_MACHINE_SYSROOT/$CUSTOMBIOSDIR"
+            echo "and $OECORE_NATIVE_SYSROOT/$CUSTOMBIOSDIR"
             exit 1;
         fi
         echo "Assuming biosdir is $CUSTOMBIOSDIR"
         SCRIPT_QEMU_OPT="$SCRIPT_QEMU_OPT -L $CUSTOMBIOSDIR"
-    fi
-    # HACK: OVMF + -vga vmware = blank screen
-    if echo $CUSTOMBIOSDIR | grep -i ovmf > /dev/null; then 
-        echo "OVMF BIOS detected, default VGA adapter forced."
-        OVERRIDE_VGA="false"
     fi
 fi
 

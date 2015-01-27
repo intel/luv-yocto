@@ -21,7 +21,7 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-__version__ = "1.20.0"
+__version__ = "1.24.0"
 
 import sys
 if sys.version_info < (2, 7, 3):
@@ -99,12 +99,11 @@ def error(*args):
 
 def fatal(*args):
     logger.critical(''.join(args))
-    sys.exit(1)
-
+    raise BBHandledException()
 
 def deprecated(func, name=None, advice=""):
     """This is a decorator which can be used to mark functions
-    as deprecated. It will result in a warning being emmitted
+    as deprecated. It will result in a warning being emitted
     when the function is used."""
     import warnings
 
@@ -141,6 +140,3 @@ def deprecate_import(current, modulename, fromlist, renames = None):
 
         setattr(sys.modules[current], newname, newobj)
 
-deprecate_import(__name__, "bb.fetch", ("MalformedUrl", "encodeurl", "decodeurl"))
-deprecate_import(__name__, "bb.utils", ("mkdirhier", "movefile", "copyfile", "which"))
-deprecate_import(__name__, "bb.utils", ["vercmp_string"], ["vercmp"])

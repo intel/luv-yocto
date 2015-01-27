@@ -1,16 +1,21 @@
-DESCRIPTION = "A console URL download utility featuring HTTP, FTP, and more."
+SUMMARY = "Console URL download utility supporting HTTP, FTP, etc"
+HOMEPAGE = "https://www.gnu.org/software/wget/"
 SECTION = "console/network"
 LICENSE = "GPLv3"
 LIC_FILES_CHKSUM = "file://COPYING;md5=d32239bcb673463ab874e80d47fae504"
-DEPENDS = "openssl zlib libpcre"
+DEPENDS = "gnutls zlib libpcre"
 
 INC_PR = "r16"
 
-inherit autotools gettext update-alternatives
+inherit autotools gettext texinfo update-alternatives
 
-EXTRA_OECONF = "--with-libc --enable-ipv6 --with-libssl-prefix=${STAGING_DIR_HOST} \
-                --with-ssl=openssl --disable-rpath --disable-iri \
-                ac_cv_header_uuid_uuid_h=no"
+EXTRA_OECONF = "--enable-ipv6 --with-ssl=gnutls --disable-rpath --disable-iri \
+                --without-libgnutls-prefix ac_cv_header_uuid_uuid_h=no"
 
 ALTERNATIVE_${PN} = "wget"
+ALTERNATIVE_${PN}_class-nativesdk = ""
 ALTERNATIVE_PRIORITY = "100"
+
+RRECOMMENDS_${PN} += "ca-certificates"
+
+BBCLASSEXTEND += "nativesdk"

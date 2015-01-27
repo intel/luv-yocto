@@ -199,7 +199,9 @@ class PackageListModel(gtk.ListStore):
         return self.cmp_vals(val1, val2, user_data)
 
     def cmp_vals(self, val1, val2, user_data):
-        if val1.startswith(user_data) and not val2.startswith(user_data):
+        if val1 is None or val2 is None:
+            return 0
+        elif val1.startswith(user_data) and not val2.startswith(user_data):
             return -1
         elif not val1.startswith(user_data) and val2.startswith(user_data):
             return 1
@@ -249,7 +251,7 @@ class PackageListModel(gtk.ListStore):
             pkgv = getpkgvalue(pkginfo, 'PKGV', pkg)
             pkgr = getpkgvalue(pkginfo, 'PKGR', pkg)
             # PKGSIZE is artificial, will always be overridden with the package name if present
-            pkgsize = pkginfo.get('PKGSIZE_%s' % pkg, "0")
+            pkgsize = int(pkginfo.get('PKGSIZE_%s' % pkg, "0"))
             # PKG_%s is the renamed version
             pkg_rename = pkginfo.get('PKG_%s' % pkg, "")
             # The rest may be overridden or not
@@ -266,11 +268,10 @@ class PackageListModel(gtk.ListStore):
 
             allow_empty = getpkgvalue(pkginfo, 'ALLOW_EMPTY', pkg, "")
 
-            if pkgsize == "0" and not allow_empty:
+            if pkgsize == 0 and not allow_empty:
                 continue
 
-            # pkgsize is in KB
-            size = HobPage._size_to_string(HobPage._string_to_size(pkgsize + ' KB'))
+            size = HobPage._size_to_string(pkgsize)
             self.set(self.append(), self.COL_NAME, pkg, self.COL_VER, pkgv,
                      self.COL_REV, pkgr, self.COL_RNM, pkg_rename,
                      self.COL_SEC, section, self.COL_SUM, summary,
@@ -575,7 +576,9 @@ class RecipeListModel(gtk.ListStore):
         return self.cmp_vals(val1, val2, user_data)
 
     def cmp_vals(self, val1, val2, user_data):
-        if val1.startswith(user_data) and not val2.startswith(user_data):
+        if val1 is None or val2 is None:
+            return 0
+        elif val1.startswith(user_data) and not val2.startswith(user_data):
             return -1
         elif not val1.startswith(user_data) and val2.startswith(user_data):
             return 1
@@ -700,8 +703,8 @@ class RecipeListModel(gtk.ListStore):
 
             if ('packagegroup.bbclass' in " ".join(inherits)):
                 atype = 'packagegroup'
-            elif ('image.bbclass' in " ".join(inherits)):
-                if name != "hob-image":
+            elif ('/image.bbclass' in " ".join(inherits)):
+                if "edited" not in name:
                     atype = 'image'
                     install = event_model["rdepends-pkg"].get(item, []) + event_model["rrecs-pkg"].get(item, [])
             elif ('meta-' in name):

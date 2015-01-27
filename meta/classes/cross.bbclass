@@ -19,8 +19,10 @@ HOST_AS_ARCH = "${BUILD_AS_ARCH}"
 
 STAGING_DIR_HOST = "${STAGING_DIR}/${HOST_ARCH}${HOST_VENDOR}-${HOST_OS}"
 
-export PKG_CONFIG_DIR = "${STAGING_DIR}/${TUNE_PKGARCH}${TARGET_VENDOR}-${TARGET_OS}${libdir}/pkgconfig"
-export PKG_CONFIG_SYSROOT_DIR = "${STAGING_DIR}/${TUNE_PKGARCH}${TARGET_VENDOR}-${TARGET_OS}"
+PACKAGE_ARCH = "${BUILD_ARCH}"
+
+export PKG_CONFIG_DIR = "${exec_prefix}/lib/pkgconfig"
+export PKG_CONFIG_SYSROOT_DIR = ""
 
 CPPFLAGS = "${BUILD_CPPFLAGS}"
 CFLAGS = "${BUILD_CFLAGS}"
@@ -43,7 +45,7 @@ target_libdir = "${target_exec_prefix}/${baselib}"
 target_includedir := "${includedir}"
 
 # Overrides for paths
-CROSS_TARGET_SYS_DIR = "${MULTIMACH_TARGET_SYS}"
+CROSS_TARGET_SYS_DIR = "${TARGET_SYS}"
 prefix = "${STAGING_DIR_NATIVE}${prefix_native}"
 base_prefix = "${STAGING_DIR_NATIVE}"
 exec_prefix = "${STAGING_DIR_NATIVE}${prefix_native}"
@@ -58,23 +60,16 @@ do_populate_sysroot[sstate-inputdirs] = "${SYSROOT_DESTDIR}/${STAGING_DIR_NATIVE
 do_populate_sysroot[stamp-extra-info] = ""
 do_packagedata[stamp-extra-info] = ""
 
-python cross_virtclass_handler () {
-    classextend = e.data.getVar('BBCLASSEXTEND', True) or ""
-    if "cross" not in classextend:
-        return
-
-    pn = e.data.getVar("PN", True)
-    if not pn.endswith("-cross"):
-        return
-
-    bb.data.setVar("OVERRIDES", e.data.getVar("OVERRIDES", False) + ":virtclass-cross", e.data)
-}
-
-addhandler cross_virtclass_handler
-cross_virtclass_handler[eventmask] = "bb.event.RecipePreFinalise"
-
 do_install () {
 	oe_runmake 'DESTDIR=${D}' install
 }
 
 USE_NLS = "no"
+
+deltask package
+deltask packagedata
+deltask package_write_ipk
+deltask package_write_deb
+deltask package_write_rpm
+deltask package_write
+

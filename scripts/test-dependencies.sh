@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Author: Martin Jansa <martin.jansa@gmail.com>
 #
@@ -6,7 +6,7 @@
 
 # Used to detect missing dependencies or automagically
 # enabled dependencies which aren't explicitly enabled
-# or disabled.
+# or disabled. Using bash to have PIPESTATUS variable.
 
 # It does 3 builds of <target>
 # 1st to populate sstate-cache directory and sysroot
@@ -131,13 +131,17 @@ done
 echo "$buildtype" | grep -v '^[1234c ]*$' && echo_error "Invalid buildtype \"$buildtype\", only some combination of 1, 2, 3, 4, c separated by space is allowed"
 
 OUTPUT_BASE=test-dependencies/`date "+%s"`
+declare -i RESULT=0
 
 build_all() {
   echo "===== 1st build to populate sstate-cache directory and sysroot ====="
   OUTPUT1=${OUTPUT_BASE}/${TYPE}_all
   mkdir -p ${OUTPUT1}
   echo "Logs will be stored in ${OUTPUT1} directory"
-  bitbake -k $targets | tee -a ${OUTPUT1}/complete.log
+  bitbake -k $targets 2>&1 | tee -a ${OUTPUT1}/complete.log
+  RESULT+=${PIPESTATUS[0]}
+  grep "ERROR: Task.*failed" ${OUTPUT1}/complete.log > ${OUTPUT1}/failed-tasks.log
+  cat ${OUTPUT1}/failed-tasks.log | sed 's@.*/@@g; s@_.*@@g; s@\..*@@g' | sort -u > ${OUTPUT1}/failed-recipes.log
 }
 
 build_every_recipe() {
@@ -162,12 +166,24 @@ build_every_recipe() {
     rm -rf $tmpdir/deploy $tmpdir/pkgdata $tmpdir/sstate-control $tmpdir/stamps $tmpdir/sysroots $tmpdir/work $tmpdir/work-shared 2>/dev/null
   fi
   i=1
-  count=`cat $recipes | wc -l`
-  for recipe in `cat $recipes`; do
+  count=`cat $recipes ${OUTPUT1}/failed-recipes.log | sort -u | wc -l`
+  for recipe in `cat $recipes ${OUTPUT1}/failed-recipes.log | sort -u`; do
     echo "Building recipe: ${recipe} ($i/$count)"
-    bitbake -c cleansstate ${recipe} > ${OUTPUTB}/log.${recipe} 2>&1;
-    bitbake ${recipe} >> ${OUTPUTB}/log.${recipe} 2>&1;
-    grep "ERROR: Task.*failed" ${OUTPUTB}/log.${recipe} && mv ${OUTPUTB}/log.${recipe} ${OUTPUTB}/failed/${recipe} || mv ${OUTPUTB}/log.${recipe} ${OUTPUTB}/ok/${recipe}
+    declare -i RECIPE_RESULT=0
+    bitbake -c cleansstate ${recipe} > ${OUTPUTB}/${recipe}.log 2>&1;
+    RECIPE_RESULT+=$?
+    bitbake ${recipe} >> ${OUTPUTB}/${recipe}.log 2>&1;
+    RECIPE_RESULT+=$?
+    if [ "${RECIPE_RESULT}" != "0" ] ; then
+      RESULT+=${RECIPE_RESULT}
+      mv ${OUTPUTB}/${recipe}.log ${OUTPUTB}/failed/
+      grep "ERROR: Task.*failed"  ${OUTPUTB}/failed/${recipe}.log | tee -a ${OUTPUTB}/failed-tasks.log
+      grep "ERROR: Task.*failed"  ${OUTPUTB}/failed/${recipe}.log | sed 's@.*/@@g; s@_.*@@g; s@\..*@@g' >> ${OUTPUTB}/failed-recipes.log
+      # and append also ${recipe} in case the failed task was from some dependency
+      echo ${recipe} >> ${OUTPUTB}/failed-recipes.log
+    else
+      mv ${OUTPUTB}/${recipe}.log ${OUTPUTB}/ok/
+    fi
     if [ "${TYPE}" != "2" ] ; then
       rm -rf $tmpdir/deploy $tmpdir/pkgdata $tmpdir/sstate-control $tmpdir/stamps $tmpdir/sysroots $tmpdir/work $tmpdir/work-shared 2>/dev/null
     fi
@@ -178,14 +194,12 @@ build_every_recipe() {
   # This will be usefull to see which library is pulling new dependency
   echo "Copying do_package logs to ${OUTPUTB}/do_package/"
   mkdir ${OUTPUTB}/do_package
-  find $tmpdir/work/ -name log.do_package | while read f; do
+  find $tmpdir/work/ -name log.do_package 2>/dev/null| while read f; do
     # pn is 3 levels back, but we don't know if there is just one log per pn (only one arch and version)
     # dest=`echo $f | sed 's#^.*/\([^/]*\)/\([^/]*\)/\([^/]*\)/log.do_package#\1#g'`
     dest=`echo $f | sed "s#$tmpdir/work/##g; s#/#_#g"`
     cp $f ${OUTPUTB}/do_package/$dest
   done
-  grep "ERROR: Task.*failed" ${OUTPUTB}/failed/*
-  ls -1 ${OUTPUTB}/failed/* >> ${OUTPUT_BASE}/failed.recipes
 }
 
 compare_deps() {
@@ -195,7 +209,7 @@ compare_deps() {
   # OUTPUT_MIN=${OUTPUT_BASE}/3_min \
   # openembedded-core/scripts/test-dependencies.sh --tmpdir=tmp-eglibc --targets=glib-2.0 --recipes=recipe_list --buildtype=c
   echo "===== Compare dependencies recorded in \"${OUTPUT_MAX}\" and \"${OUTPUT_MIN}\" ====="
-  [ -n "${OUTPUTC}" ] || OUTPUTC=${OUTPUT_BASE}
+  [ -n "${OUTPUTC}" ] || OUTPUTC=${OUTPUT_BASE}/comp
   mkdir -p ${OUTPUTC}
   OUTPUT_FILE=${OUTPUTC}/dependency-changes
   echo "Differences will be stored in ${OUTPUT_FILE}, dot is shown for every 100 of checked packages"
@@ -209,8 +223,12 @@ compare_deps() {
   find ${OUTPUT_MAX}/packages/ -name latest | sed "s#${OUTPUT_MAX}/##g" | while read pkg; do
     max_pkg=${OUTPUT_MAX}/${pkg}
     min_pkg=${OUTPUT_MIN}/${pkg}
+    # pkg=packages/armv5te-oe-linux-gnueabi/libungif/libungif/latest
+    recipe=`echo "${pkg}" | sed 's#packages/[^/]*/\([^/]*\)/\([^/]*\)/latest#\1#g'`
+    package=`echo "${pkg}" | sed 's#packages/[^/]*/\([^/]*\)/\([^/]*\)/latest#\2#g'`
     if [ ! -f "${min_pkg}" ] ; then
-      echo "ERROR: ${min_pkg} doesn't exist" | tee -a ${OUTPUT_FILE}
+      echo "ERROR: ${recipe}: ${package} package isn't created when building with minimal dependencies?" | tee -a ${OUTPUT_FILE}
+      echo ${recipe} >> ${OUTPUTC}/failed-recipes.log
       continue
     fi
     # strip version information in parenthesis
@@ -222,26 +240,29 @@ compare_deps() {
     fi
     if [ "${max_deps}" = "${min_deps}" ] ; then
       # it's annoying long, but at least it's showing some progress, warnings are grepped at the end
-      echo "NOTE: ${pkg} dependencies weren't changed" >> ${OUTPUT_FILE}
+      echo "NOTE: ${recipe}: ${package} rdepends weren't changed" >> ${OUTPUT_FILE}
     else
       missing_deps=
       for dep in ${max_deps}; do
-        echo "${min_deps}" | grep -q " ${dep} " || missing_deps="${missing_deps} ${dep}"
+        if ! echo "${min_deps}" | grep -q " ${dep} " ; then
+          missing_deps="${missing_deps} ${dep}"
+          echo # to get rid of dots on last line
+          echo "WARN: ${recipe}: ${package} rdepends on ${dep}, but it isn't a build dependency?" | tee -a ${OUTPUT_FILE}
+        fi
       done
       if [ -n "${missing_deps}" ] ; then
-        echo # to get rid of dots on last line
-        echo "WARN: ${pkg} lost dependency on ${missing_deps}" | tee -a ${OUTPUT_FILE}
+        echo ${recipe} >> ${OUTPUTC}/failed-recipes.log
       fi
     fi
     i=`expr $i + 1`
   done
   echo # to get rid of dots on last line
   echo "Found differences: "
-  grep "^WARN: " ${OUTPUT_FILE} | tee ${OUTPUT_FILE}.warn
+  grep "^WARN: " ${OUTPUT_FILE} | tee ${OUTPUT_FILE}.warn.log
   echo "Found errors: "
-  grep "^ERROR: " ${OUTPUT_FILE} | tee ${OUTPUT_FILE}.error
-  # useful for reexecuting this script with only small subset of recipes with known issues
-  sed 's#.*[ /]packages/\([^/]*\)/\([^/]*\)/.*#\2#g' ${OUTPUT_FILE}.warn ${OUTPUT_FILE}.error | sort -u >> ${OUTPUT_BASE}/failed.recipes
+  grep "^ERROR: " ${OUTPUT_FILE} | tee ${OUTPUT_FILE}.error.log
+  RESULT+=`cat ${OUTPUT_FILE}.warn.log | wc -l`
+  RESULT+=`cat ${OUTPUT_FILE}.error.log | wc -l`
 }
 
 for TYPE in $buildtype; do
@@ -254,3 +275,12 @@ for TYPE in $buildtype; do
     *) echo_error "Invalid buildtype \"$TYPE\""
   esac
 done
+
+cat ${OUTPUT_BASE}/*/failed-recipes.log | sort -u >> ${OUTPUT_BASE}/failed-recipes.log
+
+if [ "${RESULT}" != "0" ] ; then
+  echo "ERROR: ${RESULT} issues were found in these recipes: `cat ${OUTPUT_BASE}/failed-recipes.log | xargs`"
+fi
+
+echo "INFO: Output written in: ${OUTPUT_BASE}"
+exit ${RESULT}

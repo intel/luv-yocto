@@ -42,6 +42,7 @@ __func_start_regexp__    = re.compile( r"(((?P<py>python)|(?P<fr>fakeroot))\s*)*
 __inherit_regexp__       = re.compile( r"inherit\s+(.+)" )
 __export_func_regexp__   = re.compile( r"EXPORT_FUNCTIONS\s+(.+)" )
 __addtask_regexp__       = re.compile("addtask\s+(?P<func>\w+)\s*((before\s*(?P<before>((.*(?=after))|(.*))))|(after\s*(?P<after>((.*(?=before))|(.*)))))*")
+__deltask_regexp__       = re.compile("deltask\s+(?P<func>\w+)")
 __addhandler_regexp__    = re.compile( r"addhandler\s+(.+)" )
 __def_regexp__           = re.compile( r"def\s+(\w+).*:" )
 __python_func_regexp__   = re.compile( r"(\s+.*)|(^$)" )
@@ -77,12 +78,15 @@ def inherit(files, fn, lineno, d):
         if not os.path.isabs(file):
             dname = os.path.dirname(fn)
             bbpath = "%s:%s" % (dname, d.getVar("BBPATH", True))
-            abs_fn = bb.utils.which(bbpath, file)
+            abs_fn, attempts = bb.utils.which(bbpath, file, history=True)
+            for af in attempts:
+                if af != abs_fn:
+                    bb.parse.mark_dependency(d, af)
             if abs_fn:
                 file = abs_fn
 
         if not file in __inherit_cache:
-            logger.log(logging.DEBUG -1, "BB %s:%d: inheriting %s", fn, lineno, file)
+            logger.debug(1, "Inheriting %s (from %s:%d)" % (file, fn, lineno))
             __inherit_cache.append( file )
             d.setVar('__inherit_cache', __inherit_cache)
             include(fn, file, lineno, d, "inherit")
@@ -120,12 +124,6 @@ def handle(fn, d, include):
     __classname__ = ""
     __residue__ = []
 
-
-    if include == 0:
-        logger.debug(2, "BB %s: handle(data)", fn)
-    else:
-        logger.debug(2, "BB %s: handle(data, include)", fn)
-
     base_name = os.path.basename(fn)
     (root, ext) = os.path.splitext(base_name)
     init(d)
@@ -156,7 +154,7 @@ def handle(fn, d, include):
 
     try:
         statements.eval(d)
-    except bb.parse.SkipPackage:
+    except bb.parse.SkipRecipe:
         bb.data.setVar("__SKIPPED", True, d)
         if include == 0:
             return { "" : d }
@@ -238,6 +236,11 @@ def feeder(lineno, s, fn, root, statements):
     m = __addtask_regexp__.match(s)
     if m:
         ast.handleAddTask(statements, fn, lineno, m)
+        return
+
+    m = __deltask_regexp__.match(s)
+    if m:
+        ast.handleDelTask(statements, fn, lineno, m)
         return
 
     m = __addhandler_regexp__.match(s)

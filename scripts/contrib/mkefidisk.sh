@@ -20,6 +20,10 @@
 
 LANG=C
 
+# Set to 1 to enable additional output
+DEBUG=0
+OUT="/dev/null"
+
 #
 # Defaults
 #
@@ -28,8 +32,60 @@ BOOT_SIZE=20
 # 5% for swap
 SWAP_RATIO=5
 
+# Cleanup after die()
+cleanup() {
+	debug "Syncing and unmounting devices"
+	# Unmount anything we mounted
+	unmount $ROOTFS_MNT || error "Failed to unmount $ROOTFS_MNT"
+	unmount $BOOTFS_MNT || error "Failed to unmount $BOOTFS_MNT"
+	unmount $HDDIMG_ROOTFS_MNT || error "Failed to unmount $HDDIMG_ROOTFS_MNT"
+	unmount $HDDIMG_MNT || error "Failed to unmount $HDDIMG_MNT"
+
+	# Remove the TMPDIR
+	debug "Removing temporary files"
+	if [ -d "$TMPDIR" ]; then
+		rm -rf $TMPDIR || error "Failed to remove $TMPDIR"
+	fi
+}
+
+trap 'die "Signal Received, Aborting..."' HUP INT TERM
+
+# Logging routines
+WARNINGS=0
+ERRORS=0
+CLEAR="$(tput sgr0)"
+INFO="$(tput bold)"
+RED="$(tput setaf 1)$(tput bold)"
+GREEN="$(tput setaf 2)$(tput bold)"
+YELLOW="$(tput setaf 3)$(tput bold)"
+info() {
+	echo "${INFO}$1${CLEAR}"
+}
+error() {
+	ERRORS=$((ERRORS+1))
+	echo "${RED}$1${CLEAR}"
+}
+warn() {
+	WARNINGS=$((WARNINGS+1))
+	echo "${YELLOW}$1${CLEAR}"
+}
+success() {
+	echo "${GREEN}$1${CLEAR}"
+}
+die() {
+	error "$1"
+	cleanup
+	exit 1
+}
+debug() {
+	if [ $DEBUG -eq 1 ]; then
+		echo "$1"
+	fi
+}
+
 usage() {
-	echo "Usage: $(basename $0) DEVICE HDDIMG TARGET_DEVICE"
+	echo "Usage: $(basename $0) [-v] DEVICE HDDIMG TARGET_DEVICE"
+	echo "       -v: Verbose debug"
 	echo "       DEVICE: The device to write the image to, e.g. /dev/sdh"
 	echo "       HDDIMG: The hddimg file to generate the efi disk from"
 	echo "       TARGET_DEVICE: The device the target will boot from, e.g.  /dev/mmcblk0"
@@ -37,8 +93,7 @@ usage() {
 
 image_details() {
 	IMG=$1
-	echo "Image details"
-	echo "============="
+	info "Image details"
 	echo "    image: $(stat --printf '%N\n' $IMG)"
 	echo "     size: $(stat -L --printf '%s bytes\n' $IMG)"
 	echo " modified: $(stat -L --printf '%y\n' $IMG)"
@@ -50,8 +105,7 @@ device_details() {
 	DEV=$1
 	BLOCK_SIZE=512
 
-	echo "Device details"
-	echo "=============="
+	info "Device details"
 	echo "  device: $DEVICE"
 	if [ -f "/sys/class/block/$DEV/device/vendor" ]; then
 		echo "  vendor: $(cat /sys/class/block/$DEV/device/vendor)"
@@ -74,55 +128,72 @@ device_details() {
 unmount_device() {
 	grep -q $DEVICE /proc/mounts
 	if [ $? -eq 0 ]; then
-		echo -n "$DEVICE listed in /proc/mounts, attempting to unmount..."
+		warn "$DEVICE listed in /proc/mounts, attempting to unmount"
 		umount $DEVICE* 2>/dev/null
-		grep -q $DEVICE /proc/mounts
-		if [ $? -eq 0 ]; then
-			echo "FAILED"
-			exit 1
-		fi
-		echo "OK"
+		return $?
 	fi
+	return 0
 }
 
+unmount() {
+	grep -q $1 /proc/mounts
+	if [ $? -eq 0 ]; then
+		debug "Unmounting $1"
+		umount $1
+		return $?
+	fi
+	return 0
+}
 
 #
 # Parse and validate arguments
 #
-if [ $# -ne 3 ]; then
+if [ $# -lt 3 ] || [ $# -gt 4 ]; then
 	usage
 	exit 1
+fi
+
+if [ "$1" = "-v" ]; then
+	DEBUG=1
+	OUT="1"
+	shift
 fi
 
 DEVICE=$1
 HDDIMG=$2
 TARGET_DEVICE=$3
 
+LINK=$(readlink $DEVICE)
+if [ $? -eq 0 ]; then
+	DEVICE="$LINK"
+fi
+
 if [ ! -w "$DEVICE" ]; then
-	echo "ERROR: Device $DEVICE does not exist or is not writable"
 	usage
-	exit 1
+	die "Device $DEVICE does not exist or is not writable"
 fi
 
 if [ ! -e "$HDDIMG" ]; then
-	echo "ERROR: HDDIMG $HDDIMG does not exist"
 	usage
-	exit 1
+	die "HDDIMG $HDDIMG does not exist"
 fi
 
+#
+# Ensure the hddimg is not mounted
+#
+unmount "$HDDIMG" || die "Failed to unmount $HDDIMG"
 
 #
 # Check if any $DEVICE partitions are mounted
 #
-unmount_device
-
+unmount_device || die "Failed to unmount $DEVICE"
 
 #
 # Confirm device with user
 #
 image_details $HDDIMG
 device_details $(basename $DEVICE)
-echo -n "Prepare EFI image on $DEVICE [y/N]? "
+echo -n "${INFO}Prepare EFI image on $DEVICE [y/N]?${CLEAR} "
 read RESPONSE
 if [ "$RESPONSE" != "y" ]; then
 	echo "Image creation aborted"
@@ -131,12 +202,26 @@ fi
 
 
 #
+# Prepare the temporary working space
+#
+TMPDIR=$(mktemp -d mkefidisk-XXX) || die "Failed to create temporary mounting directory."
+HDDIMG_MNT=$TMPDIR/hddimg
+HDDIMG_ROOTFS_MNT=$TMPDIR/hddimg_rootfs
+ROOTFS_MNT=$TMPDIR/rootfs
+BOOTFS_MNT=$TMPDIR/bootfs
+mkdir $HDDIMG_MNT || die "Failed to create $HDDIMG_MNT"
+mkdir $HDDIMG_ROOTFS_MNT || die "Failed to create $HDDIMG_ROOTFS_MNT"
+mkdir $ROOTFS_MNT || die "Failed to create $ROOTFS_MNT"
+mkdir $BOOTFS_MNT || die "Failed to create $BOOTFS_MNT"
+
+
+#
 # Partition $DEVICE
 #
 DEVICE_SIZE=$(parted $DEVICE unit mb print | grep ^Disk | cut -d" " -f 3 | sed -e "s/MB//")
 # If the device size is not reported there may not be a valid label
 if [ "$DEVICE_SIZE" = "" ] ; then
-	parted $DEVICE mklabel msdos
+	parted $DEVICE mklabel msdos || die "Failed to create MSDOS partition table"
 	DEVICE_SIZE=$(parted $DEVICE unit mb print | grep ^Disk | cut -d" " -f 3 | sed -e "s/MB//")
 fi
 SWAP_SIZE=$((DEVICE_SIZE*SWAP_RATIO/100))
@@ -161,87 +246,130 @@ fi
 TARGET_ROOTFS=$TARGET_DEVICE${TARGET_PART_PREFIX}2
 TARGET_SWAP=$TARGET_DEVICE${TARGET_PART_PREFIX}3
 
-echo "*****************"
-echo "Boot partition size:   $BOOT_SIZE MB ($BOOTFS)"
-echo "ROOTFS partition size: $ROOTFS_SIZE MB ($ROOTFS)"
-echo "Swap partition size:   $SWAP_SIZE MB ($SWAP)"
-echo "*****************"
-
-echo "Deleting partition table on $DEVICE ..."
-dd if=/dev/zero of=$DEVICE bs=512 count=2
+echo ""
+info "Boot partition size:   $BOOT_SIZE MB ($BOOTFS)"
+info "ROOTFS partition size: $ROOTFS_SIZE MB ($ROOTFS)"
+info "Swap partition size:   $SWAP_SIZE MB ($SWAP)"
+echo ""
 
 # Use MSDOS by default as GPT cannot be reliably distributed in disk image form
 # as it requires the backup table to be on the last block of the device, which
 # of course varies from device to device.
-echo "Creating new partition table (MSDOS) on $DEVICE ..."
-parted $DEVICE mklabel msdos
 
-echo "Creating boot partition on $BOOTFS"
-parted $DEVICE mkpart primary 0% $BOOT_SIZE
+info "Partitioning installation media ($DEVICE)"
 
-echo "Enabling boot flag on $BOOTFS"
-parted $DEVICE set 1 boot on
+debug "Deleting partition table on $DEVICE"
+dd if=/dev/zero of=$DEVICE bs=512 count=2 >$OUT 2>&1 || die "Failed to zero beginning of $DEVICE"
 
-echo "Creating ROOTFS partition on $ROOTFS"
-parted $DEVICE mkpart primary $ROOTFS_START $ROOTFS_END
+debug "Creating new partition table (MSDOS) on $DEVICE"
+parted $DEVICE mklabel msdos >$OUT 2>&1 || die "Failed to create MSDOS partition table"
 
-echo "Creating swap partition on $SWAP"
-parted $DEVICE mkpart primary $SWAP_START 100%
+debug "Creating boot partition on $BOOTFS"
+parted $DEVICE mkpart primary 0% $BOOT_SIZE >$OUT 2>&1 || die "Failed to create BOOT partition"
 
-parted $DEVICE print
+debug "Enabling boot flag on $BOOTFS"
+parted $DEVICE set 1 boot on >$OUT 2>&1 || die "Failed to enable boot flag"
+
+debug "Creating ROOTFS partition on $ROOTFS"
+parted $DEVICE mkpart primary $ROOTFS_START $ROOTFS_END >$OUT 2>&1 || die "Failed to create ROOTFS partition"
+
+debug "Creating swap partition on $SWAP"
+parted $DEVICE mkpart primary $SWAP_START 100% >$OUT 2>&1 || die "Failed to create SWAP partition"
+
+if [ $DEBUG -eq 1 ]; then
+	parted $DEVICE print
+fi
 
 
 #
 # Check if any $DEVICE partitions are mounted after partitioning
 #
-unmount_device
+unmount_device || die "Failed to unmount $DEVICE partitions"
 
 
 #
 # Format $DEVICE partitions
 #
-echo ""
-echo "Formatting $BOOTFS as vfat..."
+info "Formatting partitions"
+debug "Formatting $BOOTFS as vfat"
 if [ ! "${DEVICE#/dev/loop}" = "${DEVICE}" ]; then
-	mkfs.vfat -I $BOOTFS -n "efi"
+	mkfs.vfat -I $BOOTFS -n "EFI" >$OUT 2>&1 || die "Failed to format $BOOTFS"
 else
-	mkfs.vfat $BOOTFS -n "efi"
-
+	mkfs.vfat $BOOTFS -n "EFI" >$OUT 2>&1 || die "Failed to format $BOOTFS"
 fi
 
-echo "Formatting $ROOTFS as ext3..."
-mkfs.ext3 $ROOTFS -L "root"
+debug "Formatting $ROOTFS as ext3"
+mkfs.ext3 -F $ROOTFS -L "ROOT" >$OUT 2>&1 || die "Failed to format $ROOTFS"
 
-echo "Formatting swap partition...($SWAP)"
-mkswap $SWAP
+debug "Formatting swap partition ($SWAP)"
+mkswap $SWAP >$OUT 2>&1 || die "Failed to prepare swap"
 
 
 #
 # Installing to $DEVICE
 #
-echo ""
-echo "Mounting images and device in preparation for installation..."
-TMPDIR=$(mktemp -d mkefidisk-XXX)
-if [ $? -ne 0 ]; then
-	echo "ERROR: Failed to create temporary mounting directory."
-	exit 1
+debug "Mounting images and device in preparation for installation"
+mount -o loop $HDDIMG $HDDIMG_MNT >$OUT 2>&1 || error "Failed to mount $HDDIMG"
+mount -o loop $HDDIMG_MNT/rootfs.img $HDDIMG_ROOTFS_MNT >$OUT 2>&1 || error "Failed to mount rootfs.img"
+mount $ROOTFS $ROOTFS_MNT >$OUT 2>&1 || error "Failed to mount $ROOTFS on $ROOTFS_MNT"
+mount $BOOTFS $BOOTFS_MNT >$OUT 2>&1 || error "Failed to mount $BOOTFS on $BOOTFS_MNT"
+
+info "Preparing boot partition"
+EFIDIR="$BOOTFS_MNT/EFI/BOOT"
+cp $HDDIMG_MNT/vmlinuz $BOOTFS_MNT >$OUT 2>&1 || error "Failed to copy vmlinuz"
+# Copy the efi loader and configs (booti*.efi and grub.cfg if it exists)
+cp -r $HDDIMG_MNT/EFI $BOOTFS_MNT >$OUT 2>&1 || error "Failed to copy EFI dir"
+# Silently ignore a missing gummiboot loader dir (we might just be a GRUB image)
+cp -r $HDDIMG_MNT/loader $BOOTFS_MNT >$OUT 2>&1
+
+# Update the boot loaders configurations for an installed image
+# Remove any existing root= kernel parameters and:
+# o Add a root= parameter with the target rootfs
+# o Specify ro so fsck can be run during boot
+# o Specify rootwait in case the target media is an asyncronous block device
+#   such as MMC or USB disks
+# o Specify "quiet" to minimize boot time when using slow serial consoles
+
+# Look for a GRUB installation
+GRUB_CFG="$EFIDIR/grub.cfg"
+if [ -e "$GRUB_CFG" ]; then
+	info "Configuring GRUB"
+	# Delete the install entry
+	sed -i "/menuentry 'install'/,/^}/d" $GRUB_CFG
+	# Delete the initrd lines
+	sed -i "/initrd /d" $GRUB_CFG
+	# Delete any LABEL= strings
+	sed -i "s/ LABEL=[^ ]*/ /" $GRUB_CFG
+
+	sed -i "s@ root=[^ ]*@ @" $GRUB_CFG
+	sed -i "s@vmlinuz @vmlinuz root=$TARGET_ROOTFS ro rootwait quiet @" $GRUB_CFG
 fi
-HDDIMG_MNT=$TMPDIR/hddimg
-HDDIMG_ROOTFS_MNT=$TMPDIR/hddimg_rootfs
-ROOTFS_MNT=$TMPDIR/rootfs
-BOOTFS_MNT=$TMPDIR/bootfs
-mkdir $HDDIMG_MNT
-mkdir $HDDIMG_ROOTFS_MNT
-mkdir $ROOTFS_MNT
-mkdir $BOOTFS_MNT
 
-mount -o loop $HDDIMG $HDDIMG_MNT
-mount -o loop $HDDIMG_MNT/rootfs.img $HDDIMG_ROOTFS_MNT
-mount $ROOTFS $ROOTFS_MNT
-mount $BOOTFS $BOOTFS_MNT
+# Look for a gummiboot installation
+GUMMI_ENTRIES="$BOOTFS_MNT/loader/entries"
+GUMMI_CFG="$GUMMI_ENTRIES/boot.conf"
+if [ -d "$GUMMI_ENTRIES" ]; then
+	info "Configuring Gummiboot"
+	# remove the install target if it exists
+	rm $GUMMI_ENTRIES/install.conf >$OUT 2>&1
 
-echo "Copying ROOTFS files..."
-cp -a $HDDIMG_ROOTFS_MNT/* $ROOTFS_MNT
+	if [ ! -e "$GUMMI_CFG" ]; then
+		echo "ERROR: $GUMMI_CFG not found"
+	fi
+
+	sed -i "/initrd /d" $GUMMI_CFG
+	sed -i "s@ root=[^ ]*@ @" $GUMMI_CFG
+	sed -i "s@options *LABEL=boot @options LABEL=Boot root=$TARGET_ROOTFS ro rootwait quiet @" $GUMMI_CFG
+fi
+
+# Ensure we have at least one EFI bootloader configured
+if [ ! -e $GRUB_CFG ] && [ ! -e $GUMMI_CFG ]; then
+	die "No EFI bootloader configuration found"
+fi
+
+
+info "Copying ROOTFS files (this may take a while)"
+cp -a $HDDIMG_ROOTFS_MNT/* $ROOTFS_MNT >$OUT 2>&1 || die "Root FS copy failed"
 
 echo "$TARGET_SWAP     swap             swap       defaults              0 0" >> $ROOTFS_MNT/etc/fstab
 
@@ -250,37 +378,19 @@ if [ -d $ROOTFS_MNT/etc/udev/ ] ; then
 	echo "$TARGET_DEVICE" >> $ROOTFS_MNT/etc/udev/mount.blacklist
 fi
 
-umount $ROOTFS_MNT
-umount $HDDIMG_ROOTFS_MNT
 
-echo "Preparing boot partition..."
-EFIDIR="$BOOTFS_MNT/EFI/BOOT"
-mkdir -p $EFIDIR
-GRUBCFG="$EFIDIR/grub.cfg"
+# Call cleanup to unmount devices and images and remove the TMPDIR
+cleanup
 
-cp $HDDIMG_MNT/vmlinuz $BOOTFS_MNT
-# Copy the efi loader and config (booti*.efi and grub.cfg)
-cp $HDDIMG_MNT/EFI/BOOT/* $EFIDIR
-
-# Update grub config for the installed image
-# Delete the install entry
-sed -i "/menuentry 'install'/,/^}/d" $GRUBCFG
-# Delete the initrd lines
-sed -i "/initrd /d" $GRUBCFG
-# Delete any LABEL= strings
-sed -i "s/ LABEL=[^ ]*/ /" $GRUBCFG
-# Remove any existing root= kernel parameters and:
-# o Add a root= parameter with the target rootfs
-# o Specify ro so fsck can be run during boot
-# o Specify rootwait in case the target media is an asyncronous block device
-#   such as MMC or USB disks
-# o Specify "quiet" to minimize boot time when using slow serial consoles
-sed -i "s@ root=[^ ]*@ @" $GRUBCFG
-sed -i "s@vmlinuz @vmlinuz root=$TARGET_ROOTFS ro rootwait quiet @" $GRUBCFG
-
-umount $BOOTFS_MNT
-umount $HDDIMG_MNT
-rm -rf $TMPDIR
-sync
-
-echo "Installation complete."
+echo ""
+if [ $WARNINGS -ne 0 ] && [ $ERRORS -eq 0 ]; then
+	echo "${YELLOW}Installation completed with warnings${CLEAR}"
+	echo "${YELLOW}Warnings: $WARNINGS${CLEAR}"
+elif [ $ERRORS -ne 0 ]; then
+	echo "${RED}Installation encountered errors${CLEAR}"
+	echo "${RED}Errors: $ERRORS${CLEAR}"
+	echo "${YELLOW}Warnings: $WARNINGS${CLEAR}"
+else
+	success "Installation completed successfully"
+fi
+echo ""

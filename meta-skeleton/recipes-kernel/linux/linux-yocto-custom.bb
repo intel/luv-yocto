@@ -32,6 +32,16 @@
 #   patches: patches can be merged into to the source git tree itself,
 #            added via the SRC_URI, or controlled via a BSP
 #            configuration.
+#
+#   defconfig: When a defconfig is provided, the linux-yocto configuration
+#              uses the filename as a trigger to use a 'allnoconfig' baseline
+#              before merging the defconfig into the build. 
+#
+#              If the defconfig file was created with make_savedefconfig, 
+#              not all options are specified, and should be restored with their
+#              defaults, not set to 'n'. To properly expand a defconfig like
+#              this, specify: KCONFIG_MODE="--alldefconfig" in the kernel
+#              recipe.
 #   
 #   example configuration addition:
 #            SRC_URI += "file://smp.cfg"
@@ -46,7 +56,7 @@ require recipes-kernel/linux/linux-yocto.inc
 
 # Override SRC_URI in a bbappend file to point at a different source
 # tree if you do not want to build from Linus' tree.
-SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git;protocol=git;nocheckout=1"
+SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git;protocol=git;nocheckout=1;name=machine"
 
 LINUX_VERSION ?= "3.4"
 LINUX_VERSION_EXTENSION ?= "-custom"
@@ -54,7 +64,7 @@ LINUX_VERSION_EXTENSION ?= "-custom"
 # Override SRCREV to point to a different commit in a bbappend file to
 # build a different release of the Linux kernel.
 # tag: v3.4 76e10d158efb6d4516018846f60c2ab5501900bc
-SRCREV="76e10d158efb6d4516018846f60c2ab5501900bc"
+SRCREV_machine="76e10d158efb6d4516018846f60c2ab5501900bc"
 
 PR = "r1"
 PV = "${LINUX_VERSION}+git${SRCPV}"

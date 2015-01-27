@@ -11,8 +11,8 @@ SECTION = "bootloaders"
 LICENSE = "GPLv3"
 LIC_FILES_CHKSUM = "file://COPYING;md5=d32239bcb673463ab874e80d47fae504"
 
-DEPENDS = "autogen-native flex-native"
-RDEPENDS_${PN} = "diffutils freetype xz"
+DEPENDS = "autogen-native flex-native bison-native xz"
+RDEPENDS_${PN} = "diffutils freetype"
 PR = "r1"
 
 SRC_URI = "ftp://ftp.gnu.org/gnu/grub/grub-${PV}.tar.gz \
@@ -20,8 +20,10 @@ SRC_URI = "ftp://ftp.gnu.org/gnu/grub/grub-${PV}.tar.gz \
           file://grub-2.00-fpmath-sse-387-fix.patch \
           file://remove-gets.patch \
           file://check-if-liblzma-is-disabled.patch \
-          file://40_custom \
           file://fix-issue-with-flex-2.5.37.patch \
+          file://grub-2.00-add-oe-kernel.patch \
+          file://fix-endianness-problem.patch \
+          file://grub2-remove-sparc64-setup-from-x86-builds.patch \
           "
 
 SRC_URI[md5sum] = "e927540b6eda8b024fb0391eeaa4091c"
@@ -32,18 +34,17 @@ COMPATIBLE_HOST = '(x86_64.*|i.86.*)-(linux|freebsd.*)'
 FILES_${PN}-dbg += "${libdir}/${BPN}/i386-pc/.debug"
 
 
-inherit autotools
-inherit gettext
+inherit autotools gettext texinfo
 
 PACKAGECONFIG ??= ""
 PACKAGECONFIG[grub-mount] = "--enable-grub-mount,--disable-grub-mount,fuse"
+PACKAGECONFIG[device-mapper] = "--enable-device-mapper,--disable-device-mapper,lvm2"
 
 EXTRA_OECONF = "--with-platform=pc --disable-grub-mkfont --program-prefix="" \
                --enable-liblzma=no --enable-device-mapper=no --enable-libzfs=no"
 
 do_install_append () {
     install -d ${D}${sysconfdir}/grub.d
-    install -m 0755 ${WORKDIR}/40_custom ${D}${sysconfdir}/grub.d/40_custom
 }
 
 INSANE_SKIP_${PN} = "arch"

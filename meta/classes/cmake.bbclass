@@ -1,4 +1,8 @@
+# Path to the CMake file to process.
+OECMAKE_SOURCEPATH ?= "${S}"
+
 DEPENDS_prepend = "cmake-native "
+B = "${WORKDIR}/build"
 
 # We need to unset CCACHE otherwise cmake gets too confused
 CCACHE = ""
@@ -6,22 +10,13 @@ CCACHE = ""
 # We want the staging and installing functions from autotools
 inherit autotools
 
-# Use in-tree builds by default but allow this to be changed
-# since some packages do not support them (e.g. llvm 2.5).
-OECMAKE_SOURCEPATH ?= "."
-
-# If declaring this, make sure you also set EXTRA_OEMAKE to
-# "-C ${OECMAKE_BUILDPATH}". So it will run the right makefiles.
-OECMAKE_BUILDPATH ?= ""
-B="${S}"
-
 # C/C++ Compiler (without cpu arch/tune arguments)
 OECMAKE_C_COMPILER ?= "`echo ${CC} | sed 's/^\([^ ]*\).*/\1/'`"
 OECMAKE_CXX_COMPILER ?= "`echo ${CXX} | sed 's/^\([^ ]*\).*/\1/'`"
 
 # Compiler flags
 OECMAKE_C_FLAGS ?= "${HOST_CC_ARCH} ${TOOLCHAIN_OPTIONS} ${CFLAGS}"
-OECMAKE_CXX_FLAGS ?= "${HOST_CC_ARCH} ${TOOLCHAIN_OPTIONS} ${CXXFLAGS} -fpermissive"
+OECMAKE_CXX_FLAGS ?= "${HOST_CC_ARCH} ${TOOLCHAIN_OPTIONS} ${CXXFLAGS}"
 OECMAKE_C_FLAGS_RELEASE ?= "${SELECTED_OPTIMIZATION} ${CFLAGS} -DNDEBUG"
 OECMAKE_CXX_FLAGS_RELEASE ?= "${SELECTED_OPTIMIZATION} ${CXXFLAGS} -DNDEBUG"
 OECMAKE_C_LINK_FLAGS ?= "${HOST_CC_ARCH} ${TOOLCHAIN_OPTIONS} ${CPPFLAGS} ${LDFLAGS}"
@@ -39,10 +34,13 @@ set( CMAKE_SYSTEM_NAME `echo ${TARGET_OS} | sed -e 's/^./\u&/' -e 's/^\(Linux\).
 set( CMAKE_SYSTEM_PROCESSOR ${TARGET_ARCH} )
 set( CMAKE_C_COMPILER ${OECMAKE_C_COMPILER} )
 set( CMAKE_CXX_COMPILER ${OECMAKE_CXX_COMPILER} )
+set( CMAKE_ASM_COMPILER ${OECMAKE_C_COMPILER} )
 set( CMAKE_C_FLAGS "${OECMAKE_C_FLAGS}" CACHE STRING "CFLAGS" )
 set( CMAKE_CXX_FLAGS "${OECMAKE_CXX_FLAGS}" CACHE STRING "CXXFLAGS" )
+set( CMAKE_ASM_FLAGS "${OECMAKE_C_FLAGS}" CACHE STRING "ASM FLAGS" )
 set( CMAKE_C_FLAGS_RELEASE "${OECMAKE_C_FLAGS_RELEASE}" CACHE STRING "CFLAGS for release" )
 set( CMAKE_CXX_FLAGS_RELEASE "${OECMAKE_CXX_FLAGS_RELEASE}" CACHE STRING "CXXFLAGS for release" )
+set( CMAKE_ASM_FLAGS_RELEASE "${OECMAKE_C_FLAGS_RELEASE}" CACHE STRING "ASM FLAGS for release" )
 set( CMAKE_C_LINK_FLAGS "${OECMAKE_C_LINK_FLAGS}" CACHE STRING "LDFLAGS" )
 set( CMAKE_CXX_LINK_FLAGS "${OECMAKE_CXX_LINK_FLAGS}" CACHE STRING "LDFLAGS" )
 
@@ -73,10 +71,14 @@ EOF
 addtask generate_toolchain_file after do_patch before do_configure
 
 cmake_do_configure() {
-	if [ ${OECMAKE_BUILDPATH} ]
-	then
-		mkdir -p ${OECMAKE_BUILDPATH}
-		cd ${OECMAKE_BUILDPATH}
+	if [ "${OECMAKE_BUILDPATH}" ]; then
+		bbnote "cmake.bbclass no longer uses OECMAKE_BUILDPATH.  The default behaviour is now out-of-tree builds with B=WORKDIR/build."
+	fi
+
+	if [ "${S}" != "${B}" ]; then
+		rm -rf ${B}
+		mkdir -p ${B}
+		cd ${B}
 	fi
 
 	# Just like autotools cmake can use a site file to cache result that need generated binaries to run
@@ -90,6 +92,15 @@ cmake_do_configure() {
 	  ${OECMAKE_SITEFILE} \
 	  ${OECMAKE_SOURCEPATH} \
 	  -DCMAKE_INSTALL_PREFIX:PATH=${prefix} \
+	  -DCMAKE_INSTALL_BINDIR:PATH=${bindir} \
+	  -DCMAKE_INSTALL_SBINDIR:PATH=${sbindir} \
+	  -DCMAKE_INSTALL_LIBEXECDIR:PATH=${libexecdir} \
+	  -DCMAKE_INSTALL_SYSCONFDIR:PATH=${sysconfdir} \
+	  -DCMAKE_INSTALL_SHAREDSTATEDIR:PATH=${sharedstatedir} \
+	  -DCMAKE_INSTALL_LOCALSTATEDIR:PATH=${localstatedir} \
+	  -DCMAKE_INSTALL_LIBDIR:PATH=${libdir} \
+	  -DCMAKE_INSTALL_INCLUDEDIR:PATH=${includedir} \
+	  -DCMAKE_INSTALL_DATAROOTDIR:PATH=${datadir} \
 	  -DCMAKE_INSTALL_SO_NO_EXE=0 \
 	  -DCMAKE_TOOLCHAIN_FILE=${WORKDIR}/toolchain.cmake \
 	  -DCMAKE_VERBOSE_MAKEFILE=1 \
@@ -98,20 +109,12 @@ cmake_do_configure() {
 }
 
 cmake_do_compile()  {
-	if [ ${OECMAKE_BUILDPATH} ]
-	then
-		cd ${OECMAKE_BUILDPATH}
-	fi
-
+	cd ${B}
 	base_do_compile
 }
 
 cmake_do_install() {
-	if [ ${OECMAKE_BUILDPATH} ];
-	then
-		cd ${OECMAKE_BUILDPATH}
-	fi
-
+	cd ${B}
 	autotools_do_install
 }
 

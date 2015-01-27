@@ -1,4 +1,4 @@
-from oeqa.oetest import oeRuntimeTest
+from oeqa.oetest import oeRuntimeTest, skipModuleUnless
 from oeqa.utils.decorators import *
 import re
 
@@ -7,6 +7,7 @@ def setUpModule():
 
 class VNCTest(oeRuntimeTest):
 
+    @testcase(213)
     @skipUnlessPassed('test_ssh')
     def test_vnc(self):
         (status, output) = self.target.run('x11vnc -display :0 -bg -o x11vnc.log')

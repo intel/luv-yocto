@@ -1,10 +1,6 @@
-DESCRIPTION = "a modern 3D graphics API with associated utility APIs"
+SUMMARY = "Modern 3D graphics API with associated utility APIs"
 HOMEPAGE = "http://wiki.clutter-project.org/wiki/Cogl"
-LICENSE = "LGPLv2.1+"
-
-SRC_URI += "file://cogl_fixed_mul-constraint.patch \
-            file://cogl-fixed-thumb.patch \
-            "
+LICENSE = "MIT"
 
 inherit clutter
 
@@ -12,7 +8,8 @@ DEPENDS = "glib-2.0 gdk-pixbuf"
 PACKAGES =+ "${PN}-examples \
              libcogl libcogl-dev \
              libcogl-gles2 libcogl-gles2-dev \
-             libcogl-pango libcogl-pango-dev"
+             libcogl-pango libcogl-pango-dev \
+             libcogl-path libcogl-path-dev"
 AUTOTOOLS_AUXDIR = "${S}/build"
 
 # Extra DEPENDS for PACKAGECONFIG
@@ -33,6 +30,7 @@ EXTRA_OECONF += "--disable-introspection	\
 	       	 --enable-examples-install	\
 	       	 --enable-debug		 	\
 	       	 --disable-gles1		\
+	         --disable-cairo                \
 	    	"
 
 # OpenGL/GLX
@@ -56,8 +54,8 @@ PACKAGECONFIG[cogl-pango] = "--enable-cogl-pango,--disable-cogl-pango,pango"
 # Respect the DISTRO_FEATURES to pull in GLX or Wayland as appropriate by
 # default.
 PACKAGECONFIG ??= "cogl-pango gles2 \
-                   ${@base_contains('DISTRO_FEATURES', 'wayland', 'egl-wayland', '', d)} \
-                   ${@base_contains('DISTRO_FEATURES', 'x11', 'glx', '', d)}"
+                   ${@bb.utils.contains('DISTRO_FEATURES', 'wayland', 'egl-wayland', '', d)} \
+                   ${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'glx', '', d)}"
 
 FILES_${PN}-examples = "${bindir}/* ${datadir}/cogl/examples-data/*"
 FILES_libcogl = "${libdir}/libcogl${SOLIBS}"
@@ -77,6 +75,12 @@ FILES_libcogl-pango-dev = "${includedir}/cogl/cogl-pango \
                            ${libdir}/libcogl-pango${SOLIBSDEV} \
                            ${libdir}/libcogl-pango.la \
                            ${libdir}/pkgconfig/cogl-pango-1.0.pc"
+
+FILES_libcogl-path = "${libdir}/libcogl-path${SOLIBS}"
+FILES_libcogl-path-dev = "${includedir}/cogl/cogl-path \
+                          ${libdir}/libcogl-path${SOLIBSDEV} \
+                          ${libdir}/libcogl-path.la \
+                          ${libdir}/pkgconfig/cogl-path-1.0.pc"
 
 # For backwards compatibility after Debian-renaming
 RPROVIDES_libcogl = "cogl-1.0"

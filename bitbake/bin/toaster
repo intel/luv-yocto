@@ -1,0 +1,267 @@
+#!/bin/bash
+# (c) 2013 Intel Corp.
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+
+# This script can be run in two modes.
+
+# When used with "source", from a build directory,
+# it enables toaster event logging and starts the bitbake resident server.
+# use as:  source toaster [start|stop] [noweb] [noui]
+
+# When it is called as a stand-alone script, it starts just the
+# web server, and the building shall be done through the web interface.
+# As script, it will not return to the command prompt. Stop with Ctrl-C.
+
+# Helper function to kill a background toaster development server
+
+function webserverKillAll()
+{
+	local pidfile
+	for pidfile in ${BUILDDIR}/.toastermain.pid; do
+		if [ -f ${pidfile} ]; then
+		while kill -0 $(< ${pidfile}) 2>/dev/null; do
+			kill -SIGTERM -$(< ${pidfile}) 2>/dev/null
+			sleep 1;
+			# Kill processes if they are still running - may happen in interactive shells
+			ps fux | grep "python.*manage.py" | awk '{print $2}' | xargs kill
+		done;
+		rm  ${pidfile}
+		fi
+	done
+}
+
+function webserverStartAll()
+{
+	# do not start if toastermain points to a valid process
+	if ! cat "${BUILDDIR}/.toastermain.pid" 2>/dev/null | xargs -I{} kill -0 {} ; then
+            retval=1
+            rm "${BUILDDIR}/.toastermain.pid"
+        fi
+
+        retval=0
+        python $BBBASEDIR/lib/toaster/manage.py syncdb || retval=1
+        python $BBBASEDIR/lib/toaster/manage.py migrate orm || retval=2
+        if [ $retval -eq 1 ]; then
+                echo "Failed db sync, stopping system start" 1>&2
+        elif [ $retval -eq 2 ]; then
+            echo -e "\nError on migration, trying to recover... \n"
+            python $BBBASEDIR/lib/toaster/manage.py migrate orm 0001_initial --fake
+            retval=0
+            python $BBBASEDIR/lib/toaster/manage.py migrate orm || retval=1
+        fi
+	if [ "x$TOASTER_MANAGED" == "x1" ]; then
+	        python $BBBASEDIR/lib/toaster/manage.py migrate bldcontrol || retval=1
+		python $BBBASEDIR/lib/toaster/manage.py checksettings  --traceback || retval=1
+	fi
+        if [ $retval -eq 0 ]; then
+	    echo "Starting webserver"
+            python $BBBASEDIR/lib/toaster/manage.py runserver 0.0.0.0:8000 </dev/null >${BUILDDIR}/toaster_web.log 2>&1 & echo $! >${BUILDDIR}/.toastermain.pid
+            sleep 1
+            if ! cat "${BUILDDIR}/.toastermain.pid" | xargs -I{} kill -0 {} ; then
+                retval=1
+                rm "${BUILDDIR}/.toastermain.pid"
+            fi
+        fi
+        return $retval
+}
+
+# Helper functions to add a special configuration file
+
+function addtoConfiguration()
+{
+        echo "#Created by toaster start script" > ${BUILDDIR}/conf/$2
+        echo $1 >> ${BUILDDIR}/conf/$2
+}
+
+INSTOPSYSTEM=0
+
+# define the stop command
+function stop_system()
+{
+    # prevent reentry
+    if [ $INSTOPSYSTEM == 1 ]; then return; fi
+    INSTOPSYSTEM=1
+    if [ -f ${BUILDDIR}/.toasterui.pid ]; then
+        kill $(< ${BUILDDIR}/.toasterui.pid ) 2>/dev/null
+        rm ${BUILDDIR}/.toasterui.pid
+    fi
+    BBSERVER=0.0.0.0:8200 bitbake -m
+    unset BBSERVER
+    webserverKillAll
+    # force stop any misbehaving bitbake server
+    lsof bitbake.lock | awk '{print $2}' | grep "[0-9]\+" | xargs -n1 -r kill
+    trap - SIGHUP
+    #trap - SIGCHLD
+    INSTOPSYSTEM=0
+}
+
+function check_pidbyfile() {
+    [ -e $1 ] && kill -0 $(< $1) 2>/dev/null
+}
+
+
+function notify_chldexit() {
+    if [ $NOTOASTERUI == 0 ]; then
+        check_pidbyfile ${BUILDDIR}/.toasterui.pid && return
+        stop_system
+    fi
+}
+
+
+BBBASEDIR=`dirname ${BASH_SOURCE}`/..
+RUNNING=0
+
+if [ -z "$ZSH_NAME" ] && [ `basename \"$0\"` = `basename \"$BASH_SOURCE\"` ]; then
+    # We are called as standalone. We refuse to run in a build environment - we need the interactive mode for that.
+    # Start just the web server, point the web browser to the interface, and start any Django services.
+
+    if [ -n "$BUILDDIR" ]; then
+        echo -e "Error: build/ directory detected. Toaster will not start in managed mode if a build environment is detected.\nUse a clean terminal to start Toaster." 1>&2;
+        exit 1;
+    fi
+
+    # Define a fake builddir where only the pid files are actually created. No real builds will take place here.
+    BUILDDIR=/tmp
+    RUNNING=1
+    function trap_ctrlc() {
+        echo "** Stopping system"
+        webserverKillAll
+        RUNNING=0
+    }
+    TOASTER_MANAGED=1
+    export TOASTER_MANAGED=1
+    if ! webserverStartAll; then
+        echo "Failed to start the web server, stopping" 1>&2;
+        exit 1;
+    fi
+    xdg-open http://0.0.0.0:8000/ >/dev/null 2>&1 &
+    trap trap_ctrlc SIGINT
+    echo "Running. Stop with Ctrl-C"
+    while [ $RUNNING -gt 0 ]; do
+	python $BBBASEDIR/lib/toaster/manage.py runbuilds
+	sleep 1
+    done
+    echo "**** Exit"
+    exit 0
+fi
+
+# We make sure we're running in the current shell and in a good environment
+if [ -z "$BUILDDIR" ] || [ -z `which bitbake` ]; then
+    echo "Error: Build environment is not setup or bitbake is not in path." 1>&2;
+    return 2
+fi
+
+
+
+# Verify prerequisites
+
+if ! echo "import django; print (1,) == django.VERSION[0:1] and django.VERSION[1:2][0] in (5,6)" | python 2>/dev/null | grep True >/dev/null; then
+    echo -e "This program needs Django 1.5 or 1.6. Please install with\n\npip install django==1.6"
+    return 2
+fi
+
+if ! echo "import south; print [0,8,4] ==  map(int,south.__version__.split(\".\"))" | python 2>/dev/null | grep True >/dev/null; then
+    echo -e "This program needs South 0.8.4. Please install with\n\npip install south==0.8.4"
+    return 2
+fi
+
+
+
+
+
+# Determine the action. If specified by arguments, fine, if not, toggle it
+if [ "x$1" == "xstart" ] || [ "x$1" == "xstop" ]; then
+    CMD="$1"
+else
+    if [ -z "$BBSERVER" ]; then
+        CMD="start"
+    else
+        CMD="stop"
+    fi;
+fi
+
+NOTOASTERUI=0
+WEBSERVER=1
+for param in $*; do
+    case $param in
+    noui )
+            NOTOASTERUI=1
+    ;;
+    noweb )
+            WEBSERVER=0
+    ;;
+    esac
+done
+
+echo "The system will $CMD."
+
+# Make sure it's safe to run by checking bitbake lock
+
+lock=1
+if [ -e $BUILDDIR/bitbake.lock ]; then
+    (flock -n 200 ) 200<$BUILDDIR/bitbake.lock || lock=0
+fi
+
+if [ ${CMD} == "start" ] && ( [ $lock -eq 0 ] || [ -e $BUILDDIR/.toastermain.pid ] ); then
+    echo "Error: bitbake lock state error. File locks show that the system is on." 2>&1
+    echo "If you see problems, stop and then start the system again." 2>&1
+    return 3
+fi
+
+
+# Execute the commands
+
+case $CMD in
+    start )
+        start_success=1
+        addtoConfiguration "INHERIT+=\"toaster buildhistory\"" toaster.conf
+        if [ $WEBSERVER -gt 0 ] && ! webserverStartAll; then
+            echo "Failed ${CMD}."
+            return 4
+        fi
+        unset BBSERVER
+        bitbake --postread conf/toaster.conf --server-only -t xmlrpc -B 0.0.0.0:8200
+        if [ $? -ne 0 ]; then
+            start_success=0
+            echo "Bitbake server start failed"
+        else
+            export BBSERVER=0.0.0.0:8200
+            if [ $NOTOASTERUI == 0 ]; then        # we start the TOASTERUI only if not inhibited
+                bitbake --observe-only -u toasterui >${BUILDDIR}/toaster_ui.log 2>&1 & echo $! >${BUILDDIR}/.toasterui.pid
+            fi
+        fi
+        if [ $start_success -eq 1 ]; then
+            # set fail safe stop system on terminal exit
+            trap stop_system SIGHUP
+            echo "Successful ${CMD}."
+        else
+            # failed start, do stop
+            stop_system
+            echo "Failed ${CMD}."
+        fi
+        # stop system on terminal exit
+        set -o monitor
+        trap stop_system SIGHUP
+        #trap notify_chldexit SIGCHLD
+    ;;
+    stop )
+        stop_system
+        echo "Successful ${CMD}."
+    ;;
+esac
+
+

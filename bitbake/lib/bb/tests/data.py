@@ -23,6 +23,7 @@
 import unittest
 import bb
 import bb.data
+import bb.parse
 
 class DataExpansions(unittest.TestCase):
     def setUp(self):
@@ -212,6 +213,59 @@ class TestConcat(unittest.TestCase):
         self.d.appendVar("TEST", ":${BAR}")
         self.assertEqual(self.d.getVar("TEST", True), "foo:val:val2:bar")
 
+class TestConcatOverride(unittest.TestCase):
+    def setUp(self):
+        self.d = bb.data.init()
+        self.d.setVar("FOO", "foo")
+        self.d.setVar("VAL", "val")
+        self.d.setVar("BAR", "bar")
+
+    def test_prepend(self):
+        self.d.setVar("TEST", "${VAL}")
+        self.d.setVar("TEST_prepend", "${FOO}:")
+        bb.data.update_data(self.d)
+        self.assertEqual(self.d.getVar("TEST", True), "foo:val")
+
+    def test_append(self):
+        self.d.setVar("TEST", "${VAL}")
+        self.d.setVar("TEST_append", ":${BAR}")
+        bb.data.update_data(self.d)
+        self.assertEqual(self.d.getVar("TEST", True), "val:bar")
+
+    def test_multiple_append(self):
+        self.d.setVar("TEST", "${VAL}")
+        self.d.setVar("TEST_prepend", "${FOO}:")
+        self.d.setVar("TEST_append", ":val2")
+        self.d.setVar("TEST_append", ":${BAR}")
+        bb.data.update_data(self.d)
+        self.assertEqual(self.d.getVar("TEST", True), "foo:val:val2:bar")
+
+    def test_remove(self):
+        self.d.setVar("TEST", "${VAL} ${BAR}")
+        self.d.setVar("TEST_remove", "val")
+        bb.data.update_data(self.d)
+        self.assertEqual(self.d.getVar("TEST", True), "bar")
+
+    def test_doubleref_remove(self):
+        self.d.setVar("TEST", "${VAL} ${BAR}")
+        self.d.setVar("TEST_remove", "val")
+        self.d.setVar("TEST_TEST", "${TEST} ${TEST}")
+        bb.data.update_data(self.d)
+        self.assertEqual(self.d.getVar("TEST_TEST", True), "bar bar")
+
+    def test_empty_remove(self):
+        self.d.setVar("TEST", "")
+        self.d.setVar("TEST_remove", "val")
+        bb.data.update_data(self.d)
+        self.assertEqual(self.d.getVar("TEST", True), "")
+
+    def test_remove_expansion(self):
+        self.d.setVar("BAR", "Z")
+        self.d.setVar("TEST", "${BAR}/X Y")
+        self.d.setVar("TEST_remove", "${BAR}/X")
+        bb.data.update_data(self.d)
+        self.assertEqual(self.d.getVar("TEST", True), "Y")
+
 class TestOverrides(unittest.TestCase):
     def setUp(self):
         self.d = bb.data.init()
@@ -252,3 +306,39 @@ class TestFlags(unittest.TestCase):
         self.assertEqual(self.d.getVarFlag("foo", "flag2"), None)
 
 
+class Contains(unittest.TestCase):
+    def setUp(self):
+        self.d = bb.data.init()
+        self.d.setVar("SOMEFLAG", "a b c")
+
+    def test_contains(self):
+        self.assertTrue(bb.utils.contains("SOMEFLAG", "a", True, False, self.d))
+        self.assertTrue(bb.utils.contains("SOMEFLAG", "b", True, False, self.d))
+        self.assertTrue(bb.utils.contains("SOMEFLAG", "c", True, False, self.d))
+
+        self.assertTrue(bb.utils.contains("SOMEFLAG", "a b", True, False, self.d))
+        self.assertTrue(bb.utils.contains("SOMEFLAG", "b c", True, False, self.d))
+        self.assertTrue(bb.utils.contains("SOMEFLAG", "c a", True, False, self.d))
+
+        self.assertTrue(bb.utils.contains("SOMEFLAG", "a b c", True, False, self.d))
+        self.assertTrue(bb.utils.contains("SOMEFLAG", "c b a", True, False, self.d))
+
+        self.assertFalse(bb.utils.contains("SOMEFLAG", "x", True, False, self.d))
+        self.assertFalse(bb.utils.contains("SOMEFLAG", "a x", True, False, self.d))
+        self.assertFalse(bb.utils.contains("SOMEFLAG", "x c b", True, False, self.d))
+        self.assertFalse(bb.utils.contains("SOMEFLAG", "x c b a", True, False, self.d))
+
+    def test_contains_any(self):
+        self.assertTrue(bb.utils.contains_any("SOMEFLAG", "a", True, False, self.d))
+        self.assertTrue(bb.utils.contains_any("SOMEFLAG", "b", True, False, self.d))
+        self.assertTrue(bb.utils.contains_any("SOMEFLAG", "c", True, False, self.d))
+
+        self.assertTrue(bb.utils.contains_any("SOMEFLAG", "a b", True, False, self.d))
+        self.assertTrue(bb.utils.contains_any("SOMEFLAG", "b c", True, False, self.d))
+        self.assertTrue(bb.utils.contains_any("SOMEFLAG", "c a", True, False, self.d))
+
+        self.assertTrue(bb.utils.contains_any("SOMEFLAG", "a x", True, False, self.d))
+        self.assertTrue(bb.utils.contains_any("SOMEFLAG", "x c", True, False, self.d))
+
+        self.assertFalse(bb.utils.contains_any("SOMEFLAG", "x", True, False, self.d))
+        self.assertFalse(bb.utils.contains_any("SOMEFLAG", "x y z", True, False, self.d))

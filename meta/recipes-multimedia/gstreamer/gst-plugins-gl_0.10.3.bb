@@ -10,7 +10,9 @@ SRC_URI += " file://0001-conditional-gl-framebuffer-undefined-use.patch"
 
 DEPENDS += "gst-plugins-base virtual/libgles2 virtual/egl jpeg libpng glew"
 
-inherit gettext gconf
+PR = "r4"
+
+inherit gettext
 
 # This package doesn't have a configure switch for EGL or GL, so forcibly tell
 # configure that it can't find gl.h so it always uses EGL.  If/when we have some

@@ -28,7 +28,7 @@ import socket, threading, pickle
 from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 
 class BBUIEventQueue:
-    def __init__(self, BBServer, clientinfo=("localhost, 0"), featureset=[]):
+    def __init__(self, BBServer, clientinfo=("localhost, 0")):
 
         self.eventQueue = []
         self.eventQueueLock = threading.Lock()
@@ -44,10 +44,27 @@ class BBUIEventQueue:
         server.register_function( self.send_event, "event.sendpickle" )
         server.socket.settimeout(1)
 
-        self.EventHandle = self.BBServer.registerEventHandler(self.host, self.port, featureset)
+        self.EventHandler = None
+        count_tries = 0
 
-        if (self.EventHandle == None):
-            bb.fatal("Could not register UI event handler")
+        # the event handler registration may fail here due to cooker being in invalid state
+        # this is a transient situation, and we should retry a couple of times before
+        # giving up
+
+        while self.EventHandler == None and count_tries < 5:
+            self.EventHandle = self.BBServer.registerEventHandler(self.host, self.port)
+
+            if (self.EventHandle != None):
+                break
+
+            bb.warn("Could not register UI event handler %s:%d, retry" % (self.host, self.port))
+            count_tries += 1
+            import time
+            time.sleep(1)
+
+
+        if self.EventHandle == None:
+            raise Exception("Could not register UI event handler")
 
         self.server = server
 

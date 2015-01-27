@@ -2,7 +2,8 @@
 # Sanity check the users setup for common misconfigurations
 #
 
-SANITY_REQUIRED_UTILITIES ?= "patch diffstat makeinfo git bzip2 tar gzip gawk chrpath wget cpio"
+SANITY_REQUIRED_UTILITIES ?= "patch diffstat makeinfo git bzip2 tar \
+    gzip gawk chrpath wget cpio perl"
 
 def bblayers_conf_file(d):
     return os.path.join(d.getVar('TOPDIR', True), 'conf/bblayers.conf')
@@ -23,8 +24,6 @@ def sanity_conf_update(fn, lines, version_var_name, new_version):
     lines[index] = '%s = "%d"\n' % (version_var_name, new_version)
     with open(fn, "w") as f:
         f.write(''.join(lines))
-
-EXPORT_FUNCTIONS bblayers_conf_file sanity_conf_read sanity_conf_find_line sanity_conf_update
 
 # Functions added to this variable MUST throw an exception (or sys.exit()) unless they
 # successfully changed LCONF_VERSION in bblayers.conf
@@ -88,17 +87,54 @@ def raise_sanity_error(msg, d, network_error=False):
     
     %s""" % msg)
 
+# Check flags associated with a tuning.
+def check_toolchain_tune_args(data, tune, multilib, errs):
+    found_errors = False
+    if check_toolchain_args_present(data, tune, multilib, errs, 'CCARGS'):
+        found_errors = True
+    if check_toolchain_args_present(data, tune, multilib, errs, 'ASARGS'):
+        found_errors = True
+    if check_toolchain_args_present(data, tune, multilib, errs, 'LDARGS'):
+        found_errors = True
+
+    return found_errors
+
+def check_toolchain_args_present(data, tune, multilib, tune_errors, which):
+    args_set = (data.getVar("TUNE_%s" % which, True) or "").split()
+    args_wanted = (data.getVar("TUNEABI_REQUIRED_%s_tune-%s" % (which, tune), True) or "").split()
+    args_missing = []
+
+    # If no args are listed/required, we are done.
+    if not args_wanted:
+        return
+    for arg in args_wanted:
+        if arg not in args_set:
+            args_missing.append(arg)
+
+    found_errors = False
+    if args_missing:
+        found_errors = True
+        tune_errors.append("TUNEABI for %s requires '%s' in TUNE_%s (%s)." %
+                       (tune, ' '.join(args_missing), which, ' '.join(args_set)))
+    return found_errors
+
 # Check a single tune for validity.
 def check_toolchain_tune(data, tune, multilib):
     tune_errors = []
     if not tune:
         return "No tuning found for %s multilib." % multilib
+    localdata = bb.data.createCopy(data)
+    if multilib != "default":
+        # Apply the overrides so we can look at the details.
+        overrides = localdata.getVar("OVERRIDES", False) + ":virtclass-multilib-" + multilib
+        localdata.setVar("OVERRIDES", overrides)
+    bb.data.update_data(localdata)
     bb.debug(2, "Sanity-checking tuning '%s' (%s) features:" % (tune, multilib))
-    features = (data.getVar("TUNE_FEATURES_tune-%s" % tune, True) or "").split()
+    features = (localdata.getVar("TUNE_FEATURES_tune-%s" % tune, True) or "").split()
     if not features:
         return "Tuning '%s' has no defined features, and cannot be used." % tune
-    valid_tunes = data.getVarFlags('TUNEVALID') or {}
-    conflicts = data.getVarFlags('TUNECONFLICTS') or {}
+    valid_tunes = localdata.getVarFlags('TUNEVALID') or {}
+    conflicts = localdata.getVarFlags('TUNECONFLICTS') or {}
     # [doc] is the documentation for the variable, not a real feature
     if 'doc' in valid_tunes:
         del valid_tunes['doc']
@@ -114,15 +150,17 @@ def check_toolchain_tune(data, tune, multilib):
             bb.debug(2, "  %s: %s" % (feature, valid_tunes[feature]))
         else:
             tune_errors.append("Feature '%s' is not defined." % feature)
-    whitelist = data.getVar("TUNEABI_WHITELIST", True) or ''
-    override = data.getVar("TUNEABI_OVERRIDE", True) or ''
+    whitelist = localdata.getVar("TUNEABI_WHITELIST", True)
     if whitelist:
-        tuneabi = data.getVar("TUNEABI_tune-%s" % tune, True) or ''
+        tuneabi = localdata.getVar("TUNEABI_tune-%s" % tune, True)
         if not tuneabi:
             tuneabi = tune
         if True not in [x in whitelist.split() for x in tuneabi.split()]:
             tune_errors.append("Tuning '%s' (%s) cannot be used with any supported tuning/ABI." %
                 (tune, tuneabi))
+        else:
+            if not check_toolchain_tune_args(localdata, tuneabi, multilib, tune_errors):
+                bb.debug(2, "Sanity check: Compiler args OK for %s." % tune)
     if tune_errors:
         return "Tuning '%s' has the following errors:\n" % tune + '\n'.join(tune_errors)
 
@@ -175,7 +213,8 @@ def check_conf_exists(fn, data):
     return False
 
 def check_create_long_filename(filepath, pathname):
-    testfile = os.path.join(filepath, ''.join([`num`[-1] for num in xrange(1,200)]))
+    import string, random
+    testfile = os.path.join(filepath, ''.join(random.choice(string.ascii_letters) for x in range(200)))
     try:
         if not os.path.exists(filepath):
             bb.utils.mkdirhier(filepath)
@@ -183,8 +222,9 @@ def check_create_long_filename(filepath, pathname):
         f.close()
         os.remove(testfile)
     except IOError as e:
-        errno, strerror = e.args
-        if errno == 36: # ENAMETOOLONG
+        import errno
+        err, strerror = e.args
+        if err == errno.ENAMETOOLONG:
             return "Failed to create a file with a long name in %s. Please use a filesystem that does not unreasonably limit filename length.\n" % pathname
         else:
             return "Failed to create a file in %s: %s.\n" % (pathname, strerror)
@@ -198,6 +238,21 @@ def check_path_length(filepath, pathname, limit):
         return "The length of %s is longer than 410, this would cause unexpected errors, please use a shorter path.\n" % pathname
     return ""
 
+def get_filesystem_id(path):
+    status, result = oe.utils.getstatusoutput("stat -f -c '%s' %s" % ("%t", path))
+    if status == 0:
+        return result
+    else:
+        bb.warn("Can't get the filesystem id of: %s" % path)
+        return None
+
+# Check that the path isn't located on nfs.
+def check_not_nfs(path, name):
+    # The nfs' filesystem id is 6969
+    if get_filesystem_id(path) == "6969":
+        return "The %s: %s can't be located on nfs.\n" % (name, path)
+    return ""
+
 def check_connectivity(d):
     # URI's to check can be set in the CONNECTIVITY_CHECK_URIS variable
     # using the same syntax as for SRC_URI. If the variable is not set
@@ -209,7 +264,7 @@ def check_connectivity(d):
     # CONNECTIVITY_CHECK_URIS are set
     network_enabled = not d.getVar('BB_NO_NETWORK', True)
     check_enabled = len(test_uris)
-    # Take a copy of the data store and unset MIRRORS and PREMIRROS
+    # Take a copy of the data store and unset MIRRORS and PREMIRRORS
     data = bb.data.createCopy(d)
     data.delVar('PREMIRRORS')
     data.delVar('MIRRORS')
@@ -228,6 +283,8 @@ def check_connectivity(d):
     return retval
 
 def check_supported_distro(sanity_data):
+    from fnmatch import fnmatch
+
     tested_distros = sanity_data.getVar('SANITY_TESTED_DISTROS', True)
     if not tested_distros:
         return
@@ -237,11 +294,14 @@ def check_supported_distro(sanity_data):
     except Exception:
         distro = None
 
-    if distro:
-        if distro not in [x.strip() for x in tested_distros.split('\\n')]:
-            bb.warn('Host distribution "%s" has not been validated with this version of the build system; you may possibly experience unexpected failures. It is recommended that you use a tested distribution.' % distro)
-    else:
+    if not distro:
         bb.warn('Host distribution could not be determined; you may possibly experience unexpected failures. It is recommended that you use a tested distribution.')
+
+    for supported in [x.strip() for x in tested_distros.split('\\n')]:
+        if fnmatch(distro, supported):
+            return
+
+    bb.warn('Host distribution "%s" has not been validated with this version of the build system; you may possibly experience unexpected failures. It is recommended that you use a tested distribution.' % distro)
 
 # Checks we should only make if MACHINE is set correctly
 def check_sanity_validmachine(sanity_data):
@@ -365,17 +425,28 @@ def check_tar_version(sanity_data):
         return "Your version of tar is older than 1.24 and has bugs which will break builds. Please install a newer version of tar.\n"
     return None
 
-# We use git parameters and functionality only found in 1.7.5 or later
+# We use git parameters and functionality only found in 1.7.8 or later
 def check_git_version(sanity_data):
     from distutils.version import LooseVersion
     status, result = oe.utils.getstatusoutput("git --version 2> /dev/null")
     if status != 0:
         return "Unable to execute git --version, exit code %s\n" % status
     version = result.split()[2]
-    if LooseVersion(version) < LooseVersion("1.7.5"):
-        return "Your version of git is older than 1.7.5 and has bugs which will break builds. Please install a newer version of git.\n"
+    if LooseVersion(version) < LooseVersion("1.7.8"):
+        return "Your version of git is older than 1.7.8 and has bugs which will break builds. Please install a newer version of git.\n"
     return None
 
+# Check the required perl modules which may not be installed by default
+def check_perl_modules(sanity_data):
+    ret = ""
+    modules = ( "Text::ParseWords", "Thread::Queue", "Data::Dumper" )
+    for m in modules:
+        status, result = oe.utils.getstatusoutput("perl -e 'use %s' 2> /dev/null" % m)
+        if status != 0:
+            ret += "%s " % m
+    if ret:
+        return "Required perl module(s) not found: %s\n" % ret
+    return None
 
 def sanity_check_conffiles(status, d):
     # Check we are using a valid local.conf
@@ -482,10 +553,12 @@ def check_sanity_version_change(status, d):
         import xml.parsers.expat
     except ImportError:
         status.addresult('Your python is not a full install. Please install the module xml.parsers.expat (python-xml on openSUSE and SUSE Linux).\n')
+    import stat
 
     status.addresult(check_make_version(d))
     status.addresult(check_tar_version(d))
     status.addresult(check_git_version(d))
+    status.addresult(check_perl_modules(d))
 
     missing = ""
 
@@ -517,6 +590,10 @@ def check_sanity_version_change(status, d):
         if not check_app_exists("qemu-arm", d):
             status.addresult("qemu-native was in ASSUME_PROVIDED but the QEMU binaries (qemu-arm) can't be found in PATH")
 
+    if "libsdl-native" in assume_provided:
+        if not check_app_exists("sdl-config", d):
+            status.addresult("libsdl-native is set to be ASSUME_PROVIDED but sdl-config can't be found in PATH. Please either install it, or configure qemu not to require sdl.")
+
     (result, message) = check_gcc_march(d)
     if result and message:
         status.addresult("Your gcc version is older than 4.5, please add the following param to local.conf\n \
@@ -529,6 +606,11 @@ def check_sanity_version_change(status, d):
     # Check that TMPDIR isn't on a filesystem with limited filename length (eg. eCryptFS)
     tmpdir = d.getVar('TMPDIR', True)
     status.addresult(check_create_long_filename(tmpdir, "TMPDIR"))
+    tmpdirmode = os.stat(tmpdir).st_mode
+    if (tmpdirmode & stat.S_ISGID):
+        status.addresult("TMPDIR is setgid, please don't build in a setgid directory")
+    if (tmpdirmode & stat.S_ISUID):
+        status.addresult("TMPDIR is setuid, please don't build in a setuid directory")
 
     # Some third-party software apparently relies on chmod etc. being suid root (!!)
     import stat
@@ -569,8 +651,11 @@ def check_sanity_version_change(status, d):
     if not oes_bb_conf:
         status.addresult('You are not using the OpenEmbedded version of conf/bitbake.conf. This means your environment is misconfigured, in particular check BBPATH.\n')
 
-    # The length of tmpdir can't be longer than 410
+    # The length of TMPDIR can't be longer than 410
     status.addresult(check_path_length(tmpdir, "TMPDIR", 410))
+
+    # Check that TMPDIR isn't located on nfs
+    status.addresult(check_not_nfs(tmpdir, "TMPDIR"))
 
 def check_sanity_everybuild(status, d):
     # Sanity tests which test the users environment so need to run at each build (or are so cheap
@@ -599,7 +684,7 @@ def check_sanity_everybuild(status, d):
     # Check that the DISTRO is valid, if set
     # need to take into account DISTRO renaming DISTRO
     distro = d.getVar('DISTRO', True)
-    if distro:
+    if distro and distro != "nodistro":
         if not ( check_conf_exists("conf/distro/${DISTRO}.conf", d) or check_conf_exists("conf/distro/include/${DISTRO}.inc", d) ):
             status.addresult("DISTRO '%s' not found. Please set a valid DISTRO in your local.conf\n" % d.getVar("DISTRO", True))
 
@@ -625,13 +710,22 @@ def check_sanity_everybuild(status, d):
     if machinevalid:
         status.addresult(check_toolchain(d))
 
+    # Check that the SDKMACHINE is valid, if it is set
+    if d.getVar('SDKMACHINE', True):
+        if not check_conf_exists("conf/machine-sdk/${SDKMACHINE}.conf", d):
+            status.addresult('Specified SDKMACHINE value is not valid\n')
+        elif d.getVar('SDK_ARCH', False) == "${BUILD_ARCH}":
+            status.addresult('SDKMACHINE is set, but SDK_ARCH has not been changed as a result - SDKMACHINE may have been set too late (e.g. in the distro configuration)\n')
+
     check_supported_distro(d)
 
     # Check if DISPLAY is set if TEST_IMAGE is set
     if d.getVar('TEST_IMAGE', True) == '1' or d.getVar('DEFAULT_TEST_SUITES', True):
-        display = d.getVar("BB_ORIGENV", False).getVar("DISPLAY", True)
-        if not display:
-            status.addresult('testimage needs an X desktop to start qemu, please set DISPLAY correctly (e.g. DISPLAY=:1.0)\n')
+        testtarget = d.getVar('TEST_TARGET', True)
+        if testtarget == 'qemu' or testtarget == 'QemuTarget':
+            display = d.getVar("BB_ORIGENV", False).getVar("DISPLAY", True)
+            if not display:
+                status.addresult('testimage needs an X desktop to start qemu, please set DISPLAY correctly (e.g. DISPLAY=:1.0)\n')
 
     omask = os.umask(022)
     if omask & 0755:
@@ -658,6 +752,44 @@ def check_sanity_everybuild(status, d):
         status.addresult("Error, you have an invalid character (@) in your COREBASE directory path. Please move the installation to a directory which doesn't include any @ characters.")
     if oeroot.find(' ') != -1:
         status.addresult("Error, you have a space in your COREBASE directory path. Please move the installation to a directory which doesn't include a space since autotools doesn't support this.")
+
+    # Check the format of MIRRORS, PREMIRRORS and SSTATE_MIRRORS
+    import re
+    mirror_vars = ['MIRRORS', 'PREMIRRORS', 'SSTATE_MIRRORS']
+    protocols = ['http', 'ftp', 'file', 'https', \
+                 'git', 'gitsm', 'hg', 'osc', 'p4', 'svk', 'svn', \
+                 'bzr', 'cvs']
+    for mirror_var in mirror_vars:
+        mirrors = (d.getVar(mirror_var, True) or '').replace('\\n', '\n').split('\n')
+        for mirror_entry in mirrors:
+            mirror_entry = mirror_entry.strip()
+            if not mirror_entry:
+                # ignore blank lines
+                continue
+
+            try:
+                pattern, mirror = mirror_entry.split()
+            except ValueError:
+                bb.warn('Invalid %s: %s, should be 2 members.' % (mirror_var, mirror_entry.strip()))
+                continue
+
+            decoded = bb.fetch2.decodeurl(pattern)
+            try:
+                pattern_scheme = re.compile(decoded[0])
+            except re.error as exc:
+                bb.warn('Invalid scheme regex (%s) in %s; %s' % (pattern, mirror_var, mirror_entry))
+                continue
+
+            if not any(pattern_scheme.match(protocol) for protocol in protocols):
+                bb.warn('Invalid protocol (%s) in %s: %s' % (decoded[0], mirror_var, mirror_entry))
+                continue
+
+            if not any(mirror.startswith(protocol + '://') for protocol in protocols):
+                bb.warn('Invalid protocol in %s: %s' % (mirror_var, mirror_entry))
+                continue
+
+            if mirror.startswith('file://') and not mirror.startswith('file:///'):
+                bb.warn('Invalid file url in %s: %s, must be absolute path (file:///)' % (mirror_var, mirror_entry))
 
     # Check that TMPDIR hasn't changed location since the last time we were run
     tmpdir = d.getVar('TMPDIR', True)
@@ -736,20 +868,19 @@ def copy_data(e):
     return sanity_data
 
 addhandler check_sanity_eventhandler
-check_sanity_eventhandler[eventmask] = "bb.event.ConfigParsed bb.event.SanityCheck bb.event.NetworkTest"
+check_sanity_eventhandler[eventmask] = "bb.event.SanityCheck bb.event.NetworkTest"
 python check_sanity_eventhandler() {
-    if bb.event.getName(e) == "ConfigParsed" and e.data.getVar("BB_WORKERCONTEXT", True) != "1" and e.data.getVar("DISABLE_SANITY_CHECKS", True) != "1":
+    if bb.event.getName(e) == "SanityCheck":
         sanity_data = copy_data(e)
-        reparse = check_sanity(sanity_data)
-        e.data.setVar("BB_INVALIDCONF", reparse)
-    elif bb.event.getName(e) == "SanityCheck":
-        sanity_data = copy_data(e)
-        sanity_data.setVar("SANITY_USE_EVENTS", "1")
+        if e.generateevents:
+            sanity_data.setVar("SANITY_USE_EVENTS", "1")
         reparse = check_sanity(sanity_data)
         e.data.setVar("BB_INVALIDCONF", reparse)
         bb.event.fire(bb.event.SanityCheckPassed(), e.data)
     elif bb.event.getName(e) == "NetworkTest":
         sanity_data = copy_data(e)
+        if e.generateevents:
+            sanity_data.setVar("SANITY_USE_EVENTS", "1")
         bb.event.fire(bb.event.NetworkTestFailed() if check_connectivity(sanity_data) else bb.event.NetworkTestPassed(), e.data)
 
     return

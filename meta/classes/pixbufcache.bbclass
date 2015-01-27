@@ -46,14 +46,16 @@ python populate_packages_append() {
 }
 
 #
-# Add a sstate postinst hook to update the cache for native packages
+# Add an sstate postinst hook to update the cache for native packages.
+# An error exit during populate_sysroot_setscene allows bitbake to
+# try to recover by re-building the package.
 #
 SSTATEPOSTINSTFUNCS_append_class-native = " pixbufcache_sstate_postinst"
 
 pixbufcache_sstate_postinst() {
 	if [ "${BB_CURRENTTASK}" = "populate_sysroot" -o "${BB_CURRENTTASK}" = "populate_sysroot_setscene" ]
 	then
-		gdk-pixbuf-query-loaders --update-cache
+		GDK_PIXBUF_FATAL_LOADER=1 gdk-pixbuf-query-loaders --update-cache || exit 1
 	fi
 }
 
@@ -67,3 +69,4 @@ pixbufcache_sstate_postinst() {
 PIXBUFCACHE_SYSROOT_DEPS = ""
 PIXBUFCACHE_SYSROOT_DEPS_class-native = "${@['gdk-pixbuf-native:do_populate_sysroot_setscene', '']['${BPN}' == 'gdk-pixbuf']} glib-2.0-native:do_populate_sysroot_setscene libffi-native:do_populate_sysroot_setscene libpng-native:do_populate_sysroot_setscene zlib-native:do_populate_sysroot_setscene"
 do_populate_sysroot_setscene[depends] += "${PIXBUFCACHE_SYSROOT_DEPS}"
+do_populate_sysroot[depends] += "${@d.getVar('PIXBUFCACHE_SYSROOT_DEPS', True).replace('_setscene','')}"

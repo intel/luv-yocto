@@ -1,4 +1,4 @@
-SUMMARY = "Very high-quality data compression program."
+SUMMARY = "Very high-quality data compression program"
 DESCRIPTION = "bzip2 compresses files using the Burrows-Wheeler block-sorting text compression algorithm, and \
 Huffman coding. Compression is generally considerably better than that achieved by more conventional \
 LZ77/LZ78-based compressors, and approaches the performance of the PPM family of statistical compressors."
@@ -11,7 +11,7 @@ PR = "r5"
 SRC_URI = "http://www.bzip.org/${PV}/${BPN}-${PV}.tar.gz \
            file://configure.ac \
            file://run-ptest \
-	   file://Makefile.am"
+           file://Makefile.am"
 
 SRC_URI[md5sum] = "00b516f4704d4a7cb50a1d97e6e8e15b"
 SRC_URI[sha256sum] = "a2848f34fcd5d6cf47def00461fcb528a0484d8edef8208d6d2e2909dc61d9cd"
@@ -26,14 +26,16 @@ ALTERNATIVE_PRIORITY = "100"
 ALTERNATIVE_${PN} = "bunzip2 bzcat"
 
 #install binaries to bzip2-native under sysroot for replacement-native
-EXTRA_OECONF_class-native += "--bindir=${STAGING_BINDIR_NATIVE}/${PN}"
-do_configure_prepend () {
+EXTRA_OECONF_append_class-native = " --bindir=${STAGING_BINDIR_NATIVE}/${PN}"
+do_extraunpack () {
 	cp ${WORKDIR}/configure.ac ${S}/
 	cp ${WORKDIR}/Makefile.am ${S}/
-	cp ${STAGING_DATADIR_NATIVE}/automake*/install-sh ${S}/
 }
 
+addtask extraunpack after do_unpack before do_patch
+
 do_install_ptest () {
+	cp -f ${B}/Makefile ${D}${PTEST_PATH}/Makefile
 	sed -i -e "s|^Makefile:|_Makefile:|" ${D}${PTEST_PATH}/Makefile
 }
 

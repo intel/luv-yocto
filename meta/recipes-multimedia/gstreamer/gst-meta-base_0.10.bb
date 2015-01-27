@@ -1,7 +1,12 @@
-DESCRIPTION = "Gstreamer package groups"
+SUMMARY = "GStreamer package groups"
 LICENSE = "MIT"
-DEPENDS = "gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad"
-LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=3f40d7994397109285ec7b81fdeb3b58 \
+
+COMMERCIAL_PLUGINS = "${COMMERCIAL_AUDIO_PLUGINS} ${COMMERCIAL_VIDEO_PLUGINS}"
+DEPENDS_UGLY="${@'gst-plugins-ugly' if 'ugly' in COMMERCIAL_PLUGINS.split('-') else ''}"
+DEPENDS_BAD="${@'gst-plugins-bad' if 'bad' in COMMERCIAL_PLUGINS.split('-') else ''}"
+DEPENDS = "gstreamer gst-plugins-base gst-plugins-good ${DEPENDS_UGLY} ${DEPENDS_BAD}"
+
+LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=4d92cd373abda3937c2bc47fbc49d690 \
                     file://${COREBASE}/meta/COPYING.MIT;md5=3da9cfbcb788c80a0384361b4de20420"
 
 
@@ -21,7 +26,7 @@ ALLOW_EMPTY_gst-meta-debug = "1"
 ALLOW_EMPTY_gst-meta-video = "1"
 
 RDEPENDS_gst-meta-base = "\
-    ${@base_contains('DISTRO_FEATURES', 'x11', 'gst-meta-x11-base', '', d)} \
+    ${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'gst-meta-x11-base', '', d)} \
     gstreamer \
     gst-plugins-base-playbin \
     gst-plugins-base-decodebin \

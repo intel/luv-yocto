@@ -31,7 +31,10 @@ import time
 import fcntl
 import struct
 import copy
+import atexit
 from bb.ui import uihelper
+
+featureSet = [bb.cooker.CookerFeatures.SEND_SANITYEVENTS]
 
 logger = logging.getLogger("BitBake")
 interactive = sys.stdout.isatty()
@@ -46,7 +49,7 @@ class BBProgress(progressbar.ProgressBar):
             self._resize_default = signal.getsignal(signal.SIGWINCH)
         except:
             self._resize_default = None
-        progressbar.ProgressBar.__init__(self, maxval, [self.msg + ": "] + widgets)
+        progressbar.ProgressBar.__init__(self, maxval, [self.msg + ": "] + widgets, fd=sys.stdout)
 
     def _handle_resize(self, signum, frame):
         progressbar.ProgressBar._handle_resize(self, signum, frame)
@@ -130,7 +133,7 @@ class TerminalFilter(object):
                 cr = (25, 80)
         return cr[1]
 
-    def __init__(self, main, helper, console, format):
+    def __init__(self, main, helper, console, errconsole, format):
         self.main = main
         self.helper = helper
         self.cuu = None
@@ -171,6 +174,7 @@ class TerminalFilter(object):
         except:
             self.cuu = None
         console.addFilter(InteractConsoleLogFilter(self, format))
+        errconsole.addFilter(InteractConsoleLogFilter(self, format))
 
     def clearFooter(self):
         if self.footer_present:
@@ -253,11 +257,15 @@ def main(server, eventHandler, params, tf = TerminalFilter):
     helper = uihelper.BBUIHelper()
 
     console = logging.StreamHandler(sys.stdout)
+    errconsole = logging.StreamHandler(sys.stderr)
     format_str = "%(levelname)s: %(message)s"
     format = bb.msg.BBLogFormatter(format_str)
-    bb.msg.addDefaultlogFilter(console)
+    bb.msg.addDefaultlogFilter(console, bb.msg.BBLogFilterStdOut)
+    bb.msg.addDefaultlogFilter(errconsole, bb.msg.BBLogFilterStdErr)
     console.setFormatter(format)
+    errconsole.setFormatter(format)
     logger.addHandler(console)
+    logger.addHandler(errconsole)
 
     if params.options.remote_server and params.options.kill_server:
         server.terminateServer()
@@ -276,6 +284,7 @@ def main(server, eventHandler, params, tf = TerminalFilter):
 
     if not params.observe_only:
         params.updateFromServer(server)
+        params.updateToServer(server)
         cmdline = params.parseActions()
         if not cmdline:
             print("Nothing to do.  Use 'bitbake world' to build everything, or run 'bitbake --help' for usage information.")
@@ -302,23 +311,24 @@ def main(server, eventHandler, params, tf = TerminalFilter):
     warnings = 0
     taskfailures = []
 
-    termfilter = tf(main, helper, console, format)
+    termfilter = tf(main, helper, console, errconsole, format)
+    atexit.register(termfilter.finish)
 
     while True:
         try:
             event = eventHandler.waitEvent(0)
             if event is None:
-                termfilter.updateFooter()
-                event = eventHandler.waitEvent(0.25)
-            if event is None:
                 if main.shutdown > 1:
                     break
-                continue
+                termfilter.updateFooter()
+                event = eventHandler.waitEvent(0.25)
+                if event is None:
+                    continue
             helper.eventHandler(event)
             if isinstance(event, bb.runqueue.runQueueExitWait):
                 if not main.shutdown:
                     main.shutdown = 1
-
+                continue
             if isinstance(event, bb.event.LogExecTTY):
                 if log_exec_tty:
                     tries = event.retries
@@ -342,11 +352,14 @@ def main(server, eventHandler, params, tf = TerminalFilter):
                 # For "normal" logging conditions, don't show note logs from tasks
                 # but do show them if the user has changed the default log level to
                 # include verbose/debug messages
-                if event.taskpid != 0 and event.levelno <= format.NOTE:
+                if event.taskpid != 0 and event.levelno <= format.NOTE and (event.levelno < llevel or (event.levelno == format.NOTE and llevel != format.VERBOSE)):
                     continue
                 logger.handle(event)
                 continue
 
+            if isinstance(event, bb.build.TaskFailedSilent):
+                logger.warn("Logfile for failed setscene task is %s" % event.logfile)
+                continue
             if isinstance(event, bb.build.TaskFailed):
                 return_value = 1
                 logfile = event.logfile
@@ -483,7 +496,6 @@ def main(server, eventHandler, params, tf = TerminalFilter):
                                   bb.event.RecipeParsed,
                                   bb.event.RecipePreFinalise,
                                   bb.runqueue.runQueueEvent,
-                                  bb.runqueue.runQueueExitWait,
                                   bb.event.OperationStarted,
                                   bb.event.OperationCompleted,
                                   bb.event.OperationProgress,
@@ -496,7 +508,11 @@ def main(server, eventHandler, params, tf = TerminalFilter):
             termfilter.clearFooter()
             # ignore interrupted io
             if ioerror.args[0] == 4:
-                pass
+                continue
+            sys.stderr.write(str(ioerror))
+            if not params.observe_only:
+                _, error = server.runCommand(["stateForceShutdown"])
+            main.shutdown = 2
         except KeyboardInterrupt:
             termfilter.clearFooter()
             if params.observe_only:
@@ -515,7 +531,11 @@ def main(server, eventHandler, params, tf = TerminalFilter):
                     logger.error("Unable to cleanly shutdown: %s" % error)
             main.shutdown = main.shutdown + 1
             pass
-
+        except Exception as e:
+            sys.stderr.write(str(e))
+            if not params.observe_only:
+                _, error = server.runCommand(["stateForceShutdown"])
+            main.shutdown = 2
     summary = ""
     if taskfailures:
         summary += pluralise("\nSummary: %s task failed:",
@@ -535,7 +555,5 @@ def main(server, eventHandler, params, tf = TerminalFilter):
         print("Execution was interrupted, returning a non-zero exit code.")
         if return_value == 0:
             return_value = 1
-
-    termfilter.finish()
 
     return return_value

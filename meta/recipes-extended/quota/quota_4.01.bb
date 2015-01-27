@@ -1,4 +1,4 @@
-DESCRIPTION = "display disk usage and limits"
+SUMMARY = "Tools for monitoring & limiting user disk usage per filesystem"
 SECTION = "base"
 HOMEPAGE = "http://sourceforge.net/projects/linuxquota/"
 BUGTRACKER = "http://sourceforge.net/tracker/?group_id=18136&atid=118136"
@@ -8,7 +8,8 @@ LIC_FILES_CHKSUM = "file://quota.c;beginline=1;endline=33;md5=331c7d77744bfe0ad2
                     file://svc_socket.c;beginline=1;endline=17;md5=24d5a8792da45910786eeac750be8ceb"
 PR = "r1"
 
-SRC_URI = "${SOURCEFORGE_MIRROR}/project/linuxquota/quota-tools/${PV}/quota-${PV}.tar.gz"
+SRC_URI = "${SOURCEFORGE_MIRROR}/project/linuxquota/quota-tools/${PV}/quota-${PV}.tar.gz \
+           file://config-tcpwrappers.patch"
 
 SRC_URI[md5sum] = "5c2c31e321d2e1322ce12d69ae5c66d6"
 SRC_URI[sha256sum] = "a36300bbc126b79b745bf937245092808b4585aa3309ef3335d4ab9d873cd206"
@@ -17,7 +18,7 @@ S = "${WORKDIR}/quota-tools"
 
 DEPENDS = "gettext-native e2fsprogs"
 
-inherit autotools gettext pkgconfig
+inherit autotools-brokensep gettext pkgconfig
 
 EXTRA_OEMAKE += 'STRIP=""'
 

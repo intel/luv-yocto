@@ -1,6 +1,6 @@
-DESCRIPTION = "Sato Icon Theme"
+SUMMARY = "Sato icon theme"
 HOMEPAGE = "http://www.o-hand.com"
-BUGTRACKER = "http://bugzilla.openedhand.com/"
+BUGTRACKER = "http://bugzilla.yoctoproject.org/"
 
 LICENSE = "CC-BY-SA-3.0"
 LIC_FILES_CHKSUM = "file://COPYING;md5=56a830bbe6e4697fe6cbbae01bb7c2b2"
@@ -11,7 +11,6 @@ PR = "r6"
 DEPENDS = "icon-naming-utils-native libxml-simple-perl-native"
 
 SRC_URI = "http://pokylinux.org/releases/sato/${BPN}-${PV}.tar.gz \
-           file://iconpath-option.patch \
            file://0001-Inherit-the-GNOME-icon-theme.patch"
 
 SRC_URI[md5sum] = "86a847f3128a43a9cf23b7029a656f50"
@@ -19,9 +18,11 @@ SRC_URI[sha256sum] = "0b0a2807a6a96918ac799a86094ec3e8e2c892be0fd679a4232c2a77f2
 
 inherit autotools pkgconfig allarch gtk-icon-cache perlnative
 
-FILES_${PN} += "${datadir}"
+# The configure script uses pkg-config to find native binaries to execute, so
+# tell it to use our pkg-config-native wrapper.
+export PKG_CONFIG = "pkg-config-native"
 
-EXTRA_OECONF += "--with-iconmap=${@d.getVar('STAGING_LIBEXECDIR_NATIVE', True).replace('sato-icon-theme', 'icon-naming-utils')}/icon-name-mapping"
+FILES_${PN} += "${datadir}/icons/Sato"
 
 do_install_append() {
 	find ${D}${datadir}/icons/Sato/ -maxdepth 1 -type d -exec ln -s preferences-system.png {}/apps/preferences-desktop.png \;

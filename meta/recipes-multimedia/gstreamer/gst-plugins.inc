@@ -1,12 +1,10 @@
-DESCRIPTION = "Plugins for GStreamer"
+SUMMARY = "Plugins for the GStreamer multimedia framework"
 HOMEPAGE = "http://gstreamer.freedesktop.org/"
 BUGTRACKER = "https://bugzilla.gnome.org/enter_bug.cgi?product=Gstreamer"
 SECTION = "multimedia"
 DEPENDS = "gstreamer"
 
 inherit autotools pkgconfig
-
-FILESPATH =. "${FILE_DIRNAME}/gst-plugins:"
 
 SRC_URI = "http://gstreamer.freedesktop.org/src/${BPN}/${BPN}-${PV}.tar.bz2"
 

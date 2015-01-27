@@ -1,5 +1,5 @@
-DESCRIPTION = "Startup-notification contains a reference implementation of the startup notification protocol."
-HOMEPAGE = "http://www.freedesktop.org/wiki/software/startup-notification/"
+SUMMARY = "Enables monitoring and display of application startup"
+HOMEPAGE = "http://www.freedesktop.org/wiki/Software/startup-notification/"
 BUGTRACKER = "https://bugs.freedesktop.org/enter_bug.cgi?product=Specifications"
 
 # most files are under MIT, but libsn/sn-util.c is under LGPL, the

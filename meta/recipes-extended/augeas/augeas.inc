@@ -1,4 +1,4 @@
-DESCRIPTION = "Augeas configuration API"
+SUMMARY = "Augeas configuration API"
 HOMEPAGE = "http://augeas.net/"
 BUGTRACKER = "https://fedorahosted.org/augeas/report/1"
 
@@ -12,7 +12,7 @@ SRC_URI = "http://download.augeas.net/${BP}.tar.gz \
 
 DEPENDS = "readline libxml2"
 
-inherit autotools
+inherit autotools pkgconfig
 
 PACKAGES =+ "${PN}-lenses lib${BPN} lib${BPN}-dev lib${BPN}-staticdev lib${BPN}-dbg"
 

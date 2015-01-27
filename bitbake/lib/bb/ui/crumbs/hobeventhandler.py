@@ -147,9 +147,7 @@ class HobHandler(gobject.GObject):
         elif next_command == self.SUB_MATCH_CLASS:
             self.runCommand(["findFilesMatchingInDir", "rootfs_", "classes"])
         elif next_command == self.SUB_PARSE_CONFIG:
-            self.runCommand(["enableDataTracking"])
-            self.runCommand(["parseConfigurationFiles", "conf/.hob.conf", ""])
-            self.runCommand(["disableDataTracking"])
+            self.runCommand(["resetCooker"])
         elif next_command == self.SUB_GNERATE_TGTS:
             self.runCommand(["generateTargetsTree", "classes/image.bbclass", []])
         elif next_command == self.SUB_GENERATE_PKGINFO:
@@ -166,18 +164,23 @@ class HobHandler(gobject.GObject):
         elif next_command == self.SUB_BUILD_IMAGE:
             self.clear_busy()
             self.building = True
-            targets = [self.image]
-            if self.toolchain_packages:
-                self.set_var_in_file("TOOLCHAIN_TARGET_TASK", " ".join(self.toolchain_packages), "local.conf")
-                targets.append(self.toolchain)
-            if targets[0] == "hob-image":
+            target = self.image
+
+            if self.base_image:
+                # Request the build of a custom image
+                self.generate_hob_base_image(target)
                 self.set_var_in_file("LINGUAS_INSTALL", "", "local.conf")
-                hobImage = self.runCommand(["matchFile", "hob-image.bb"])
-                if self.base_image != "Start with an empty image recipe":
+                hobImage = self.runCommand(["matchFile", target + ".bb"])
+                if self.base_image != self.recipe_model.__custom_image__:
                     baseImage = self.runCommand(["matchFile", self.base_image + ".bb"])
                     version = self.runCommand(["generateNewImage", hobImage, baseImage, self.package_queue, True, ""])
-                    targets[0] += version
+                    target += version
                     self.recipe_model.set_custom_image_version(version)
+
+            targets = [target]
+            if self.toolchain_packages:
+                self.set_var_in_file("TOOLCHAIN_TARGET_TASK", " ".join(self.toolchain_packages), "local.conf")
+                targets.append(target + ":do_populate_sdk")
 
             self.runCommand(["buildTargets", targets, self.default_task])
 
@@ -204,7 +207,8 @@ class HobHandler(gobject.GObject):
             reparse = self.runCommand(["getVariable", "BB_INVALIDCONF"]) or None
             if reparse is True:
                 self.set_var_in_file("BB_INVALIDCONF", False, "local.conf")
-                self.runCommand(["parseConfigurationFiles", "conf/.hob.conf", ""])
+                self.runCommand(["setPrePostConfFiles", "conf/.hob.conf", ""])
+                self.commands_async.prepend(self.SUB_PARSE_CONFIG)
             self.run_next_command()
 
         elif isinstance(event, bb.event.SanityCheckFailed):
@@ -251,6 +255,8 @@ class HobHandler(gobject.GObject):
             self.current_phase = None
             self.run_next_command()
         elif isinstance(event, bb.command.CommandFailed):
+            if event.error not in ("Forced shutdown", "Stopped build"):
+                self.error_msg += event.error
             self.commands_async = []
             self.display_error()
         elif isinstance(event, (bb.event.ParseStarted,
@@ -298,18 +304,10 @@ class HobHandler(gobject.GObject):
         return
 
     def init_cooker(self):
-        self.runCommand(["initCooker"])
         self.runCommand(["createConfigFile", ".hob.conf"])
 
-    def reset_cooker(self):
-        self.runCommand(["enableDataTracking"])
-        self.runCommand(["resetCooker"])
-        self.runCommand(["disableDataTracking"])
-
     def set_extra_inherit(self, bbclass):
-        inherits = self.runCommand(["getVariable", "INHERIT"]) or ""
-        inherits = inherits + " " + bbclass
-        self.set_var_in_file("INHERIT", inherits, ".hob.conf")
+        self.append_var_in_file("INHERIT", bbclass, ".hob.conf")
 
     def set_bblayers(self, bblayers):
         self.set_var_in_file("BBLAYERS", " ".join(bblayers), "bblayers.conf")
@@ -362,19 +360,31 @@ class HobHandler(gobject.GObject):
         self.set_var_in_file("EXTRA_SETTING", extra_setting, "local.conf")
 
     def set_extra_config(self, extra_setting):
-        old_extra_setting = ast.literal_eval(self.runCommand(["getVariable", "EXTRA_SETTING"]) or "{}")
-        if extra_setting:
-            self.set_var_in_file("EXTRA_SETTING", extra_setting, "local.conf")
-        else:
-            self.remove_var_from_file("EXTRA_SETTING")
+        old_extra_setting = self.runCommand(["getVariable", "EXTRA_SETTING"]) or {}
+        old_extra_setting = str(old_extra_setting)
 
-        #remove not needed settings from conf
-        for key in old_extra_setting:
+        old_extra_setting = ast.literal_eval(old_extra_setting)
+        if not type(old_extra_setting) == dict:
+            old_extra_setting = {}
+
+        # settings not changed
+        if old_extra_setting == extra_setting:
+            return
+
+        # remove the old EXTRA SETTING variable
+        self.remove_var_from_file("EXTRA_SETTING")
+
+        # remove old settings from conf
+        for key in old_extra_setting.keys():
             if key not in extra_setting:
                 self.remove_var_from_file(key)
-        for key in extra_setting.keys():
-            value = extra_setting[key]
+
+        # add new settings
+        for key, value in extra_setting.iteritems():
             self.set_var_in_file(key, value, "local.conf")
+
+        if extra_setting:
+            self.set_var_in_file("EXTRA_SETTING", extra_setting, "local.conf")
 
     def set_http_proxy(self, http_proxy):
         self.set_var_in_file("http_proxy", http_proxy, "local.conf")
@@ -405,6 +415,7 @@ class HobHandler(gobject.GObject):
         self.run_next_command(self.NETWORK_TEST)
 
     def generate_configuration(self):
+        self.runCommand(["setPrePostConfFiles", "conf/.hob.conf", ""])
         self.commands_async.append(self.SUB_PARSE_CONFIG)
         self.commands_async.append(self.SUB_PATH_LAYERS)
         self.commands_async.append(self.SUB_FILES_DISTRO)
@@ -414,6 +425,7 @@ class HobHandler(gobject.GObject):
         self.run_next_command(self.GENERATE_CONFIGURATION)
 
     def generate_recipes(self):
+        self.runCommand(["setPrePostConfFiles", "conf/.hob.conf", ""])
         self.commands_async.append(self.SUB_PARSE_CONFIG)
         self.commands_async.append(self.SUB_GNERATE_TGTS)
         self.run_next_command(self.GENERATE_RECIPES)
@@ -423,24 +435,32 @@ class HobHandler(gobject.GObject):
         targets.extend(tgts)
         self.recipe_queue = targets
         self.default_task = default_task
+        self.runCommand(["setPrePostConfFiles", "conf/.hob.conf", ""])
         self.commands_async.append(self.SUB_PARSE_CONFIG)
         self.commands_async.append(self.SUB_BUILD_RECIPES)
         self.run_next_command(self.GENERATE_PACKAGES)
 
-    def generate_image(self, image, base_image, toolchain, image_packages=[], toolchain_packages=[], default_task="build"):
+    def generate_image(self, image, base_image, image_packages=[], toolchain_packages=[], default_task="build"):
         self.image = image
         self.base_image = base_image
-        self.toolchain = toolchain
         self.package_queue = image_packages
         self.toolchain_packages = toolchain_packages
         self.default_task = default_task
+        self.runCommand(["setPrePostConfFiles", "conf/.hob.conf", ""])
         self.commands_async.append(self.SUB_PARSE_CONFIG)
         self.commands_async.append(self.SUB_BUILD_IMAGE)
         self.run_next_command(self.GENERATE_IMAGE)
 
     def generate_new_image(self, image, base_image, package_queue, description):
-        base_image = self.runCommand(["matchFile", self.base_image + ".bb"])
+        if base_image:
+            base_image = self.runCommand(["matchFile", self.base_image + ".bb"])
         self.runCommand(["generateNewImage", image, base_image, package_queue, False, description])
+
+    def generate_hob_base_image(self, hob_image):
+        image_dir = self.get_topdir() + "/recipes/images/"
+        recipe_name = hob_image + ".bb"
+        self.ensure_dir(image_dir)
+        self.generate_new_image(image_dir + recipe_name, None, [], "")
 
     def ensure_dir(self, directory):
         self.runCommand(["ensureDir", directory])
@@ -501,19 +521,14 @@ class HobHandler(gobject.GObject):
         bbfiles = self.runCommand(["getVariable", "BBFILES", "False"]) or ""
         bbfiles = bbfiles.split()
         if val not in bbfiles:
-            self.append_var_in_file("BBFILES", val, "local.conf")
+            self.append_var_in_file("BBFILES", val, "bblayers.conf")
 
     def get_parameters(self):
         # retrieve the parameters from bitbake
         params = {}
         params["core_base"] = self.runCommand(["getVariable", "COREBASE"]) or ""
-        hob_layer = params["core_base"] + "/meta-hob"
         params["layer"] = self.runCommand(["getVariable", "BBLAYERS"]) or ""
         params["layers_non_removable"] = self.runCommand(["getVariable", "BBLAYERS_NON_REMOVABLE"]) or ""
-        if hob_layer not in params["layer"].split():
-            params["layer"] += (" " + hob_layer)
-        if hob_layer not in params["layers_non_removable"].split():
-            params["layers_non_removable"] += (" " + hob_layer)
         params["dldir"] = self.runCommand(["getVariable", "DL_DIR"]) or ""
         params["machine"] = self.runCommand(["getVariable", "MACHINE"]) or ""
         params["distro"] = self.runCommand(["getVariable", "DISTRO"]) or "defaultsetup"

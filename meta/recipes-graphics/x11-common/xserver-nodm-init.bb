@@ -22,7 +22,7 @@ do_install() {
     install -d ${D}${sysconfdir}/init.d
     install xserver-nodm ${D}${sysconfdir}/init.d
 
-    if ${@base_contains('DISTRO_FEATURES','systemd','true','false',d)}; then
+    if ${@bb.utils.contains('DISTRO_FEATURES','systemd','true','false',d)}; then
         install -d ${D}${sysconfdir}/default
         install xserver-nodm.conf ${D}${sysconfdir}/default/xserver-nodm
         install -d ${D}${systemd_unitdir}/system
@@ -36,7 +36,7 @@ do_install() {
         fi
     fi
 
-    if ${@base_contains('DISTRO_FEATURES','sysvinit','true','false',d)}; then
+    if ${@bb.utils.contains('DISTRO_FEATURES','sysvinit','true','false',d)}; then
         if [ "${ROOTLESS_X}" = "1" ] ; then
             install -d ${D}${sysconfdir}/X11
             install Xusername ${D}${sysconfdir}/X11
@@ -47,6 +47,6 @@ do_install() {
 RDEPENDS_${PN} = "${@base_conditional('ROOTLESS_X', '1', 'xuser-account', '', d)}"
 
 INITSCRIPT_NAME = "xserver-nodm"
-INITSCRIPT_PARAMS = "start 9 5 2 . stop 20 0 1 6 ."
+INITSCRIPT_PARAMS = "start 9 5 . stop 20 0 1 2 3 6 ."
 SYSTEMD_SERVICE_${PN} = "xserver-nodm.service"
 

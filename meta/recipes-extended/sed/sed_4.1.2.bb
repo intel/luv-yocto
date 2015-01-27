@@ -1,4 +1,4 @@
-DESCRIPTION = "sed is a Stream EDitor."
+SUMMARY = "Stream EDitor (text filtering utility)"
 HOMEPAGE = "http://www.gnu.org/software/sed/"
 LICENSE = "GPLv2+"
 LIC_FILES_CHKSUM = "file://COPYING;md5=94d55d512a9ba36caa9b7df079bae19f \
@@ -14,7 +14,7 @@ SRC_URI = "${GNU_MIRROR}/sed/sed-${PV}.tar.gz \
 SRC_URI[md5sum] = "928f0e06422f414091917401f1a834d0"
 SRC_URI[sha256sum] = "638e837ba765d5da0a30c98b57c2953cecea96827882f594612acace93ceeeab"
 
-inherit autotools update-alternatives gettext
+inherit autotools texinfo update-alternatives gettext
 
 do_configure_prepend () {
 	cp ${WORKDIR}/Makevars ${S}/po/

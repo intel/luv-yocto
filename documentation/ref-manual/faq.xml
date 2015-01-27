@@ -30,9 +30,12 @@
 
     <qandaentry>
         <question>
-            <para>
-                My development system does not have Python 2.7.3 or greater,
-                which the Yocto Project requires.
+            <para id='faq-not-meeting-requirements'>
+                My development system does not meet the
+                required Git, tar, and Python versions.
+                In particular, I do not have Python 2.7.3 or greater, or
+                I do have Python 3.x, which is specifically not supported by
+                the Yocto Project.
                 Can I still use the Yocto Project?
             </para>
         </question>
@@ -140,8 +143,8 @@
         <answer>
             <para>
                 To add a package, you need to create a BitBake recipe.
-                For information on how to add a package, see the section
-                "<ulink url='&YOCTO_DOCS_DEV_URL;#usingpoky-extend-addpkg'>Writing a Recipe to Add a Package to Your Image</ulink>"
+                For information on how to create a BitBake recipe, see the
+                "<ulink url='&YOCTO_DOCS_DEV_URL;#new-recipe-writing-a-new-recipe'>Writing a New Recipe</ulink>"
                 in the Yocto Project Development Manual.
             </para>
         </answer>
@@ -318,7 +321,7 @@
     <qandaentry>
         <question>
             <para>
-                What’s the difference between <filename>foo</filename> and <filename>foo-native</filename>?
+                What’s the difference between <replaceable>target</replaceable> and <replaceable>target</replaceable><filename>-native</filename>?
             </para>
         </question>
         <answer>
@@ -513,16 +516,15 @@
             </para>
 
             <para>
-                The default value of <filename>TCMODE</filename> is "default"
-                (i.e. <filename>tcmode-default.inc</filename>).
+                The default value of <filename>TCMODE</filename> is "default",
+                which tells the OpenEmbedded build system to use its internally
+                built toolchain (i.e. <filename>tcmode-default.inc</filename>).
                 However, other patterns are accepted.
-                In particular, "external-*" refers to external toolchains of
-                which there are some basic examples included in the
-                OpenEmbedded Core (<filename>meta</filename>).
-                You can use your own custom toolchain definition in your own
-                layer (or as defined in the <filename>local.conf</filename>
-                file) at the location
-                <filename>conf/distro/include/tcmode-*.inc</filename>.
+                In particular, "external-*" refers to external toolchains.
+                One example is the Sourcery G++ Toolchain.
+                The support for this toolchain resides in the separate
+                <filename>meta-sourcery</filename> layer at
+                <ulink url='http://github.com/MentorEmbedded/meta-sourcery/'></ulink>.
             </para>
 
             <para>
@@ -532,21 +534,6 @@
                 the toolchain such as <filename>libgcc</filename>,
                 <filename>libstdcc++</filename>, any locales, and
                 <filename>libc</filename>.
-                An example is the
-                <filename>external-sourcery-toolchain.bb</filename>, which is
-                located in <filename>meta/recipes-core/meta/</filename> within
-                the Source Directory.
-            </para>
-
-            <para>
-                For information on installing and using cross-development
-                toolchains, see the
-                "<ulink url='&YOCTO_DOCS_ADT_URL;#installing-the-adt'>Installing the ADT and Toolchains</ulink>"
-                section in the Yocto Project Application Developer's Guide.
-                For general information on cross-development toolchains, see
-                the
-                "<link linkend='cross-development-toolchain-generation'>Cross-Development Toolchain Generation</link>"
-                section.
             </para>
         </answer>
     </qandaentry>
@@ -607,56 +594,61 @@
                 <literallayout class='monospaced'>
      BB_NO_NETWORK = "1"
                 </literallayout>
-                 This statement tells BitBake to issue an error instead of
-                 trying to access the Internet.
-                 This technique is useful if you want to ensure code builds
-                 only from local sources.
-             </para>
-             <para>
-                 Here is another technique:
-                 <literallayout class='monospaced'>
+                This statement tells BitBake to issue an error instead of
+                trying to access the Internet.
+                This technique is useful if you want to ensure code builds
+                only from local sources.
+            </para>
+            <para>
+                Here is another technique:
+                <literallayout class='monospaced'>
      BB_FETCH_PREMIRRORONLY = "1"
-                 </literallayout>
-                 This statement limits the build system to pulling source
-                 from the <filename>PREMIRRORS</filename> only.
-                 Again, this technique is useful for reproducing builds.
-             </para>
-             <para>
-                 Here is another technique:
-                 <literallayout class='monospaced'>
+                </literallayout>
+                This statement limits the build system to pulling source
+                from the <filename>PREMIRRORS</filename> only.
+                Again, this technique is useful for reproducing builds.
+            </para>
+            <para>
+                Here is another technique:
+                <literallayout class='monospaced'>
      BB_GENERATE_MIRROR_TARBALLS = "1"
-                 </literallayout>
-                 This statement tells the build system to generate mirror
-                 tarballs.
-                 This technique is useful if you want to create a mirror server.
-                 If not, however, the technique can simply waste time during
-                 the build.
-             </para>
-             <para>
-                 Finally, consider an example where you are behind an
-                 HTTP-only firewall.
-                 You could make the following changes to the
-                 <filename>local.conf</filename> configuration file as long as
-                 the <filename>PREMIRRORS</filename> server is current:
-                 <literallayout class='monospaced'>
+                </literallayout>
+                This statement tells the build system to generate mirror
+                tarballs.
+                This technique is useful if you want to create a mirror server.
+                If not, however, the technique can simply waste time during
+                the build.
+            </para>
+            <para>
+                Finally, consider an example where you are behind an
+                HTTP-only firewall.
+                You could make the following changes to the
+                <filename>local.conf</filename> configuration file as long as
+                the <filename>PREMIRRORS</filename> server is current:
+                <literallayout class='monospaced'>
      PREMIRRORS_prepend = "\
      ftp://.*/.* http://www.yoctoproject.org/sources/ \n \
      http://.*/.* http://www.yoctoproject.org/sources/ \n \
      https://.*/.* http://www.yoctoproject.org/sources/ \n"
      BB_FETCH_PREMIRRORONLY = "1"
-                 </literallayout>
-                 These changes would cause the build system to successfully
-                 fetch source over HTTP and any network accesses to anything
-                 other than the <filename>PREMIRRORS</filename> would fail.
-             </para>
-             <para>
-                 The build system also honors the standard shell environment
-                 variables <filename>http_proxy</filename>,
-                 <filename>ftp_proxy</filename>,
-                 <filename>https_proxy</filename>, and
-                 <filename>all_proxy</filename> to redirect requests through
-                 proxy servers.
-             </para>
+                </literallayout>
+                These changes would cause the build system to successfully
+                fetch source over HTTP and any network accesses to anything
+                other than the <filename>PREMIRRORS</filename> would fail.
+            </para>
+            <para>
+                The build system also honors the standard shell environment
+                variables <filename>http_proxy</filename>,
+                <filename>ftp_proxy</filename>,
+                <filename>https_proxy</filename>, and
+                <filename>all_proxy</filename> to redirect requests through
+                proxy servers.
+            </para>
+            <note>
+                 You can find more information on the
+                 "<ulink url='&YOCTO_WIKI_URL;/wiki/Working_Behind_a_Network_Proxy'>Working Behind a Network Proxy</ulink>"
+                 Wiki page.
+            </note>
         </answer>
     </qandaentry>
 
@@ -690,6 +682,115 @@
         </answer>
     </qandaentry>
 
+    <qandaentry>
+        <question>
+            <para>
+                Why do <filename>${bindir}</filename> and <filename>${libdir}</filename> have strange values for <filename>-native</filename> recipes?
+            </para>
+        </question>
+        <answer>
+            <para>
+                Executables and libraries might need to be used from a
+                directory other than the directory into which they were
+                initially installed.
+                Complicating this situation is the fact that sometimes these
+                executables and libraries are compiled with the expectation
+                of being run from that initial installation target directory.
+                If this is the case, moving them causes problems.
+            </para>
+
+            <para>
+                This scenario is a fundamental problem for package maintainers
+                of mainstream Linux distributions as well as for the
+                OpenEmbedded build system.
+                As such, a well-established solution exists.
+                Makefiles, Autotools configuration scripts, and other build
+                systems are expected to respect environment variables such as
+                <filename>bindir</filename>, <filename>libdir</filename>,
+                and <filename>sysconfdir</filename> that indicate where
+                executables, libraries, and data reside when a program is
+                actually run.
+                They are also expected to respect a
+                <filename>DESTDIR</filename> environment variable, which is
+                prepended to all the other variables when the build system
+                actually installs the files.
+                It is understood that the program does not actually run from
+                within <filename>DESTDIR</filename>.
+            </para>
+
+            <para>
+                When the OpenEmbedded build system uses a recipe to build a
+                target-architecture program (i.e. one that is intended for
+                inclusion on the image being built), that program eventually
+                runs from the root file system of that image.
+                Thus, the build system provides a value of "/usr/bin" for
+                <filename>bindir</filename>, a value of "/usr/lib" for
+                <filename>libdir</filename>, and so forth.
+            </para>
+
+            <para>
+                Meanwhile, <filename>DESTDIR</filename> is a path within the
+                <ulink url='&YOCTO_DOCS_DEV_URL;#build-directory'>Build Directory</ulink>.
+                However, when the recipe builds a native program (i.e. one
+                that is intended to run on the build machine), that program
+                is never installed directly to the build machine's root
+                file system.
+                Consequently, the build system uses paths within the Build
+                Directory for <filename>DESTDIR</filename>,
+                <filename>bindir</filename> and related variables.
+                To better understand this, consider the following two paths
+                where the first is relatively normal and the second is not:
+                <note>
+                    Due to these lengthy examples, the paths are artificially
+                    broken across lines for readability.
+                </note>
+                <literallayout class='monospaced'>
+     /home/maxtothemax/poky-bootchart2/build/tmp/work/i586-poky-linux/zlib/
+        1.2.8-r0/sysroot-destdir/usr/bin
+
+     /home/maxtothemax/poky-bootchart2/build/tmp/work/x86_64-linux/
+        zlib-native/1.2.8-r0/sysroot-destdir/home/maxtothemax/poky-bootchart2/
+        build/tmp/sysroots/x86_64-linux/usr/bin
+                </literallayout>
+                Even if the paths look unusual, they both are correct -
+                the first for a target and the second for a native recipe.
+                These paths are a consequence of the
+                <filename>DESTDIR</filename> mechanism and while they
+                appear strange, they are correct and in practice very effective.
+            </para>
+        </answer>
+    </qandaentry>
+
+    <qandaentry>
+        <question>
+            <para>
+                The files provided by my <filename>-native</filename> recipe do
+                not appear to be available to other recipes.
+                Files are missing from the native sysroot, my recipe is
+                installing to the wrong place, or I am getting permissions
+                errors during the do_install task in my recipe! What is wrong?
+            </para>
+        </question>
+        <answer>
+            <para>
+                This situation results when a build system does
+                not recognize the environment variables supplied to it by
+                <ulink url='&YOCTO_DOCS_DEV_URL;#bitbake-term'>BitBake</ulink>.
+                The incident that prompted this FAQ entry involved a Makefile
+                that used an environment variable named
+                <filename>BINDIR</filename> instead of the more standard
+                variable <filename>bindir</filename>.
+                The makefile's hardcoded default value of "/usr/bin" worked
+                most of the time, but not for the recipe's
+                <filename>-native</filename> variant.
+                For another example, permissions errors might be caused
+                by a Makefile that ignores <filename>DESTDIR</filename> or uses
+                a different name for that environment variable.
+                Check the the build system to see if these kinds of
+                issues exist.
+            </para>
+        </answer>
+    </qandaentry>
 
 </qandaset>
 </chapter>

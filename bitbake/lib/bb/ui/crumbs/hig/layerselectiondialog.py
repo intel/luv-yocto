@@ -92,7 +92,8 @@ class LayerSelectionDialog (CrumbsDialog):
         path = dialog.get_filename()
         dialog.destroy()
 
-        lbl = "<b>Error</b>\nUnable to load layer <i>%s</i> because " % path
+        lbl = "<b>Error</b>"
+        msg = "Unable to load layer <i>%s</i> because " % path
         if response == gtk.RESPONSE_YES:
             import os
             import os.path
@@ -103,15 +104,15 @@ class LayerSelectionDialog (CrumbsDialog):
                 it = layer_store.iter_next(it)
 
             if not path:
-                lbl += "it is an invalid path."
+                msg += "it is an invalid path."
             elif not os.path.exists(path+"/conf/layer.conf"):
-                lbl += "there is no layer.conf inside the directory."
+                msg += "there is no layer.conf inside the directory."
             elif path in layers:
-                lbl += "it is already in loaded layers."
+                msg += "it is already in loaded layers."
             else:
                 layer_store.append([path])
                 return
-            dialog = CrumbsMessageDialog(parent, lbl)
+            dialog = CrumbsMessageDialog(parent, lbl, gtk.MESSAGE_ERROR, msg)
             dialog.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_OK)
             response = dialog.run()
             dialog.destroy()
@@ -132,12 +133,13 @@ class LayerSelectionDialog (CrumbsDialog):
         tree_selection.set_mode(gtk.SELECTION_SINGLE)
 
         # Allow enable drag and drop of rows including row move
+        dnd_internal_target = ''
+        dnd_targets = [(dnd_internal_target, gtk.TARGET_SAME_WIDGET, 0)]
         layer_tv.enable_model_drag_source( gtk.gdk.BUTTON1_MASK,
-            self.TARGETS,
-            gtk.gdk.ACTION_DEFAULT|
+            dnd_targets,
             gtk.gdk.ACTION_MOVE)
-        layer_tv.enable_model_drag_dest(self.TARGETS,
-            gtk.gdk.ACTION_DEFAULT)
+        layer_tv.enable_model_drag_dest(dnd_targets,
+            gtk.gdk.ACTION_MOVE)
         layer_tv.connect("drag_data_get", self.drag_data_get_cb)
         layer_tv.connect("drag_data_received", self.drag_data_received_cb)
 

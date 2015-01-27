@@ -21,23 +21,7 @@ def relative(src, dest):
     foo/bar
     """
 
-    if hasattr(os.path, "relpath"):
-        return os.path.relpath(dest, src)
-    else:
-        destlist = os.path.normpath(dest).split(os.path.sep)
-        srclist = os.path.normpath(src).split(os.path.sep)
-
-        # Find common section of the path
-        common = os.path.commonprefix([destlist, srclist])
-        commonlen = len(common)
-
-        # Climb back to the point where they differentiate
-        relpath = [ os.path.pardir ] * (len(srclist) - commonlen)
-        if commonlen < len(destlist):
-            # Add remaining portion
-            relpath += destlist[commonlen:]
-
-        return os.path.sep.join(relpath)
+    return os.path.relpath(dest, src)
 
 def make_relative_symlink(path):
     """ Convert an absolute symlink to a relative one """
@@ -93,11 +77,9 @@ def copyhardlinktree(src, dst):
     if (os.stat(src).st_dev ==  os.stat(dst).st_dev):
         # Need to copy directories only with tar first since cp will error if two 
         # writers try and create a directory at the same time
-        cmd = 'cd %s; find . -type d -print | tar -cf - -C %s -p --files-from - | tar -xf - -C %s' % (src, src, dst)
+        cmd = 'cd %s; find . -type d -print | tar -cf - -C %s -p --files-from - --no-recursion | tar -xf - -C %s' % (src, src, dst)
         check_output(cmd, shell=True, stderr=subprocess.STDOUT)
-        if os.path.isdir(src):
-            src = src + "/*"
-        cmd = 'cp -afl %s %s' % (src, dst)
+        cmd = 'cd %s; find . -print0 | cpio --null -pdlu %s' % (src, dst)
         check_output(cmd, shell=True, stderr=subprocess.STDOUT)
     else:
         copytree(src, dst)

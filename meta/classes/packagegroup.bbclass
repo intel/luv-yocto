@@ -9,7 +9,12 @@ PACKAGES = "${PN}"
 # By default, packagegroup packages do not depend on a certain architecture.
 # Only if dependencies are modified by MACHINE_FEATURES, packages
 # need to be set to MACHINE_ARCH after inheriting packagegroup.bbclass
-inherit allarch
+PACKAGE_ARCH ?= "all"
+
+# Fully expanded - so it applies the overrides as well
+PACKAGE_ARCH_EXPANDED := "${PACKAGE_ARCH}"
+
+inherit ${@oe.utils.ifelse(d.getVar('PACKAGE_ARCH_EXPANDED', True) == 'all', 'allarch', '')}
 
 # This automatically adds -dbg and -dev flavours of all PACKAGES
 # to the list. Their dependencies (RRECOMMENDS) are handled as usual
@@ -41,7 +46,7 @@ do_populate_sysroot[noexec] = "1"
 
 python () {
     initman = d.getVar("VIRTUAL-RUNTIME_init_manager", True)
-    if initman and initman in ['sysvinit', 'systemd'] and not base_contains('DISTRO_FEATURES', initman, True, False, d):
+    if initman and initman in ['sysvinit', 'systemd'] and not bb.utils.contains('DISTRO_FEATURES', initman, True, False, d):
         bb.fatal("Please ensure that your setting of VIRTUAL-RUNTIME_init_manager (%s) matches the entries enabled in DISTRO_FEATURES" % initman)
 }
 

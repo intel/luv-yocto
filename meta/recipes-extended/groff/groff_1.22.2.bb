@@ -18,7 +18,7 @@ SRC_URI[sha256sum] = "380864dac4772e0c0d7b1282d25d0c5fd7f63baf45c87c4657afed22a1
 DEPENDS = "groff-native"
 DEPENDS_class-native = ""
 
-inherit autotools
+inherit autotools texinfo
 
 EXTRA_OECONF = "--without-x"
 PARALLEL_MAKE = ""
@@ -55,14 +55,6 @@ do_install_append() {
 }
 
 do_install_append_class-native() {
-	# Some distros have both /bin/perl and /usr/bin/perl, but we set perl location
-	# for target as /usr/bin/perl, so fix it to /usr/bin/perl.
-	for i in afmtodit mmroff; do
-		if [ -f ${D}${bindir}/$i ]; then
-			sed -i -e '1s,#!.*perl,#! ${USRBINPATH}/env perl,' ${D}${bindir}/$i
-		fi
-	done
-
 	create_cmdline_wrapper ${D}/${bindir}/groff \
 		-F${STAGING_DIR_NATIVE}${datadir_native}/groff/${PV}/font \
 		-M${STAGING_DIR_NATIVE}${datadir_native}/groff/${PV}/tmac

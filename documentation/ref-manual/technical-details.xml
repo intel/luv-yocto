@@ -6,41 +6,46 @@
 <title>Technical Details</title>
 
     <para>
-        This chapter provides technical details for various parts of the Yocto Project.
+        This chapter provides technical details for various parts of the
+        Yocto Project.
         Currently, topics include Yocto Project components,
-        shared state (sstate) cache, x32, and Licenses.
+        cross-toolchain generation, shared state (sstate) cache,
+        x32, Wayland support, and Licenses.
     </para>
 
 <section id='usingpoky-components'>
     <title>Yocto Project Components</title>
 
     <para>
-        The BitBake task executor together with various types of configuration files form the
-        OpenEmbedded Core.
-        This section overviews these by describing what they are used for
-        and how they interact.
+        The
+        <ulink url='&YOCTO_DOCS_DEV_URL;#bitbake-term'>BitBake</ulink>
+        task executor together with various types of configuration files form
+        the OpenEmbedded Core.
+        This section overviews these components by describing their use and
+        how they interact.
     </para>
 
     <para>
         BitBake handles the parsing and execution of the data files.
         The data itself is of various types:
-    <itemizedlist>
-        <listitem><para><emphasis>Recipes:</emphasis>  Provides details about particular
-            pieces of software.</para></listitem>
-        <listitem><para><emphasis>Class Data:</emphasis>  Abstracts common build
-            information (e.g. how to build a Linux kernel).</para></listitem>
-        <listitem><para><emphasis>Configuration Data:</emphasis>  Defines machine-specific settings,
-            policy decisions, and so forth.
-            Configuration data acts as the glue to bind everything together.</para></listitem>
-    </itemizedlist>
-        For more information on data, see the
-        "<ulink url='&YOCTO_DOCS_DEV_URL;#yocto-project-terms'>Yocto Project Terms</ulink>"
-        section in the Yocto Project Development Manual.
+        <itemizedlist>
+            <listitem><para><emphasis>Recipes:</emphasis> Provides details
+                about particular pieces of software.
+                </para></listitem>
+            <listitem><para><emphasis>Class Data:</emphasis> Abstracts
+                common build information (e.g. how to build a Linux kernel).
+                </para></listitem>
+            <listitem><para><emphasis>Configuration Data:</emphasis> Defines
+                machine-specific settings, policy decisions, and so forth.
+                Configuration data acts as the glue to bind everything
+                together.
+                </para></listitem>
+        </itemizedlist>
     </para>
 
     <para>
-        BitBake knows how to combine multiple data sources together and refers to each data source
-        as a layer.
+        BitBake knows how to combine multiple data sources together and refers
+        to each data source as a layer.
         For information on layers, see the
         "<ulink url='&YOCTO_DOCS_DEV_URL;#understanding-and-creating-layers'>Understanding and
         Creating Layers</ulink>" section of the Yocto Project Development Manual.
@@ -48,8 +53,10 @@
 
     <para>
         Following are some brief details on these core components.
-        For more detailed information on these components, see the
-        "<link linkend='ref-structure'>Source Directory Structure</link>" chapter.
+        For additional information on how these components interact during
+        a build, see the
+        "<link linkend='closer-look'>A Closer Look at the Yocto Project Development Environment</link>"
+        Chapter.
     </para>
 
     <section id='usingpoky-components-bitbake'>
@@ -60,6 +67,15 @@
             and is responsible for parsing the
             <ulink url='&YOCTO_DOCS_DEV_URL;#metadata'>Metadata</ulink>,
             generating a list of tasks from it, and then executing those tasks.
+        </para>
+
+        <para>
+            This section briefly introduces BitBake.
+            If you want more information on BitBake, see the
+            <ulink url='&YOCTO_DOCS_BB_URL;#bitbake-user-manual'>BitBake User Manual</ulink>.
+        </para>
+
+        <para>
             To see a list of the options BitBake supports, use either of
             the following commands:
             <literallayout class='monospaced'>
@@ -69,10 +85,12 @@
         </para>
 
         <para>
-            The most common usage for BitBake is <filename>bitbake &lt;packagename&gt;</filename>, where
+            The most common usage for BitBake is <filename>bitbake <replaceable>packagename</replaceable></filename>, where
             <filename>packagename</filename> is the name of the package you want to build
             (referred to as the "target" in this manual).
-            The target often equates to the first part of a <filename>.bb</filename> filename.
+            The target often equates to the first part of a recipe's filename
+            (e.g. "foo" for a recipe named
+            <filename>foo_1.3.0-r0.bb</filename>).
             So, to process the <filename>matchbox-desktop_1.2.3.bb</filename> recipe file, you
             might type the following:
             <literallayout class='monospaced'>
@@ -82,7 +100,8 @@
             BitBake chooses the one selected by the distribution configuration.
             You can get more details about how BitBake chooses between different
             target versions and providers in the
-            "<link linkend='ref-bitbake-providers'>Preferences and Providers</link>" section.
+            "<ulink url='&YOCTO_DOCS_BB_URL;#bb-bitbake-preferences'>Preferences</ulink>"
+            section of the BitBake User Manual.
         </para>
 
         <para>
@@ -98,11 +117,12 @@
         <para>
             A useful BitBake option to consider is the <filename>-k</filename> or
             <filename>--continue</filename> option.
-            This option instructs BitBake to try and continue processing the job as much
-            as possible even after encountering an error.
+            This option instructs BitBake to try and continue processing the job
+            as long as possible even after encountering an error.
             When an error occurs, the target that
             failed and those that depend on it cannot be remade.
-            However, when you use this option other dependencies can still be processed.
+            However, when you use this option other dependencies can still be
+            processed.
         </para>
     </section>
 
@@ -110,12 +130,15 @@
         <title>Metadata (Recipes)</title>
 
         <para>
-            The <filename>.bb</filename> files are usually referred to as "recipes."
-            In general, a recipe contains information about a single piece of software.
+            Files that have the <filename>.bb</filename> suffix are "recipes"
+            files.
+            In general, a recipe contains information about a single piece of
+            software.
             This information includes the location from which to download the
             unaltered source, any source patches to be applied to that source
             (if needed), which special configuration options to apply,
-            how to compile the source files, and how to package the compiled output.
+            how to compile the source files, and how to package the compiled
+            output.
         </para>
 
         <para>
@@ -133,10 +156,12 @@
             Class files (<filename>.bbclass</filename>) contain information that
             is useful to share between
             <ulink url='&YOCTO_DOCS_DEV_URL;#metadata'>Metadata</ulink> files.
-            An example is the Autotools class, which contains
-            common settings for any application that Autotools uses.
-            The "<link linkend='ref-classes'>Classes</link>" chapter provides details
-            about common classes and how to use them.
+            An example is the
+            <link linkend='ref-classes-autotools'><filename>autotools</filename></link>
+            class, which contains common settings for any application that
+            Autotools uses.
+            The "<link linkend='ref-classes'>Classes</link>" chapter provides
+            details about classes and how to use them.
         </para>
     </section>
 
@@ -162,10 +187,10 @@
         The Yocto Project does most of the work for you when it comes to
         creating
         <ulink url='&YOCTO_DOCS_DEV_URL;#cross-development-toolchain'>cross-development toolchains</ulink>.
-        This section provides some technical background information on how
+        This section provides some technical background on how
         cross-development toolchains are created and used.
         For more information on toolchains, you can also see the
-        <ulink url='&YOCTO_DOCS_ADT_URL;'>the Yocto Project Application Developer's Guide</ulink>.
+        <ulink url='&YOCTO_DOCS_ADT_URL;'>Yocto Project Application Developer's Guide</ulink>.
     </para>
 
     <para>
@@ -279,7 +304,8 @@
     <para>
         Here is the bootstrap process for the relocatable toolchain:
         <literallayout class='monospaced'>
-     gcc -> binutils-crosssdk -> gcc-crosssdk-initial -> linux-libc-headers -> eglibc-initial -> nativesdk-eglibc -> gcc-crosssdk -> gcc-cross-canadian
+     gcc -> binutils-crosssdk -> gcc-crosssdk-initial -> linux-libc-headers ->
+        eglibc-initial -> nativesdk-eglibc -> gcc-crosssdk -> gcc-cross-canadian
         </literallayout>
         <itemizedlist>
             <listitem><para><filename>gcc</filename>:
@@ -327,9 +353,22 @@
                 <link linkend='var-SDKMACHINE'><filename>SDKMACHINE</filename></link>,
                 this tool
                 produces executable code that runs on the target device.
+                Only one cross-canadian compiler is produced per architecture
+                since they can be targeted at different processor optimizations
+                using configurations passed to the compiler through the
+                compile commands.
+                This circumvents the need for multiple compilers and thus
+                reduces the size of the toolchains.
                 </para></listitem>
         </itemizedlist>
     </para>
+
+    <note>
+        For information on advantages gained when building a
+        cross-development toolchain installer, see the
+        "<ulink url='&YOCTO_DOCS_ADT_URL;#optionally-building-a-toolchain-installer'>Optionally Building a Toolchain Installer</ulink>"
+        section in the Yocto Project Application Developer's Guide.
+    </note>
 </section>
 
 <section id="shared-state-cache">
@@ -384,7 +423,8 @@
         as part of the shared state packages.
         Consequently, considerations exist that affect maintaining shared
         state feeds.
-        For information on how the OpenEmbedded works with packages and can
+        For information on how the OpenEmbedded build system
+        works with packages and can
         track incrementing <filename>PR</filename> information, see the
         "<ulink url='&YOCTO_DOCS_DEV_URL;#incrementing-a-package-revision-number'>Incrementing a Package Revision Number</ulink>"
         section.
@@ -403,8 +443,11 @@
             works on a per-task basis rather than a per-recipe basis.
             You might wonder why using a per-task basis is preferred over a per-recipe basis.
             To help explain, consider having the IPK packaging backend enabled and then switching to DEB.
-            In this case, <filename>do_install</filename> and <filename>do_package</filename>
-            outputs are still valid.
+            In this case, the
+            <link linkend='ref-tasks-install'><filename>do_install</filename></link>
+            and
+            <link linkend='ref-tasks-package'><filename>do_package</filename></link>
+            task outputs are still valid.
             However, with a per-recipe approach, the build would not include the
             <filename>.deb</filename> files.
             Consequently, you would have to invalidate the whole build and rerun it.
@@ -472,8 +515,12 @@
             <literallayout class='monospaced'>
      PACKAGE_ARCHS[vardepsexclude] = "MACHINE"
             </literallayout>
-            This example ensures that the <filename>PACKAGE_ARCHS</filename> variable does not
-            depend on the value of <filename>MACHINE</filename>, even if it does reference it.
+            This example ensures that the
+            <link linkend='var-PACKAGE_ARCHS'><filename>PACKAGE_ARCHS</filename></link>
+            variable does not
+            depend on the value of
+            <link linkend='var-MACHINE'><filename>MACHINE</filename></link>,
+            even if it does reference it.
         </para>
 
         <para>
@@ -561,12 +608,20 @@
             It is also worth noting that the end result of these signature generators is to
             make some dependency and hash information available to the build.
             This information includes:
-            <literallayout class='monospaced'>
-     BB_BASEHASH_task-&lt;taskname&gt; - the base hashes for each task in the recipe
-     BB_BASEHASH_&lt;filename:taskname&gt; - the base hashes for each dependent task
-     BBHASHDEPS_&lt;filename:taskname&gt; - The task dependencies for each task
-     BB_TASKHASH - the hash of the currently running task
-            </literallayout>
+            <itemizedlist>
+                <listitem><para><filename>BB_BASEHASH_task-</filename><replaceable>taskname</replaceable>:
+                    The base hashes for each task in the recipe.
+                    </para></listitem>
+                <listitem><para><filename>BB_BASEHASH_</filename><replaceable>filename</replaceable><filename>:</filename><replaceable>taskname</replaceable>:
+                    The base hashes for each dependent task.
+                    </para></listitem>
+                <listitem><para><filename>BBHASHDEPS_</filename><replaceable>filename</replaceable><filename>:</filename><replaceable>taskname</replaceable>:
+                    The task dependencies for each task.
+                    </para></listitem>
+                <listitem><para><filename>BB_TASKHASH</filename>:
+                    The hash of the currently running task.
+                    </para></listitem>
+            </itemizedlist>
         </para>
     </section>
 
@@ -581,8 +636,10 @@
         </para>
 
         <para>
-            The shared state class (<filename>sstate.bbclass</filename>)
-            is a relatively generic implementation of how to "capture" a snapshot of a given task.
+            The
+            <link linkend='ref-classes-sstate'><filename>sstate</filename></link>
+            class is a relatively generic implementation of how to "capture"
+            a snapshot of a given task.
             The idea is that the build process does not care about the source of a task's output.
             Output could be freshly built or it could be downloaded and unpacked from
             somewhere - the build process does not need to worry about its origin.
@@ -591,18 +648,23 @@
         <para>
             There are two types of output, one is just about creating a directory
             in <link linkend='var-WORKDIR'><filename>WORKDIR</filename></link>.
-            A good example is the output of either <filename>do_install</filename> or
-            <filename>do_package</filename>.
+            A good example is the output of either
+            <link linkend='ref-tasks-install'><filename>do_install</filename></link>
+            or
+            <link linkend='ref-tasks-package'><filename>do_package</filename></link>.
             The other type of output occurs when a set of data is merged into a shared directory
             tree such as the sysroot.
         </para>
 
         <para>
-            The Yocto Project team has tried to keep the details of the implementation hidden in
-            <filename>sstate.bbclass</filename>.
+            The Yocto Project team has tried to keep the details of the
+            implementation hidden in <filename>sstate</filename> class.
             From a user's perspective, adding shared state wrapping to a task
-            is as simple as this <filename>do_deploy</filename> example taken from
-            <filename>deploy.bbclass</filename>:
+            is as simple as this
+            <link linkend='ref-tasks-deploy'><filename>do_deploy</filename></link>
+            example taken from the
+            <link linkend='ref-classes-deploy'><filename>deploy</filename></link>
+            class:
             <literallayout class='monospaced'>
      DEPLOYDIR = "${WORKDIR}/deploy-${PN}"
      SSTATETASKS += "do_deploy"
@@ -683,7 +745,9 @@
 
         <para>
             As a real world example, the aim is when building an IPK-based image,
-            only the <filename>do_package_write_ipk</filename> tasks would have their
+            only the
+            <link linkend='ref-tasks-package_write_ipk'><filename>do_package_write_ipk</filename></link>
+            tasks would have their
             shared state packages fetched and extracted.
             Since the sysroot is not used, it would never get extracted.
             This is another reason why a task-based approach is preferred over a
@@ -706,7 +770,7 @@
 
             <para>
                 When things go wrong, debugging needs to be straightforward.
-                Because of this, the Yocto Project team included strong debugging
+                Because of this, the Yocto Project includes strong debugging
                 tools:
                 <itemizedlist>
                     <listitem><para>Whenever a shared state package is written out, so is a
@@ -744,7 +808,7 @@
                 As with all schemes, this one has some drawbacks.
                 It is possible that you could make implicit changes to your
                 code that the checksum calculations do not take into
-                account (i.e. implicit changes).
+                account.
                 These implicit changes affect a task's output but do not trigger
                 the shared state code into rebuilding a recipe.
                 Consider an example during which a tool changes its output.
@@ -768,7 +832,7 @@
                 Realize that changes you make directly to a function
                 are automatically factored into the checksum calculation.
                 Thus, these explicit changes invalidate the associated area of
-                sstate cache.
+                shared state cache.
                 However, you need to be aware of any implicit changes that
                 are not obvious changes to the code and could affect the output
                 of a given task.
@@ -780,8 +844,9 @@
                 The steps you can take are as simple as changing a function's
                 comments in the source code.
                 For example, to invalidate package shared state files, change
-                the comment statements of <filename>do_package</filename> or
-                the comments of one of the functions it calls.
+                the comment statements of
+                <link linkend='ref-tasks-package'><filename>do_package</filename></link>
+                or the comments of one of the functions it calls.
                 Even though the change is purely cosmetic, it causes the
                 checksum to be recalculated and forces the OpenEmbedded build
                 system to run the task again.
@@ -824,9 +889,9 @@
         <title>Support</title>
 
         <para>
-            While the x32 psABI specifications are not fully finalized, this Yocto Project
-            release supports current development specifications of x32 psABI.
-            As of this release of the Yocto Project, x32 psABI support exists as follows:
+            This Yocto Project release supports the final specifications of x32
+            psABI.
+            Support for x32 psABI exists as follows:
             <itemizedlist>
                 <listitem><para>You can create packages and images in x32 psABI format on x86_64 architecture targets.
                     </para></listitem>
@@ -837,13 +902,8 @@
         </para>
     </section>
 
-    <section id='stabilizing-and-completing-x32'>
-        <title>Stabilizing and Completing x32</title>
-
-        <para>
-            As of this Yocto Project release, the x32 psABI kernel and library
-            interfaces specifications are not finalized.
-        </para>
+    <section id='completing-x32'>
+        <title>Completing x32</title>
 
         <para>
             Future Plans for the x32 psABI in the Yocto Project include the following:
@@ -890,7 +950,7 @@
     <title>Wayland</title>
 
     <para>
-        <ulink url='http://en.wikipedia.org/wiki/Wayland_(display_server_protocol)#Weston'>Wayland</ulink>
+        <ulink url='http://en.wikipedia.org/wiki/Wayland_(display_server_protocol)'>Wayland</ulink>
         is a computer display server protocol that
         provides a method for compositing window managers to communicate
         directly with applications and video hardware and expects them to
@@ -902,7 +962,9 @@
 
     <para>
         The Yocto Project provides the Wayland protocol libraries and the
-        reference Weston compositor as part of its release.
+        reference
+        <ulink url='http://en.wikipedia.org/wiki/Wayland_(display_server_protocol)#Weston'>Weston</ulink>
+        compositor as part of its release.
         This section describes what you need to do to implement Wayland and
         use the compositor when building an image for a supporting target.
     </para>
@@ -1005,7 +1067,7 @@
                     <literallayout class='monospaced'>
      mkdir -p /tmp/$USER-weston
      chmod 0700 /tmp/$USER-weston
-     export XDG_RUNTIME_DIR=/tmp/$USER=weston
+     export XDG_RUNTIME_DIR=/tmp/$USER-weston
                     </literallayout></para></listitem>
                 <listitem><para>Launch Weston in the shell:
                     <literallayout class='monospaced'>
@@ -1062,7 +1124,7 @@
             <para>
                 The build system uses the
                 <filename><link linkend='var-S'>S</link></filename> variable as
-                the default directory used when searching files listed in
+                the default directory when searching files listed in
                 <filename>LIC_FILES_CHKSUM</filename>.
                 The previous example employs the default directory.
             </para>
@@ -1146,8 +1208,9 @@
             components that have commercial or other special licensing
             requirements.
             Such requirements are defined on a
-            recipe-by-recipe basis through the <filename>LICENSE_FLAGS</filename> variable
-            definition in the affected recipe.
+            recipe-by-recipe basis through the
+            <link linkend='var-LICENSE_FLAGS'><filename>LICENSE_FLAGS</filename></link>
+            variable definition in the affected recipe.
             For instance, the
             <filename>poky/meta/recipes-multimedia/gstreamer/gst-plugins-ugly</filename>
             recipe contains the following statement:
@@ -1162,7 +1225,8 @@
 	        In order for a component restricted by a <filename>LICENSE_FLAGS</filename>
 	        definition to be enabled and included in an image, it
 	        needs to have a matching entry in the global
-	        <filename>LICENSE_FLAGS_WHITELIST</filename> variable, which is a variable
+	        <link linkend='var-LICENSE_FLAGS_WHITELIST'><filename>LICENSE_FLAGS_WHITELIST</filename></link>
+            variable, which is a variable
 	        typically defined in your <filename>local.conf</filename> file.
             For example, to enable
 	        the <filename>poky/meta/recipes-multimedia/gstreamer/gst-plugins-ugly</filename>
@@ -1208,8 +1272,9 @@
 		        License flag matching allows you to control what recipes the
                 OpenEmbedded build system includes in the build.
                 Fundamentally, the build system attempts to match
-                <filename>LICENSE_FLAGS</filename> strings found in
-                recipes against <filename>LICENSE_FLAGS_WHITELIST</filename>
+                <link linkend='var-LICENSE_FLAGS'><filename>LICENSE_FLAGS</filename></link>
+                strings found in recipes against
+                <link linkend='var-LICENSE_FLAGS_WHITELIST'><filename>LICENSE_FLAGS_WHITELIST</filename></link>
                 strings found in the whitelist.
                 A match causes the build system to include a recipe in the
                 build, while failure to find a match causes the build system to
@@ -1332,8 +1397,9 @@
                 Of course, you could also create a matching whitelist
                 for those components using the more general "commercial"
                 in the whitelist, but that would also enable all the
-                other packages with <filename>LICENSE_FLAGS</filename> containing
-                "commercial", which you may or may not want:
+                other packages with
+                <link linkend='var-LICENSE_FLAGS'><filename>LICENSE_FLAGS</filename></link>
+                containing "commercial", which you may or may not want:
                 <literallayout class='monospaced'>
      LICENSE_FLAGS_WHITELIST = "commercial"
                 </literallayout>

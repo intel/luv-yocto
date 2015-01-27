@@ -7,14 +7,11 @@ sysroot_stage_dir() {
 		 return
 	fi
 
-	# We only want to stage the contents of $src if it's non-empty so first rmdir $src
-	# then if it still exists (rmdir on non-empty dir fails) we can copy its contents
-	rmdir "$src" 2> /dev/null || true
-	# However we always want to stage a $src itself, even if it's empty
 	mkdir -p "$dest"
-	if [ -d "$src" ]; then
-		tar -cf - -C "$src" -p . | tar -xf - -C "$dest"
-	fi
+	(
+		cd $src
+		find . -print0 | cpio --null -pdlu $dest
+	)
 }
 
 sysroot_stage_libdir() {
@@ -40,7 +37,7 @@ sysroot_stage_dirs() {
 	fi
 	if [ -d $from${libdir} ]
 	then
-		sysroot_stage_libdir $from/${libdir} $to${libdir}
+		sysroot_stage_libdir $from${libdir} $to${libdir}
 	fi
 	if [ -d $from${base_libdir} ]
 	then
@@ -96,11 +93,23 @@ python do_populate_sysroot () {
     bb.build.exec_func("sysroot_stage_all", d)
     for f in (d.getVar('SYSROOT_PREPROCESS_FUNCS', True) or '').split():
         bb.build.exec_func(f, d)
+    pn = d.getVar("PN", True)
+    multiprov = d.getVar("MULTI_PROVIDER_WHITELIST", True).split()
+    provdir = d.expand("${SYSROOT_DESTDIR}${base_prefix}/sysroot-providers/")
+    bb.utils.mkdirhier(provdir)
+    for p in d.getVar("PROVIDES", True).split():
+        if p in multiprov:
+            continue
+        p = p.replace("/", "_")
+        with open(provdir + p, "w") as f:
+            f.write(pn)
 }
+
+do_populate_sysroot[vardeps] += "${SYSROOT_PREPROCESS_FUNCS}"
+do_populate_sysroot[vardepsexclude] += "MULTI_PROVIDER_WHITELIST"
 
 SSTATETASKS += "do_populate_sysroot"
 do_populate_sysroot[cleandirs] = "${SYSROOT_DESTDIR}"
-do_populate_sysroot[sstate-name] = "populate-sysroot"
 do_populate_sysroot[sstate-inputdirs] = "${SYSROOT_DESTDIR}"
 do_populate_sysroot[sstate-outputdirs] = "${STAGING_DIR_HOST}/"
 do_populate_sysroot[stamp-extra-info] = "${MACHINE}"

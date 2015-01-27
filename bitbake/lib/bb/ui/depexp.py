@@ -198,11 +198,11 @@ def main(server, eventHandler, params):
             print("Nothing to do.  Use 'bitbake world' to build everything, or run 'bitbake --help' for usage information.")
             return 1
         if 'msg' in cmdline and cmdline['msg']:
-            logger.error(cmdline['msg'])
+            print(cmdline['msg'])
             return 1
         cmdline = cmdline['action']
         if not cmdline or cmdline[0] != "generateDotGraph":
-            print("This UI is only compatible with the -g option")
+            print("This UI requires the -g option")
             return 1
         ret, error = server.runCommand(["generateDepTreeEvent", cmdline[1], cmdline[2]])
         if error:

@@ -1,4 +1,4 @@
-DESCRIPTION = "Python Bindings for the Cairo canvas library"
+SUMMARY = "Python bindings for the Cairo canvas library"
 HOMEPAGE = "http://cairographics.org/pycairo"
 BUGTRACKER = "http://bugs.freedesktop.org"
 SECTION = "python-devel"
@@ -19,6 +19,8 @@ SRC_URI[sha256sum] = "d30439f06c2ec1a39e27464c6c828b6eface3b22ee17b2de05dc409e42
 S = "${WORKDIR}/py2cairo-${PV}"
 
 inherit distutils pkgconfig
+
+BBCLASSEXTEND = "native"
 
 do_configure() {
 	BUILD_SYS=${BUILD_SYS} HOST_SYS=${HOST_SYS} ./waf configure --prefix=${D}${prefix} --libdir=${D}${libdir}
