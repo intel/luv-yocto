@@ -1,0 +1,245 @@
+From 39645d13c25b395781234d8aa8376be6a2a38d2c Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Thu, 15 Jan 2015 18:05:06 -0800
+Subject: [PATCH] uefirtvariable: allow large sizes for variable names
+
+The UEFI specification does not define the maximum length for the
+variable name. Thus, it may happen that some firmware implementations
+have variable names longer than 1024 characters. Rather than limiting
+the maximum size to 1024 characters, set the initial size to 1024 chars
+and enlarge as required.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ efi_runtime/efi_runtime.c                |  2 -
+ src/uefi/uefirtvariable/uefirtvariable.c | 93 +++++++++++++++++++++++++++++---
+ 2 files changed, 85 insertions(+), 10 deletions(-)
+
+diff --git a/efi_runtime/efi_runtime.c b/efi_runtime/efi_runtime.c
+index 33ccfba..4351b18 100644
+--- a/efi_runtime/efi_runtime.c
++++ b/efi_runtime/efi_runtime.c
+@@ -452,8 +452,6 @@ static long efi_runtime_get_nextvariablename(unsigned long arg)
+ 	    copy_from_user(&vendor_guid, pgetnextvariablename_local.VendorGuid,
+ 			   sizeof(vendor_guid)))
+ 		return -EFAULT;
+-	if (name_size > 1024)
+-		return -EFAULT;
+ 
+ 	convert_from_guid(&vendor, &vendor_guid);
+ 
+diff --git a/src/uefi/uefirtvariable/uefirtvariable.c b/src/uefi/uefirtvariable/uefirtvariable.c
+index 4b32693..ce1f7a3 100644
+--- a/src/uefi/uefirtvariable/uefirtvariable.c
++++ b/src/uefi/uefirtvariable/uefirtvariable.c
+@@ -265,7 +265,8 @@ static int getnextvariable_test1(fwts_framework *fw)
+ 
+ 	struct efi_getnextvariablename getnextvariablename;
+ 	uint64_t variablenamesize = MAX_DATA_LENGTH;
+-	uint16_t variablename[MAX_DATA_LENGTH];
++	uint64_t maxvariablenamesize = variablenamesize;
++	uint16_t *variablename;
+ 	EFI_GUID vendorguid;
+ 	bool found_name = false, found_guid = false;
+ 
+@@ -299,6 +300,11 @@ static int getnextvariable_test1(fwts_framework *fw)
+ 		return FWTS_ERROR;
+ 	}
+ 
++	variablename = malloc(sizeof(uint16_t) * variablenamesize);
++	if (!variablename) {
++		fwts_skipped(fw, "Unable to alloc memory for variable name");
++		return FWTS_SKIP;
++	}
+ 	getnextvariablename.VariableNameSize = &variablenamesize;
+ 	getnextvariablename.VariableName = variablename;
+ 	getnextvariablename.VendorGuid = &vendorguid;
+@@ -310,7 +316,7 @@ static int getnextvariable_test1(fwts_framework *fw)
+ 	 */
+ 	variablename[0] = '\0';
+ 	while (true) {
+-		variablenamesize = MAX_DATA_LENGTH;
++		variablenamesize = maxvariablenamesize;
+ 		ioret = ioctl(fd, EFI_RUNTIME_GET_NEXTVARIABLENAME, &getnextvariablename);
+ 
+ 		if (ioret == -1) {
+@@ -319,6 +325,20 @@ static int getnextvariable_test1(fwts_framework *fw)
+ 			if (*getnextvariablename.status == EFI_NOT_FOUND)
+ 				break;
+ 
++			/*
++			 * If the buffer we provided is too small for the name,
++			 * allocate a larger buffer and try again
++			 */
++			if (*getnextvariablename.status == EFI_BUFFER_TOO_SMALL) {
++				variablename = realloc(variablename,
++						       sizeof(uint16_t) * variablenamesize);
++				 if (variablename) {
++					 getnextvariablename.VariableName = variablename;
++					 maxvariablenamesize = variablenamesize;
++					 continue;
++				}
++			}
++
+ 			fwts_failed(fw, LOG_LEVEL_HIGH,
+ 				"UEFIRuntimeGetNextVariableName",
+ 				"Failed to get next variable name with UEFI "
+@@ -334,6 +354,12 @@ static int getnextvariable_test1(fwts_framework *fw)
+ 			break;
+ 	};
+ 
++	if (variablename) {
++		free(variablename);
++		getnextvariablename.VariableName = NULL;
++		variablename = NULL;
++	}
++
+ 	if (!found_name) {
+ 		fwts_failed(fw, LOG_LEVEL_HIGH,
+ 			"UEFIRuntimeGetNextVariableNameName",
+@@ -374,6 +400,9 @@ err_restore_env:
+ 		return FWTS_ERROR;
+ 	}
+ 
++	if (variablename)
++		free(variablename);
++
+ 	return FWTS_ERROR;
+ }
+ 
+@@ -404,9 +433,16 @@ static int getnextvariable_test2(fwts_framework *fw)
+ 
+ 	struct efi_getnextvariablename getnextvariablename;
+ 	uint64_t variablenamesize = MAX_DATA_LENGTH;
+-	uint16_t variablename[MAX_DATA_LENGTH];
++	uint64_t maxvariablenamesize = variablenamesize;
++	uint16_t *variablename;
+ 	EFI_GUID vendorguid;
+ 
++	variablename = malloc(sizeof(uint16_t) * variablenamesize);
++	if (!variablename) {
++		fwts_skipped(fw, "Unable to alloc memory for variable name");
++		return FWTS_SKIP;
++	}
++
+ 	getnextvariablename.VariableNameSize = &variablenamesize;
+ 	getnextvariablename.VariableName = variablename;
+ 	getnextvariablename.VendorGuid = &vendorguid;
+@@ -418,7 +454,7 @@ static int getnextvariable_test2(fwts_framework *fw)
+ 	 */
+ 	variablename[0] = '\0';
+ 	while (true) {
+-		variablenamesize = MAX_DATA_LENGTH;
++		variablenamesize = maxvariablenamesize;
+ 		ioret = ioctl(fd, EFI_RUNTIME_GET_NEXTVARIABLENAME, &getnextvariablename);
+ 
+ 		if (ioret == -1) {
+@@ -426,6 +462,19 @@ static int getnextvariable_test2(fwts_framework *fw)
+ 			/* no next variable was found*/
+ 			if (*getnextvariablename.status == EFI_NOT_FOUND)
+ 				break;
++			/*
++			 * If the buffer we provided is too small for the name,
++			 * allocate a larger buffer and try again
++			 */
++			if (*getnextvariablename.status == EFI_BUFFER_TOO_SMALL) {
++				variablename = realloc(variablename,
++						       sizeof(uint16_t) * variablenamesize);
++				 if (variablename) {
++					 getnextvariablename.VariableName = variablename;
++					 maxvariablenamesize = variablenamesize;
++					 continue;
++				}
++			}
+ 
+ 			fwts_failed(fw, LOG_LEVEL_HIGH,
+ 				"UEFIRuntimeGetNextVariableName",
+@@ -435,17 +484,20 @@ static int getnextvariable_test2(fwts_framework *fw)
+ 			goto err;
+ 		}
+ 
+-		if (variablenamesize != MAX_DATA_LENGTH &&
+-		    !strlen_valid(variablename, variablenamesize)) {
++		if (!strlen_valid(variablename, variablenamesize)) {
+ 			fwts_warning(fw, "UEFIRuntimeGetNextVariableName "
+ 				"Unexpected variable name size returned.");
+ 			goto err;
+ 		}
+ 	};
+ 
++	if (variablename)
++		free(variablename);
+ 	return FWTS_OK;
+ 
+ err:
++	if (variablename)
++		free(variablename);
+ 	return FWTS_ERROR;
+ }
+ 
+@@ -533,9 +585,16 @@ static int getnextvariable_test3(fwts_framework *fw)
+ 
+ 	struct efi_getnextvariablename getnextvariablename;
+ 	uint64_t variablenamesize = MAX_DATA_LENGTH;
+-	uint16_t variablename[MAX_DATA_LENGTH];
++	uint64_t maxvariablenamesize = variablenamesize;
++	uint16_t *variablename;
+ 	EFI_GUID vendorguid;
+ 
++	variablename = malloc(sizeof(uint16_t) * variablenamesize);
++	if (!variablename) {
++		fwts_skipped(fw, "Unable to alloc memory for variable name");
++		return FWTS_SKIP;
++	}
++
+ 	getnextvariablename.VariableNameSize = &variablenamesize;
+ 	getnextvariablename.VariableName = variablename;
+ 	getnextvariablename.VendorGuid = &vendorguid;
+@@ -549,7 +608,7 @@ static int getnextvariable_test3(fwts_framework *fw)
+ 	while (true) {
+ 		struct efi_var_item *item;
+ 
+-		variablenamesize = MAX_DATA_LENGTH;
++		variablenamesize = maxvariablenamesize;
+ 		ioret = ioctl(fd, EFI_RUNTIME_GET_NEXTVARIABLENAME, &getnextvariablename);
+ 
+ 		if (ioret == -1) {
+@@ -558,6 +617,20 @@ static int getnextvariable_test3(fwts_framework *fw)
+ 			if (*getnextvariablename.status == EFI_NOT_FOUND)
+ 				break;
+ 
++			/*
++			 * if the buffer we provided is too small for the name,
++			 * allocate a larger buffer and try again
++			 */
++			if (*getnextvariablename.status == EFI_BUFFER_TOO_SMALL) {
++				variablename = realloc(variablename,
++						       sizeof(uint16_t) * variablenamesize);
++				 if (variablename) {
++					 getnextvariablename.VariableName = variablename;
++					 maxvariablenamesize = variablenamesize;
++					 continue;
++				}
++			}
++
+ 			fwts_failed(fw, LOG_LEVEL_HIGH,
+ 				"UEFIRuntimeGetNextVariableName",
+ 				"Failed to get next variable name with UEFI "
+@@ -602,10 +675,14 @@ static int getnextvariable_test3(fwts_framework *fw)
+ 	};
+ 
+ 	bucket_destroy();
++	if (variablename)
++		free(variablename);
+ 	return FWTS_OK;
+ 
+ err:
+ 	bucket_destroy();
++	if (variablename)
++		free(variablename);
+ 	return FWTS_ERROR;
+ }
+ 
+-- 
+1.9.1
+
