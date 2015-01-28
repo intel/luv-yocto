@@ -18,15 +18,28 @@ efi_populate() {
     DEST=$1
 
     install -d ${DEST}${EFIDIR}
-    install -d ${DEST}${EFIDIR}/bits
 
-    # Install both the grub2 and BITS loaders
-    install -m 0644 ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${DEST}${EFIDIR}
+    # Create bits directory only for x86_64 target.
+    if [ "${TARGET_ARCH}" = "x86_64" ]; then
+       install -d ${DEST}${EFIDIR}/bits
+    fi
 
-    cp -r ${DEPLOY_DIR_IMAGE}/bits/boot ${DEST}
-    install -m 0644 ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
-        ${DEST}${EFIDIR}/bits/
+    # Install grub2 in EFI directory
+    if [ "${TARGET_ARCH}" = "aarch64" ]; then
+		install -m 0644 ${DEPLOY_DIR_IMAGE}/grubaa64.efi ${DEST}${EFIDIR}
+                echo "grubaa64.efi" > ${DEST}${EFIDIR}/startup.nsh
+    else
+		install -m 0644 ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${DEST}${EFIDIR}
+    fi
 
+    # Install BITS only for x86_64 architecture
+    if [ "${TARGET_ARCH}" = "x86_64" ]; then
+	    cp -r ${DEPLOY_DIR_IMAGE}/bits/boot ${DEST}
+	    install -m 0644 ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
+	        ${DEST}${EFIDIR}/bits/
+    fi
+
+    # Install splash and grub.cfg files into EFI directory.
     install -m 0644 ${GRUBCFG} ${DEST}${EFIDIR}
 
     install -m 0644 ${WORKDIR}/${SPLASH_IMAGE} ${DEST}${EFIDIR}
@@ -38,8 +51,16 @@ efi_iso_populate() {
     # Build a EFI directory to create efi.img
     mkdir -p ${EFIIMGDIR}/${EFIDIR}
     cp -r $iso_dir/${EFIDIR}/* ${EFIIMGDIR}${EFIDIR}
-    cp $iso_dir/vmlinuz ${EFIIMGDIR}
-    echo "${EFI_LOADER_IMAGE}" > ${EFIIMGDIR}/startup.nsh
+
+    if [ "${TARGET_ARCH}" = "aarch64" ] ; then
+        echo "grubaa64.efi" > ${EFIIMGDIR}/startup.nsh
+        cp $iso_dir/Image ${EFIIMGDIR}
+    fi
+    if [ "${TARGET_ARCH}" = "x86_64" ] ; then
+        echo "${GRUB_IMAGE}" > ${EFIIMGDIR}/startup.nsh
+        cp $iso_dir/vmlinuz ${EFIIMGDIR}
+    fi
+
     if [ -f "$iso_dir/initrd" ] ; then
         cp $iso_dir/initrd ${EFIIMGDIR}
     fi
@@ -59,12 +80,16 @@ python build_efi_cfg() {
     except OSError:
         raise bb.build.funcFailed('Unable to open %s' % (cfgfile))
 
-    cfgfile.write('default=bits\n')
-    cfgfile.write('timeout=0\n')
-    cfgfile.write('fallback=0\n')
+    if "${TARGET_ARCH}" == "x86_64":
+       cfgfile.write('default=bits\n')
+       cfgfile.write('timeout=0\n')
+       cfgfile.write('fallback=0\n')
 
     cfgfile.write('menuentry \'luv\' {\n')
-    cfgfile.write('linux /vmlinuz')
+    if "${TARGET_ARCH}" == "x86_64":
+       cfgfile.write('linux /vmlinuz')
+    if "${TARGET_ARCH}" == "aarch64":
+        cfgfile.write('linux /Image')
 
     append = d.getVar('APPEND', True)
     if append:
@@ -79,9 +104,10 @@ python build_efi_cfg() {
     if not loader:
         raise bb.build.FuncFailed('Unable to find EFI_LOADER_IMAGE')
 
-    cfgfile.write('menuentry \'bits\' {\n')
-    cfgfile.write('chainloader /EFI/BOOT/bits/%s\n' % loader)
-    cfgfile.write('}\n')
+    if "${TARGET_ARCH}" == "x86_64":
+       cfgfile.write('menuentry \'bits\' {\n')
+       cfgfile.write('chainloader /EFI/BOOT/bits/%s\n' % loader)
+       cfgfile.write('}\n')
 
     cfgfile.close()
 }
