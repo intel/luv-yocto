@@ -7,8 +7,13 @@ IMAGE_INSTALL = "\
     kernel-image fwts bash coreutils gawk grep util-linux-agetty \
     util-linux-mount util-linux-umount kmod sed tar net-tools \
     shadow util-linux procps efivarfs-test \
-    psplash chipsec kexec vmcore-dmesg kernel-efi-warnings bits \
+    psplash kernel-efi-warnings \
     "
+
+X86_ADDITIONS = "chipsec kexec vmcore-dmesg bits"
+
+IMAGE_INSTALL_append_qemux86 = "${X86_ADDITIONS}"
+IMAGE_INSTALL_append_qemux86-64 = "${X86_ADDITIONS}"
 
 export IMAGE_BASENAME = "core-image-efi-initramfs"
 
