@@ -37,6 +37,9 @@ efi_populate() {
 	if [ "${TARGET_ARCH}" = "x86_64" ]; then
 		GRUB_IMAGE="bootx64.efi"
 	fi
+	if [ "${TARGET_ARCH}" = "aarch64" ]; then
+                GRUB_IMAGE="grubaa64.efi"
+        fi
 	install -m 0644 ${DEPLOY_DIR_IMAGE}/${GRUB_IMAGE} ${DEST}${EFIDIR}
 
 	install -m 0644 ${GRUBCFG} ${DEST}${EFIDIR}
