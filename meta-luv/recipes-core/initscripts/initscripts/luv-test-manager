@@ -136,3 +136,8 @@ fi
 
     umount -l /mnt/.psplash
 }
+
+grep -q luv.halt /proc/cmdline
+if [ $? -ne 1 ]; then
+    halt -p
+fi
