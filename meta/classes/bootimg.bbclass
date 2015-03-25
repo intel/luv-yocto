@@ -63,10 +63,17 @@ inherit ${EFI_CLASS}
 
 populate() {
 	DEST=$1
-	install -d ${DEST}
+
+	SRC_KERNEL_IMAGE=bzImage
+	DEST_KERNEL_IMAGE=vmlinuz
+
+	if [ "${TARGET_ARCH}" = "aarch64" ]; then
+		SRC_KERNEL_IMAGE=Image
+		DEST_KERNEL_IMAGE=Image
+	fi
 
 	# Install bzImage, initrd, and rootfs.img in DEST for all loaders to use.
-	install -m 0644 ${STAGING_KERNEL_DIR}/bzImage ${DEST}/vmlinuz
+	install -m 0644 -D ${STAGING_KERNEL_DIR}/${SRC_KERNEL_IMAGE} ${DEST}/${DEST_KERNEL_IMAGE}
 	
 	# initrd is made of concatenation of multiple filesystem images
 	if [ -n "${INITRD}" ]; then
