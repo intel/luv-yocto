@@ -5,7 +5,16 @@
 # We install a couple of boot loaders and a splash image.
 #
 
-do_bootimg[depends] += "${MLPREFIX}grub-efi:do_deploy"
+def bootimg_depends(bb, d):
+         import re
+         deps = bb.data.getVar('TARGET_PREFIX', d, True)
+         if re.search("(x86_64|i.86).*",deps):
+                 return "${MLPREFIX}grub-efi"
+         if re.search("aarch64",deps):
+                 return "${MLPREFIX}grub"
+
+RDEPENDS = "${@bootimg_depends(bb, d)}"
+do_bootimg[depends] += "${RDEPENDS}:do_deploy"
 
 EFI_LOADER_IMAGE = "${@base_conditional('TARGET_ARCH', 'x86_64', 'bootx64.efi', 'bootia32.efi', d)}"
 EFIDIR = "/EFI/BOOT"
