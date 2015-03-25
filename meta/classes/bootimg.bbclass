@@ -33,6 +33,7 @@ do_bootimg[depends] += "dosfstools-native:do_populate_sysroot \
 
 PACKAGES = " "
 EXCLUDE_FROM_WORLD = "1"
+NOISO_aarch64 = "1"
 
 HDDDIR = "${S}/hddimg"
 ISODIR = "${S}/iso"
