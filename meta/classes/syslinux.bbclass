@@ -17,7 +17,10 @@
 # ${SYSLINUX_SERIAL_TTY} - Set alternate console=tty... kernel boot argument
 # ${SYSLINUX_KERNEL_ARGS} - Add additional kernel arguments
 
-do_bootimg[depends] += "${MLPREFIX}syslinux:do_populate_sysroot \
+EXTRABOOTIMGDEPS = ""
+EXTRABOOTIMGDEPS_x86 = "${MLPREFIX}syslinux:do_populate_sysroot"
+EXTRABOOTIMGDEPS_x86-64 = "${MLPREFIX}syslinux:do_populate_sysroot"
+do_bootimg[depends] += "${EXTRABOOTIMGDEPS} \
                         syslinux-native:do_populate_sysroot"
 
 SYSLINUXCFG  = "${S}/syslinux.cfg"
