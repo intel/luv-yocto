@@ -31,18 +31,20 @@ efi_populate() {
 	# nested under a top level directory.
 	DEST=$1
 
-	install -d ${DEST}${EFIDIR}
-
 	GRUB_IMAGE="bootia32.efi"
-	if [ "${TARGET_ARCH}" = "x86_64" ]; then
-		GRUB_IMAGE="bootx64.efi"
-	fi
-	if [ "${TARGET_ARCH}" = "aarch64" ]; then
-                GRUB_IMAGE="grubaa64.efi"
-        fi
-	install -m 0644 ${DEPLOY_DIR_IMAGE}/${GRUB_IMAGE} ${DEST}${EFIDIR}
 
-	install -m 0644 ${GRUBCFG} ${DEST}${EFIDIR}
+	case ${TARGET_ARCH} in
+		x86_64 )
+		GRUB_IMAGE="bootx64.efi"
+		;;
+		aarch64 )
+		GRUB_IMAGE="grubaa64.efi"
+		;;
+	esac
+
+	install -m 0644 -D ${DEPLOY_DIR_IMAGE}/${GRUB_IMAGE} ${DEST}${EFIDIR}
+
+	install -m 0644 -D ${GRUBCFG} ${DEST}${EFIDIR}
 }
 
 efi_iso_populate() {
