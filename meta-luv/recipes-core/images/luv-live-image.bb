@@ -1,7 +1,8 @@
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=4d92cd373abda3937c2bc47fbc49d690"
 
-DEPENDS_${PN} = "grub-efi bits"
+# TODO: we need a native dependency on sbsigntool
+DEPENDS_${PN} = "grub-efi bits sbsigntool"
 
 HDDDIR = "${S}/hddimg"
 HDDIMG_ID = "423cc2c8"
@@ -71,6 +72,7 @@ python do_create_img() {
 
 do_bootimg[depends] += "${INITRD_IMAGE}:do_rootfs"
 do_bootimg[depends] += "virtual/kernel:do_populate_sysroot"
+do_bootimg[depends] += "shim-signed:do_deploy"
 
 addtask create_img after do_bootimg before do_build
 addtask do_unpack before do_build
