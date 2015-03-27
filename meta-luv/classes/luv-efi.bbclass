@@ -3,6 +3,7 @@
 #
 # This is entirely specific to the Linux UEFI Validation (luv) project.
 # We install a couple of boot loaders and a splash image.
+# Also, we sign the grub2 so that it can be launched by shim
 #
 
 def bootimg_depends(bb, d):
@@ -33,19 +34,54 @@ efi_populate() {
        install -d ${DEST}${EFIDIR}/bits
     fi
 
+    # Install both the grub2 and BITS loaders
+    # install -m 0644 ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${DEST}${EFIDIR}
+
     # Install grub2 in EFI directory
     if [ "${TARGET_ARCH}" = "aarch64" ]; then
 		install -m 0644 ${DEPLOY_DIR_IMAGE}/grubaa64.efi ${DEST}${EFIDIR}
                 echo "grubaa64.efi" > ${DEST}${EFIDIR}/startup.nsh
+
+    # TODO: need conditional signing; e.g., if (DISTRO_FEATURES contains secure_boot)
     else
-		install -m 0644 ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${DEST}${EFIDIR}
+                # sign grub2 bootloader
+                sbsign --key ${DEPLOY_DIR_IMAGE}/LUV.key --cert ${DEPLOY_DIR_IMAGE}/LUV.crt \
+                       --output ${DEPLOY_DIR_IMAGE}/grubx64.efi ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE}
+
+                # temporarily rename the unsigned grub2 bootloader
+                mv ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE}-unsigned
+                # shim will become our main bootloader
+                mv ${DEPLOY_DIR_IMAGE}/shim.efi  ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE}
+
+                # install everything
+                install -m 0644 ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${DEST}${EFIDIR}
+                install -m 0644 ${DEPLOY_DIR_IMAGE}/grubx64.efi ${DEST}${EFIDIR}
+                install -m 0644 ${DEPLOY_DIR_IMAGE}/MokManager.efi ${DEST}${EFIDIR}
+                install -m 0644 ${DEPLOY_DIR_IMAGE}/LUV.cer ${DEST}
+
+                # restore files to leave all in good shape for all the callers of the funciton
+                mv ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${DEPLOY_DIR_IMAGE}/shim.efi
+                mv ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE}-unsigned ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE}
     fi
 
     # Install BITS only for x86_64 architecture
     if [ "${TARGET_ARCH}" = "x86_64" ]; then
 	    cp -r ${DEPLOY_DIR_IMAGE}/bits/boot ${DEST}
+            # TODO: Need condiitional signing based on DISTRO_FEATURES
+            mv ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
+               ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}-unsigned
+
+            sbsign --key ${DEPLOY_DIR_IMAGE}/LUV.key --cert ${DEPLOY_DIR_IMAGE}/LUV.crt \
+                   --output ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
+                   ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}-unsigned
+
 	    install -m 0644 ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
 	        ${DEST}${EFIDIR}/bits/
+
+           # restore files
+           rm ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}
+           mv ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}-unsigned \
+               ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}
     fi
 
     # Install splash and grub.cfg files into EFI directory.
