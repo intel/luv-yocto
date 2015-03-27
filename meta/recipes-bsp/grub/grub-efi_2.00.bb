@@ -32,6 +32,7 @@ SRC_URI = "ftp://ftp.gnu.org/gnu/grub/grub-${PV}.tar.gz \
            file://grub-efinet-tftp.patch \
            file://0001-pe32.h-add-header-structures-for-TE-and-DOS-executab.patch \
            file://0002-shim-add-needed-data-structures.patch \
+           file://0003-efi-chainloader-implement-an-UEFI-Exit-service-for-s.patch \
           "
 SRC_URI[md5sum] = "e927540b6eda8b024fb0391eeaa4091c"
 SRC_URI[sha256sum] = "65b39a0558f8c802209c574f4d02ca263a804e8a564bc6caf1cd0fd3b3cc11e3"
