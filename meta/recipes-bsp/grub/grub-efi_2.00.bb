@@ -34,6 +34,7 @@ SRC_URI = "ftp://ftp.gnu.org/gnu/grub/grub-${PV}.tar.gz \
            file://0002-shim-add-needed-data-structures.patch \
            file://0003-efi-chainloader-implement-an-UEFI-Exit-service-for-s.patch \
            file://0004-efi-chainloader-port-shim-to-grub.patch \
+           file://0005-efi-chainloader-use-shim-to-load-and-verify-an-image.patch \
           "
 SRC_URI[md5sum] = "e927540b6eda8b024fb0391eeaa4091c"
 SRC_URI[sha256sum] = "65b39a0558f8c802209c574f4d02ca263a804e8a564bc6caf1cd0fd3b3cc11e3"
