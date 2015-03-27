@@ -22,7 +22,7 @@ do_configure_class-native() {
         git submodule init
         git submodule update
 
-        patch -p1 -i ../fix-mixed-implicit-and-normal-rules.patch
+        patch -p1 -i ${WORKDIR}/fix-mixed-implicit-and-normal-rules.patch
     fi
 
     OLD_CC="${CC}"
