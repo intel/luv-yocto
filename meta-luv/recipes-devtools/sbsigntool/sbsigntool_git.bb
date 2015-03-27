@@ -9,7 +9,7 @@ SRC_URI = "git://kernel.ubuntu.com/jk/sbsigntool \
 
 SRCREV="${AUTOREV}"
 
-inherit autotools pkgconfig
+inherit autotools-brokensep pkgconfig
 
 BBCLASSEXTEND = "native"
 
