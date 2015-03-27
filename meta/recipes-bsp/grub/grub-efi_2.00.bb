@@ -12,6 +12,7 @@ SRC_URI += " \
            file://0003-efi-chainloader-implement-an-UEFI-Exit-service-for-s.patch \
            file://0004-efi-chainloader-port-shim-to-grub.patch \
            file://0005-efi-chainloader-use-shim-to-load-and-verify-an-image.patch \
+           file://0006-efi-chainloader-boot-the-image-using-shim.patch \
           "
 
 S = "${WORKDIR}/grub-${PV}"
