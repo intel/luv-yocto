@@ -9,6 +9,7 @@ SRC_URI += " \
            file://grub-efinet-tftp.patch \
            file://0001-pe32.h-add-header-structures-for-TE-and-DOS-executab.patch \
            file://0002-shim-add-needed-data-structures.patch \
+           file://0003-efi-chainloader-implement-an-UEFI-Exit-service-for-s.patch \
           "
 
 S = "${WORKDIR}/grub-${PV}"
