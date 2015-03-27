@@ -13,6 +13,7 @@ SRC_URI += " \
            file://0004-efi-chainloader-port-shim-to-grub.patch \
            file://0005-efi-chainloader-use-shim-to-load-and-verify-an-image.patch \
            file://0006-efi-chainloader-boot-the-image-using-shim.patch \
+           file://0007-efi-chainloader-take-care-of-unload-undershim.patch \
           "
 
 S = "${WORKDIR}/grub-${PV}"
