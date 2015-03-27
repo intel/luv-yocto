@@ -7,6 +7,7 @@ PR = "r3"
 SRC_URI += " \
            file://cfg \
            file://grub-efinet-tftp.patch \
+           file://0001-pe32.h-add-header-structures-for-TE-and-DOS-executab.patch \
           "
 
 S = "${WORKDIR}/grub-${PV}"
