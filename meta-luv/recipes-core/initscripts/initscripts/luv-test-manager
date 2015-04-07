@@ -141,3 +141,16 @@ grep -q luv.halt /proc/cmdline
 if [ $? -ne 1 ]; then
     halt -p
 fi
+
+REBOOT_TIMEOUT=$((5*60))
+
+timeout_file="/sys/firmware/efi/efivars/LuvTimeout-3b6bf55d-a6f6-45cf-9f7e-ebf3bdadf74e"
+[ -e ${timeout_file} ] && {
+    REBOOT_TIMEOUT=`hexdump -e '"%08u\n"' ${timeout_file} | tail -n1`
+}
+
+grep -q luv.noreboot /proc/cmdline
+if [ $? -eq 1 ]; then
+    # Put reboot task into background and drop to a shell
+    $(sleep ${REBOOT_TIMEOUT} ; reboot)&
+fi
