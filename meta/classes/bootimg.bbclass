@@ -36,7 +36,6 @@ do_bootimg[depends] += "${EXTRABOOTIMGDEPS} \
 
 PACKAGES = " "
 EXCLUDE_FROM_WORLD = "1"
-NOISO_aarch64 = "1"
 
 HDDDIR = "${S}/hddimg"
 ISODIR = "${S}/iso"
