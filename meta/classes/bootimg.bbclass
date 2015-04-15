@@ -25,7 +25,10 @@
 # ${HDDIMG_ID} - FAT image volume-id
 # ${ROOTFS} - indicates a filesystem image to include as the root filesystem (optional)
 
-do_bootimg[depends] += "dosfstools-native:do_populate_sysroot \
+EXTRABOOTIMGDEPS = ""
+EXTRABOOTIMGDEPS_aarch64 = "${MLPREFIX}xorriso-native:do_populate_sysroot"
+do_bootimg[depends] += "${EXTRABOOTIMGDEPS} \
+                        dosfstools-native:do_populate_sysroot \
                         mtools-native:do_populate_sysroot \
                         cdrtools-native:do_populate_sysroot \
                         virtual/kernel:do_deploy \
@@ -126,10 +129,12 @@ build_iso() {
 
 	# EFI only
 	if [ "${PCBIOS}" != "1" ] && [ "${EFI}" = "1" ] ; then
-		# Work around bug in isohybrid where it requires isolinux.bin
-		# In the boot catalog, even though it is not used
-		mkdir -p ${ISODIR}/${ISOLINUXDIR}
-		install -m 0644 ${STAGING_DATADIR}/syslinux/isolinux.bin ${ISODIR}${ISOLINUXDIR}
+		if [ "${TARGET_ARCH}" != "aarch64" ]; then
+			mkdir -p ${ISODIR}/${ISOLINUXDIR}
+			# Work around bug in isohybrid where it requires isolinux.bin
+			# In the boot catalog, even though it is not used
+			install -m 0644 ${STAGING_DATADIR}/syslinux/isolinux.bin ${ISODIR}${ISOLINUXDIR}
+		fi
 	fi
 
 	if [ "${COMPRESSISO}" = "1" ] ; then
@@ -154,17 +159,26 @@ build_iso() {
 			${MKISOFS_OPTIONS} ${ISODIR}
 	else
 		# EFI only OR EFI+PCBIOS
-		mkisofs -A ${BOOTIMG_VOLUME_ID} -V ${BOOTIMG_VOLUME_ID} \
-		        -o ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.iso \
-			-b ${ISO_BOOTIMG} -c ${ISO_BOOTCAT} \
-			$mkisofs_compress_opts ${MKISOFS_OPTIONS} \
-			-eltorito-alt-boot -eltorito-platform efi \
-			-b efi.img -no-emul-boot \
-			${ISODIR}
-		isohybrid_args="-u"
+		if [ "${TARGET_ARCH}" = "aarch64" ]; then
+			xorriso -as mkisofs -A ${BOOTIMG_VOLUME_ID} -V ${BOOTIMG_VOLUME_ID} \
+				-o ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.iso \
+				-r -J -joliet-long -c boot.cat -efi-boot-part \
+				--efi-boot-image -e efi.img -no-emul-boot ${ISODIR}
+		else
+			mkisofs -A ${BOOTIMG_VOLUME_ID} -V ${BOOTIMG_VOLUME_ID} \
+				-o ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.iso \
+				-b ${ISO_BOOTIMG} -c ${ISO_BOOTCAT} \
+				$mkisofs_compress_opts ${MKISOFS_OPTIONS} \
+				-eltorito-alt-boot -eltorito-platform efi \
+				-b efi.img -no-emul-boot \
+				${ISODIR}
+			isohybrid_args="-u"
+		fi
 	fi
 
-	isohybrid $isohybrid_args ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.iso
+	if [ "${TARGET_ARCH}" != "aarch64" ]; then
+		isohybrid $isohybrid_args ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.iso
+	fi
 
 	cd ${DEPLOY_DIR_IMAGE}
 	rm -f ${DEPLOY_DIR_IMAGE}/${IMAGE_LINK_NAME}.iso
