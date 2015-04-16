@@ -18,7 +18,7 @@ S = "${WORKDIR}/git"
 COMPATIBLE_MACHINE = "genericarmv8"
 KERNEL_IMAGETYPE = "Image"
 
-BOOTARGS_COMMON = "crashkernel=256M console=ttyAMA0 uefi_debug earlycon=pl011,0x1c090000 acpi=force"
+BOOTARGS_COMMON = "crashkernel=256M console=ttyAMA0 uefi_debug acpi=force"
 
 SRC_URI[md5sum] = "730923a8ee0ded0ddbfe91e500cb3706"
 SRC_URI[sha256sum] = "53c64f40cce74531d117cd3495b5c0c52b24e1ad1b7de9fa27deea396edb4d87"
