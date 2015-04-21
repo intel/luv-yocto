@@ -11,6 +11,7 @@ SRC_URI = "git://github.com/chipsec/chipsec.git \
     file://0002-helper-linux-Allow-INC-to-be-overidden.patch \
     file://0003-chipsec_main.py-Remove-absolute-reference-to-python-.patch \
     file://0005-tool-setup.py-Delete-Windows-drivers-from-data_files.patch \
+    file://0006-drivers-linux-Don-t-build-userland-app-automatically.patch \
     file://chipsec file://luv-parser-chipsec"
 
 SRCREV="e7fc17caffcce09bf8a674d7eb760326e17b0974"
@@ -54,6 +55,8 @@ do_compile_append() {
         KERNEL_VERSION=${KERNEL_VERSION}    \
         CC="${KERNEL_CC}" LD="${KERNEL_LD}" \
         AR="${KERNEL_AR}" INC="${INC}" -C ${S}/source/drivers/linux
+
+    oe_runmake -C ${S}/source/tool/chipsec/helper/linux
 }
 
 do_install_prepend() {
