@@ -6,7 +6,6 @@ PR = "r3"
 
 SRC_URI += " \
            file://cfg \
-           file://grub-efinet-tftp.patch \
           "
 
 S = "${WORKDIR}/grub-${PV}"
