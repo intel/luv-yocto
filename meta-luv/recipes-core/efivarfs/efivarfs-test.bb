@@ -15,7 +15,14 @@ SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/mfleming/efi.git;protoc
 DEPENDS_class-native += "qemu-native"
 SRCREV="${AUTOREV}"
 inherit autotools luv-test
-S = "${WORKDIR}/git"
+S = "${STAGING_KERNEL_DIR}"
+
+do_fetch[noexec] = "1"
+do_configure[depends] += "virtual/kernel:do_shared_workdir"
+do_package[depends] += "virtual/kernel:do_populate_sysroot"
+
+EXTRA_OEMAKE = " \
+    -C ${S}/tools/testing/selftests/efivarfs"
 
 # This is to just to satisfy the compilation error
 #I am not sure why I am getting this
@@ -24,7 +31,8 @@ FILES_${PN}-dbg += "/usr/share/efivarfs-test/.debug"
 #This is the compilation area
 #we need to compile the self tests
 do_compile() {
-       make CROSS_COMPILE=${TARGET_PREFIX} -C ${S}/tools/testing/selftests/efivarfs
+    unset CFLAGS
+    oe_runmake
 }
 
 
