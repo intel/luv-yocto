@@ -18,8 +18,6 @@
 # with this program; if not, write to the Free Software Foundation, Inc., 59
 # Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-import os
-
 from wic import msger
 from wic.utils import runner
 from wic.utils.errors import ImageError
@@ -42,13 +40,13 @@ class Image:
     An Image is a container for a set of DiskImages and associated
     partitions.
     """
-    def __init__(self):
+    def __init__(self, native_sysroot=None):
         self.disks = {}
         self.partitions = []
-        self.parted = find_binary_path("parted")
         # Size of a sector used in calculations
         self.sector_size = SECTOR_SIZE
         self._partitions_layed_out = False
+        self.native_sysroot = native_sysroot
 
     def __add_disk(self, disk_name):
         """ Add a disk 'disk_name' to the internal list of disks. Note,
@@ -88,9 +86,9 @@ class Image:
         self.partitions.append(part)
         self.__add_disk(part['disk_name'])
 
-    def add_partition(self, size, disk_name, mountpoint, source_file = None, fstype = None,
-                      label=None, fsopts = None, boot = False, align = None, no_table=False,
-                      part_type = None):
+    def add_partition(self, size, disk_name, mountpoint, source_file=None, fstype=None,
+                      label=None, fsopts=None, boot=False, align=None, no_table=False,
+                      part_type=None):
         """ Add the next partition. Prtitions have to be added in the
         first-to-last order. """
 
@@ -118,7 +116,7 @@ class Image:
 
             self.__add_partition(part)
 
-    def layout_partitions(self, ptable_format = "msdos"):
+    def layout_partitions(self, ptable_format="msdos"):
         """ Layout the partitions, meaning calculate the position of every
         partition on the disk. The 'ptable_format' parameter defines the
         partition table format and may be "msdos". """
@@ -227,11 +225,12 @@ class Image:
     def __run_parted(self, args):
         """ Run parted with arguments specified in the 'args' list. """
 
-        args.insert(0, self.parted)
+        args.insert(0, "parted")
+        args = ' '.join(args)
         msger.debug(args)
 
-        rc, out = runner.runtool(args, catch = 3)
-        out = out.strip()
+        rc, out = exec_native_cmd(args, self.native_sysroot)
+
         if out:
             msger.debug('"parted" output: %s' % out)
 
@@ -296,6 +295,8 @@ class Image:
                 parted_fs_type = "fat32"
             elif p['fstype'] == "msdos":
                 parted_fs_type = "fat16"
+            elif p['fstype'] == "ontrackdm6aux3":
+                parted_fs_type = "ontrackdm6aux3"
             else:
                 # Type for ext2/ext3/ext4/btrfs
                 parted_fs_type = "ext2"

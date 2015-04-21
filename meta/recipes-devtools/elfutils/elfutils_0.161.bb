@@ -15,6 +15,7 @@ SRC_URI += "\
         file://dso-link-change.patch \
         file://Fix_elf_cvt_gunhash.patch \
         file://fixheadercheck.patch \
+        file://0001-elf_getarsym-Silence-Werror-maybe-uninitialized-fals.patch \
 "
 
 # pick the patch from debian
@@ -34,7 +35,7 @@ SRC_URI += "\
 "
 
 # Only apply when building uclibc based target recipe
-SRC_URI_append_libc-uclibc = " file://uclibc-support.patch"
+SRC_URI_append_libc-uclibc = " file://uclibc-support-for-elfutils-0.161.patch"
 
 # The buildsystem wants to generate 2 .h files from source using a binary it just built,
 # which can not pass the cross compiling, so let's work around it by adding 2 .h files
@@ -73,7 +74,7 @@ EXTRA_OEMAKE_class-nativesdk = ""
 BBCLASSEXTEND = "native nativesdk"
 
 # Package utilities separately
-PACKAGES =+ "${PN}-binutils libelf libasm libdw libdw-dev libasm-dev libelf-dev"
+PACKAGES =+ "${PN}-binutils libelf libasm libdw"
 FILES_${PN}-binutils = "\
     ${bindir}/eu-addr2line \
     ${bindir}/eu-ld \
@@ -85,9 +86,6 @@ FILES_${PN}-binutils = "\
 FILES_libelf = "${libdir}/libelf-${PV}.so ${libdir}/libelf.so.*"
 FILES_libasm = "${libdir}/libasm-${PV}.so ${libdir}/libasm.so.*"
 FILES_libdw  = "${libdir}/libdw-${PV}.so ${libdir}/libdw.so.* ${libdir}/elfutils/lib*"
-FILES_libelf-dev = "${libdir}/libelf.so ${includedir}"
-FILES_libasm-dev = "${libdir}/libasm.so ${includedir}/elfutils/libasm.h"
-FILES_libdw-dev  = "${libdir}/libdw.so  ${includedir}/dwarf.h ${includedir}/elfutils/libdw*.h"
 # Some packages have the version preceeding the .so instead properly
 # versioned .so.<version>, so we need to reorder and repackage.
 #FILES_${PN} += "${libdir}/*-${PV}.so ${base_libdir}/*-${PV}.so"

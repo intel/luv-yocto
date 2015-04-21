@@ -17,7 +17,7 @@
 # Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 from __future__ import with_statement
-import os, sys
+import os
 import tempfile
 import shutil
 
@@ -42,7 +42,7 @@ class BaseImageCreator(object):
     def __del__(self):
         self.cleanup()
 
-    def __init__(self, createopts = None):
+    def __init__(self, createopts=None):
         """Initialize an ImageCreator instance.
 
         ks -- a pykickstart.KickstartParser instance; this instance will be
@@ -131,8 +131,8 @@ class BaseImageCreator(object):
             self.workdir = os.path.join(self.tmpdir, "build")
             if not os.path.exists(self.workdir):
                 os.makedirs(self.workdir)
-            self.__builddir = tempfile.mkdtemp(dir = self.workdir,
-                                               prefix = "imgcreate-")
+            self.__builddir = tempfile.mkdtemp(dir=self.workdir,
+                                               prefix="imgcreate-")
         except OSError, (err, msg):
             raise CreatorError("Failed create build directory in %s: %s" %
                                (self.tmpdir, msg))
@@ -178,7 +178,7 @@ class BaseImageCreator(object):
 
         self._cleanup()
 
-        shutil.rmtree(self.__builddir, ignore_errors = True)
+        shutil.rmtree(self.__builddir, ignore_errors=True)
         self.__builddir = None
 
         self.__clean_tmpdir()

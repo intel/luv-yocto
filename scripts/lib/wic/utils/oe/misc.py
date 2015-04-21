@@ -28,7 +28,7 @@
 from wic import msger
 from wic.utils import runner
 
-def __exec_cmd(cmd_and_args, as_shell = False, catch = 3):
+def __exec_cmd(cmd_and_args, as_shell=False, catch=3):
     """
     Execute command, catching stderr, stdout
 
@@ -49,7 +49,7 @@ def __exec_cmd(cmd_and_args, as_shell = False, catch = 3):
     return (rc, out)
 
 
-def exec_cmd(cmd_and_args, as_shell = False, catch = 3):
+def exec_cmd(cmd_and_args, as_shell=False, catch=3):
     """
     Execute command, catching stderr, stdout
 
@@ -63,7 +63,7 @@ def exec_cmd(cmd_and_args, as_shell = False, catch = 3):
     return out
 
 
-def exec_cmd_quiet(cmd_and_args, as_shell = False):
+def exec_cmd_quiet(cmd_and_args, as_shell=False):
     """
     Execute command, catching nothing in the output
 
@@ -72,7 +72,7 @@ def exec_cmd_quiet(cmd_and_args, as_shell = False):
     return exec_cmd(cmd_and_args, as_shell, 0)
 
 
-def exec_native_cmd(cmd_and_args, native_sysroot, catch = 3):
+def exec_native_cmd(cmd_and_args, native_sysroot, catch=3):
     """
     Execute native command, catching stderr, stdout
 
@@ -81,7 +81,7 @@ def exec_native_cmd(cmd_and_args, native_sysroot, catch = 3):
     Always need to execute native commands as_shell
     """
     native_paths = \
-        "export PATH=%s/sbin:%s/usr/sbin:%s/usr/bin:$PATH" % \
+        "export PATH=%s/sbin:%s/usr/sbin:%s/usr/bin" % \
         (native_sysroot, native_sysroot, native_sysroot)
     native_cmd_and_args = "%s;%s" % (native_paths, cmd_and_args)
     msger.debug("exec_native_cmd: %s" % cmd_and_args)
@@ -92,9 +92,9 @@ def exec_native_cmd(cmd_and_args, native_sysroot, catch = 3):
     rc, out = __exec_cmd(native_cmd_and_args, True, catch)
 
     if rc == 127: # shell command-not-found
-        msger.error("A native (host) program required to build the image "
+        msger.error("A native program %s required to build the image "
                     "was not found (see details above). Please make sure "
-                    "it's installed and try again.")
+                    "it's installed and try again." % args[0])
 
     return (rc, out)
 
@@ -144,6 +144,7 @@ def find_bitbake_env_lines(image_name):
     rc, bitbake_env_lines = __exec_cmd(bitbake_env_cmd)
     if rc != 0:
         print "Couldn't get '%s' output." % bitbake_env_cmd
+        print "Bitbake failed with error:\n%s\n" % bitbake_env_lines
         return None
 
     return bitbake_env_lines

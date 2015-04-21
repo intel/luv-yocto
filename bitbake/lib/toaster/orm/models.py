@@ -557,7 +557,13 @@ class Recipe(models.Model):
 
     def get_local_path(self):
         if settings.MANAGED and self.layer_version.build.project is not None:
-            return self.file_path[len(self.layer_version.layer.local_path)+1:]
+            # strip any tag prefixes ('virtual:native:')
+            layer_path=self.layer_version.layer.local_path.split(":")[-1]
+            recipe_path=self.file_path.split(":")[-1]
+            if 0 == recipe_path.find(layer_path):
+                return recipe_path[len(layer_path)+1:]
+            else:
+                return recipe_path
 
         return self.file_path
 
@@ -640,17 +646,25 @@ class LayerSource(models.Model):
         raise Exception("Abstract, update() must be implemented by all LayerSource-derived classes (object is %s)" % str(vars(self)))
 
     def save(self, *args, **kwargs):
-        if isinstance(self, LocalLayerSource):
-            self.sourcetype = LayerSource.TYPE_LOCAL
-        elif isinstance(self, LayerIndexLayerSource):
-            self.sourcetype = LayerSource.TYPE_LAYERINDEX
-        elif isinstance(self, ImportedLayerSource):
-            self.sourcetype = LayerSource.TYPE_IMPORTED
+        if self.sourcetype == LayerSource.TYPE_LOCAL:
+            self.__class__ = LocalLayerSource
+        elif self.sourcetype == LayerSource.TYPE_LAYERINDEX:
+            self.__class__ = LayerIndexLayerSource
+        elif self.sourcetype == LayerSource.TYPE_IMPORTED:
+            self.__class__ = ImportedLayerSource
         elif self.sourcetype == None:
             raise Exception("Unknown LayerSource-derived class. If you added a new layer source type, fill out all code stubs.")
         return super(LayerSource, self).save(*args, **kwargs)
 
     def get_object(self):
+        # preset an un-initilized object
+        if None == self.name:
+            self.name=""
+        if None == self.apiurl:
+            self.apiurl=""
+        if None == self.sourcetype:
+            self.sourcetype=LayerSource.TYPE_LOCAL
+
         if self.sourcetype == LayerSource.TYPE_LOCAL:
             self.__class__ = LocalLayerSource
         elif self.sourcetype == LayerSource.TYPE_LAYERINDEX:
