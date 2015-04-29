@@ -6,8 +6,7 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=d7810fab7487fb0aad327b76f1be7cd7"
 KBRANCH="stable"
 
 # Picking up matts branch
-SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/mfleming/efi.git;protocol=git;branch=${KBRANCH} \
-          file://bash-to-sh.patch \
+SRC_URI = "file://bash-to-sh.patch \
           file://luv-parser-efivarfs \
           file://efivarfs"
 
@@ -18,7 +17,7 @@ inherit autotools luv-test
 S = "${STAGING_KERNEL_DIR}"
 
 do_fetch[noexec] = "1"
-do_configure[depends] += "virtual/kernel:do_shared_workdir"
+do_patch[depends] += "virtual/kernel:do_shared_workdir"
 do_package[depends] += "virtual/kernel:do_populate_sysroot"
 
 EXTRA_OEMAKE = " \
@@ -27,6 +26,16 @@ EXTRA_OEMAKE = " \
 # This is to just to satisfy the compilation error
 #I am not sure why I am getting this
 FILES_${PN}-dbg += "/usr/share/efivarfs-test/.debug"
+
+do_configure_prepend() {
+    # We need to ensure the --sysroot option in CC is preserved
+    if [ -e "${S}/tools/testing/selftests/efivarfs/Makefile" ]; then
+        sed -i 's,CC = $(CROSS_COMPILE)gcc,#CC,' ${S}/tools/testing/selftests/efivarfs/Makefile
+    fi
+
+    # Fix for rebuilding
+    oe_runmake clean
+}
 
 #This is the compilation area
 #we need to compile the self tests
