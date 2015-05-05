@@ -5,8 +5,10 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=d32239bcb673463ab874e80d47fae504"
 
 # with, without, depends, rdepends
 #
-PACKAGECONFIG ??= ""
+PACKAGECONFIG ??= "acl attr zlib bzip2 readline"
 PACKAGECONFIG[acl] = "--enable-libacl,--disable-libacl,acl,"
+PACKAGECONFIG[attr] = "--enable-xattr,--disable-xattr,attr,"
+PACKAGECONFIG[zlib] = "--enable-zlib,--disable-zlib,zlib,"
 PACKAGECONFIG[bzip2] = "--enable-libbz2,--disable-libbz2,bzip2,"
 PACKAGECONFIG[readline] = "--enable-libreadline,--disable-libreadline,readline,"
 
