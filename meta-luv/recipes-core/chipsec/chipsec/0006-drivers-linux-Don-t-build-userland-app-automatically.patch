@@ -1,7 +1,7 @@
-From eec582eb19880c64ffd28ceecd11de80fc218e0d Mon Sep 17 00:00:00 2001
+From b377b98053583d23fa2a7dc68f353d03131ef3ed Mon Sep 17 00:00:00 2001
 From: Matt Fleming <matt.fleming@intel.com>
 Date: Tue, 21 Apr 2015 16:50:31 +0100
-Subject: [PATCH 6/6] drivers/linux: Don't build userland app automatically
+Subject: [PATCH] drivers/linux: Don't build userland app automatically
 
 The OpenEmbedded build infrastructure has very different toolchain
 settings for compiling kernel modules and userland utilities.
@@ -11,22 +11,28 @@ user to do that manually.
 
 Signed-off-by: Matt Fleming <matt.fleming@intel.com>
 ---
- source/drivers/linux/Makefile | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ source/drivers/linux/Makefile | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/source/drivers/linux/Makefile b/source/drivers/linux/Makefile
-index 7eefc78..5e7bcce 100644
+index d6fd015..c1c40eb 100644
 --- a/source/drivers/linux/Makefile
 +++ b/source/drivers/linux/Makefile
-@@ -9,7 +9,7 @@ all:	clean chipsec$(VERSION)
- 
+@@ -19,12 +19,12 @@ ifeq ($(shell uname -m),x86_64)
  chipsec$(VERSION) : clean
+ 	nasm -f elf64 -o amd64/cpu.o amd64/cpu.asm;
  	make -C $(KERNEL_SRC_DIR) SUBDIRS=`pwd` modules
 -	cd ../../tool/chipsec/helper/linux; make
 +#	cd ../../tool/chipsec/helper/linux; make
+ else
+ chipsec$(VERSION) : clean
+ 	nasm -f elf32 -o i386/cpu.o i386/cpu.asm;
+ 	make -C $(KERNEL_SRC_DIR) SUBDIRS=`pwd` modules
+-	cd ../../tool/chipsec/helper/linux; make
++#	cd ../../tool/chipsec/helper/linux; make
+ endif
  
  install:
- 	./run.sh
 -- 
 2.1.0
 
