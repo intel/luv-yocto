@@ -21,6 +21,7 @@ do_patch[depends] += "virtual/kernel:do_shared_workdir"
 do_package[depends] += "virtual/kernel:do_populate_sysroot"
 
 EXTRA_OEMAKE = " \
+    CC='${CC}' \
     -C ${S}/tools/testing/selftests/efivarfs"
 
 # This is to just to satisfy the compilation error
