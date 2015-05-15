@@ -23,7 +23,7 @@
         For Board Support Package (BSP) structure information, see the
         <ulink url='&YOCTO_DOCS_BSP_URL;'>Yocto Project Board Support Package (BSP) Developer's Guide</ulink>.
         You can find information on tracing and profiling in the
-        <ulink url='&YOCTO_DOCS_PROF_URL;#profile-manual'>Yocto Project Profiling and Tracing Manual</ulink>.
+        <ulink url='&YOCTO_DOCS_PROF_URL;'>Yocto Project Profiling and Tracing Manual</ulink>.
         For information on BitBake, which is the task execution tool the
         OpenEmbedded build system is based on, see the
         <ulink url='&YOCTO_DOCS_BB_URL;#bitbake-user-manual'>BitBake User Manual</ulink>.
@@ -147,15 +147,18 @@
                 </para>
             </note>
             <itemizedlist>
-<!--                <listitem><para>Ubuntu 10.04</para></listitem>
-                <listitem><para>Ubuntu 11.10</para></listitem> -->
+<!--
+                <listitem><para>Ubuntu 10.04</para></listitem>
+                <listitem><para>Ubuntu 11.10</para></listitem>
                 <listitem><para>Ubuntu 12.04 (LTS)</para></listitem>
-                <listitem><para>Ubuntu 13.10</para></listitem>
+                <listitem><para>Ubuntu 13.10</para></listitem> -->
                 <listitem><para>Ubuntu 14.04 (LTS)</para></listitem>
+                <listitem><para>Ubuntu 14.10</para></listitem>
 <!--                <listitem><para>Fedora 16 (Verne)</para></listitem>
-                <listitem><para>Fedora 17 (Spherical)</para></listitem> -->
+                <listitem><para>Fedora 17 (Spherical)</para></listitem>
                 <listitem><para>Fedora release 19 (Schrödinger's Cat)</para></listitem>
-                <listitem><para>Fedora release 20 (Heisenbug)</para></listitem>
+                <listitem><para>Fedora release 20 (Heisenbug)</para></listitem> -->
+                <listitem><para>Fedora release 21</para></listitem>
 <!--                <listitem><para>CentOS release 5.6 (Final)</para></listitem>
                 <listitem><para>CentOS release 5.7 (Final)</para></listitem>
                 <listitem><para>CentOS release 5.8 (Final)</para></listitem>
@@ -164,6 +167,7 @@
                 <listitem><para>CentOS release 7.x</para></listitem>
 <!--                <listitem><para>Debian GNU/Linux 6.0 (Squeeze)</para></listitem> -->
                 <listitem><para>Debian GNU/Linux 7.x (Wheezy)</para></listitem>
+                <listitem><para>Debian GNU/Linux 8.x (Jessie)</para></listitem>
 <!--                <listitem><para>Debian GNU/Linux 7.1 (Wheezy)</para></listitem>
                 <listitem><para>Debian GNU/Linux 7.2 (Wheezy)</para></listitem>
                 <listitem><para>Debian GNU/Linux 7.3 (Wheezy)</para></listitem>
@@ -171,10 +175,11 @@
                 <listitem><para>Debian GNU/Linux 7.5 (Wheezy)</para></listitem>
                 <listitem><para>Debian GNU/Linux 7.6 (Wheezy)</para></listitem> -->
 <!--                <listitem><para>openSUSE 11.4</para></listitem>
-                <listitem><para>openSUSE 12.1</para></listitem> -->
+                <listitem><para>openSUSE 12.1</para></listitem>
                 <listitem><para>openSUSE 12.2</para></listitem>
                 <listitem><para>openSUSE 12.3</para></listitem>
-                <listitem><para>openSUSE 13.1</para></listitem>
+                <listitem><para>openSUSE 13.1</para></listitem> -->
+                <listitem><para>openSUSE 13.2</para></listitem>
             </itemizedlist>
         </para>
 
@@ -262,7 +267,7 @@
                         Yocto Project documentation manuals:
                         <literallayout class='monospaced'>
      $ sudo yum install make docbook-style-dsssl docbook-style-xsl \
-     docbook-dtds docbook-utils fop libxslt dblatex xmlto
+     docbook-dtds docbook-utils fop libxslt dblatex xmlto xsltproc
                         </literallayout></para></listitem>
                     <listitem><para><emphasis>ADT Installer Extras:</emphasis>
                         Packages needed if you are going to be using the
@@ -347,7 +352,7 @@
                         Yocto Project documentation manuals:
                         <literallayout class='monospaced'>
      $ sudo yum install make docbook-style-dsssl docbook-style-xsl \
-     docbook-dtds docbook-utils fop libxslt dblatex xmlto
+     docbook-dtds docbook-utils fop libxslt dblatex xmlto xsltproc
                         </literallayout></para></listitem>
                     <listitem><para><emphasis>ADT Installer Extras:</emphasis>
                         Packages needed if you are going to be using the
@@ -411,7 +416,7 @@
                         Source the tools environment setup script by using a
                         command like the following:
                         <literallayout class='monospaced'>
-     $ source /home/<replaceable>your-username</replaceable>/buildtools/environment-setup-i586-poky-linux
+     $ source /home/<replaceable>your_username</replaceable>/buildtools/environment-setup-i586-poky-linux
                         </literallayout>
                         Of course, you need to supply your installation directory and be
                         sure to use the right file (i.e. i585 or x86-64).
@@ -490,14 +495,14 @@
                        choose the installation directory.
                        For example, you could choose the following:
                        <literallayout class='monospaced'>
-     /home/<replaceable>your-username</replaceable>/buildtools
+     /home/<replaceable>your_username</replaceable>/buildtools
                        </literallayout>
                        </para></listitem>
                     <listitem><para>
                         Source the tools environment setup script by using a
                         command like the following:
                         <literallayout class='monospaced'>
-     $ source /home/<replaceable>your-username</replaceable>/buildtools/environment-setup-i586-poky-linux
+     $ source /home/<replaceable>your_username</replaceable>/buildtools/environment-setup-i586-poky-linux
                         </literallayout>
                         Of course, you need to supply your installation directory and be
                         sure to use the right file (i.e. i585 or x86-64).
@@ -538,7 +543,7 @@
                 <ulink url='&YOCTO_DL_URL;/releases/yocto/'/>.</para></listitem>
             <listitem><para><emphasis>Nightly Builds:</emphasis> These
                 tarball releases are available at
-                <ulink url='http://autobuilder.yoctoproject.org/nightly'/>.
+                <ulink url='&YOCTO_AB_NIGHTLY_URL;'/>.
                 These builds include Yocto Project releases, meta-toolchain
                 tarball installation scripts, and experimental builds.
                 </para></listitem>

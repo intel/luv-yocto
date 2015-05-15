@@ -323,7 +323,7 @@
 
         <para>
             If you do not provide a port number with the script, the
-            BitBake server at port "12345" is started.
+            BitBake server starts at a randomnly selected port.
         </para>
 
         <para>
@@ -373,7 +373,7 @@
             <filename>source</filename> the script, the Build Directory is
             created using that name.
             For example, the following command starts the BitBake server using
-            the default port "12345" and creates a Build Directory named
+            a randomnly selected port and creates a Build Directory named
             <filename>mybuilds</filename> that is outside of the
             <ulink url='&YOCTO_DOCS_DEV_URL;#source-directory'>Source Directory</ulink>:
             <literallayout class='monospaced'>
@@ -522,9 +522,7 @@
             which are directory trees, traversed (or walked) by BitBake.
             The <filename>bblayers.conf</filename> file uses the
             <link linkend='var-BBLAYERS'><filename>BBLAYERS</filename></link>
-            variable to list the layers BitBake tries to find, and uses the
-            <link linkend='var-BBLAYERS_NON_REMOVABLE'><filename>BBLAYERS_NON_REMOVABLE</filename></link>
-            variable to list layers that must not be removed.
+            variable to list the layers BitBake tries to find.
         </para>
 
         <para>

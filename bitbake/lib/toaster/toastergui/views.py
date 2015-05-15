@@ -334,8 +334,14 @@ def _add_daterange_context(queryset_all, request, daterange_list):
     context_date['daterange_filter']=''
     for key in daterange_list:
         queryset_key = queryset_all.order_by(key)
-        context_date['dateMin_'+key]=timezone.localtime(getattr(queryset_key.first(),key)).strftime("%d/%m/%Y")
-        context_date['dateMax_'+key]=timezone.localtime(getattr(queryset_key.last(),key)).strftime("%d/%m/%Y")
+        try:
+            context_date['dateMin_'+key]=timezone.localtime(getattr(queryset_key.first(),key)).strftime("%d/%m/%Y")
+        except AttributeError:
+            context_date['dateMin_'+key]=timezone.localtime(timezone.now())
+        try:
+            context_date['dateMax_'+key]=timezone.localtime(getattr(queryset_key.last(),key)).strftime("%d/%m/%Y")
+        except AttributeError:
+            context_date['dateMax_'+key]=timezone.localtime(timezone.now())
     return context_date,today_begin,yesterday_begin
 
 
@@ -1999,8 +2005,8 @@ if toastermain.settings.MANAGED:
                                              ]
                                 }
                     },
-                    {'name': 'Target',                                                 # default column, disabled box, with just the name in the list
-                     'qhelp': "This is the build target or build targets (i.e. one or more recipes or image recipes)",
+                    {'name': 'Recipe',                                                 # default column, disabled box, with just the name in the list
+                     'qhelp': "What you built (i.e. one or more recipes or image recipes)",
                      'orderfield': _get_toggle_order(request, "brtarget__target"),
                      'ordericon':_get_toggle_order_icon(request, "brtarget__target"),
                     },
@@ -2878,15 +2884,15 @@ if toastermain.settings.MANAGED:
         context = {
             'projectlayerset' : jsonfilter(map(lambda x: x.layercommit.id, prj.projectlayer_set.all().select_related("layercommit"))),
             'objects' : target_info,
-            'objectname' : "targets",
+            'objectname' : "recipes",
             'default_orderby' : 'name:+',
 
             'tablecols' : [
-                {   'name': 'Target',
+                {   'name': 'Recipe',
                     'orderfield': _get_toggle_order(request, "name"),
                     'ordericon' : _get_toggle_order_icon(request, "name"),
                 },
-                {   'name': 'Target version',
+                {   'name': 'Recipe version',
                     'dclass': 'span2',
                 },
                 {   'name': 'Description',
@@ -3039,7 +3045,7 @@ if toastermain.settings.MANAGED:
 
         vars_fstypes  = {
             'btrfs','cpio','cpio.gz','cpio.lz4','cpio.lzma','cpio.xz','cramfs',
-            'elf','ext2','ext2.bz2','ext2.gz','ext2.lzma', 'ext3','ext3.gz','hddimg',
+            'elf','ext2','ext2.bz2','ext2.gz','ext2.lzma', 'ext4', 'ext4.gz', 'ext3','ext3.gz','hddimg',
             'iso','jffs2','jffs2.sum','squashfs','squashfs-lzo','squashfs-xz','tar.bz2',
             'tar.lz4','tar.xz','tartar.gz','ubi','ubifs','vmdk'
         }
@@ -3310,8 +3316,8 @@ if toastermain.settings.MANAGED:
                     {'name': 'Last build outcome', 'clclass': 'loutcome',
                     'qhelp': "Tells you if the last project build completed successfully or failed",
                     },
-                    {'name': 'Target', 'clclass': 'ltarget',
-                    'qhelp': "The last project build target(s): one or more recipes or image recipes",
+                    {'name': 'Recipe', 'clclass': 'ltarget',
+                    'qhelp': "The last recipe that was built in this project",
                     },
                     {'name': 'Errors', 'clclass': 'lerrors',
                     'qhelp': "How many errors were encountered during the last project build (if any)",
@@ -3425,8 +3431,8 @@ else:
                                              ]
                                 }
                     },
-                    {'name': 'Target',                                                 # default column, disabled box, with just the name in the list
-                     'qhelp': "This is the build target or build targets (i.e. one or more recipes or image recipes)",
+                    {'name': 'Recipe',                                                 # default column, disabled box, with just the name in the list
+                     'qhelp': "What you built (i.e. one or more recipes or image recipes)",
                      'orderfield': _get_toggle_order(request, "target__target"),
                      'ordericon':_get_toggle_order_icon(request, "target__target"),
                     },
