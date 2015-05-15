@@ -22,7 +22,7 @@ inherit deploy
 
 
 SRC_URI = "http://www.codon.org.uk/~mjg59/shim-signed/shim-signed-0.2.tgz"
-
+S = "${WORKDIR}"
 
 SRC_URI[md5sum] = "879108b45e7d1e6794673af29b27517b"
 SRC_URI[sha256sum] = "4c522aa6d9d20308d35907a03c855bdaa12a301d0b9b8c86b357e3808ae3f8b3"
