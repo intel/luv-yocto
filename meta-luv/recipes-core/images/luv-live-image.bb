@@ -22,6 +22,8 @@ inherit bootimg
 
 SRC_URI = "file://blue-luv.jpg"
 
+S = "${WORKDIR}"
+
 build_img() {
     IMG="${DEPLOY_DIR_IMAGE}/${PN}.img"
     VFAT="${DEPLOY_DIR_IMAGE}/${IMAGE_LINK_NAME}.hddimg"
