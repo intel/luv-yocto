@@ -10,6 +10,8 @@ SRC_URI = "file://kernel-efi-warnings \
           "
 DEPENDS = "grep"
 
+S = "${WORKDIR}"
+
 inherit luv-test
 
 do_install() {
