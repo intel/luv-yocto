@@ -54,17 +54,30 @@ SDK_PACKAGING_FUNC ?= "create_shar"
 SDK_POST_INSTALL_COMMAND ?= ""
 SDK_RELOCATE_AFTER_INSTALL ?= "1"
 
-SDK_MANIFEST = "${SDK_DEPLOY}/${TOOLCHAIN_OUTPUTNAME}.manifest"
+SDK_TITLE ?= "${@d.getVar('DISTRO_NAME', True) or d.getVar('DISTRO', True)} SDK"
+
+SDK_TARGET_MANIFEST = "${SDK_DEPLOY}/${TOOLCHAIN_OUTPUTNAME}.target.manifest"
+SDK_HOST_MANIFEST = "${SDK_DEPLOY}/${TOOLCHAIN_OUTPUTNAME}.host.manifest"
 python write_target_sdk_manifest () {
     from oe.sdk import sdk_list_installed_packages
-    sdkmanifestdir = os.path.dirname(d.getVar("SDK_MANIFEST", True))
+    sdkmanifestdir = os.path.dirname(d.getVar("SDK_TARGET_MANIFEST", True))
     if not os.path.exists(sdkmanifestdir):
         bb.utils.mkdirhier(sdkmanifestdir)
-    with open(d.getVar('SDK_MANIFEST', True), 'w') as output:
+    with open(d.getVar('SDK_TARGET_MANIFEST', True), 'w') as output:
         output.write(sdk_list_installed_packages(d, True, 'ver'))
 }
 
+python write_host_sdk_manifest () {
+    from oe.sdk import sdk_list_installed_packages
+    sdkmanifestdir = os.path.dirname(d.getVar("SDK_HOST_MANIFEST", True))
+    if not os.path.exists(sdkmanifestdir):
+        bb.utils.mkdirhier(sdkmanifestdir)
+    with open(d.getVar('SDK_HOST_MANIFEST', True), 'w') as output:
+        output.write(sdk_list_installed_packages(d, False, 'ver'))
+}
+
 POPULATE_SDK_POST_TARGET_COMMAND_append = " write_target_sdk_manifest ; "
+POPULATE_SDK_POST_HOST_COMMAND_append = " write_host_sdk_manifest; "
 
 fakeroot python do_populate_sdk() {
     from oe.sdk import populate_sdk
@@ -94,7 +107,9 @@ fakeroot python do_populate_sdk() {
 
     bb.build.exec_func("tar_sdk", d)
 
-    bb.build.exec_func(d.getVar("SDK_PACKAGING_FUNC", True), d)
+    sdk_packaging_func = d.getVar("SDK_PACKAGING_FUNC", True) or ""
+    if sdk_packaging_func.strip():
+        bb.build.exec_func(d.getVar("SDK_PACKAGING_FUNC", True), d)
 }
 
 fakeroot create_sdk_files() {
@@ -134,6 +149,8 @@ EOF
 		-e 's#@SDKPATH@#${SDKPATH}#g' \
 		-e 's#@OLDEST_KERNEL@#${OLDEST_KERNEL}#g' \
 		-e 's#@REAL_MULTIMACH_TARGET_SYS@#${REAL_MULTIMACH_TARGET_SYS}#g' \
+		-e 's#@SDK_TITLE@#${SDK_TITLE}#g' \
+		-e 's#@SDK_VERSION@#${SDK_VERSION}#g' \
 		-e '/@SDK_POST_INSTALL_COMMAND@/d' \
 		${SDK_DEPLOY}/${TOOLCHAIN_OUTPUTNAME}.sh
 

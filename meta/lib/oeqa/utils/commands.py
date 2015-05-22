@@ -16,6 +16,7 @@ import threading
 import logging
 from oeqa.utils import CommandError
 from oeqa.utils import ftools
+import re
 
 class Command(object):
     def __init__(self, command, bg=False, timeout=None, data=None, **options):
@@ -139,11 +140,11 @@ def get_bb_var(var, target=None, postconfig=None):
     bbenv = get_bb_env(target, postconfig=postconfig)
     lastline = None
     for line in bbenv.splitlines():
-        if line.startswith(var + "=") or line.startswith("export " + var + "="):
+        if re.search("^(export )?%s=" % var, line):
             val = line.split('=')[1]
             val = val.strip('\"')
             break
-        elif line.startswith("unset " + var):
+        elif re.match("unset %s$" % var, line):
             # Handle [unexport] variables
             if lastline.startswith('#   "'):
                 val = lastline.split('\"')[1]
@@ -155,7 +156,20 @@ def get_test_layer():
     layers = get_bb_var("BBLAYERS").split()
     testlayer = None
     for l in layers:
+        if '~' in l:
+            l = os.path.expanduser(l)
         if "/meta-selftest" in l and os.path.isdir(l):
             testlayer = l
             break
     return testlayer
+
+def create_temp_layer(templayerdir, templayername, priority=999, recipepathspec='recipes-*/*'):
+    os.makedirs(os.path.join(templayerdir, 'conf'))
+    with open(os.path.join(templayerdir, 'conf', 'layer.conf'), 'w') as f:
+        f.write('BBPATH .= ":${LAYERDIR}"\n')
+        f.write('BBFILES += "${LAYERDIR}/%s/*.bb \\' % recipepathspec)
+        f.write('            ${LAYERDIR}/%s/*.bbappend"\n' % recipepathspec)
+        f.write('BBFILE_COLLECTIONS += "%s"\n' % templayername)
+        f.write('BBFILE_PATTERN_%s = "^${LAYERDIR}/"\n' % templayername)
+        f.write('BBFILE_PRIORITY_%s = "%d"\n' % (templayername, priority))
+        f.write('BBFILE_PATTERN_IGNORE_EMPTY_%s = "1"\n' % templayername)

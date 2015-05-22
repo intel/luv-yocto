@@ -357,7 +357,7 @@ projectApp.controller('prjCtrl', function($scope, $modal, $http, $interval, $loc
     };
 
     $scope.buildExistingTarget = function(targets) {
-         $scope.buildTargetList(targets.map(function(v){return v.target;}));
+         $scope.buildTargetList(targets.map(function(v){return ((v.task) ? v.target + ":" + v.task : v.target);}));
     };
 
     $scope.buildTargetList = function(targetlist) {
@@ -422,6 +422,24 @@ projectApp.controller('prjCtrl', function($scope, $modal, $http, $interval, $loc
 
     $scope.onLayerSelect = function (item) {
         $scope.layerAddId = item.id;
+    };
+
+    $scope.machineSelect = function (machineName) {
+        $scope._makeXHRCall({
+            method: "POST", url: $scope.urls.xhr_edit,
+            data: {
+              machineName:  machineName,
+            }
+        }).then(function () {
+          $scope.machine.name = machineName;
+
+          $scope.displayAlert($scope.zone2alerts, "You have changed the machine to: <strong>" + $scope.machine.name + "</strong>", "alert-info");
+          var machineDistro = angular.element("#machine-distro");
+
+          angular.element("html, body").animate({ scrollTop: machineDistro.position().top }, 700).promise().done(function() {
+            $animate.addClass(machineDistro, "machines-highlight");
+          });
+        });
     };
 
 
@@ -695,15 +713,6 @@ projectApp.controller('prjCtrl', function($scope, $modal, $http, $interval, $loc
                     "\">select recipes</a> you want to build.", "alert-success");
         });
 
-        _cmdExecuteWithParam("/machineselected", function () {
-            $scope.displayAlert($scope.zone2alerts, "You have changed the machine to: <strong>" + $scope.machine.name + "</strong>", "alert-info");
-            var machineDistro = angular.element("#machine-distro");
-
-            angular.element("html, body").animate({ scrollTop: machineDistro.position().top }, 700).promise().done(function() {
-              $animate.addClass(machineDistro, "machines-highlight");
-            });
-        });
-
         _cmdExecuteWithParam("/layerimported", function () {
           var imported = $cookieStore.get("layer-imported-alert");
           var text;
@@ -752,7 +761,9 @@ projectApp.controller('prjCtrl', function($scope, $modal, $http, $interval, $loc
 
         _cmdExecuteWithParam("/machineselect=", function (machine) {
             $scope.machineName = machine;
-            $scope.toggle('#select-machine');
+            $scope.machine.name = machine;
+            $scope.machineSelect(machine);
+
         });
 
 

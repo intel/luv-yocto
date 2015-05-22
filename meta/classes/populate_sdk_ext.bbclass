@@ -35,6 +35,8 @@ SDK_DIR_task-populate-sdk-ext = "${WORKDIR}/sdk-ext"
 B_task-populate-sdk-ext = "${SDK_DIR}"
 TOOLCHAIN_OUTPUTNAME_task-populate-sdk-ext = "${SDK_NAME}-toolchain-ext-${SDK_VERSION}"
 
+SDK_TITLE_task-populate-sdk-ext = "${@d.getVar('DISTRO_NAME', True) or d.getVar('DISTRO', True)} Extensible SDK"
+
 python copy_buildsystem () {
     import re
     import oe.copy_buildsystem
@@ -91,6 +93,11 @@ python copy_buildsystem () {
     # Create bblayers.conf
     bb.utils.mkdirhier(baseoutpath + '/conf')
     with open(baseoutpath + '/conf/bblayers.conf', 'w') as f:
+        f.write('# WARNING: this configuration has been automatically generated and in\n')
+        f.write('# most cases should not be edited. If you need more flexibility than\n')
+        f.write('# this configuration provides, it is strongly suggested that you set\n')
+        f.write('# up a proper instance of the full build system and use that instead.\n\n')
+
         f.write('LCONF_VERSION = "%s"\n\n' % d.getVar('LCONF_VERSION'))
         f.write('BBPATH = "$' + '{TOPDIR}"\n')
         f.write('SDKBASEMETAPATH = "$' + '{TOPDIR}"\n')
@@ -102,6 +109,11 @@ python copy_buildsystem () {
 
     # Create local.conf
     with open(baseoutpath + '/conf/local.conf', 'w') as f:
+        f.write('# WARNING: this configuration has been automatically generated and in\n')
+        f.write('# most cases should not be edited. If you need more flexibility than\n')
+        f.write('# this configuration provides, it is strongly suggested that you set\n')
+        f.write('# up a proper instance of the full build system and use that instead.\n\n')
+
         f.write('INHERIT += "%s"\n\n' % 'uninative')
         f.write('CONF_VERSION = "%s"\n\n' % d.getVar('CONF_VERSION'))
 
@@ -109,6 +121,9 @@ python copy_buildsystem () {
         # (we're including them in the SDK as nativesdk- versions instead)
         f.write('POKYQEMUDEPS_forcevariable = ""\n\n')
         f.write('EXTRA_IMAGEDEPENDS_remove = "qemu-native qemu-helper-native"\n\n')
+
+        # Bypass the default connectivity check if any
+        f.write('CONNECTIVITY_CHECK_URIS = ""\n\n')
 
         # Another hack, but we want the native part of sstate to be kept the same
         # regardless of the host distro

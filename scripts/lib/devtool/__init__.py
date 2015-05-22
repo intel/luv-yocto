@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-
+"""Devtool plugins module"""
 
 import os
 import sys
@@ -26,10 +26,16 @@ import logging
 logger = logging.getLogger('devtool')
 
 def exec_build_env_command(init_path, builddir, cmd, watch=False, **options):
+    """Run a program in bitbake build context"""
     import bb
     if not 'cwd' in options:
         options["cwd"] = builddir
     if init_path:
+        # As the OE init script makes use of BASH_SOURCE to determine OEROOT,
+        # and can't determine it when running under dash, we need to set
+        # the executable to bash to correctly set things up
+        if not 'executable' in options:
+            options['executable'] = 'bash'
         logger.debug('Executing command: "%s" using init path %s' % (cmd, init_path))
         init_prefix = '. %s %s > /dev/null && ' % (init_path, builddir)
     else:
@@ -38,12 +44,14 @@ def exec_build_env_command(init_path, builddir, cmd, watch=False, **options):
     if watch:
         if sys.stdout.isatty():
             # Fool bitbake into thinking it's outputting to a terminal (because it is, indirectly)
-            cmd = 'script -q -c "%s" /dev/null' % cmd
+            cmd = 'script -e -q -c "%s" /dev/null' % cmd
         return exec_watch('%s%s' % (init_prefix, cmd), **options)
     else:
         return bb.process.run('%s%s' % (init_prefix, cmd), **options)
 
 def exec_watch(cmd, **options):
+    """Run program with stdout shown on sys.stdout"""
+    import bb
     if isinstance(cmd, basestring) and not "shell" in options:
         options["shell"] = True
 
@@ -60,9 +68,14 @@ def exec_watch(cmd, **options):
             buf += out
         elif out == '' and process.poll() != None:
             break
-    return buf
+
+    if process.returncode != 0:
+        raise bb.process.ExecutionError(cmd, process.returncode, buf, None)
+
+    return buf, None
 
 def setup_tinfoil():
+    """Initialize tinfoil api from bitbake"""
     import scriptpath
     bitbakepath = scriptpath.add_bitbake_lib_path()
     if not bitbakepath:
@@ -70,9 +83,8 @@ def setup_tinfoil():
         sys.exit(1)
 
     import bb.tinfoil
-    import logging
     tinfoil = bb.tinfoil.Tinfoil()
     tinfoil.prepare(False)
-    tinfoil.logger.setLevel(logging.WARNING)
+    tinfoil.logger.setLevel(logger.getEffectiveLevel())
     return tinfoil
 

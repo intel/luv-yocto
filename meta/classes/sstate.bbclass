@@ -569,7 +569,7 @@ def pstaging_fetch(sstatefetch, sstatepkg, d):
     bb.utils.mkdirhier(dldir)
 
     localdata.delVar('MIRRORS')
-    localdata.delVar('FILESPATH')
+    localdata.setVar('FILESPATH', dldir)
     localdata.setVar('DL_DIR', dldir)
     localdata.setVar('PREMIRRORS', mirrors)
 
@@ -659,10 +659,13 @@ sstate_unpack_package () {
 
 BB_HASHCHECK_FUNCTION = "sstate_checkhashes"
 
-def sstate_checkhashes(sq_fn, sq_task, sq_hash, sq_hashfn, d):
+def sstate_checkhashes(sq_fn, sq_task, sq_hash, sq_hashfn, d, siginfo=False):
 
     ret = []
     missed = []
+    extension = ".tgz"
+    if siginfo:
+        extension = extension + ".siginfo"
 
     def getpathcomponents(task, d):
         # Magic data from BB_HASHFILENAME
@@ -683,7 +686,7 @@ def sstate_checkhashes(sq_fn, sq_task, sq_hash, sq_hashfn, d):
 
         spec, extrapath, tname = getpathcomponents(task, d)
 
-        sstatefile = d.expand("${SSTATE_DIR}/" + extrapath + generate_sstatefn(spec, sq_hash[task], d) + "_" + tname + ".tgz.siginfo")
+        sstatefile = d.expand("${SSTATE_DIR}/" + extrapath + generate_sstatefn(spec, sq_hash[task], d) + "_" + tname + extension)
 
         if os.path.exists(sstatefile):
             bb.debug(2, "SState: Found valid sstate file %s" % sstatefile)
@@ -700,6 +703,8 @@ def sstate_checkhashes(sq_fn, sq_task, sq_hash, sq_hashfn, d):
         bb.data.update_data(localdata)
 
         dldir = localdata.expand("${SSTATE_DIR}")
+        localdata.delVar('MIRRORS')
+        localdata.setVar('FILESPATH', dldir)
         localdata.setVar('DL_DIR', dldir)
         localdata.setVar('PREMIRRORS', mirrors)
 
@@ -716,7 +721,7 @@ def sstate_checkhashes(sq_fn, sq_task, sq_hash, sq_hashfn, d):
 
             spec, extrapath, tname = getpathcomponents(task, d)
 
-            sstatefile = d.expand(extrapath + generate_sstatefn(spec, sq_hash[task], d) + "_" + tname + ".tgz.siginfo")
+            sstatefile = d.expand(extrapath + generate_sstatefn(spec, sq_hash[task], d) + "_" + tname + extension)
 
             srcuri = "file://" + sstatefile
             localdata.setVar('SRC_URI', srcuri)
@@ -809,6 +814,9 @@ def setscene_depvalid(task, taskdependees, notneeded, d):
                 continue
             # Target populate_sysroot need their dependencies
             return False
+
+        if taskdependees[task][1] == 'do_shared_workdir':
+            continue
 
         # This is due to the [depends] in useradd.bbclass complicating matters
         # The logic *is* reversed here due to the way hard setscene dependencies are injected

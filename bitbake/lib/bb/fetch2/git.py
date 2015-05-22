@@ -178,11 +178,6 @@ class Git(FetchMethod):
     def download(self, ud, d):
         """Fetch url"""
 
-        if ud.user:
-            username = ud.user + '@'
-        else:
-            username = ""
-
         ud.repochanged = not os.path.exists(ud.fullmirror)
 
         # If the checkout doesn't exist and the mirror tarball does, extract it
@@ -191,7 +186,7 @@ class Git(FetchMethod):
             os.chdir(ud.clonedir)
             runfetchcmd("tar -xzf %s" % (ud.fullmirror), d)
 
-        repourl = "%s://%s%s%s" % (ud.proto, username, ud.host, ud.path)
+        repourl = self._get_repo_url(ud)
 
         # If the repo still doesn't exist, fallback to cloning it
         if not os.path.exists(ud.clonedir):
@@ -277,8 +272,10 @@ class Git(FetchMethod):
             clonedir = indirectiondir
 
         runfetchcmd("%s clone %s %s/ %s" % (ud.basecmd, cloneflags, clonedir, destdir), d)
+        os.chdir(destdir)
+        repourl = self._get_repo_url(ud)
+        runfetchcmd("%s remote set-url origin %s" % (ud.basecmd, repourl), d)
         if not ud.nocheckout:
-            os.chdir(destdir)
             if subdir != "":
                 runfetchcmd("%s read-tree %s%s" % (ud.basecmd, ud.revisions[ud.names[0]], readpathspec), d)
                 runfetchcmd("%s checkout-index -q -f -a" % ud.basecmd, d)
@@ -312,6 +309,16 @@ class Git(FetchMethod):
             raise bb.fetch2.FetchError("The command '%s' gave output with more then 1 line unexpectedly, output: '%s'" % (cmd, output))
         return output.split()[0] != "0"
 
+    def _get_repo_url(self, ud):
+        """
+        Return the repository URL
+        """
+        if ud.user:
+            username = ud.user + '@'
+        else:
+            username = ""
+        return "%s://%s%s%s" % (ud.proto, username, ud.host, ud.path)
+
     def _revision_key(self, ud, d, name):
         """
         Return a unique key for the url
@@ -322,13 +329,9 @@ class Git(FetchMethod):
         """
         Run git ls-remote with the specified search string
         """
-        if ud.user:
-            username = ud.user + '@'
-        else:
-            username = ""
-
-        cmd = "%s ls-remote %s://%s%s%s %s" % \
-              (ud.basecmd, ud.proto, username, ud.host, ud.path, search)
+        repourl = self._get_repo_url(ud)
+        cmd = "%s ls-remote %s %s" % \
+              (ud.basecmd, repourl, search)
         if ud.proto.lower() != 'file':
             bb.fetch2.check_network_access(d, cmd)
         output = runfetchcmd(cmd, d, True)
@@ -352,7 +355,8 @@ class Git(FetchMethod):
             for l in output.split('\n'):
                 if s in l:
                     return l.split()[0]
-        raise bb.fetch2.FetchError("Unable to resolve '%s' in upstream git repository in git ls-remote output" % ud.unresolvedrev[name])
+        raise bb.fetch2.FetchError("Unable to resolve '%s' in upstream git repository in git ls-remote output for %s" % \
+            (ud.unresolvedrev[name], ud.host+ud.path))
 
     def latest_versionstring(self, ud, d):
         """
@@ -395,9 +399,8 @@ class Git(FetchMethod):
         return ud.revisions[name]
 
     def checkstatus(self, ud, d):
-        fetchcmd = "%s ls-remote %s" % (ud.basecmd, ud.url)
         try:
-            runfetchcmd(fetchcmd, d, quiet=True)
+            self._lsremote(ud, d, "")
             return True
         except FetchError:
             return False

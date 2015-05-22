@@ -64,6 +64,9 @@ while getopts ":yd:DRS" OPT; do
 	esac
 done
 
+echo "@SDK_TITLE@ installer version @SDK_VERSION@"
+echo "==========================================================="
+
 if [ $verbose = 1 ] ; then
 	set -x
 fi
@@ -148,6 +151,8 @@ if [ $savescripts = 0 ] ; then
 fi
 
 echo "SDK has been successfully set up and is ready to be used."
+echo "Each time you wish to use the SDK in a new shell session, you need to source the environment setup script e.g."
+echo " \$ . $target_sdk_dir/environment-setup-@REAL_MULTIMACH_TARGET_SYS@"
 
 exit 0
 

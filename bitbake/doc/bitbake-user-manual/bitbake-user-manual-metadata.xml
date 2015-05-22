@@ -1065,12 +1065,40 @@
             <title>Deleting a Task</title>
 
             <para>
-                As well as being able to add tasks, tasks can also be deleted.
-                This is done simply with <filename>deltask</filename> command.
+                As well as being able to add tasks, you can delete them.
+                Simply use the <filename>deltask</filename> command to
+                delete a task.
                 For example, to delete the example task used in the previous
                 sections, you would use:
                 <literallayout class='monospaced'>
      deltask printdate
+                </literallayout>
+                If you delete a task using the <filename>deltask</filename>
+                command and the task has dependencies, the dependencies are
+                not reconnected.
+                For example, suppose you have three tasks named
+                <filename>do_a</filename>, <filename>do_b</filename>, and
+                <filename>do_c</filename>.
+                Furthermore, <filename>do_c</filename> is dependent on
+                <filename>do_b</filename>, which in turn is dependent on
+                <filename>do_a</filename>.
+                Given this scenario, if you use <filename>deltask</filename>
+                to delete <filename>do_b</filename>, the implicit dependency
+                relationship between <filename>do_c</filename> and
+                <filename>do_a</filename> through <filename>do_b</filename>
+                no longer exists, and <filename>do_c</filename> dependencies
+                are not updated to include <filename>do_a</filename>.
+                Thus, <filename>do_c</filename> is free to run before
+                <filename>do_a</filename>.
+            </para>
+
+            <para>
+                If you want dependencies such as these to remain intact, use
+                the <filename>noexec</filename> varflag to disable the task
+                instead of using the <filename>deltask</filename> command to
+                delete it:
+                <literallayout class='monospaced'>
+     do_b[noexec] = "1"
                 </literallayout>
             </para>
         </section>
@@ -1185,11 +1213,36 @@
             Tasks support a number of these flags which control various
             functionality of the task:
             <itemizedlist>
+                <listitem><para><emphasis>cleandirs:</emphasis>
+                    Empty directories that should created before the task runs.
+                    </para></listitem>
+                <listitem><para><emphasis>depends:</emphasis>
+                    Controls inter-task dependencies.
+                    See the
+                    <link linkend='var-DEPENDS'><filename>DEPENDS</filename></link>
+                    variable and the
+                    "<link linkend='inter-task-dependencies'>Inter-Task Dependencies</link>"
+                    section for more information.
+                    </para></listitem>
+                <listitem><para><emphasis>deptask:</emphasis>
+                    Controls task build-time dependencies.
+                    See the
+                    <link linkend='var-DEPENDS'><filename>DEPENDS</filename></link>
+                    variable and the
+                    "<link linkend='build-dependencies'>Build Dependencies</link>"
+                    section for more information.
+                    </para></listitem>
                 <listitem><para><emphasis>dirs:</emphasis>
                     Directories that should be created before the task runs.
                     </para></listitem>
-                <listitem><para><emphasis>cleandirs:</emphasis>
-                    Empty directories that should created before the task runs.
+                <listitem><para><emphasis>lockfiles:</emphasis>
+                     Specifies one or more lockfiles to lock while the task
+                     executes.
+                     Only one task may hold a lockfile, and any task that
+                     attempts to lock an already locked file will block until
+                     the lock is released.
+                     You can use this variable flag to accomplish mutual
+                     exclusion.
                     </para></listitem>
                 <listitem><para><emphasis>noexec:</emphasis>
                     Marks the tasks as being empty and no execution required.
@@ -1201,15 +1254,20 @@
                     Tells BitBake to not generate a stamp file for a task,
                     which implies the task should always be executed.
                     </para></listitem>
-                <listitem><para><emphasis>umask:</emphasis>
-                    The umask to run the task under.
+                <listitem><para><emphasis>postfuncs:</emphasis>
+                    List of functions to call after the completion of the task.
                     </para></listitem>
-                <listitem><para><emphasis>deptask:</emphasis>
-                    Controls task build-time dependencies.
+                <listitem><para><emphasis>prefuncs:</emphasis>
+                    List of functions to call before the task executes.
+                    </para></listitem>
+                <listitem><para><emphasis>rdepends:</emphasis>
+                    Controls inter-task runtime dependencies.
                     See the
-                    <link linkend='var-DEPENDS'><filename>DEPENDS</filename></link>
-                    variable and the
-                    "<link linkend='build-dependencies'>Build Dependencies</link>"
+                    <link linkend='var-RDEPENDS'><filename>RDEPENDS</filename></link>
+                    variable, the
+                    <link linkend='var-RRECOMMENDS'><filename>RRECOMMENDS</filename></link>
+                    variable, and the
+                    "<link linkend='inter-task-dependencies'>Inter-Task Dependencies</link>"
                     section for more information.
                     </para></listitem>
                 <listitem><para><emphasis>rdeptask:</emphasis>
@@ -1222,6 +1280,11 @@
                     "<link linkend='runtime-dependencies'>Runtime Dependencies</link>"
                     section for more information.
                     </para></listitem>
+                <listitem><para><emphasis>recideptask:</emphasis>
+                    When set in conjunction with
+                    <filename>recrdeptask</filename>, specifies a task that
+                    should be inspected for additional dependencies.
+                    </para></listitem>
                 <listitem><para><emphasis>recrdeptask:</emphasis>
                     Controls task recursive runtime dependencies.
                     See the
@@ -1232,34 +1295,13 @@
                     "<link linkend='recursive-dependencies'>Recursive Dependencies</link>"
                     section for more information.
                     </para></listitem>
-                <listitem><para><emphasis>depends:</emphasis>
-                    Controls inter-task dependencies.
-                    See the
-                    <link linkend='var-DEPENDS'><filename>DEPENDS</filename></link>
-                    variable and the
-                    "<link linkend='inter-task-dependencies'>Inter-Task Dependencies</link>"
-                    section for more information.
-                    </para></listitem>
-                <listitem><para><emphasis>rdepends:</emphasis>
-                    Controls inter-task runtime dependencies.
-                    See the
-                    <link linkend='var-RDEPENDS'><filename>RDEPENDS</filename></link>
-                    variable, the
-                    <link linkend='var-RRECOMMENDS'><filename>RRECOMMENDS</filename></link>
-                    variable, and the
-                    "<link linkend='inter-task-dependencies'>Inter-Task Dependencies</link>"
-                    section for more information.
-                    </para></listitem>
-                <listitem><para><emphasis>postfuncs:</emphasis>
-                    List of functions to call after the completion of the task.
-                    </para></listitem>
-                <listitem><para><emphasis>prefuncs:</emphasis>
-                    List of functions to call before the task executes.
-                    </para></listitem>
                 <listitem><para><emphasis>stamp-extra-info:</emphasis>
                     Extra stamp information to append to the task's stamp.
                     As an example, OpenEmbedded uses this flag to allow
                     machine-specific tasks.
+                    </para></listitem>
+                <listitem><para><emphasis>umask:</emphasis>
+                    The umask to run the task under.
                     </para></listitem>
             </itemizedlist>
         </para>
@@ -1280,15 +1322,15 @@
                     does not allow BitBake to automatically determine
                     that the variable is referred to.
                     </para></listitem>
-                <listitem><para><emphasis>vardepvalue:</emphasis>
-                    If set, instructs BitBake to ignore the actual
-                    value of the variable and instead use the specified
-                    value when calculating the variable's signature.
-                    </para></listitem>
                 <listitem><para><emphasis>vardepsexclude:</emphasis>
                     Specifies a space-separated list of variables
                     that should be excluded from a variable's dependencies
                     for the purposes of calculating its signature.
+                    </para></listitem>
+                <listitem><para><emphasis>vardepvalue:</emphasis>
+                    If set, instructs BitBake to ignore the actual
+                    value of the variable and instead use the specified
+                    value when calculating the variable's signature.
                     </para></listitem>
                 <listitem><para><emphasis>vardepvalueexclude:</emphasis>
                     Specifies a pipe-separated list of strings to exclude

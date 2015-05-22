@@ -26,7 +26,9 @@ SRC_URI = "git://sourceware.org/git/glibc.git;branch=${BRANCH} \
            file://0001-When-disabling-SSE-also-make-sure-that-fpmath-is-not.patch \
            file://0001-yes-within-the-path-sets-wrong-config-variables.patch \
            file://elf-Makefile-fix-a-typo.patch \
+           file://makesyscall.patch \
            ${EGLIBCPATCHES} \
+           ${CVEPATCHES} \
           "
 EGLIBCPATCHES = "\
            file://timezone-re-written-tzselect-as-posix-sh.patch \
@@ -42,6 +44,9 @@ EGLIBCPATCHES = "\
 #           file://eglibc-install-pic-archives.patch \
 #	    file://initgroups_keys.patch \
 #
+CVEPATCHES = "\
+        file://CVE-2015-1781-resolv-nss_dns-dns-host.c-buffer-overf.patch \
+"
 
 LIC_FILES_CHKSUM = "file://LICENSES;md5=e9a558e243b36d3209f380deb394b213 \
       file://COPYING;md5=b234ee4d69f5fce4486a80fdaf4a4263 \
@@ -68,11 +73,9 @@ GLIBC_BROKEN_LOCALES = " _ER _ET so_ET yn_ER sid_ET tr_TR mn_MN gez_ET gez_ER bn
 # this helps in easing out parsing for non-glibc system libraries
 #
 python __anonymous () {
-    import re
-    notglibc = (re.match('.*uclibc$', d.getVar('TARGET_OS', True)) != None) or (re.match('.*musl$', d.getVar('TARGET_OS', True)) != None)
-    if notglibc:
-        raise bb.parse.SkipPackage("incompatible with target %s" %
-                                   d.getVar('TARGET_OS', True))
+    if d.getVar('TCLIBC', True) != "glibc":
+        raise bb.parse.SkipPackage("incompatible with %s C library" %
+                                   d.getVar('TCLIBC', True))
 }
 
 EXTRA_OECONF = "--enable-kernel=${OLDEST_KERNEL} \

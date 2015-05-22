@@ -278,12 +278,12 @@ def check_connectivity(d):
         try:
             fetcher = bb.fetch2.Fetch(test_uris, data)
             fetcher.checkstatus()
-        except Exception:
+        except Exception as err:
             # Allow the message to be configured so that users can be
             # pointed to a support mechanism.
             msg = data.getVar('CONNECTIVITY_CHECK_MSG', True) or ""
             if len(msg) == 0:
-                msg = "Failed to fetch test data from the network. Please ensure your network is configured correctly.\n"
+                msg = "%s. Please ensure your network is configured correctly.\n" % err
             retval = msg
 
     return retval
@@ -491,6 +491,8 @@ def sanity_handle_abichanges(status, d):
     #
     # Check the 'ABI' of TMPDIR
     #
+    import subprocess
+
     current_abi = d.getVar('OELAYOUT_ABI', True)
     abifile = d.getVar('SANITY_ABIFILE', True)
     if os.path.exists(abifile):
@@ -653,9 +655,9 @@ def check_sanity_version_change(status, d):
             status.addresult("You have a 32-bit libc, but no 32-bit headers.  You must install the 32-bit libc headers.\n")
 
     bbpaths = d.getVar('BBPATH', True).split(":")
-    if ("." in bbpaths or "" in bbpaths) and not status.reparse:
+    if ("." in bbpaths or "./" in bbpaths or "" in bbpaths) and not status.reparse:
         status.addresult("BBPATH references the current directory, either through "    \
-                "an empty entry, or a '.'.\n\t This is unsafe and means your "\
+                "an empty entry, a './' or a '.'.\n\t This is unsafe and means your "\
                 "layer configuration is adding empty elements to BBPATH.\n\t "\
                 "Please check your layer.conf files and other BBPATH "        \
                 "settings to remove the current working directory "           \
@@ -693,8 +695,8 @@ def check_sanity_everybuild(status, d):
     sanity_check_conffiles(status, d)
 
     paths = d.getVar('PATH', True).split(":")
-    if "." in paths or "" in paths:
-        status.addresult("PATH contains '.' or '' (empty element), which will break the build, please remove this.\nParsed PATH is " + str(paths) + "\n")
+    if "." in paths or "./" in paths or "" in paths:
+        status.addresult("PATH contains '.', './' or '' (empty element), which will break the build, please remove this.\nParsed PATH is " + str(paths) + "\n")
 
     # Check that the DISTRO is valid, if set
     # need to take into account DISTRO renaming DISTRO
@@ -772,7 +774,7 @@ def check_sanity_everybuild(status, d):
     import re
     mirror_vars = ['MIRRORS', 'PREMIRRORS', 'SSTATE_MIRRORS']
     protocols = ['http', 'ftp', 'file', 'https', \
-                 'git', 'gitsm', 'hg', 'osc', 'p4', 'svk', 'svn', \
+                 'git', 'gitsm', 'hg', 'osc', 'p4', 'svn', \
                  'bzr', 'cvs']
     for mirror_var in mirror_vars:
         mirrors = (d.getVar(mirror_var, True) or '').replace('\\n', '\n').split('\n')
@@ -824,8 +826,6 @@ def check_sanity_everybuild(status, d):
         status.addresult("Error, IMAGE_FSTYPES vmdk and live can't be built together\n")
 
 def check_sanity(sanity_data):
-    import subprocess
-
     class SanityStatus(object):
         def __init__(self):
             self.messages = ""

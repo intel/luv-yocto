@@ -7,7 +7,19 @@ DESCRIPTION = "Packages required to satisfy the Linux Standard Base (LSB) specif
 PR = "r10"
 LICENSE = "MIT"
 
-inherit packagegroup
+inherit packagegroup distro_features_check
+
+# The libxt, libxtst and others require x11 in DISTRO_FEATURES
+REQUIRED_DISTRO_FEATURES = "x11"
+
+#
+# We will skip parsing this packagegeoup for non-glibc systems
+#
+python __anonymous () {
+    if d.getVar('TCLIBC', True) != "glibc":
+        raise bb.parse.SkipPackage("incompatible with %s C library" %
+                                   d.getVar('TCLIBC', True))
+}
 
 PACKAGES = "\
     packagegroup-core-lsb \

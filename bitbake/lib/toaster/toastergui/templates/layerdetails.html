@@ -3,51 +3,15 @@
 {% load humanize %}
 {% load static %}
 {% block localbreadcrumb %}
-<li><a href="{% url 'layers' %}">All compatible layers</a></li>
+<li><a href="{% url 'all-layers' project.id %}">All compatible layers</a></li>
 <li>
   {{layerversion.layer.name}} ({{layerversion.get_vcs_reference|truncatechars:13}})
 </li>
 {% endblock %}
 {% block projectinfomain %}
-
-
-<script src="{% static 'js/layerdetails.js' %}"></script>
-<script>
-
-  $(document).ready(function (){
-    var ctx = {
-      projectBuildUrl : "{% url 'xhr_build' %}",
-      layerDetailsUrl : "{% url 'base_layerdetails' %}",
-      projectPageUrl : "{% url 'project' project.id %}",
-      xhrEditProjectUrl : "{% url 'xhr_projectedit' project.id %}",
-      xhrDataTypeaheadUrl : "{% url 'xhr_datatypeahead' %}",
-      xhrUpdateLayerUrl : "{% url 'xhr_updatelayer' %}",
-      projectId : {{project.id}},
-      projectName : "{{project.name}}",
-      numTargets : {{total_targets}},
-      numMachines: {{machines|length}},
-      layerVersion : {
-        name : "{{layerversion.layer.name}}",
-        id : {{layerversion.id}},
-        commit: "{{layerversion.get_vcs_reference}}",
-        inCurrentPrj : {{layer_in_project}},
-        url : "{% url 'layerdetails' layerversion.id  %}",
-        sourceId: {{layerversion.layer_source_id}},
-      }
-    };
-
-    try {
-      layerDetailsPageInit(ctx);
-    } catch (e) {
-      document.write("Sorry, An error has occurred loading this page");
-      console.warn(e);
-    }
-  });
-</script>
-
 {# If this is not an imported layer then hide the edit ui #}
-{% if layerversion.layer_source_id != 3 %}
-<style>
+{% if not layerversion.layer_source_id or layerversion.layer_source.sourcetype != layerversion.layer_source.TYPE_IMPORTED %}
+<style scoped>
  .icon-pencil {
    display:none;
  }
@@ -63,7 +27,36 @@
 </style>
 {% endif %}
 
-{% include "layers_dep_modal.html" %}
+
+<script src="{% static 'js/layerdetails.js' %}"></script>
+<script>
+
+  $(document).ready(function (){
+    var ctx = {
+      projectBuildUrl : "{% url 'xhr_build' %}",
+      layerDetailsUrl : "{% url 'base_layerdetails' project.id %}",
+      xhrUpdateLayerUrl : "{% url 'xhr_updatelayer' %}",
+      numTargets : {{total_targets}},
+      numMachines: {{machines|length}},
+      layerVersion : {
+        name : "{{layerversion.layer.name}}",
+        id : {{layerversion.id}},
+        commit: "{{layerversion.get_vcs_reference}}",
+        inCurrentPrj : {{layer_in_project}},
+        url : "{% url 'layerdetails' project.id layerversion.id  %}",
+        sourceId: {{layerversion.layer_source_id|json}},
+      }
+    };
+
+    try {
+      layerDetailsPageInit(ctx);
+    } catch (e) {
+      document.write("Sorry, An error has occurred loading this page");
+      console.warn(e);
+    }
+  });
+</script>
+
   <div class="row-fluid span11">
       <div class="page-header">
         <h1>{{layerversion.layer.name}} <small class="commit"
@@ -106,7 +99,7 @@
         </span>
 
         <!-- layer details pane -->
-        <div name="information" id="information" class="tab-pane active">
+        <div id="information" class="tab-pane active">
           <dl class="dl-horizontal">
             <dt class="">
               <i class="icon-question-sign get-help" title="Fetch/clone URL of the repository"></i>
@@ -166,19 +159,17 @@
                     Layer dependencies
                   </dt>
                   <dd>
-                    <ul class="unstyled" id="layer-deps-list">
+                    <ul class="unstyled current-value" id="layer-deps-list">
                       {% for ld in layerversion.dependencies.all %}
-                      <span class="current-value">
                       <li data-layer-id="{{ld.depends_on.id}}">
-                        <a data-toggle="tooltip" title="{{ld.depends_on.layer.vcs_url}} | {{ld.depends_on.get_vcs_reference}}" href="{% url 'layerdetails' ld.depends_on.id %}">{{ld.depends_on.layer.name}}</a>
+                        <a data-toggle="tooltip" title="{{ld.depends_on.layer.vcs_url}} | {{ld.depends_on.get_vcs_reference}}" href="{% url 'layerdetails' project.id ld.depends_on.id %}">{{ld.depends_on.layer.name}}</a>
                         <span class="icon-trash " data-toggle="tooltip" title="Delete"></span>
                       </li>
-                      </span>
                       {% endfor %}
                     </ul>
                     <div class="input-append add-deps">
                       <input type="text" autocomplete="off" data-minLength="1" data-autocomplete="off"  placeholder="Type a layer name" id="layer-dep-input">
-                        <a class="btn" type="button" id="add-layer-dependency-btn" disabled>
+                        <a class="btn" id="add-layer-dependency-btn" >
                           Add layer
                         </a>
                       </div>
@@ -187,7 +178,7 @@
                   </dl>
                 </div>
                 <!-- targets tab -->
-                <div name="targets" id="targets" class="tab-pane">
+                <div id="targets" class="tab-pane">
                   {% if total_targets == 0 %}
                   <div class="alert alert-info">
                     <p>Toaster does not have recipe information for the <strong> {{layerversion.layer.name}} </strong> layer.</p>
@@ -322,7 +313,7 @@
                 </div>
 
 
-                <div name="machines" id="machines" class="tab-pane">
+                <div id="machines" class="tab-pane">
                   {% if total_machines == 0 %}
                   <div class="alert alert-info">
                     <p>Toaster does not have machine information for the <strong> {{layerversion.layer.name}} </strong> layer.</p>
@@ -409,7 +400,8 @@
                           {% endif %}
                         </td>
                         <td>{{machine.description}}</td>
-                        <td><button class="btn btn-block select-machine-btn" data-machine-name="{{machine.name}}" {% if layer_in_project == 0 %}disabled="disabled"{% endif %}}>Select machine</button></td>
+                        <td>
+                          <a href="{% url 'project' project.id %}#/machineselect={{machine.name}}" class="btn btn-block select-machine-btn" {% if layer_in_project == 0 %}disabled="disabled"{% endif %}>Select machine</a>
                       </tr>
                       {% endfor %}
                     </tbody>
@@ -486,7 +478,6 @@
                   </form>
                   <i class="icon-pencil"></i>
                   <span class="icon-trash delete-current-value" data-toggle="tooltip" title="Delete"></span>
-                </dd>
                 </dd>
                 {% if layerversion.layer.up_id %}
                 <dt>Layer index</dt>

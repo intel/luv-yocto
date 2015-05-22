@@ -14,12 +14,12 @@ var libtoaster = (function (){
    *  selectedCB: function to call once an item has been selected one
    *  arg of the item.
    */
-  function _makeTypeahead (jQElement, xhrUrl, xhrParams, selectedCB) {
+  function _makeTypeahead (jQElement, xhrParams, selectedCB) {
 
     jQElement.typeahead({
         source: function(query, process){
           xhrParams.value = query;
-          $.getJSON(xhrUrl, this.options.xhrParams, function(data){
+          $.getJSON(libtoaster.ctx.xhrDataTypeaheadUrl, this.options.xhrParams, function(data){
             if (data.error !== "ok") {
               console.log("Error getting data from server "+data.error);
               return;
@@ -41,7 +41,7 @@ var libtoaster = (function (){
           return $('<span></span>').text(item.name).get(0);
         },
         sorter: function (items) { return items; },
-        xhrUrl: xhrUrl,
+        xhrUrl: libtoaster.ctx.xhrDataTypeaheadUrl,
         xhrParams: xhrParams,
     });
 
@@ -114,7 +114,7 @@ var libtoaster = (function (){
         error: function (_data) {
           console.warn("Call failed");
           console.warn(_data);
-          if (onfail) onfail(data);
+          if (onfail) onfail(_data);
         }
     });
   }
@@ -147,10 +147,10 @@ var libtoaster = (function (){
    * projectVersion
    * machineName
    */
-  function _editProject(url, projectId, data, onSuccess, onFail){
+  function _editCurrentProject(data, onSuccess, onFail){
     $.ajax({
         type: "POST",
-        url: url,
+        url: libtoaster.ctx.xhrProjectEditUrl,
         data: data,
         headers: { 'X-CSRFToken' : $.cookie('csrftoken')},
         success: function (data) {
@@ -170,9 +170,9 @@ var libtoaster = (function (){
     });
   }
 
-  function _getLayerDepsForProject(xhrDataTypeaheadUrl, projectId, layerId, onSuccess, onFail){
+  function _getLayerDepsForProject(projectId, layerId, onSuccess, onFail){
     /* Check for dependencies not in the current project */
-    $.getJSON(xhrDataTypeaheadUrl,
+    $.getJSON(libtoaster.ctx.xhrDataTypeaheadUrl,
       { type: 'layerdeps', 'value': layerId , project_id: projectId },
       function(data) {
         if (data.error != "ok") {
@@ -219,6 +219,77 @@ var libtoaster = (function (){
     return str;
   }
 
+  function _addRmLayer(layerObj, add, doneCb){
+    if (add === true) {
+      /* If adding get the deps for this layer */
+      libtoaster.getLayerDepsForProject(libtoaster.ctx.projectId,
+        layerObj.id,
+        function (layers) {
+
+        /* got result for dependencies */
+        if (layers.list.length === 0){
+          var editData = { layerAdd : layerObj.id };
+          libtoaster.editCurrentProject(editData, function() {
+            doneCb([]);
+          });
+          return;
+        } else {
+          try {
+            showLayerDepsModal(layerObj, layers.list, null, null,  true, doneCb);
+          }  catch (e) {
+            $.getScript(libtoaster.ctx.jsUrl + "layerDepsModal.js", function(){
+              showLayerDepsModal(layerObj, layers.list, null, null,  true, doneCb);
+            }, function(){
+              console.warn("Failed to load layerDepsModal");
+            });
+          }
+        }
+      }, null);
+    } else if (add === false) {
+      var editData = { layerDel : layerObj.id };
+
+      libtoaster.editCurrentProject(editData, function () {
+        doneCb([]);
+      }, function () {
+        console.warn ("Removing layer from project failed");
+        doneCb(null);
+      });
+    }
+  }
+
+  function _makeLayerAddRmAlertMsg(layer, layerDepsList, add) {
+    var alertMsg;
+
+    if (layerDepsList.length > 0 && add === true) {
+      alertMsg = $("<span>You have added <strong>"+(layerDepsList.length+1)+"</strong> layers to <a id=\"project-affected-name\"></a>: <a id=\"layer-affected-name\"></a> and its dependencies </span>");
+
+      /* Build the layer deps list */
+      layerDepsList.map(function(layer, i){
+        var link = $("<a></a>");
+
+        link.attr("href", layer.layerdetailurl);
+        link.text(layer.name);
+        link.tooltip({title: layer.tooltip});
+
+        if (i !== 0)
+          alertMsg.append(", ");
+
+        alertMsg.append(link);
+      });
+    } else if (layerDepsList.length === 0 && add === true) {
+      alertMsg = $("<span>You have added <strong>1</strong> layer to <a id=\"project-affected-name\"></a>: <a id=\"layer-affected-name\"></a></span></span>");
+    } else if (add === false) {
+      alertMsg = $("<span>You have deleted <strong>1</strong> layer from <a id=\"project-affected-name\"></a>: <a id=\"layer-affected-name\"></a></span>");
+    }
+
+    alertMsg.children("#layer-affected-name").text(layer.name);
+    alertMsg.children("#layer-affected-name").attr("href", layer.url);
+    alertMsg.children("#project-affected-name").text(libtoaster.ctx.projectName);
+    alertMsg.children("#project-affected-name").attr("href", libtoaster.ctx.projectPageUrl);
+
+    return alertMsg.html();
+  }
+
 
   return {
     reload_params : reload_params,
@@ -227,10 +298,12 @@ var libtoaster = (function (){
     makeTypeahead : _makeTypeahead,
     getProjectInfo: _getProjectInfo,
     getLayerDepsForProject : _getLayerDepsForProject,
-    editProject : _editProject,
+    editCurrentProject : _editCurrentProject,
     debug: false,
     parseUrlParams : _parseUrlParams,
     dumpsUrlParams : _dumpsUrlParams,
+    addRmLayer : _addRmLayer,
+    makeLayerAddRmAlertMsg : _makeLayerAddRmAlertMsg,
   };
 })();
 
@@ -288,6 +361,7 @@ $(document).ready(function() {
     });
 
 
+    /* START TODO Delete this section now redundant */
     /* Belen's additions */
 
     // turn Edit columns dropdown into a multiselect menu
@@ -335,6 +409,8 @@ $(document).ready(function() {
     $("th, td").mouseleave(function () {
         $(this).find(".hover-help").css("visibility","hidden");
     });
+
+    /* END TODO Delete this section now redundant */
 
     // show task type and outcome in task details pages
     $(".task-info").tooltip({ container: 'body', html: true, delay: {show: 200}, placement: 'right' });
@@ -392,6 +468,11 @@ $(document).ready(function() {
     });
     $('.toggle-exceptions').click(function() {
         $('#collapse-exceptions').toggleClass('in');
+    });
+
+
+    $("#hide-alert").click(function(){
+      $(this).parent().fadeOut();
     });
 
     //show warnings section when requested from the previous page

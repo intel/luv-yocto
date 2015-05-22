@@ -5,6 +5,20 @@ import ast
 import re
 from fnmatch import fnmatchcase as fnmatch
 
+def license_ok(license, dont_want_licenses):
+    """ Return False if License exist in dont_want_licenses else True """
+    for dwl in dont_want_licenses:
+        # If you want to exclude license named generically 'X', we
+        # surely want to exclude 'X+' as well.  In consequence, we
+        # will exclude a trailing '+' character from LICENSE in
+        # case INCOMPATIBLE_LICENSE is not a 'X+' license.
+        lic = license
+        if not re.search('\+$', dwl):
+            lic = re.sub('\+', '', license)
+        if fnmatch(lic, dwl):
+            return False
+    return True
+
 class LicenseError(Exception):
     pass
 
@@ -30,8 +44,8 @@ license_operator = re.compile('([' + license_operator_chars + '])')
 license_pattern = re.compile('[a-zA-Z0-9.+_\-]+$')
 
 class LicenseVisitor(ast.NodeVisitor):
-    """Syntax tree visitor which can accept OpenEmbedded license strings"""
-    def visit_string(self, licensestr):
+    """Get elements based on OpenEmbedded license strings"""
+    def get_elements(self, licensestr):
         new_elements = []
         elements = filter(lambda x: x.strip(), license_operator.split(licensestr))
         for pos, element in enumerate(elements):
@@ -43,7 +57,16 @@ class LicenseVisitor(ast.NodeVisitor):
                 raise InvalidLicense(element)
             new_elements.append(element)
 
-        self.visit(ast.parse(' '.join(new_elements)))
+        return new_elements
+
+    """Syntax tree visitor which can accept elements previously generated with
+    OpenEmbedded license string"""
+    def visit_elements(self, elements):
+        self.visit(ast.parse(' '.join(elements)))
+
+    """Syntax tree visitor which can accept OpenEmbedded license strings"""
+    def visit_string(self, licensestr):
+        self.visit_elements(self.get_elements(licensestr))
 
 class FlattenVisitor(LicenseVisitor):
     """Flatten a license tree (parsed from a string) by selecting one of each
@@ -115,3 +138,80 @@ def is_included(licensestr, whitelist=None, blacklist=None):
         return False, excluded
     else:
         return True, included
+
+class ManifestVisitor(LicenseVisitor):
+    """Walk license tree (parsed from a string) removing the incompatible
+    licenses specified"""
+    def __init__(self, dont_want_licenses, canonical_license, d):
+        self._dont_want_licenses = dont_want_licenses
+        self._canonical_license = canonical_license
+        self._d = d
+        self._operators = []
+
+        self.licenses = []
+        self.licensestr = ''
+
+        LicenseVisitor.__init__(self)
+
+    def visit(self, node):
+        if isinstance(node, ast.Str):
+            lic = node.s
+
+            if license_ok(self._canonical_license(self._d, lic),
+                    self._dont_want_licenses) == True:
+                if self._operators:
+                    ops = []
+                    for op in self._operators:
+                        if op == '[':
+                            ops.append(op)
+                        elif op == ']':
+                            ops.append(op)
+                        else:
+                            if not ops:
+                                ops.append(op)
+                            elif ops[-1] in ['[', ']']:
+                                ops.append(op)
+                            else:
+                                ops[-1] = op 
+
+                    for op in ops:
+                        if op == '[' or op == ']':
+                            self.licensestr += op
+                        elif self.licenses:
+                            self.licensestr += ' ' + op + ' '
+
+                    self._operators = []
+
+                self.licensestr += lic
+                self.licenses.append(lic)
+        elif isinstance(node, ast.BitAnd):
+            self._operators.append("&")
+        elif isinstance(node, ast.BitOr):
+            self._operators.append("|")
+        elif isinstance(node, ast.List):
+            self._operators.append("[")
+        elif isinstance(node, ast.Load):
+            self.licensestr += "]"
+
+        self.generic_visit(node)
+
+def manifest_licenses(licensestr, dont_want_licenses, canonical_license, d):
+    """Given a license string and dont_want_licenses list,
+       return license string filtered and a list of licenses"""
+    manifest = ManifestVisitor(dont_want_licenses, canonical_license, d)
+
+    try:
+        elements = manifest.get_elements(licensestr)
+
+        # Replace '()' to '[]' for handle in ast as List and Load types.
+        elements = ['[' if e == '(' else e for e in elements]
+        elements = [']' if e == ')' else e for e in elements]
+
+        manifest.visit_elements(elements)
+    except SyntaxError as exc:
+        raise LicenseSyntaxError(licensestr, exc)
+
+    # Replace '[]' to '()' for output correct license.
+    manifest.licensestr = manifest.licensestr.replace('[', '(').replace(']', ')')
+
+    return (manifest.licensestr, manifest.licenses)

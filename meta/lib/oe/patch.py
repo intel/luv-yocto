@@ -92,6 +92,69 @@ class PatchSet(object):
     def Refresh(self, remote = None, all = None):
         raise NotImplementedError()
 
+    @staticmethod
+    def getPatchedFiles(patchfile, striplevel, srcdir=None):
+        """
+        Read a patch file and determine which files it will modify.
+        Params:
+            patchfile: the patch file to read
+            striplevel: the strip level at which the patch is going to be applied
+            srcdir: optional path to join onto the patched file paths
+        Returns:
+            A list of tuples of file path and change mode ('A' for add,
+            'D' for delete or 'M' for modify)
+        """
+
+        def patchedpath(patchline):
+            filepth = patchline.split()[1]
+            if filepth.endswith('/dev/null'):
+                return '/dev/null'
+            filesplit = filepth.split(os.sep)
+            if striplevel > len(filesplit):
+                bb.error('Patch %s has invalid strip level %d' % (patchfile, striplevel))
+                return None
+            return os.sep.join(filesplit[striplevel:])
+
+        copiedmode = False
+        filelist = []
+        with open(patchfile) as f:
+            for line in f:
+                if line.startswith('--- '):
+                    patchpth = patchedpath(line)
+                    if not patchpth:
+                        break
+                    if copiedmode:
+                        addedfile = patchpth
+                    else:
+                        removedfile = patchpth
+                elif line.startswith('+++ '):
+                    addedfile = patchedpath(line)
+                    if not addedfile:
+                        break
+                elif line.startswith('*** '):
+                    copiedmode = True
+                    removedfile = patchedpath(line)
+                    if not removedfile:
+                        break
+                else:
+                    removedfile = None
+                    addedfile = None
+
+                if addedfile and removedfile:
+                    if removedfile == '/dev/null':
+                        mode = 'A'
+                    elif addedfile == '/dev/null':
+                        mode = 'D'
+                    else:
+                        mode = 'M'
+                    if srcdir:
+                        fullpath = os.path.abspath(os.path.join(srcdir, addedfile))
+                    else:
+                        fullpath = addedfile
+                    filelist.append((fullpath, mode))
+
+        return filelist
+
 
 class PatchTree(PatchSet):
     def __init__(self, dir, d):
@@ -115,7 +178,8 @@ class PatchTree(PatchSet):
     def _removePatchFile(self, all = False):
         if not os.path.exists(self.seriespath):
             return
-        patches = open(self.seriespath, 'r+').readlines()
+        with open(self.seriespath, 'r+') as f:
+            patches = f.readlines()
         if all:
             for p in reversed(patches):
                 self._removePatch(os.path.join(self.patchdir, p.strip()))
@@ -405,16 +469,15 @@ class QuiltTree(PatchSet):
         if not os.path.exists(self.dir):
             raise NotFoundError(self.dir)
         if os.path.exists(seriespath):
-            series = file(seriespath, 'r')
-            for line in series.readlines():
-                patch = {}
-                parts = line.strip().split()
-                patch["quiltfile"] = self._quiltpatchpath(parts[0])
-                patch["quiltfilemd5"] = bb.utils.md5_file(patch["quiltfile"])
-                if len(parts) > 1:
-                    patch["strippath"] = parts[1][2:]
-                self.patches.append(patch)
-            series.close()
+            with open(seriespath, 'r') as f:
+                for line in f.readlines():
+                    patch = {}
+                    parts = line.strip().split()
+                    patch["quiltfile"] = self._quiltpatchpath(parts[0])
+                    patch["quiltfilemd5"] = bb.utils.md5_file(patch["quiltfile"])
+                    if len(parts) > 1:
+                        patch["strippath"] = parts[1][2:]
+                    self.patches.append(patch)
 
             # determine which patches are applied -> self._current
             try:
@@ -436,9 +499,8 @@ class QuiltTree(PatchSet):
             self.InitFromDir()
         PatchSet.Import(self, patch, force)
         oe.path.symlink(patch["file"], self._quiltpatchpath(patch["file"]), force=True)
-        f = open(os.path.join(self.dir, "patches","series"), "a");
-        f.write(os.path.basename(patch["file"]) + " -p" + patch["strippath"]+"\n")
-        f.close()
+        with open(os.path.join(self.dir, "patches", "series"), "a") as f:
+            f.write(os.path.basename(patch["file"]) + " -p" + patch["strippath"] + "\n")
         patch["quiltfile"] = self._quiltpatchpath(patch["file"])
         patch["quiltfilemd5"] = bb.utils.md5_file(patch["quiltfile"])
 
@@ -559,13 +621,12 @@ class UserResolver(Resolver):
             bb.utils.mkdirhier(t)
             import random
             rcfile = "%s/bashrc.%s.%s" % (t, str(os.getpid()), random.random())
-            f = open(rcfile, "w")
-            f.write("echo '*** Manual patch resolution mode ***'\n")
-            f.write("echo 'Dropping to a shell, so patch rejects can be fixed manually.'\n")
-            f.write("echo 'Run \"quilt refresh\" when patch is corrected, press CTRL+D to exit.'\n")
-            f.write("echo ''\n")
-            f.write(" ".join(patchcmd) + "\n")
-            f.close()
+            with open(rcfile, "w") as f:
+                f.write("echo '*** Manual patch resolution mode ***'\n")
+                f.write("echo 'Dropping to a shell, so patch rejects can be fixed manually.'\n")
+                f.write("echo 'Run \"quilt refresh\" when patch is corrected, press CTRL+D to exit.'\n")
+                f.write("echo ''\n")
+                f.write(" ".join(patchcmd) + "\n")
             os.chmod(rcfile, 0775)
 
             self.terminal("bash --rcfile " + rcfile, 'Patch Rejects: Please fix patch rejects manually', self.patchset.d)

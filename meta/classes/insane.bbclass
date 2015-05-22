@@ -59,6 +59,7 @@ def package_qa_get_machine_dict():
             "elf" : {
                         "i586" :      (3,      0,    0,          True,          32),
                         "x86_64":     (62,     0,    0,          True,          64),
+                        "epiphany":   (4643,   0,    0,          True,          32),
                       },
             "linux" : { 
                         "aarch64" :   (183,    0,    0,          True,          64),
@@ -84,6 +85,7 @@ def package_qa_get_machine_dict():
                         "sh4":        (42,     0,    0,          True,          32),
                         "sparc":      ( 2,     0,    0,          False,         32),
                         "microblaze":  (189,   0,    0,          False,         32),
+                        "microblazeeb":(189,   0,    0,          False,         32),
                         "microblazeel":(189,   0,    0,          True,          32),
                       },
             "linux-uclibc" : { 
@@ -104,6 +106,8 @@ def package_qa_get_machine_dict():
 
                       },
             "linux-musl" : { 
+                        "aarch64" :   (183,    0,    0,            True,          64),
+                        "aarch64_be" :(183,    0,    0,            False,         64),
                         "arm" :       (  40,    97,    0,          True,          32),
                         "armeb":      (  40,    97,    0,          False,         32),
                         "powerpc":    (  20,     0,    0,          False,         32),

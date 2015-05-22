@@ -52,7 +52,7 @@ class ToasterSetting(models.Model):
     value = models.CharField(max_length=255)
 
     def __unicode__(self):
-        return "Setting %s = " % (self.name, self.value)
+        return "Setting %s = %s" % (self.name, self.value)
 
 class ProjectManager(models.Manager):
     def create_project(self, name, release):
@@ -556,7 +556,7 @@ class Recipe(models.Model):
         return "Recipe " + self.name + ":" + self.version
 
     def get_local_path(self):
-        if settings.MANAGED and self.layer_version.build.project is not None:
+        if settings.MANAGED and self.layer_version.build is not None and self.layer_version.build.project is not None:
             # strip any tag prefixes ('virtual:native:')
             layer_path=self.layer_version.layer.local_path.split(":")[-1]
             recipe_path=self.file_path.split(":")[-1]
@@ -566,6 +566,17 @@ class Recipe(models.Model):
                 return recipe_path
 
         return self.file_path
+
+    def get_vcs_recipe_file_link_url(self):
+        return self.layer_version.get_vcs_file_link_url(self.file_path)
+
+    def get_description_or_summary(self):
+        if self.description:
+            return self.description
+        elif self.summary:
+            return self.summary
+        else:
+            return ""
 
     class Meta:
         unique_together = ("layer_version", "file_path")

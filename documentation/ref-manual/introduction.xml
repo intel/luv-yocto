@@ -23,7 +23,7 @@
         For Board Support Package (BSP) structure information, see the
         <ulink url='&YOCTO_DOCS_BSP_URL;'>Yocto Project Board Support Package (BSP) Developer's Guide</ulink>.
         You can find information on tracing and profiling in the
-        <ulink url='&YOCTO_DOCS_PROF_URL;#profile-manual'>Yocto Project Profiling and Tracing Manual</ulink>.
+        <ulink url='&YOCTO_DOCS_PROF_URL;'>Yocto Project Profiling and Tracing Manual</ulink>.
         For information on BitBake, which is the task execution tool the
         OpenEmbedded build system is based on, see the
         <ulink url='&YOCTO_DOCS_BB_URL;#bitbake-user-manual'>BitBake User Manual</ulink>.
@@ -416,7 +416,7 @@
                         Source the tools environment setup script by using a
                         command like the following:
                         <literallayout class='monospaced'>
-     $ source /home/<replaceable>your-username</replaceable>/buildtools/environment-setup-i586-poky-linux
+     $ source /home/<replaceable>your_username</replaceable>/buildtools/environment-setup-i586-poky-linux
                         </literallayout>
                         Of course, you need to supply your installation directory and be
                         sure to use the right file (i.e. i585 or x86-64).
@@ -495,14 +495,14 @@
                        choose the installation directory.
                        For example, you could choose the following:
                        <literallayout class='monospaced'>
-     /home/<replaceable>your-username</replaceable>/buildtools
+     /home/<replaceable>your_username</replaceable>/buildtools
                        </literallayout>
                        </para></listitem>
                     <listitem><para>
                         Source the tools environment setup script by using a
                         command like the following:
                         <literallayout class='monospaced'>
-     $ source /home/<replaceable>your-username</replaceable>/buildtools/environment-setup-i586-poky-linux
+     $ source /home/<replaceable>your_username</replaceable>/buildtools/environment-setup-i586-poky-linux
                         </literallayout>
                         Of course, you need to supply your installation directory and be
                         sure to use the right file (i.e. i585 or x86-64).

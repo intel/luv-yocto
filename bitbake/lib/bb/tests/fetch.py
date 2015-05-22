@@ -315,6 +315,7 @@ class URITest(unittest.TestCase):
 class FetcherTest(unittest.TestCase):
 
     def setUp(self):
+        self.origdir = os.getcwd()
         self.d = bb.data.init()
         self.tempdir = tempfile.mkdtemp()
         self.dldir = os.path.join(self.tempdir, "download")
@@ -326,6 +327,7 @@ class FetcherTest(unittest.TestCase):
         self.d.setVar("PERSISTENT_DIR", persistdir)
 
     def tearDown(self):
+        os.chdir(self.origdir)
         bb.utils.prunedir(self.tempdir)
 
 class MirrorUriTest(FetcherTest):
@@ -390,6 +392,18 @@ class MirrorUriTest(FetcherTest):
         mirrors = bb.fetch2.mirror_from_string(self.mirrorvar)
         uris, uds = bb.fetch2.build_mirroruris(fetcher, mirrors, self.d)
         self.assertEqual(uris, ['file:///someotherpath/downloads/bitbake-1.0.tar.gz'])
+
+    def test_mirror_of_mirror(self):
+        # Test if mirror of a mirror works
+        mirrorvar = self.mirrorvar + " http://.*/.* http://otherdownloads.yoctoproject.org/downloads/ \n"
+        mirrorvar = mirrorvar + " http://otherdownloads.yoctoproject.org/.* http://downloads2.yoctoproject.org/downloads/ \n"
+        fetcher = bb.fetch.FetchData("http://downloads.yoctoproject.org/releases/bitbake/bitbake-1.0.tar.gz", self.d)
+        mirrors = bb.fetch2.mirror_from_string(mirrorvar)
+        uris, uds = bb.fetch2.build_mirroruris(fetcher, mirrors, self.d)
+        self.assertEqual(uris, ['file:///somepath/downloads/bitbake-1.0.tar.gz', 
+                                'file:///someotherpath/downloads/bitbake-1.0.tar.gz', 
+                                'http://otherdownloads.yoctoproject.org/downloads/bitbake-1.0.tar.gz',
+                                'http://downloads2.yoctoproject.org/downloads/bitbake-1.0.tar.gz'])
 
 
 class FetcherLocalTest(FetcherTest):
@@ -476,6 +490,19 @@ class FetcherNetworkTest(FetcherTest):
             fetcher.download()
             self.assertEqual(os.path.getsize(self.dldir + "/bitbake-1.0.tar.gz"), 57749)
 
+        def test_fetch_mirror_of_mirror(self):
+            self.d.setVar("MIRRORS", "http://.*/.* http://invalid2.yoctoproject.org/ \n http://invalid2.yoctoproject.org/.* http://downloads.yoctoproject.org/releases/bitbake")
+            fetcher = bb.fetch.Fetch(["http://invalid.yoctoproject.org/releases/bitbake/bitbake-1.0.tar.gz"], self.d)
+            fetcher.download()
+            self.assertEqual(os.path.getsize(self.dldir + "/bitbake-1.0.tar.gz"), 57749)
+
+        def test_fetch_file_mirror_of_mirror(self):
+            self.d.setVar("MIRRORS", "http://.*/.* file:///some1where/ \n file:///some1where/.* file://some2where/ \n file://some2where/.* http://downloads.yoctoproject.org/releases/bitbake")
+            fetcher = bb.fetch.Fetch(["http://invalid.yoctoproject.org/releases/bitbake/bitbake-1.0.tar.gz"], self.d)
+            os.mkdir(self.dldir + "/some2where")
+            fetcher.download()
+            self.assertEqual(os.path.getsize(self.dldir + "/bitbake-1.0.tar.gz"), 57749)
+
         def test_fetch_premirror(self):
             self.d.setVar("PREMIRRORS", "http://.*/.* http://downloads.yoctoproject.org/releases/bitbake")
             fetcher = bb.fetch.Fetch(["http://invalid.yoctoproject.org/releases/bitbake/bitbake-1.0.tar.gz"], self.d)
@@ -546,6 +573,43 @@ class FetcherNetworkTest(FetcherTest):
             # Previous cwd has been deleted
             os.chdir(os.path.dirname(self.unpackdir))
             fetcher.unpack(self.unpackdir)
+
+        def test_trusted_network(self):
+            # Ensure trusted_network returns False when the host IS in the list.
+            url = "git://Someserver.org/foo;rev=1"
+            self.d.setVar("BB_ALLOWED_NETWORKS", "server1.org someserver.org server2.org server3.org")
+            self.assertTrue(bb.fetch.trusted_network(self.d, url))
+
+        def test_wild_trusted_network(self):
+            # Ensure trusted_network returns true when the *.host IS in the list.
+            url = "git://Someserver.org/foo;rev=1"
+            self.d.setVar("BB_ALLOWED_NETWORKS", "server1.org *.someserver.org server2.org server3.org")
+            self.assertTrue(bb.fetch.trusted_network(self.d, url))
+
+        def test_prefix_wild_trusted_network(self):
+            # Ensure trusted_network returns true when the prefix matches *.host.
+            url = "git://git.Someserver.org/foo;rev=1"
+            self.d.setVar("BB_ALLOWED_NETWORKS", "server1.org *.someserver.org server2.org server3.org")
+            self.assertTrue(bb.fetch.trusted_network(self.d, url))
+
+        def test_two_prefix_wild_trusted_network(self):
+            # Ensure trusted_network returns true when the prefix matches *.host.
+            url = "git://something.git.Someserver.org/foo;rev=1"
+            self.d.setVar("BB_ALLOWED_NETWORKS", "server1.org *.someserver.org server2.org server3.org")
+            self.assertTrue(bb.fetch.trusted_network(self.d, url))
+
+        def test_untrusted_network(self):
+            # Ensure trusted_network returns False when the host is NOT in the list.
+            url = "git://someserver.org/foo;rev=1"
+            self.d.setVar("BB_ALLOWED_NETWORKS", "server1.org server2.org server3.org")
+            self.assertFalse(bb.fetch.trusted_network(self.d, url))
+
+        def test_wild_untrusted_network(self):
+            # Ensure trusted_network returns False when the host is NOT in the list.
+            url = "git://*.someserver.org/foo;rev=1"
+            self.d.setVar("BB_ALLOWED_NETWORKS", "server1.org server2.org server3.org")
+            self.assertFalse(bb.fetch.trusted_network(self.d, url))
+
 
 class URLHandle(unittest.TestCase):
 
