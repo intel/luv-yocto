@@ -17,6 +17,7 @@ inherit autotools luv-test
 S = "${STAGING_KERNEL_DIR}"
 
 do_fetch[noexec] = "1"
+do_unpack[depends] += "virtual/kernel:do_unpack"
 do_patch[depends] += "virtual/kernel:do_shared_workdir"
 do_package[depends] += "virtual/kernel:do_populate_sysroot"
 
