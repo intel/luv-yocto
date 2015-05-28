@@ -72,7 +72,7 @@ python do_create_img() {
     bb.build.exec_func('build_img', d)
 }
 
-do_bootimg[depends] += "${INITRD_IMAGE}:do_rootfs"
+do_bootimg[depends] += "${INITRD_IMAGE}:do_build"
 do_bootimg[depends] += "virtual/kernel:do_populate_sysroot"
 do_bootimg[depends] += "shim-signed:do_deploy"
 
