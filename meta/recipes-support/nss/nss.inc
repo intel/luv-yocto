@@ -72,10 +72,16 @@ do_compile() {
 
     if [ "${SITEINFO_BITS}" = "64" ]; then
         export USE_64=1
+    elif [ "${TARGET_ARCH}" = "x86_64" -a "${SITEINFO_BITS}" = "32" ]; then
+        export USE_X32=1
     fi
 
-    make -C ./nss CCC="${CXX}" \
-        OS_TEST=${OS_TEST} \
+    # We can modify CC in the environment, but if we set it via an
+    # argument to make, nsinstall, a host program, will also build with it!
+    #
+    export CC="${CC} -g"
+    make -C ./nss CCC="${CXX} -g" \
+        OS_TEST=${OS_TEST}
 }
 
 
@@ -111,6 +117,8 @@ do_install() {
     fi
     if [ "${SITEINFO_BITS}" = "64" ]; then
         export USE_64=1
+    elif [ "${TARGET_ARCH}" = "x86_64" -a "${SITEINFO_BITS}" = "32" ]; then
+        export USE_X32=1
     fi
 
     make -C ./nss \
@@ -204,9 +212,6 @@ FILES_${PN}-dev = "\
     ${libdir}/pkgconfig/* \
     ${includedir}/* \
     "
-FILES_${PN}-dbg = "\
-    ${bindir}/.debug/* \
-    ${libdir}/.debug/* \
-    "
+# FILES_${PN}-dbg is populated automatically
 
 BBCLASSEXTEND = "native nativesdk"

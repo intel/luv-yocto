@@ -14,7 +14,6 @@ SRC_URI = "http://pkg-shadow.alioth.debian.org/releases/${BPN}-${PV}.tar.xz \
            file://shadow-4.1.3-dots-in-usernames.patch \
            file://usermod-fix-compilation-failure-with-subids-disabled.patch \
            file://fix-installation-failure-with-subids-disabled.patch \
-           file://0001-su.c-fix-to-exec-command-correctly.patch \
            file://0001-Do-not-read-login.defs-before-doing-chroot.patch \
            file://check_size_of_uid_t_and_gid_t_using_AC_CHECK_SIZEOF.patch \
            ${@bb.utils.contains('PACKAGECONFIG', 'pam', '${PAM_SRC_URI}', '', d)} \
@@ -83,7 +82,8 @@ PACKAGECONFIG[attr] = "--with-attr,--without-attr,attr"
 PACKAGECONFIG[acl] = "--with-acl,--without-acl,acl"
 
 RDEPENDS_${PN} = "shadow-securetty \
-                  base-passwd"
+                  base-passwd \
+                  util-linux-sulogin"
 RDEPENDS_${PN}_class-native = ""
 RDEPENDS_${PN}_class-nativesdk = ""
 
@@ -106,6 +106,10 @@ do_install() {
 
 	# Disable checking emails.
 	sed -i 's/MAIL_CHECK_ENAB/#MAIL_CHECK_ENAB/g' ${D}${sysconfdir}/login.defs
+
+	# Comment out SU_NAME to work correctly with busybox
+	# See Bug#5359 and Bug#7173
+	sed -i 's:^SU_NAME:#SU_NAME:g' ${D}${sysconfdir}/login.defs
 
 	# Use proper encryption for passwords
 	sed -i 's/^#ENCRYPT_METHOD.*$/ENCRYPT_METHOD SHA512/' ${D}${sysconfdir}/login.defs
@@ -149,15 +153,30 @@ do_install_append() {
 	ln -sf newgrp.${BPN} ${D}${bindir}/sg
 }
 
+PACKAGES =+ "${PN}-base"
+FILES_${PN}-base = "\
+    ${base_bindir}/login.shadow \
+    ${base_bindir}/su.shadow \
+    ${bindir}/sg \
+    ${bindir}/newgrp.shadow \
+    ${bindir}/groups.shadow \
+    ${sysconfdir}/pam.d/login \
+    ${sysconfdir}/pam.d/su \
+    ${sysconfdir}/login.defs \
+"
+RDEPENDS_${PN} += "${PN}-base"
+
 inherit update-alternatives
 
 ALTERNATIVE_PRIORITY = "200"
 
-ALTERNATIVE_${PN} = "passwd chfn newgrp chsh groups chpasswd login vipw vigr su"
+ALTERNATIVE_${PN} = "passwd chfn chsh chpasswd vipw vigr"
 ALTERNATIVE_LINK_NAME[chpasswd] = "${sbindir}/chpasswd"
-ALTERNATIVE_LINK_NAME[login] = "${base_bindir}/login"
 ALTERNATIVE_LINK_NAME[vipw] = "${base_sbindir}/vipw"
 ALTERNATIVE_LINK_NAME[vigr] = "${base_sbindir}/vigr"
+
+ALTERNATIVE_${PN}-base = "newgrp groups login su"
+ALTERNATIVE_LINK_NAME[login] = "${base_bindir}/login"
 ALTERNATIVE_LINK_NAME[su] = "${base_bindir}/su"
 
 ALTERNATIVE_${PN}-doc = "passwd.5 getspnam.3"
