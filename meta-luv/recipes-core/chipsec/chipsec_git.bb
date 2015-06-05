@@ -14,7 +14,7 @@ SRC_URI = "git://github.com/chipsec/chipsec.git \
 
 SRCREV="4f1f52265caf5636e846f59f3d484c374a397daa"
 
-DEPENDS = "virtual/kernel python-core"
+DEPENDS = "virtual/kernel python-core nasm-native"
 RDEPENDS_${PN} = "python python-shell python-stringold python-xml \
     python-ctypes python-fcntl python-importlib"
 
