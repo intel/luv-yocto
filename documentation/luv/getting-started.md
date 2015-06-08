@@ -54,7 +54,7 @@ Command-line directions are as follows:
 	sr0     11:0    1  1024M  0 rom
   	```
 
-	In the above example, the USB drive is detected at `/media` and is called `sdc`. Be very careful to correctly identify this. The sdc is less than 4GB, so we can be pretty sure we've identified the location; confirm that it's not mounted:
+	In the above example, the USB drive is detected at `/media` and is called `sdc`. (NOTE: your drive designator may vary). Be very careful to correctly identify this. The sdc is less than 4GB, so we can be pretty sure we've identified the location; confirm that it's not mounted:
 	```
 	$ umount /dev/sdc
 		umount: /dev/sdc is not mounted (according to mtab)
@@ -63,7 +63,7 @@ Command-line directions are as follows:
 		
 6. Use the `dd` command to convert and copy; you may need root privileges, or to specify block size.  For more info on the `dd` command parameters please see https://en.wikipedia.org/wiki/Dd_(Unix)
 ```
-$ sudo dd bs=4M if=/someplace/local/luv-live-v1.2-rc1/luv-live-v1.2-rc1.img of=/dev/sdc && sync
+$ sudo dd bs=4M if=/<path-to-your-image>/luv-live-v1.2-rc1/luv-live-v1.2-rc1.img of=/dev/sdc && sync
 [sudo] password: 
 18+1 records in
 18+1 records out
