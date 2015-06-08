@@ -1,7 +1,7 @@
 # Formatting a USB Drive for Linux UEFI Validation Project  
 ### [LUV Project](https://01.org/linux-uefi-validation) 
 
-The following steps explains *one way* of preparing a USB drive for the Linux UEFI 
+The following steps explain *one way* of preparing a USB drive for the Linux UEFI
 Validation (LUV) Project. While some operating system components require formatting 
 or pre-formatting, the LUV Project does not. There is no need to pre-format 
 your USB drive. But do be aware that **the operations in this tutorial will erase
@@ -19,24 +19,24 @@ Command-line directions are as follows:
 
 2. Use the `wget` command to download the compressed file:
 	```
-	$ wget https://download.01.org/linux-uefi-validation/v1.2/luv-live-v1.2-rc1.tar.bz2
+	$ wget https://download.01.org/linux-uefi-validation/<latest_version>/luv-live-<latest_version-rc<latest>>.tar.bz2
 	```
 
 
 3. Extract the folder and image from the file:
 	```
-	$ tar -xjvf luv-live-v1.2-rc1.tar.bz2`
+	$ tar -xjvf luv-live-<latest_version-rc<latest>>.tar.bz2`
 	```
 
 
 4. Change to the directory and look at the newly-extracted contents; there should be a file ending in `.img` or `.iso`:
 	```
-    $ cd luv-live-v1.2-rc1/
+    $ cd luv-live-<latest_version-rc<latest>>/
     $ ll
     total 77140
 	drwxr-xr-x 2 lsc lsc     4096 Nov  9 17:34 .
 	drwxr-xr-x 3 lsc lsc     4096 Nov 18 14:13 ..
-	-rw-r--r-- 1 lsc lsc 78955008 Nov  9 17:34 luv-live-v1.2-rc1.img
+	-rw-r--r-- 1 lsc lsc 78955008 Nov  9 17:34 luv-live-<latest_version-rc<latest>>.img
 	-rw-r--r-- 1 lsc lsc      765 Nov  9 17:33 README
 	```
 
@@ -63,7 +63,7 @@ Command-line directions are as follows:
 		
 6. Use the `dd` command to convert and copy; you may need root privileges, or to specify block size.  For more info on the `dd` command parameters please see https://en.wikipedia.org/wiki/Dd_(Unix)
 ```
-$ sudo dd bs=4M if=/<path-to-your-image>/luv-live-v1.2-rc1/luv-live-v1.2-rc1.img of=/dev/sdc && sync
+$ sudo dd bs=4M if=/<path-to-your-image>/luv-live-<latest_version-rc<latest>>/luv-live-<latest_version-rc<latest>>.img of=/dev/sdc && sync
 [sudo] password: 
 18+1 records in
 18+1 records out
