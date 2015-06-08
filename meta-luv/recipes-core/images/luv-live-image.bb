@@ -1,8 +1,7 @@
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=4d92cd373abda3937c2bc47fbc49d690"
 
-# TODO: we need a native dependency on sbsigntool
-DEPENDS_${PN} = "grub-efi bits sbsigntool"
+DEPENDS_${PN} = "grub-efi bits"
 
 HDDDIR = "${S}/hddimg"
 HDDIMG_ID = "423cc2c8"
