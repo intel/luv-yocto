@@ -71,8 +71,17 @@ license_create_manifest() {
 
 		lics="$(echo ${pkged_lic} | sed "s/[|&()*]/ /g" | sed "s/  */ /g" )"
 		for lic in ${lics}; do
+			# add explicity avoid of CLOSED license because isn't generic
+			if [ "$lic" = "CLOSED" ]; then
+				continue
+			fi
+
+			# remove + chars in any position this cover cases like
+			# GPL-2.0+-with-OpenSSL-exception -> GPL-2.0-with-OpenSSL-exception
+			lic="$(echo ${lic} | sed "s/\+//g")"
+
 			# to reference a license file trim trailing + symbol
-			if ! [ -e "${LICENSE_DIRECTORY}/${pkged_pn}/generic_${lic%+}" ]; then
+			if ! [ -e "${LICENSE_DIRECTORY}/${pkged_pn}/generic_${lic}" ]; then
 				bbwarn "The license listed ${lic} was not in the licenses collected for ${pkged_pn}"
 			fi
 		done
@@ -242,8 +251,10 @@ def find_license_files(d):
 
             lic_files_paths.append(("generic_" + license_type, os.path.join(license_source, spdx_generic)))
         else:
-            # And here is where we warn people that their licenses are lousy
-            bb.warn("%s: No generic license file exists for: %s in any provider" % (pn, license_type))
+            # Add explicity avoid of CLOSED license because this isn't generic
+            if license_type != 'CLOSED':
+                # And here is where we warn people that their licenses are lousy
+                bb.warn("%s: No generic license file exists for: %s in any provider" % (pn, license_type))
             pass
 
     if not generic_directory:

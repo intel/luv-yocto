@@ -1,6 +1,6 @@
 # Recipe creation tool - create command plugin
 #
-# Copyright (C) 2014 Intel Corporation
+# Copyright (C) 2014-2015 Intel Corporation
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -22,6 +22,7 @@ import glob
 import fnmatch
 import re
 import logging
+import scriptutils
 
 logger = logging.getLogger('recipetool')
 
@@ -110,11 +111,8 @@ def create_recipe(args):
     if '://' in args.source:
         # Fetch a URL
         srcuri = args.source
-        if args.extract_to:
-            srctree = args.extract_to
-        else:
-            tempsrc = tempfile.mkdtemp(prefix='recipetool-')
-            srctree = tempsrc
+        tempsrc = tempfile.mkdtemp(prefix='recipetool-')
+        srctree = tempsrc
         logger.info('Fetching %s...' % srcuri)
         checksums = fetch_source(args.source, srctree)
         dirlist = os.listdir(srctree)
@@ -239,6 +237,11 @@ def create_recipe(args):
         outlines.append('inherit %s' % ' '.join(classes))
         outlines.append('')
     outlines.extend(lines_after)
+
+    if args.extract_to:
+        scriptutils.git_convert_standalone_clone(srctree)
+        shutil.move(srctree, args.extract_to)
+        logger.info('Source extracted to %s' % args.extract_to)
 
     if outfile == '-':
         sys.stdout.write('\n'.join(outlines) + '\n')
