@@ -59,11 +59,7 @@ class RootfsPlugin(SourcePlugin):
         if os.path.isdir(rootfs_dir):
             return rootfs_dir
 
-        bitbake_env_lines = misc.find_bitbake_env_lines(rootfs_dir)
-        if not bitbake_env_lines:
-            msger.error("Couldn't get bitbake environment, exiting.")
-
-        image_rootfs_dir = misc.find_artifact(bitbake_env_lines, "IMAGE_ROOTFS")
+        image_rootfs_dir = misc.get_bitbake_var("IMAGE_ROOTFS", rootfs_dir)
         if not os.path.isdir(image_rootfs_dir):
             msg = "No valid artifact IMAGE_ROOTFS from image named"
             msg += " %s has been found at %s, exiting.\n" % \
@@ -82,7 +78,6 @@ class RootfsPlugin(SourcePlugin):
 
         Called before do_prepare_partition()
         """
-        rootdev = image_creator._get_boot_config()[0]
         options = image_creator.ks.handler.bootloader.appendLine
 
         syslinux_conf = ""
@@ -101,12 +96,8 @@ class RootfsPlugin(SourcePlugin):
         syslinux_conf += "LABEL linux\n"
         syslinux_conf += "  KERNEL /boot/bzImage\n"
 
-        if image_creator._ptable_format == 'msdos':
-            rootstr = rootdev
-        else:
-            raise ImageError("Unsupported partition table format found")
-
-        syslinux_conf += "  APPEND label=boot root=%s %s\n" % (rootstr, options)
+        syslinux_conf += "  APPEND label=boot root=%s %s\n" % \
+                             (image_creator.rootdev, options)
 
         syslinux_cfg = os.path.join(image_creator.rootfs_dir['ROOTFS_DIR'], "boot", "syslinux.cfg")
         msger.debug("Writing syslinux config %s" % syslinux_cfg)
@@ -169,7 +160,15 @@ class RootfsPlugin(SourcePlugin):
         Called after all partitions have been prepared and assembled into a
         disk image. In this case, we install the MBR.
         """
-        mbrfile = os.path.join(native_sysroot, "usr/share/syslinux/mbr.bin")
+        mbrfile = os.path.join(native_sysroot, "usr/share/syslinux/")
+        if image_creator.ptable_format == 'msdos':
+            mbrfile += "mbr.bin"
+        elif image_creator.ptable_format == 'gpt':
+            mbrfile += "gptmbr.bin"
+        else:
+            msger.error("Unsupported partition table: %s" % \
+                        image_creator.ptable_format)
+
         if not os.path.exists(mbrfile):
             msger.error("Couldn't find %s. Has syslinux-native been baked?" % mbrfile)
 

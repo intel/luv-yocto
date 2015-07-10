@@ -31,6 +31,9 @@ from toastermain import settings
 
 from bbcontroller import BuildEnvironmentController, ShellCmdException, BuildSetupException
 
+class NotImplementedException(Exception):
+    pass
+
 def DN(path):
     return "/".join(path.split("/")[0:-1])
 
@@ -125,7 +128,7 @@ class SSHBEController(BuildEnvironmentController):
         # set layers in the layersource
 
 
-        raise Exception("Not implemented: SSH setLayers")
+        raise NotImplementedException("Not implemented: SSH setLayers")
         # 3. configure the build environment, so we have a conf/bblayers.conf
         assert self.pokydirname is not None
         self._setupBE()
@@ -153,3 +156,24 @@ class SSHBEController(BuildEnvironmentController):
         import shutil
         shutil.rmtree(os.path.join(self.be.sourcedir, "build"))
         assert not self._pathexists(self.be.builddir)
+
+    def triggerBuild(self, bitbake, layers, variables, targets):
+        # set up the buid environment with the needed layers
+        self.setLayers(bitbake, layers)
+        self.writeConfFile("conf/toaster-pre.conf", )
+        self.writeConfFile("conf/toaster.conf", raw = "INHERIT+=\"toaster buildhistory\"")
+
+        # get the bb server running with the build req id and build env id
+        bbctrl = self.getBBController()
+
+        # trigger the build command
+        task = reduce(lambda x, y: x if len(y)== 0 else y, map(lambda y: y.task, targets))
+        if len(task) == 0:
+            task = None
+
+        bbctrl.build(list(map(lambda x:x.target, targets)), task)
+
+        logger.debug("localhostbecontroller: Build launched, exiting. Follow build logs at %s/toaster_ui.log" % self.be.builddir)
+
+        # disconnect from the server
+        bbctrl.disconnect()

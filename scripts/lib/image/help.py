@@ -28,6 +28,7 @@
 import subprocess
 import logging
 
+from wic.plugin import pluginmgr, PLUGIN_TYPES
 
 def subcommand_error(args):
     logging.info("invalid subcommand %s" % args[0])
@@ -52,7 +53,24 @@ def wic_help(args, usage_str, subcommands):
     Subcommand help dispatcher.
     """
     if len(args) == 1 or not display_help(args[1], subcommands):
-        print(usage_str)
+        print usage_str
+
+
+def get_wic_plugins_help():
+    """
+    Combine wic_plugins_help with the help for every known
+    source plugin.
+    """
+    result = wic_plugins_help
+    for plugin_type in PLUGIN_TYPES:
+        result += '\n\n%s PLUGINS\n\n' % plugin_type.upper()
+        for name, plugin in pluginmgr.get_plugins(plugin_type).iteritems():
+            result += "\n %s plugin:\n" % name
+            if plugin.__doc__:
+                result += plugin.__doc__
+            else:
+                result += "\n    %s is missing docstring\n" % plugin
+    return result
 
 
 def invoke_subcommand(args, parser, main_command_usage, subcommands):
@@ -63,11 +81,13 @@ def invoke_subcommand(args, parser, main_command_usage, subcommands):
     if not args:
         logging.error("No subcommand specified, exiting")
         parser.print_help()
+        return 1
     elif args[0] == "help":
         wic_help(args, main_command_usage, subcommands)
     elif args[0] not in subcommands:
         logging.error("Unsupported subcommand %s, exiting\n" % (args[0]))
         parser.print_help()
+        return 1
     else:
         usage = subcommands.get(args[0], subcommand_error)[1]
         subcommands.get(args[0], subcommand_error)[0](args[1:], usage)
@@ -129,10 +149,10 @@ NAME
 
 SYNOPSIS
     wic create <wks file or image name> [-o <DIRNAME> | --outdir <DIRNAME>]
-        [-i <JSON PROPERTY FILE> | --infile <JSON PROPERTY_FILE>]
         [-e | --image-name] [-s, --skip-build-check] [-D, --debug]
         [-r, --rootfs-dir] [-b, --bootimg-dir]
         [-k, --kernel-dir] [-n, --native-sysroot] [-f, --build-rootfs]
+        [-c, --compress-with]
 
 DESCRIPTION
     This command creates an OpenEmbedded image based on the 'OE
@@ -199,11 +219,8 @@ DESCRIPTION
     The -o option can be used to place the image in a directory with a
     different name and location.
 
-    As an alternative to the wks file, the image-specific properties
-    that define the values that will be used to generate a particular
-    image can be specified on the command-line using the -i option and
-    supplying a JSON object consisting of the set of name:value pairs
-    needed by image creation.
+    The -c option is used to specify compressor utility to compress
+    an image. gzip, bzip2 and xz compressors are supported.
 
     The set of properties available for a given image type can be
     listed using the 'wic list' command.
@@ -707,6 +724,10 @@ DESCRIPTION
                    up being are dependent on the given plugin
                    implementation.
 
+                   If --source option is not used, the wic command
+                   will create empty partition. --size parameter has
+                   to be used to specify size of empty partition.
+
          --ondisk or --ondrive: Forces the partition to be created on
                                 a particular disk.
 
@@ -756,6 +777,20 @@ DESCRIPTION
                             this factor. It has to be greater than or
                             equal to 1.
                             The default value is 1.3.
+
+         --part-type: This option is specific to wic. It specifies partition
+                      type GUID for GPT partitions.
+                      List of partition type GUIDS can be found here:
+                      http://en.wikipedia.org/wiki/GUID_Partition_Table#Partition_type_GUIDs
+
+         --use-uuid: This option is specific to wic. It makes wic to generate
+                     random globally unique identifier (GUID) for the partition
+                     and use it in bootloader configuration to specify root partition.
+
+         --uuid: This option is specific to wic. It specifies partition UUID.
+                 It's useful if preconfigured partition UUID is added to kernel command line
+                 in bootloader configuration before running wic. In this case .wks file can
+                 be generated or modified to set preconfigured parition UUID using this option.
 
     * bootloader
 

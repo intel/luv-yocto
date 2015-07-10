@@ -22,7 +22,7 @@ toolchain_create_sdk_env_script () {
 		EXTRAPATH="$EXTRAPATH:$sdkpathnative$bindir/${TARGET_ARCH}${TARGET_VENDOR}-$i"
 	done
 	echo "export PATH=$sdkpathnative$bindir:$sdkpathnative$bindir/${TARGET_SYS}"$EXTRAPATH':$PATH' >> $script
-	echo 'export CCACHE_PATH=$sdkpathnative$bindir:$sdkpathnative$bindir/${TARGET_SYS}'$EXTRAPATH':$CCACHE_PATH' >> $script
+	echo "export CCACHE_PATH=$sdkpathnative$bindir:$sdkpathnative$bindir/${TARGET_SYS}"$EXTRAPATH':$CCACHE_PATH' >> $script
 	echo 'export PKG_CONFIG_SYSROOT_DIR=$SDKTARGETSYSROOT' >> $script
 	echo 'export PKG_CONFIG_PATH=$SDKTARGETSYSROOT'"$libdir"'/pkgconfig' >> $script
 	echo 'export CONFIG_SITE=${SDKPATH}/site-config-'"${multimach_target_sys}" >> $script
@@ -98,7 +98,7 @@ EOF
 #we get the cached site config in the runtime
 TOOLCHAIN_CONFIGSITE_NOCACHE = "${@siteinfo_get_files(d, True)}"
 TOOLCHAIN_CONFIGSITE_SYSROOTCACHE = "${STAGING_DIR}/${MLPREFIX}${MACHINE}/${target_datadir}/${TARGET_SYS}_config_site.d"
-TOOLCHAIN_NEED_CONFIGSITE_CACHE ??= "${TCLIBC} ncurses"
+TOOLCHAIN_NEED_CONFIGSITE_CACHE ??= "virtual/${MLPREFIX}libc ncurses"
 
 #This function create a site config file
 toolchain_create_sdk_siteconfig () {
@@ -113,6 +113,12 @@ toolchain_create_sdk_siteconfig () {
 
 	#get cached site config
 	for sitefile in ${TOOLCHAIN_NEED_CONFIGSITE_CACHE}; do
+		# Resolve virtual/* names to the real recipe name using sysroot-providers info
+		case $sitefile in virtual/*)
+			sitefile=`echo $sitefile | tr / _`
+			sitefile=`cat ${STAGING_DIR_TARGET}/sysroot-providers/$sitefile`
+		esac
+
 		if [ -r ${TOOLCHAIN_CONFIGSITE_SYSROOTCACHE}/${sitefile}_config ]; then
 			cat ${TOOLCHAIN_CONFIGSITE_SYSROOTCACHE}/${sitefile}_config >> $siteconfig
 		fi
@@ -134,10 +140,13 @@ toolchain_create_sdk_version () {
 toolchain_create_sdk_version[vardepsexclude] = "DATETIME"
 
 python __anonymous () {
+    import oe.classextend
     deps = ""
     for dep in (d.getVar('TOOLCHAIN_NEED_CONFIGSITE_CACHE', True) or "").split():
         deps += " %s:do_populate_sysroot" % dep
         for variant in (d.getVar('MULTILIB_VARIANTS', True) or "").split():
-            deps += " %s-%s:do_populate_sysroot" % (variant, dep)
+            clsextend = oe.classextend.ClassExtender(variant, d)
+            newdep = clsextend.extend_name(dep)
+            deps += " %s:do_populate_sysroot" % newdep
     d.appendVarFlag('do_configure', 'depends', deps)
 }

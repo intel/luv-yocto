@@ -18,7 +18,7 @@ function importLayerPageInit (ctx) {
 
   $("#new-project-button").hide();
 
-  libtoaster.makeTypeahead(layerDepInput, { type : "layers", project_id: libtoaster.ctx.projectId, include_added: "true" }, function(item){
+  libtoaster.makeTypeahead(layerDepInput, libtoaster.ctx.projectLayersUrl, { include_added: "true" }, function(item){
     currentLayerDepSelection = item;
 
     layerDepBtn.removeAttr("disabled");
@@ -28,7 +28,7 @@ function importLayerPageInit (ctx) {
   /* We automatically add "openembedded-core" layer for convenience as a
    * dependency as pretty much all layers depend on this one
    */
-  $.getJSON(libtoaster.ctx.xhrDataTypeaheadUrl, { type : "layers", project_id: libtoaster.ctx.projectId, include_added: "true" , value: "openembedded-core" }, function(layer) {
+  $.getJSON(libtoaster.ctx.projectLayersUrl, { include_added: "true" , search: "openembedded-core" }, function(layer) {
     if (layer.list.length == 1) {
       currentLayerDepSelection = layer.list[0];
       layerDepBtn.click();
@@ -48,7 +48,7 @@ function importLayerPageInit (ctx) {
     newLayerDep.children("span").tooltip();
 
     var link = newLayerDep.children("a");
-    link.attr("href", ctx.layerDetailsUrl+String(currentLayerDepSelection.id));
+    link.attr("href", currentLayerDepSelection.layerDetailsUrl);
     link.text(currentLayerDepSelection.name);
     link.tooltip({title: currentLayerDepSelection.tooltip, placement: "right"});
 
@@ -63,11 +63,11 @@ function importLayerPageInit (ctx) {
 
     $("#layer-deps-list").append(newLayerDep);
 
-    libtoaster.getLayerDepsForProject(libtoaster.ctx.projectId, currentLayerDepSelection.id, function (data){
+    libtoaster.getLayerDepsForProject(currentLayerDepSelection.layerDetailsUrl, function (data){
         /* These are the dependencies of the layer added as a dependency */
         if (data.list.length > 0) {
-          currentLayerDepSelection.url = ctx.layerDetailsUrl+currentLayerDepSelection.id;
-          layerDeps[currentLayerDepSelection.id].deps = data.list
+          currentLayerDepSelection.url = currentLayerDepSelection.layerDetailsUrl;
+          layerDeps[currentLayerDepSelection.id].deps = data.list;
         }
 
         /* Clear the current selection */
@@ -211,7 +211,7 @@ function importLayerPageInit (ctx) {
       var name = $(this).val();
 
       /* Check if the layer name exists */
-      $.getJSON(libtoaster.ctx.xhrDataTypeaheadUrl, { type : "layers", project_id: libtoaster.ctx.projectId, include_added: "true" , value: name }, function(layer) {
+      $.getJSON(libtoaster.ctx.projectLayersUrl, { include_added: "true" , search: name }, function(layer) {
       if (layer.list.length > 0) {
         for (var i in layer.list){
           if (layer.list[i].name == name) {

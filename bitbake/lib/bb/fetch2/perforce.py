@@ -48,7 +48,7 @@ class Perforce(FetchMethod):
             (user, pswd, host, port) = path.split('@')[0].split(":")
             path = path.split('@')[1]
         else:
-            (host, port) = d.getVar('P4PORT').split(':')
+            (host, port) = d.getVar('P4PORT', False).split(':')
             user = ""
             pswd = ""
 
@@ -123,7 +123,7 @@ class Perforce(FetchMethod):
         if depot.find('/...') != -1:
             path = depot[:depot.find('/...')]
         else:
-            path = depot
+            path = depot[:depot.rfind('/')]
 
         module = parm.get('module', os.path.basename(path))
 

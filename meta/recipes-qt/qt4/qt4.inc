@@ -25,6 +25,7 @@ QT_CONFIG_FLAGS += "-release -no-cups -reduce-relocations \
                     -system-libjpeg -system-libpng -system-libtiff -system-zlib \
                     -no-pch -stl -glib -icu \
                     -no-rpath -silent \
+		    -D USE_QTMULTIMEDIA=1 \
                     ${QT_DBUS} \
                     ${QT_QT3SUPPORT} \
                     ${QT_WEBKIT} \
@@ -302,7 +303,7 @@ python populate_packages_prepend() {
         do_split_packages(d, plugin_dir, glob, plugin_name, '${PN} %s for %%s' % name, extra_depends='', hook=dev_hook)
         # Create a -dbg package as well
         plugin_dir_dbg = d.expand('${libdir}/${QT_DIR_NAME}/plugins/%s/.debug' % path)
-        packages = d.getVar('PACKAGES')
+        packages = d.getVar('PACKAGES', False)
         for (file,package) in dev_packages:
             packages = "%s %s-dbg" % (packages, package)
             file_name = os.path.join(plugin_dir_dbg, os.path.basename(file))

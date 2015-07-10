@@ -39,7 +39,7 @@
   <div class="row-fluid">
       <div class="alert">
         <form class="no-results input-append" id="searchform">
-            <input id="search" name="search" class="input-xxlarge" type="text" value="{{request.GET.search}}"/>{% if request.GET.search %}<a href="javascript:$('#search').val('');searchform.submit()" class="add-on btn" tabindex="-1"><i class="icon-remove"></i></a>{% endif %}
+            <input id="search" name="search" class="input-xxlarge" type="text" value="{% if request.GET.search %}{{request.GET.search}}{% endif %}"/>{% if request.GET.search %}<a href="javascript:$('#search').val('');searchform.submit()" class="add-on btn" tabindex="-1"><i class="icon-remove"></i></a>{% endif %}
             <button class="btn" type="submit" value="Search">Search</button>
             <button class="btn btn-link" onclick="javascript:$('#search').val('');searchform.submit()">Show all variables</button>
         </form>
@@ -54,9 +54,11 @@
         <td class="variable_name"><a data-toggle="modal" href="#variable-{{variable.pk}}">{{variable.variable_name}}</a></td>
         <td class="variable_value"><a data-toggle="modal" href="#variable-{{variable.pk}}">{{variable.variable_value|truncatechars:153}}</a></td>
         <td class="file"><a data-toggle="modal" href="#variable-{{variable.pk}}">
-            {% if variable.vhistory.all %} {% autoescape off %}
-                {{variable.vhistory.all | filter_setin_files:file_filter | cut_layer_path_prefix:layer_names}}
-            {% endautoescape %} {% endif %}
+            {% if variable.vhistory.all %}
+                {% for path in variable.vhistory.all|filter_setin_files:file_filter %}
+                    {{path}}<br/>
+                {% endfor %}
+            {% endif %}
         </a></td>
         <td class="description">
             {% if variable.description %}
@@ -115,7 +117,7 @@
                 <tbody>
                     {% for vh in variable.vhistory.all %}
                     <tr>
-                        <td>{{forloop.counter}}</td><td>{{vh.file_name|cut_layer_path_prefix:layer_names}}</td><td>{{vh.operation}}</td><td>{{vh.line_number}}</td>
+                        <td>{{forloop.counter}}</td><td>{{vh.file_name}}</td><td>{{vh.operation}}</td><td>{{vh.line_number}}</td>
                     </tr>
                     {%endfor%}
                 </tbody>

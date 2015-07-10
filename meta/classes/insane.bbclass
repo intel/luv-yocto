@@ -30,7 +30,7 @@ WARN_QA ?= "ldflags useless-rpaths rpaths staticdev libdir xorg-driver-abi \
             textrel already-stripped incompatible-license files-invalid \
             installed-vs-shipped compile-host-path install-host-path \
             pn-overrides infodir build-deps file-rdeps \
-            unknown-configure-option symlink-to-sysroot \
+            unknown-configure-option symlink-to-sysroot multilib \
             "
 ERROR_QA ?= "dev-so debug-deps dev-deps debug-files arch pkgconfig la \
             perms dep-cmp pkgvarcheck perm-config perm-line perm-link \
@@ -456,6 +456,11 @@ def package_qa_check_arch(path,name,d, elf, messages):
     target_arch = d.getVar('TARGET_ARCH', True)
     provides = d.getVar('PROVIDES', True)
     bpn = d.getVar('BPN', True)
+
+    if target_arch == "allarch":
+        pn = d.getVar('PN', True)
+        messages["arch"] = pn + ": Recipe inherits the allarch class, but has packaged architecture-specific binaries"
+        return
 
     # FIXME: Cross package confuse this check, so just skip them
     for s in ['cross', 'nativesdk', 'cross-canadian']:
@@ -929,7 +934,7 @@ def package_qa_check_expanded_d(path,name,d,elf,messages):
     for pak in packages:
     # Go through all variables and check if expanded D is found, warn the user accordingly
         for var in 'FILES','pkg_preinst', 'pkg_postinst', 'pkg_prerm', 'pkg_postrm':
-            bbvar = d.getVar(var + "_" + pak)
+            bbvar = d.getVar(var + "_" + pak, False)
             if bbvar:
                 # Bitbake expands ${D} within bbvar during the previous step, so we check for its expanded value
                 if expanded_d in bbvar:
@@ -975,12 +980,12 @@ python do_package_qa () {
 
     # Scan the packages...
     pkgdest = d.getVar('PKGDEST', True)
-    packages = d.getVar('PACKAGES', True)
+    packages = set((d.getVar('PACKAGES', True) or '').split())
 
     cpath = oe.cachedpath.CachedPath()
     global pkgfiles
     pkgfiles = {}
-    for pkg in (packages or "").split():
+    for pkg in packages:
         pkgfiles[pkg] = []
         for walkroot, dirs, files in cpath.walk(pkgdest + "/" + pkg):
             for file in files:
@@ -1004,7 +1009,7 @@ python do_package_qa () {
     walk_sane = True
     rdepends_sane = True
     deps_sane = True
-    for package in packages.split():
+    for package in packages:
         skip = (d.getVar('INSANE_SKIP_' + package, True) or "").split()
         if skip:
             bb.note("Package %s skipping QA tests: %s" % (package, str(skip)))
@@ -1180,7 +1185,7 @@ python () {
         for dep in (d.getVar('QADEPENDS', True) or "").split():
             d.appendVarFlag('do_package_qa', 'depends', " %s:do_populate_sysroot" % dep)
         for var in 'RDEPENDS', 'RRECOMMENDS', 'RSUGGESTS', 'RCONFLICTS', 'RPROVIDES', 'RREPLACES', 'FILES', 'pkg_preinst', 'pkg_postinst', 'pkg_prerm', 'pkg_postrm', 'ALLOW_EMPTY':
-            if d.getVar(var):
+            if d.getVar(var, False):
                 issues.append(var)
     else:
         d.setVarFlag('do_package_qa', 'rdeptask', '')

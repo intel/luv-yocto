@@ -13,7 +13,7 @@ def imagetypes_getdepends(d):
     deps = []
     ctypes = d.getVar('COMPRESSIONTYPES', True).split()
     for type in (d.getVar('IMAGE_FSTYPES', True) or "").split():
-        if type in ["vmdk", "live", "iso", "hddimg"]:
+        if type in ["vmdk", "vdi", "live", "iso", "hddimg"]:
             type = "ext3"
         basetype = type
         for ctype in ctypes:
@@ -97,18 +97,48 @@ IMAGE_TYPEDEP_elf = "cpio.gz"
 
 UBI_VOLNAME ?= "${MACHINE}-rootfs"
 
-IMAGE_CMD_ubi () {
-	echo \[ubifs\] > ubinize.cfg 
-	echo mode=ubi >> ubinize.cfg
-	echo image=${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.rootfs.ubifs >> ubinize.cfg 
-	echo vol_id=0 >> ubinize.cfg 
-	echo vol_type=dynamic >> ubinize.cfg 
-	echo vol_name=${UBI_VOLNAME} >> ubinize.cfg 
-	echo vol_flags=autoresize >> ubinize.cfg
-	mkfs.ubifs -r ${IMAGE_ROOTFS} -o ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.rootfs.ubifs ${MKUBIFS_ARGS}
-	ubinize -o ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.rootfs.ubi ${UBINIZE_ARGS} ubinize.cfg
+multiubi_mkfs() {
+	local mkubifs_args="$1"
+	local ubinize_args="$2"
+	local vname="_$3"
+
+	echo \[ubifs\] > ubinize${vname}.cfg
+	echo mode=ubi >> ubinize${vname}.cfg
+	echo image=${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}${vname}.rootfs.ubifs >> ubinize${vname}.cfg
+	echo vol_id=0 >> ubinize${vname}.cfg
+	echo vol_type=dynamic >> ubinize${vname}.cfg
+	echo vol_name=${UBI_VOLNAME} >> ubinize${vname}.cfg
+	echo vol_flags=autoresize >> ubinize${vname}.cfg
+	mkfs.ubifs -r ${IMAGE_ROOTFS} -o ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}${vname}.rootfs.ubifs ${mkubifs_args}
+	ubinize -o ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}${vname}.rootfs.ubi ${ubinize_args} ubinize${vname}.cfg
+
+	# Cleanup cfg file
+	mv ubinize${vname}.cfg ${DEPLOY_DIR_IMAGE}/
+
+	# Create own symlink
+	cd ${DEPLOY_DIR_IMAGE}
+	if [ -e ${IMAGE_NAME}${vname}.rootfs.ubifs ]; then
+		ln -sf ${IMAGE_NAME}${vname}.rootfs.ubifs \
+		${IMAGE_LINK_NAME}${vname}.ubifs
+	fi
+	if [ -e ${IMAGE_NAME}${vname}.rootfs.ubi ]; then
+		ln -sf ${IMAGE_NAME}${vname}.rootfs.ubi \
+		${IMAGE_LINK_NAME}${vname}.ubi
+	fi
+	cd -
 }
-IMAGE_TYPEDEP_ubi = "ubifs"
+
+IMAGE_CMD_multiubi () {
+	# Split MKUBIFS_ARGS_<name> and UBINIZE_ARGS_<name>
+	for name in ${MULTIUBI_BUILD}; do
+		eval local mkubifs_args=\"\$MKUBIFS_ARGS_${name}\"
+		eval local ubinize_args=\"\$UBINIZE_ARGS_${name}\"
+
+		multiubi_mkfs "${mkubifs_args}" "${ubinize_args}" "${name}"
+	done
+}
+
+IMAGE_CMD_ubi = "multiubi_mkfs "${MKUBIFS_ARGS}" "${UBINIZE_ARGS}" "${UBI_VOLNAME}""
 
 IMAGE_CMD_ubifs = "mkfs.ubifs -r ${IMAGE_ROOTFS} -o ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.rootfs.ubifs ${MKUBIFS_ARGS}"
 
@@ -139,6 +169,7 @@ IMAGE_DEPENDS_squashfs-lzo = "squashfs-tools-native"
 IMAGE_DEPENDS_elf = "virtual/kernel mkelfimage-native"
 IMAGE_DEPENDS_ubi = "mtd-utils-native"
 IMAGE_DEPENDS_ubifs = "mtd-utils-native"
+IMAGE_DEPENDS_multiubi = "mtd-utils-native"
 
 # This variable is available to request which values are suitable for IMAGE_FSTYPES
 IMAGE_TYPES = " \
@@ -151,23 +182,24 @@ IMAGE_TYPES = " \
     iso \
     hddimg \
     squashfs squashfs-xz squashfs-lzo \
-    ubi ubifs \
+    ubi ubifs multiubi \
     tar tar.gz tar.bz2 tar.xz tar.lz4 \
     cpio cpio.gz cpio.xz cpio.lzma cpio.lz4 \
     vmdk \
+    vdi \
     elf \
 "
 
 COMPRESSIONTYPES = "gz bz2 lzma xz lz4 sum"
 COMPRESS_CMD_lzma = "lzma -k -f -7 ${IMAGE_NAME}.rootfs.${type}"
 COMPRESS_CMD_gz = "gzip -f -9 -c ${IMAGE_NAME}.rootfs.${type} > ${IMAGE_NAME}.rootfs.${type}.gz"
-COMPRESS_CMD_bz2 = "bzip2 -f -k ${IMAGE_NAME}.rootfs.${type}"
+COMPRESS_CMD_bz2 = "pbzip2 -f -k ${IMAGE_NAME}.rootfs.${type}"
 COMPRESS_CMD_xz = "xz -f -k -c ${XZ_COMPRESSION_LEVEL} ${XZ_THREADS} --check=${XZ_INTEGRITY_CHECK} ${IMAGE_NAME}.rootfs.${type} > ${IMAGE_NAME}.rootfs.${type}.xz"
 COMPRESS_CMD_lz4 = "lz4c -9 -c ${IMAGE_NAME}.rootfs.${type} > ${IMAGE_NAME}.rootfs.${type}.lz4"
 COMPRESS_CMD_sum = "sumtool -i ${IMAGE_NAME}.rootfs.${type} -o ${IMAGE_NAME}.rootfs.${type}.sum ${JFFS2_SUM_EXTRA_ARGS}"
 COMPRESS_DEPENDS_lzma = "xz-native"
 COMPRESS_DEPENDS_gz = ""
-COMPRESS_DEPENDS_bz2 = ""
+COMPRESS_DEPENDS_bz2 = "pbzip2-native"
 COMPRESS_DEPENDS_xz = "xz-native"
 COMPRESS_DEPENDS_lz4 = "lz4-native"
 COMPRESS_DEPENDS_sum = "mtd-utils-native"
@@ -181,5 +213,5 @@ DEPLOYABLE_IMAGE_TYPES ?= "hddimg iso"
 IMAGE_EXTENSION_live = "hddimg iso"
 
 # The IMAGE_TYPES_MASKED variable will be used to mask out from the IMAGE_FSTYPES,
-# images that will not be built at do_rootfs time: vmdk, hddimg, iso, etc.
+# images that will not be built at do_rootfs time: vmdk, vdi, hddimg, iso, etc.
 IMAGE_TYPES_MASKED ?= ""

@@ -100,6 +100,11 @@ def add_include():
             ftools.append_file(os.path.join(builddir, "conf/local.conf"), \
                     "\n#include added by oe-selftest.py\ninclude selftest.inc")
 
+    if "#include added by oe-selftest.py" \
+        not in ftools.read_file(os.path.join(builddir, "conf/bblayers.conf")):
+            log.info("Adding: \"include bblayers.inc\" in bblayers.conf")
+            ftools.append_file(os.path.join(builddir, "conf/bblayers.conf"), \
+                    "\n#include added by oe-selftest.py\ninclude bblayers.inc")
 
 def remove_include():
     builddir = os.environ.get("BUILDDIR")
@@ -111,6 +116,11 @@ def remove_include():
             ftools.remove_from_file(os.path.join(builddir, "conf/local.conf"), \
                     "#include added by oe-selftest.py\ninclude selftest.inc")
 
+    if "#include added by oe-selftest.py" \
+        in ftools.read_file(os.path.join(builddir, "conf/bblayers.conf")):
+            log.info("Removing the include from bblayers.conf")
+            ftools.remove_from_file(os.path.join(builddir, "conf/bblayers.conf"), \
+                    "#include added by oe-selftest.py\ninclude bblayers.inc")
 
 def remove_inc_files():
     try:
@@ -120,6 +130,11 @@ def remove_inc_files():
                 if f == 'test_recipe.inc':
                     os.remove(os.path.join(root, f))
     except (AttributeError, OSError,) as e:    # AttributeError may happen if BUILDDIR is not set
+        pass
+
+    try:
+        os.remove(os.path.join(os.environ.get("BUILDDIR"), "conf/bblayers.inc"))
+    except:
         pass
 
 def get_tests(exclusive_modules=[], include_hidden=False):
@@ -167,7 +182,6 @@ def main():
                     print e
                     pass
 
-
     if args.run_tests or args.run_all_tests:
         if not preflight_check():
             return 1
@@ -176,7 +190,7 @@ def main():
         suite = unittest.TestSuite()
         loader = unittest.TestLoader()
         loader.sortTestMethodsUsing = None
-        runner = unittest.TextTestRunner(verbosity=2)
+        runner = unittest.TextTestRunner(verbosity=2, resultclass=StampedResult)
         # we need to do this here, otherwise just loading the tests
         # will take 2 minutes (bitbake -e calls)
         oeSelfTest.testlayer_path = get_test_layer()
@@ -195,6 +209,17 @@ def main():
             return 0
         else:
             return 1
+
+class StampedResult(unittest.TextTestResult):
+    """
+    Custom TestResult that prints the time when a test starts.  As oe-selftest
+    can take a long time (ie a few hours) to run, timestamps help us understand
+    what tests are taking a long time to execute.
+    """
+    def startTest(self, test):
+        import time
+        self.stream.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + " - ")
+        super(StampedResult, self).startTest(test)
 
 if __name__ == "__main__":
     try:

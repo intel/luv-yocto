@@ -27,17 +27,21 @@
 import os
 import shutil
 
-from wic.utils.errors import ImageError
 from wic import kickstart, msger
 from wic.pluginbase import SourcePlugin
 from wic.utils.oe.misc import exec_cmd, exec_native_cmd, get_bitbake_var, \
                               BOOTDD_EXTRA_SPACE
 
 class BootimgEFIPlugin(SourcePlugin):
+    """
+    Create EFI boot partition.
+    This plugin supports GRUB 2 and gummiboot bootloaders.
+    """
+
     name = 'bootimg-efi'
 
     @classmethod
-    def do_configure_grubefi(self, hdddir, cr, cr_workdir):
+    def do_configure_grubefi(cls, hdddir, cr, cr_workdir):
         """
         Create loader-specific (grub-efi) config
         """
@@ -47,7 +51,6 @@ class BootimgEFIPlugin(SourcePlugin):
         else:
             splashline = ""
 
-        (rootdev, root_part_uuid) = cr._get_boot_config()
         options = cr.ks.handler.bootloader.appendLine
 
         grubefi_conf = ""
@@ -61,13 +64,8 @@ class BootimgEFIPlugin(SourcePlugin):
 
         kernel = "/bzImage"
 
-        if cr._ptable_format == 'msdos':
-            rootstr = rootdev
-        else:
-            raise ImageError("Unsupported partition table format found")
-
         grubefi_conf += "linux %s root=%s rootwait %s\n" \
-            % (kernel, rootstr, options)
+            % (kernel, cr.rootdev, options)
         grubefi_conf += "}\n"
 
         msger.debug("Writing grubefi config %s/hdd/boot/EFI/BOOT/grub.cfg" \
@@ -77,7 +75,7 @@ class BootimgEFIPlugin(SourcePlugin):
         cfg.close()
 
     @classmethod
-    def do_configure_gummiboot(self, hdddir, cr, cr_workdir):
+    def do_configure_gummiboot(cls, hdddir, cr, cr_workdir):
         """
         Create loader-specific (gummiboot) config
         """
@@ -87,7 +85,6 @@ class BootimgEFIPlugin(SourcePlugin):
         install_cmd = "install -d %s/loader/entries" % hdddir
         exec_cmd(install_cmd)
 
-        (rootdev, root_part_uuid) = cr._get_boot_config()
         options = cr.ks.handler.bootloader.appendLine
 
         timeout = kickstart.get_timeout(cr.ks)
@@ -106,16 +103,10 @@ class BootimgEFIPlugin(SourcePlugin):
 
         kernel = "/bzImage"
 
-        if cr._ptable_format == 'msdos':
-            rootstr = rootdev
-        else:
-            raise ImageError("Unsupported partition table format found")
-
         boot_conf = ""
         boot_conf += "title boot\n"
         boot_conf += "linux %s\n" % kernel
-        boot_conf += "options LABEL=Boot root=%s %s\n" \
-            % (rootstr, options)
+        boot_conf += "options LABEL=Boot root=%s %s\n" % (cr.rootdev, options)
 
         msger.debug("Writing gummiboot config %s/hdd/boot/loader/entries/boot.conf" \
                         % cr_workdir)
@@ -125,7 +116,7 @@ class BootimgEFIPlugin(SourcePlugin):
 
 
     @classmethod
-    def do_configure_partition(self, part, source_params, cr, cr_workdir,
+    def do_configure_partition(cls, part, source_params, cr, cr_workdir,
                                oe_builddir, bootimg_dir, kernel_dir,
                                native_sysroot):
         """
@@ -140,9 +131,9 @@ class BootimgEFIPlugin(SourcePlugin):
 
         try:
             if source_params['loader'] == 'grub-efi':
-                self.do_configure_grubefi(hdddir, cr, cr_workdir)
+                cls.do_configure_grubefi(hdddir, cr, cr_workdir)
             elif source_params['loader'] == 'gummiboot':
-                self.do_configure_gummiboot(hdddir, cr, cr_workdir)
+                cls.do_configure_gummiboot(hdddir, cr, cr_workdir)
             else:
                 msger.error("unrecognized bootimg-efi loader: %s" % source_params['loader'])
         except KeyError:
@@ -150,7 +141,7 @@ class BootimgEFIPlugin(SourcePlugin):
 
 
     @classmethod
-    def do_prepare_partition(self, part, source_params, cr, cr_workdir,
+    def do_prepare_partition(cls, part, source_params, cr, cr_workdir,
                              oe_builddir, bootimg_dir, kernel_dir,
                              rootfs_dir, native_sysroot):
         """

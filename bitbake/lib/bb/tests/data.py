@@ -24,6 +24,30 @@ import unittest
 import bb
 import bb.data
 import bb.parse
+import logging
+
+class LogRecord():
+    def __enter__(self):
+        logs = []
+        class LogHandler(logging.Handler):
+            def emit(self, record):
+                logs.append(record)
+        logger = logging.getLogger("BitBake")
+        handler = LogHandler()
+        self.handler = handler
+        logger.addHandler(handler)
+        return logs
+    def __exit__(self, type, value, traceback):
+        logger = logging.getLogger("BitBake")
+        logger.removeHandler(self.handler)
+        return
+
+def logContains(item, logs):
+    for l in logs:
+        m = l.getMessage()
+        if item in m:
+            return True
+    return False
 
 class DataExpansions(unittest.TestCase):
     def setUp(self):
@@ -110,12 +134,12 @@ class DataExpansions(unittest.TestCase):
 
     def test_rename(self):
         self.d.renameVar("foo", "newfoo")
-        self.assertEqual(self.d.getVar("newfoo"), "value_of_foo")
-        self.assertEqual(self.d.getVar("foo"), None)
+        self.assertEqual(self.d.getVar("newfoo", False), "value_of_foo")
+        self.assertEqual(self.d.getVar("foo", False), None)
 
     def test_deletion(self):
         self.d.delVar("foo")
-        self.assertEqual(self.d.getVar("foo"), None)
+        self.assertEqual(self.d.getVar("foo", False), None)
 
     def test_keys(self):
         keys = self.d.keys()
@@ -172,28 +196,28 @@ class TestMemoize(unittest.TestCase):
     def test_memoized(self):
         d = bb.data.init()
         d.setVar("FOO", "bar")
-        self.assertTrue(d.getVar("FOO") is d.getVar("FOO"))
+        self.assertTrue(d.getVar("FOO", False) is d.getVar("FOO", False))
 
     def test_not_memoized(self):
         d1 = bb.data.init()
         d2 = bb.data.init()
         d1.setVar("FOO", "bar")
         d2.setVar("FOO", "bar2")
-        self.assertTrue(d1.getVar("FOO") is not d2.getVar("FOO"))
+        self.assertTrue(d1.getVar("FOO", False) is not d2.getVar("FOO", False))
 
     def test_changed_after_memoized(self):
         d = bb.data.init()
         d.setVar("foo", "value of foo")
-        self.assertEqual(str(d.getVar("foo")), "value of foo")
+        self.assertEqual(str(d.getVar("foo", False)), "value of foo")
         d.setVar("foo", "second value of foo")
-        self.assertEqual(str(d.getVar("foo")), "second value of foo")
+        self.assertEqual(str(d.getVar("foo", False)), "second value of foo")
 
     def test_same_value(self):
         d = bb.data.init()
         d.setVar("foo", "value of")
         d.setVar("bar", "value of")
-        self.assertEqual(d.getVar("foo"),
-                         d.getVar("bar"))
+        self.assertEqual(d.getVar("foo", False),
+                         d.getVar("bar", False))
 
 class TestConcat(unittest.TestCase):
     def setUp(self):
@@ -301,6 +325,19 @@ class TestOverrides(unittest.TestCase):
         bb.data.update_data(self.d)
         self.assertEqual(self.d.getVar("TEST", True), "testvalue3")
 
+class TestKeyExpansion(unittest.TestCase):
+    def setUp(self):
+        self.d = bb.data.init()
+        self.d.setVar("FOO", "foo")
+        self.d.setVar("BAR", "foo")
+
+    def test_keyexpand(self):
+        self.d.setVar("VAL_${FOO}", "A")
+        self.d.setVar("VAL_${BAR}", "B")
+        with LogRecord() as logs:
+            bb.data.expandKeys(self.d)
+            self.assertTrue(logContains("Variable key VAL_${FOO} (A) replaces original key VAL_foo (B)", logs))
+        self.assertEqual(self.d.getVar("VAL_foo", True), "A")
 
 class TestFlags(unittest.TestCase):
     def setUp(self):

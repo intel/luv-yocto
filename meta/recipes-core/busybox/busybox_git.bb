@@ -34,6 +34,10 @@ SRC_URI = "git://busybox.net/busybox.git \
            file://inetd.conf \
            file://inetd \
            file://login-utilities.cfg \
+           file://recognize_connmand.patch \
+           file://busybox-cross-menuconfig.patch \
+           file://0001-ifconfig-fix-double-free-fatal-error-in-INET_sprint.patch \
+           file://0001-chown-fix-help-text.patch \
 "
 
 EXTRA_OEMAKE += "V=1 ARCH=${TARGET_ARCH} CROSS_COMPILE=${TARGET_PREFIX} SKIP_STRIP=y"

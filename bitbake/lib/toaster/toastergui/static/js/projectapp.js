@@ -16,7 +16,9 @@
 //  with this program; if not, write to the Free Software Foundation, Inc.,
 //  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-angular_formpost = function($httpProvider) {
+'use strict';
+
+var angular_formpost = function($httpProvider) {
   // Use x-www-form-urlencoded Content-Type
   // By Ezekiel Victor, http://victorblog.com/2012/12/20/make-angularjs-http-service-behave-like-jquery-ajax/, no license, with attribution
   $httpProvider.defaults.headers.post['Content-Type'] = 'application/x-www-form-urlencoded;charset=utf-8';
@@ -127,11 +129,11 @@ projectApp.filter('timediff', function() {
             if (parseInt(j) < 10) {return "0" + j;}
             return j;
         }
-        seconds = parseInt(input);
-        minutes = Math.floor(seconds / 60);
+        var seconds = parseInt(input);
+        var minutes = Math.floor(seconds / 60);
         seconds = seconds - minutes * 60;
-        hours = Math.floor(seconds / 3600);
-        seconds = seconds - hours * 3600;
+        var hours = Math.floor(minutes / 60);
+        minutes = minutes - hours * 60;
         return pad(hours) + ":" + pad(minutes) + ":" + pad(seconds);
     };
 });
@@ -156,16 +158,72 @@ projectApp.controller('prjCtrl', function($scope, $modal, $http, $interval, $loc
      * Retrieves text suggestions for text-edit drop down autocomplete boxes
      */
 
+    $scope.getLayersAutocompleteSuggestions = function(currentValue) {
+        var deffered = $q.defer();
+
+        $http({method:"GET", url: $scope.urls.layers, params : { search: currentValue, format: "json" }})
+            .success(function (_data) {
+                if (_data.error != "ok") {
+                    console.warn("error on data", _data.error);
+                    deffered.reject(_data.error);
+                }
+                deffered.resolve(_data.rows);
+            });
+
+        return deffered.promise;
+    }
+
+    $scope.filterProjectLayerIds = function () {
+        return $scope.layers.map(function (e) { return e.id; });
+    }
+
+    $scope.getMachinesAutocompleteSuggestions = function(currentValue) {
+        var deffered = $q.defer();
+
+        $http({method:"GET", url: $scope.urls.machines, params : { search: currentValue, format: "json" }})
+            .success(function (_data) {
+                if (_data.error != "ok") {
+                    console.warn("error on data", _data.error);
+                    deffered.reject(_data.error);
+                }
+                deffered.resolve(_data.rows);
+            });
+
+        return deffered.promise;
+    }
+
+    $scope.getRecipesAutocompleteSuggestions = function(currentValue) {
+        var deffered = $q.defer();
+
+        $http({method:"GET", url: $scope.urls.targets, params : { search: currentValue, format: "json" }})
+            .success(function (_data) {
+                if (_data.error != "ok") {
+                    console.warn("error on data", _data.error);
+                    deffered.reject(_data.error);
+                }
+                deffered.resolve(_data.rows);
+            });
+        return deffered.promise;
+    }
+
+    $scope.values = function() {
+        var deffered = $q.defer();
+
+        deffered.resolve(["mama", "tata"]);
+
+        return deffered.promise;
+    };
+
     $scope.getAutocompleteSuggestions = function(type, currentValue) {
         var deffered = $q.defer();
 
-        $http({method:"GET", url: $scope.urls.xhr_datatypeahead, params : { type: type, value: currentValue}})
+        $http({method:"GET", url: $scope.urls.xhr_datatypeahead, params : { type: type, search: currentValue}})
             .success(function (_data) {
                 if (_data.error != "ok") {
                     console.warn(_data.error);
                     deffered.reject(_data.error);
                 }
-                deffered.resolve(_data.list);
+                deffered.resolve(_data.rows);
             });
 
         return deffered.promise;
@@ -193,6 +251,31 @@ projectApp.controller('prjCtrl', function($scope, $modal, $http, $interval, $loc
 
         }
         var deffered = $q.defer();
+
+        /* we only talk in JSON to the server */
+        if (callparams.method == 'GET') {
+            if (callparams.data === undefined) {
+                callparams.data = {};
+            }
+            callparams.data.format = "json";
+        } else {
+            if (callparams.url.indexOf("?") > -1) {
+              callparams.url = callparams.url.split("?").map(function (element, index) {
+                if (index == 1) {
+                    var elements = [];
+                    if (element.indexOf("&")>-1) {
+                        elements = element.split("&");
+                    }
+                    elements.push("format=json");
+                    element = elements.join("&");
+                }
+                return element;
+              }).join("?");
+            } else {
+              callparams.url += "?format=json";
+            }
+        }
+
 
         if (undefined === callparams.headers) { callparams.headers = {}; }
         callparams.headers['X-CSRFToken'] = $cookies.csrftoken;
@@ -258,7 +341,7 @@ projectApp.controller('prjCtrl', function($scope, $modal, $http, $interval, $loc
                     var toDelete = [];
                     // step 1 - delete entries not found
                     $scope.builds.forEach(function (elem) {
-                        if (-1 == _data.builds.findIndex(function (elemX) { return elemX.id == elem.id && elemX.status == elem.status; })) {
+                        if (-1 == _data.builds.findIndex(function (elemX) { return elemX.id == elem.id; })) {
                             toDelete.push(elem);
                         }
                     });
@@ -346,13 +429,17 @@ projectApp.controller('prjCtrl', function($scope, $modal, $http, $interval, $loc
      */
 
     $scope.validateData = function () {
-        if ($scope.layers.length === 0) {
+        if ($scope.project.release) {
+            if ($scope.layers.length === 0) {
             $scope.layeralert = $scope.displayAlert($scope.zone1alerts, "You need to add some layers to this project. <a href=\""+$scope.urls.layers+"\">View all layers available in Toaster</a> or <a href=\""+$scope.urls.importlayer+"\">import a layer</a>");
-        } else {
-            if ($scope.layeralert !== undefined) {
-                $scope.layeralert.close();
-                $scope.layeralert = undefined;
+            } else {
+                if ($scope.layeralert !== undefined) {
+                    $scope.layeralert.close();
+                    $scope.layeralert = undefined;
+                }
             }
+        } else {
+            $scope.layeralert = $scope.displayAlert($scope.zone1alerts, "This project is not set to run builds.");
         }
     };
 
@@ -420,8 +507,9 @@ projectApp.controller('prjCtrl', function($scope, $modal, $http, $interval, $loc
     };
 
 
-    $scope.onLayerSelect = function (item) {
-        $scope.layerAddId = item.id;
+    $scope.onLayerSelect = function (item, model, label) {
+        $scope.layerToAdd = item;
+        $scope.layerAddName = item.layer__name;
     };
 
     $scope.machineSelect = function (machineName) {
@@ -443,27 +531,33 @@ projectApp.controller('prjCtrl', function($scope, $modal, $http, $interval, $loc
     };
 
 
-    $scope.layerAddById = function (id) {
-        $scope.layerAddId = id;
-        $scope.layerAdd();
-    };
-
     $scope.layerAdd = function() {
 
-        $http({method:"GET", url: $scope.urls.xhr_datatypeahead, params : { type: "layerdeps", value: $scope.layerAddId }})
+        $http({method:"GET", url: $scope.layerToAdd.layerDetailsUrl, params : {format: "json"}})
         .success(function (_data) {
              if (_data.error != "ok") {
                  console.warn(_data.error);
              } else {
-                 if (_data.list.length > 0) {
+                /* filter out layers that are already in the project */
+                var filtered_list = [];
+                var projectlayers_ids = $scope.layers.map(function (e) { return e.id });
+                for (var i = 0; i < _data.layerdeps.list.length; i++) {
+                    if (projectlayers_ids.indexOf(_data.layerdeps.list[i].id) == -1) {
+                        filtered_list.push( _data.layerdeps.list[i]);
+                    }
+                }
+
+                _data.layerdeps.list = filtered_list;
+                if (_data.layerdeps.list.length > 0) {
                      // activate modal
+                     console.log("listing modals");
                      var modalInstance = $modal.open({
                        templateUrl: 'dependencies_modal',
                        controller: function ($scope, $modalInstance, items, layerAddName) {
                          $scope.items =  items;
                          $scope.layerAddName = layerAddName;
                          $scope.selectedItems = (function () {
-                                s = {};
+                                var s = {};
                                 for (var i = 0; i < items.length; i++)
                                     { s[items[i].id] = true; }
                                 return s;
@@ -484,16 +578,17 @@ projectApp.controller('prjCtrl', function($scope, $modal, $http, $interval, $loc
                        },
                        resolve: {
                          items: function () {
-                             return _data.list;
+                             return _data.layerdeps.list;
                          },
                          layerAddName: function () {
                              return $scope.layerAddName;
                          },
                        }
                      });
+                     console.log("built modal instance", modalInstance);
 
                      modalInstance.result.then(function (selectedArray) {
-                         selectedArray.push($scope.layerAddId);
+                         selectedArray.push($scope.layerToAdd.id);
                          console.warn("TRC6: selected", selectedArray);
 
                          $scope._makeXHRCall({
@@ -512,7 +607,7 @@ projectApp.controller('prjCtrl', function($scope, $modal, $http, $interval, $loc
                          $scope._makeXHRCall({
                              method: "POST", url: $scope.urls.xhr_edit,
                              data: {
-                                 layerAdd:  $scope.layerAddId,
+                                 layerAdd:  $scope.layerToAdd.id,
                              }
                          }).then(function () {
                              $scope.layerAddName = undefined;
@@ -551,13 +646,13 @@ projectApp.controller('prjCtrl', function($scope, $modal, $http, $interval, $loc
     $scope.testProjectSettingsChange = function(elementid) {
         if (elementid != '#change-project-version') throw "Not implemented";
 
-        $http({method:"GET", url: $scope.urls.xhr_datatypeahead, params : { type: "versionlayers", value: $scope.projectVersion }}).
+        $http({method:"GET", url: $scope.urls.xhr_datatypeahead, params : { type: "versionlayers", search: $scope.projectVersion }}).
         success(function (_data) {
             if (_data.error != "ok") {
                 alert (_data.error);
             }
             else {
-                 if (_data.list.length > 0) {
+                 if (_data.rows.length > 0) {
                      // activate modal
                      var modalInstance = $modal.open({
                        templateUrl: 'change_version_modal',
@@ -577,7 +672,7 @@ projectApp.controller('prjCtrl', function($scope, $modal, $http, $interval, $loc
                        },
                        resolve: {
                          items: function () {
-                             return _data.list;
+                             return _data.rows;
                          },
                          releaseName: function () {
                              return $scope.releases.filter(function (e) { if (e.id == $scope.projectVersion) return e;})[0].name;
@@ -721,8 +816,7 @@ projectApp.controller('prjCtrl', function($scope, $modal, $http, $interval, $loc
             return;
 
           if (imported.deps_added.length === 0) {
-            text = "You have imported <strong><a href=\""+$scope.urls.layer+
-              imported.imported_layer.id+"\">"+imported.imported_layer.name+
+            text = "You have imported <strong><a href=\""+imported.imported_layer.layerDetailsUrl+"\">"+imported.imported_layer.name+
               "</a></strong> and added it to your project.";
           } else {
             var links = "<a href=\""+$scope.urls.layer+
@@ -730,7 +824,7 @@ projectApp.controller('prjCtrl', function($scope, $modal, $http, $interval, $loc
               "</a>, ";
 
             imported.deps_added.map (function(item, index){
-              links +="<a href=\""+$scope.urls.layer+item.id+"\" >"+item.name+
+              links +="<a href=\""+item.layerDetailsUrl+"\" >"+item.name+
                 "</a>";
               /*If we're at the last element we don't want the trailing comma */
               if (imported.deps_added[index+1] !== undefined)
@@ -768,10 +862,8 @@ projectApp.controller('prjCtrl', function($scope, $modal, $http, $interval, $loc
 
 
         _cmdExecuteWithParam("/layeradd=", function (layer) {
-            angular.forEach(layer.split(","), function (l) {
-                $scope.layerAddId = l;
+                $scope.layerToAdd = layer;
                 $scope.layerAdd();
-            });
         });
     };
 
@@ -783,7 +875,7 @@ projectApp.controller('prjCtrl', function($scope, $modal, $http, $interval, $loc
         if (zone.maxid === undefined) { zone.maxid = 0; }
         var crtid = zone.maxid ++;
         angular.forEach(zone, function (o) { o.close(); });
-        o = {
+        var o = {
             id: crtid, text: text, type: type,
             close: function() {
                 zone.splice((function(id) {

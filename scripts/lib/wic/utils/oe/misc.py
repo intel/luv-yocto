@@ -25,6 +25,8 @@
 # Tom Zanussi <tom.zanussi (at] linux.intel.com>
 #
 
+from collections import defaultdict
+
 from wic import msger
 from wic.utils import runner
 
@@ -38,7 +40,7 @@ def __exec_cmd(cmd_and_args, as_shell=False, catch=3):
     args = cmd_and_args.split()
     msger.debug(args)
 
-    if (as_shell):
+    if as_shell:
         rc, out = runner.runtool(cmd_and_args, catch)
     else:
         rc, out = runner.runtool(args, catch)
@@ -61,15 +63,6 @@ def exec_cmd(cmd_and_args, as_shell=False, catch=3):
         msger.error("exec_cmd: %s returned '%s' instead of 0" % (cmd_and_args, rc))
 
     return out
-
-
-def exec_cmd_quiet(cmd_and_args, as_shell=False):
-    """
-    Execute command, catching nothing in the output
-
-    Exits if rc non-zero
-    """
-    return exec_cmd(cmd_and_args, as_shell, 0)
 
 
 def exec_native_cmd(cmd_and_args, native_sysroot, catch=3):
@@ -95,20 +88,14 @@ def exec_native_cmd(cmd_and_args, native_sysroot, catch=3):
         msger.error("A native program %s required to build the image "
                     "was not found (see details above). Please make sure "
                     "it's installed and try again." % args[0])
+    if out:
+        msger.debug('"%s" output: %s' % (args[0], out))
+
+    if rc != 0:
+        msger.error("exec_cmd: '%s' returned '%s' instead of 0" % \
+                    (cmd_and_args, rc))
 
     return (rc, out)
-
-
-def exec_native_cmd_quiet(cmd_and_args, native_sysroot):
-    """
-    Execute native command, catching nothing in the output
-
-    Need to execute as_shell if the command uses wildcards
-
-    Always need to execute native commands as_shell
-    """
-    return exec_native_cmd(cmd_and_args, native_sysroot, 0)
-
 
 # kickstart doesn't support variable substution in commands, so this
 # is our current simplistic scheme for supporting that
@@ -123,62 +110,48 @@ def add_wks_var(key, val):
 
 BOOTDD_EXTRA_SPACE = 16384
 
-__bitbake_env_lines = ""
+_BITBAKE_VARS = defaultdict(dict)
 
-def set_bitbake_env_lines(bitbake_env_lines):
-    global __bitbake_env_lines
-    __bitbake_env_lines = bitbake_env_lines
-
-def get_bitbake_env_lines():
-    return __bitbake_env_lines
-
-def find_bitbake_env_lines(image_name):
+def get_bitbake_var(var, image=None):
     """
-    If image_name is empty, plugins might still be able to use the
-    environment, so set it regardless.
+    Get bitbake variable value lazy way, i.e. run
+    'bitbake -e' only when variable is requested.
     """
-    if image_name:
-        bitbake_env_cmd = "bitbake -e %s" % image_name
-    else:
-        bitbake_env_cmd = "bitbake -e"
-    rc, bitbake_env_lines = __exec_cmd(bitbake_env_cmd)
-    if rc != 0:
-        print "Couldn't get '%s' output." % bitbake_env_cmd
-        print "Bitbake failed with error:\n%s\n" % bitbake_env_lines
-        return None
+    if image not in _BITBAKE_VARS:
+        # Get bitbake -e output
+        cmd = "bitbake -e"
+        if image:
+            cmd += " %s" % image
 
-    return bitbake_env_lines
+        log_level = msger.get_loglevel()
+        msger.set_loglevel('normal')
+        rc, lines = __exec_cmd(cmd)
+        msger.set_loglevel(log_level)
 
-def find_artifact(bitbake_env_lines, variable):
-    """
-    Gather the build artifact for the current image (the image_name
-    e.g. core-image-minimal) for the current MACHINE set in local.conf
-    """
-    retval = ""
+        if rc:
+            print "Couldn't get '%s' output." % cmd
+            print "Bitbake failed with error:\n%s\n" % lines
+            return
 
-    for line in bitbake_env_lines.split('\n'):
-        if (get_line_val(line, variable)):
-            retval = get_line_val(line, variable)
-            break
+        # Parse bitbake -e output
+        for line in lines.split('\n'):
+            if "=" not in line:
+                continue
+            try:
+                key, val = line.split("=")
+            except ValueError:
+                continue
+            key = key.strip()
+            val = val.strip()
+            if key.replace('_', '').isalnum():
+                _BITBAKE_VARS[image][key] = val.strip('"')
 
-    return retval
+        # Make first image a default set of variables
+        images = [key for key in _BITBAKE_VARS if key]
+        if len(images) == 1:
+            _BITBAKE_VARS[None] = _BITBAKE_VARS[image]
 
-def get_line_val(line, key):
-    """
-    Extract the value from the VAR="val" string
-    """
-    if line.startswith(key + "="):
-        stripped_line = line.split('=')[1]
-        stripped_line = stripped_line.replace('\"', '')
-        return stripped_line
-    return None
-
-def get_bitbake_var(key):
-    for line in __bitbake_env_lines.split('\n'):
-        if (get_line_val(line, key)):
-            val = get_line_val(line, key)
-            return val
-    return None
+    return _BITBAKE_VARS[image].get(var)
 
 def parse_sourceparams(sourceparams):
     """

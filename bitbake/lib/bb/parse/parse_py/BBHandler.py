@@ -69,15 +69,14 @@ def supports(fn, d):
     return os.path.splitext(fn)[-1] in [".bb", ".bbclass", ".inc"]
 
 def inherit(files, fn, lineno, d):
-    __inherit_cache = d.getVar('__inherit_cache') or []
+    __inherit_cache = d.getVar('__inherit_cache', False) or []
     files = d.expand(files).split()
     for file in files:
         if not os.path.isabs(file) and not file.endswith(".bbclass"):
             file = os.path.join('classes', '%s.bbclass' % file)
 
         if not os.path.isabs(file):
-            dname = os.path.dirname(fn)
-            bbpath = "%s:%s" % (dname, d.getVar("BBPATH", True))
+            bbpath = d.getVar("BBPATH", True)
             abs_fn, attempts = bb.utils.which(bbpath, file, history=True)
             for af in attempts:
                 if af != abs_fn:
@@ -90,7 +89,7 @@ def inherit(files, fn, lineno, d):
             __inherit_cache.append( file )
             d.setVar('__inherit_cache', __inherit_cache)
             include(fn, file, lineno, d, "inherit")
-            __inherit_cache = d.getVar('__inherit_cache') or []
+            __inherit_cache = d.getVar('__inherit_cache', False) or []
 
 def get_statements(filename, absolute_filename, base_name):
     global cached_statements
@@ -130,13 +129,13 @@ def handle(fn, d, include):
 
     if ext == ".bbclass":
         __classname__ = root
-        __inherit_cache = d.getVar('__inherit_cache') or []
+        __inherit_cache = d.getVar('__inherit_cache', False) or []
         if not fn in __inherit_cache:
             __inherit_cache.append(fn)
             d.setVar('__inherit_cache', __inherit_cache)
 
     if include != 0:
-        oldfile = d.getVar('FILE')
+        oldfile = d.getVar('FILE', False)
     else:
         oldfile = None
 
@@ -149,7 +148,7 @@ def handle(fn, d, include):
     statements = get_statements(fn, abs_fn, base_name)
 
     # DONE WITH PARSING... time to evaluate
-    if ext != ".bbclass":
+    if ext != ".bbclass" and abs_fn != oldfile:
         d.setVar('FILE', abs_fn)
 
     try:
@@ -167,7 +166,7 @@ def handle(fn, d, include):
     if ext != ".bbclass" and include == 0:
         return ast.multi_finalize(fn, d)
 
-    if oldfile:
+    if ext != ".bbclass" and oldfile and abs_fn != oldfile:
         d.setVar("FILE", oldfile)
 
     return d

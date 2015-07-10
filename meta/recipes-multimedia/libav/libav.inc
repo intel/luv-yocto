@@ -24,8 +24,6 @@ ARM_INSTRUCTION_SET = "arm"
 
 DEPENDS = "alsa-lib zlib libogg yasm-native"
 
-INC_PR = "r8"
-
 inherit autotools pkgconfig
 
 B = "${S}/build.${HOST_SYS}.${TARGET_SYS}"
@@ -140,7 +138,7 @@ python populate_packages_prepend() {
                       prepend=True,
                       allow_links=True)
 
-    if d.getVar('TARGET_ARCH', True) == 'i586':
+    if d.getVar('TARGET_ARCH', True) in [ 'i586', 'i686' ]:
         # libav can't be build with -fPIC for 32-bit x86
         pkgs = d.getVar('PACKAGES', True).split()
         for pkg in pkgs:

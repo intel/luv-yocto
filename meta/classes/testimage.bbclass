@@ -34,9 +34,15 @@ TEST_EXPORT_ONLY ?= "0"
 
 DEFAULT_TEST_SUITES = "ping auto"
 DEFAULT_TEST_SUITES_pn-core-image-minimal = "ping"
-DEFAULT_TEST_SUITES_pn-core-image-sato = "ping ssh df connman syslog xorg scp vnc date rpm smart dmesg python parselogs"
-DEFAULT_TEST_SUITES_pn-core-image-sato-sdk = "ping ssh df connman syslog xorg scp vnc date perl ldd gcc rpm smart kernelmodule dmesg python parselogs"
+DEFAULT_TEST_SUITES_pn-core-image-sato = "ping ssh df connman syslog xorg scp vnc date dmesg parselogs \
+    ${@bb.utils.contains('IMAGE_PKGTYPE', 'rpm', 'python smart rpm', '', d)}"
+DEFAULT_TEST_SUITES_pn-core-image-sato-sdk = "ping ssh df connman syslog xorg scp vnc date perl ldd gcc kernelmodule dmesg python parselogs \
+    ${@bb.utils.contains('IMAGE_PKGTYPE', 'rpm', 'smart rpm', '', d)}"
 DEFAULT_TEST_SUITES_pn-meta-toolchain = "auto"
+
+# aarch64 has no graphics
+DEFAULT_TEST_SUITES_remove_aarch64 = "xorg vnc"
+
 TEST_SUITES ?= "${DEFAULT_TEST_SUITES}"
 
 TEST_QEMUBOOT_TIMEOUT ?= "1000"
@@ -66,17 +72,42 @@ do_testsdk[nostamp] = "1"
 do_testsdk[depends] += "${TESTIMAGEDEPENDS}"
 do_testsdk[lockfiles] += "${TESTIMAGELOCK}"
 
+# get testcase list from specified file
+# if path is a relative path, then relative to build/conf/
+def read_testlist(d, fpath):
+    if not os.path.isabs(fpath):
+        builddir = d.getVar("TOPDIR", True)
+        fpath = os.path.join(builddir, "conf", fpath)
+    if not os.path.exists(fpath):
+        bb.fatal("No such manifest file: ", fpath)
+    tcs = []
+    for line in open(fpath).readlines():
+        line = line.strip()
+        if line and not line.startswith("#"):
+            tcs.append(line)
+    return " ".join(tcs)
+
 def get_tests_list(d, type="runtime"):
-    testsuites = d.getVar("TEST_SUITES", True).split()
+    testsuites = []
+    testslist = []
+    manifests = d.getVar("TEST_SUITES_MANIFEST", True)
+    if manifests is not None:
+        manifests = manifests.split()
+        for manifest in manifests:
+            testsuites.extend(read_testlist(d, manifest).split())
+    else:
+        testsuites = d.getVar("TEST_SUITES", True).split()
     if type == "sdk":
         testsuites = (d.getVar("TEST_SUITES_SDK", True) or "auto").split()
     bbpath = d.getVar("BBPATH", True).split(':')
 
     # This relies on lib/ under each directory in BBPATH being added to sys.path
     # (as done by default in base.bbclass)
-    testslist = []
     for testname in testsuites:
         if testname != "auto":
+            if testname.startswith("oeqa."):
+                testslist.append(testname)
+                continue
             found = False
             for p in bbpath:
                 if os.path.exists(os.path.join(p, 'lib', 'oeqa', type, testname + '.py')):

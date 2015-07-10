@@ -8,8 +8,6 @@ UPDATERCD_class-cross = ""
 UPDATERCD_class-native = ""
 UPDATERCD_class-nativesdk = ""
 
-RRECOMMENDS_${UPDATERCPN}_append = " ${UPDATERCD}"
-
 INITSCRIPT_PARAMS ?= "defaults"
 
 INIT_D_DIR = "${sysconfdir}/init.d"
@@ -58,11 +56,11 @@ fi
 
 
 def update_rc_after_parse(d):
-    if d.getVar('INITSCRIPT_PACKAGES') == None:
-        if d.getVar('INITSCRIPT_NAME') == None:
-            raise bb.build.FuncFailed("%s inherits update-rc.d but doesn't set INITSCRIPT_NAME" % d.getVar('FILE'))
-        if d.getVar('INITSCRIPT_PARAMS') == None:
-            raise bb.build.FuncFailed("%s inherits update-rc.d but doesn't set INITSCRIPT_PARAMS" % d.getVar('FILE'))
+    if d.getVar('INITSCRIPT_PACKAGES', False) == None:
+        if d.getVar('INITSCRIPT_NAME', False) == None:
+            raise bb.build.FuncFailed("%s inherits update-rc.d but doesn't set INITSCRIPT_NAME" % d.getVar('FILE', False))
+        if d.getVar('INITSCRIPT_PARAMS', False) == None:
+            raise bb.build.FuncFailed("%s inherits update-rc.d but doesn't set INITSCRIPT_PARAMS" % d.getVar('FILE', False))
 
 python __anonymous() {
     update_rc_after_parse(d)
@@ -119,6 +117,8 @@ python populate_packages_updatercd () {
                 postrm = '#!/bin/sh\n'
         postrm += localdata.getVar('updatercd_postrm', True)
         d.setVar('pkg_postrm_%s' % pkg, postrm)
+
+        d.appendVar('RRECOMMENDS_' + pkg, " ${MLPREFIX}${UPDATERCD}")
 
     # Check that this class isn't being inhibited (generally, by
     # systemd.bbclass) before doing any work.

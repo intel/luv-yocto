@@ -151,9 +151,7 @@ class BBCooker:
 
         # Take a lock so only one copy of bitbake can run against a given build
         # directory at a time
-        lockfile = self.data.expand("${TOPDIR}/bitbake.lock")
-        self.lock = bb.utils.lockfile(lockfile, False, False)
-        if not self.lock:
+        if not self.lockBitbake():
             bb.fatal("Only one copy of bitbake should be run against a build directory")
         try:
             self.lock.seek(0)
@@ -386,7 +384,7 @@ class BBCooker:
 
         replaced = False
         #do not save if nothing changed
-        if str(val) == self.data.getVar(var):
+        if str(val) == self.data.getVar(var, False):
             return
 
         conf_files = self.data.varhistory.get_variable_files(var)
@@ -398,7 +396,7 @@ class BBCooker:
                 listval += "%s   " % value
             val = listval
 
-        topdir = self.data.getVar("TOPDIR")
+        topdir = self.data.getVar("TOPDIR", False)
 
         #comment or replace operations made on var
         for conf_file in conf_files:
@@ -453,7 +451,7 @@ class BBCooker:
 
     def removeConfigurationVar(self, var):
         conf_files = self.data.varhistory.get_variable_files(var)
-        topdir = self.data.getVar("TOPDIR")
+        topdir = self.data.getVar("TOPDIR", False)
 
         for conf_file in conf_files:
             if topdir in conf_file:
@@ -493,7 +491,7 @@ class BBCooker:
 
     def parseConfiguration(self):
         # Set log file verbosity
-        verboselogs = bb.utils.to_boolean(self.data.getVar("BB_VERBOSE_LOGS", "0"))
+        verboselogs = bb.utils.to_boolean(self.data.getVar("BB_VERBOSE_LOGS", False))
         if verboselogs:
             bb.msg.loggerVerboseLogs = True
 
@@ -613,7 +611,7 @@ class BBCooker:
         data.expandKeys(envdata)
         for e in envdata.keys():
             if data.getVarFlag( e, 'python', envdata ):
-                logger.plain("\npython %s () {\n%s}\n", e, data.getVar(e, envdata, 1))
+                logger.plain("\npython %s () {\n%s}\n", e, envdata.getVar(e, True))
 
 
     def buildTaskData(self, pkgs_to_build, task, abort):
@@ -908,8 +906,8 @@ class BBCooker:
                            for appends in appends_without_recipes
                            for append in appends)
             msg = 'No recipes available for:\n%s' % '\n'.join(appendlines)
-            warn_only = data.getVar("BB_DANGLINGAPPENDS_WARNONLY", \
-                 self.data, False) or "no"
+            warn_only = self.data.getVar("BB_DANGLINGAPPENDS_WARNONLY", \
+                 False) or "no"
             if warn_only.lower() in ("1", "yes", "true"):
                 bb.warn(msg)
             else:
@@ -956,8 +954,8 @@ class BBCooker:
         # Generate a list of parsed configuration files by searching the files
         # listed in the __depends and __base_depends variables with a .conf suffix.
         conffiles = []
-        dep_files = self.data.getVar('__base_depends') or []
-        dep_files = dep_files + (self.data.getVar('__depends') or [])
+        dep_files = self.data.getVar('__base_depends', False) or []
+        dep_files = dep_files + (self.data.getVar('__depends', False) or [])
 
         for f in dep_files:
             if f[0].endswith(".conf"):
@@ -1174,9 +1172,12 @@ class BBCooker:
         """
         Setup any variables needed before starting a build
         """
-        if not self.data.getVar("BUILDNAME"):
-            self.data.setVar("BUILDNAME", time.strftime('%Y%m%d%H%M'))
-        self.data.setVar("BUILDSTART", time.strftime('%m/%d/%Y %H:%M:%S', time.gmtime()))
+        t = time.gmtime() 
+        if not self.data.getVar("BUILDNAME", False):
+            self.data.setVar("BUILDNAME", "${DATE}${TIME}")
+        self.data.setVar("BUILDSTART", time.strftime('%m/%d/%Y %H:%M:%S', t))
+        self.data.setVar("DATE", time.strftime('%Y%m%d', t))
+        self.data.setVar("TIME", time.strftime('%H%M%S', t))
 
     def matchFiles(self, bf):
         """
@@ -1275,7 +1276,7 @@ class BBCooker:
         taskdata = bb.taskdata.TaskData(self.configuration.abort)
         taskdata.add_provider(self.data, self.recipecache, item)
 
-        buildname = self.data.getVar("BUILDNAME")
+        buildname = self.data.getVar("BUILDNAME", True)
         bb.event.fire(bb.event.BuildStarted(buildname, [item]), self.expanded_data)
 
         # Execute the runqueue
@@ -1303,8 +1304,8 @@ class BBCooker:
                 return False
 
             if not retval:
-                self.command.finishAsyncCommand(msg)
                 bb.event.fire(bb.event.BuildCompleted(len(rq.rqdata.runq_fnid), buildname, item, failures), self.expanded_data)
+                self.command.finishAsyncCommand(msg)
                 return False
             if retval is True:
                 return True
@@ -1336,8 +1337,8 @@ class BBCooker:
                 return False
 
             if not retval:
-                self.command.finishAsyncCommand(msg)
                 bb.event.fire(bb.event.BuildCompleted(len(rq.rqdata.runq_fnid), buildname, targets, failures), self.data)
+                self.command.finishAsyncCommand(msg)
                 return False
             if retval is True:
                 return True
@@ -1348,7 +1349,7 @@ class BBCooker:
 
         taskdata, runlist, fulltargetlist = self.buildTaskData(targets, task, self.configuration.abort)
 
-        buildname = self.data.getVar("BUILDNAME")
+        buildname = self.data.getVar("BUILDNAME", False)
         bb.event.fire(bb.event.BuildStarted(buildname, fulltargetlist), self.data)
 
         rq = bb.runqueue.RunQueue(self, self.data, self.recipecache, taskdata, runlist)
@@ -1402,7 +1403,7 @@ class BBCooker:
             if base_image is None:
                 imagefile.write("inherit core-image\n")
             else:
-                topdir = self.data.getVar("TOPDIR")
+                topdir = self.data.getVar("TOPDIR", False)
                 if topdir in base_image:
                     base_image = require_line.split()[1]
                 imagefile.write("require " + base_image + "\n")
@@ -1462,7 +1463,7 @@ class BBCooker:
             (filelist, masked) = self.collection.collect_bbfiles(self.data, self.expanded_data)
 
             self.data.renameVar("__depends", "__base_depends")
-            self.add_filewatch(self.data.getVar("__base_depends"), self.configwatcher)
+            self.add_filewatch(self.data.getVar("__base_depends", False), self.configwatcher)
 
             self.parser = CookerParser(self, filelist, masked)
             self.parsecache_valid = True
@@ -1477,6 +1478,11 @@ class BBCooker:
             self.handlePrefProviders()
             self.recipecache.bbfile_priority = self.collection.collection_priorities(self.recipecache.pkg_fn, self.data)
             self.state = state.running
+
+            # Send an event listing all stamps reachable after parsing
+            # which the metadata may use to clean up stale data
+            event = bb.event.ReachableStamps(self.recipecache.stamp)
+            bb.event.fire(event, self.expanded_data)
             return None
 
         return True
@@ -1538,6 +1544,19 @@ class BBCooker:
 
     def reset(self):
         self.initConfigurationData()
+
+    def lockBitbake(self):
+        if not hasattr(self, 'lock'):
+            self.lock = None
+            if self.data:
+                lockfile = self.data.expand("${TOPDIR}/bitbake.lock")
+                if lockfile:
+                    self.lock = bb.utils.lockfile(lockfile, False, False)
+        return self.lock
+
+    def unlockBitbake(self):
+        if hasattr(self, 'lock') and self.lock:
+            bb.utils.unlockfile(self.lock)
 
 def server_main(cooker, func, *args):
     cooker.pre_serve()
@@ -1798,8 +1817,6 @@ class Parser(multiprocessing.Process):
         finally:
             logfile = "profile-parse-%s.log" % multiprocessing.current_process().name
             prof.dump_stats(logfile)
-            bb.utils.process_profilelog(logfile)
-            print("Raw profiling information saved to %s and processed statistics to %s.processed" % (logfile, logfile))
 
     def realrun(self):
         if self.init:
@@ -1869,6 +1886,7 @@ class CookerParser(object):
         self.current = 0
         self.num_processes = int(self.cfgdata.getVar("BB_NUMBER_PARSE_THREADS", True) or
                                  multiprocessing.cpu_count())
+        self.process_names = []
 
         self.bb_cache = bb.cache.Cache(self.cfgdata, self.cfghash, cooker.caches_array)
         self.fromcache = []
@@ -1904,6 +1922,7 @@ class CookerParser(object):
             for i in range(0, self.num_processes):
                 parser = Parser(self.jobs, self.result_queue, self.parser_quit, init, self.cooker.configuration.profile)
                 parser.start()
+                self.process_names.append(parser.name)
                 self.processes.append(parser)
 
             self.results = itertools.chain(self.results, self.parse_generator())
@@ -1947,6 +1966,16 @@ class CookerParser(object):
         multiprocessing.util.Finalize(None, sync.join, exitpriority=-100)
         bb.codeparser.parser_cache_savemerge(self.cooker.data)
         bb.fetch.fetcher_parse_done(self.cooker.data)
+        if self.cooker.configuration.profile:
+            profiles = []
+            for i in self.process_names:
+                logfile = "profile-parse-%s.log" % i
+                if os.path.exists(logfile):
+                    profiles.append(logfile)
+
+            pout = "profile-parse.log.processed"
+            bb.utils.process_profilelog(profiles, pout = pout)
+            print("Processed parsing statistics saved to %s" % (pout))
 
     def load_cached(self):
         for filename, appends in self.fromcache:

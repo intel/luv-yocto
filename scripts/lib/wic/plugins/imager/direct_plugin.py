@@ -24,19 +24,26 @@
 # Tom Zanussi <tom.zanussi (at] linux.intel.com>
 #
 
-from wic import msger
-from wic.utils import misc, fs_related, errors, runner, cmdln
+from wic.utils import errors
 from wic.conf import configmgr
-from wic.plugin import pluginmgr
 
 import wic.imager.direct as direct
 from wic.pluginbase import ImagerPlugin
 
 class DirectPlugin(ImagerPlugin):
+    """
+    Install a system into a file containing a partitioned disk image.
+
+    An image file is formatted with a partition table, each partition
+    created from a rootfs or other OpenEmbedded build artifact and dd'ed
+    into the virtual disk. The disk image can subsequently be dd'ed onto
+    media and used on actual hardware.
+    """
+
     name = 'direct'
 
     @classmethod
-    def __rootfs_dir_to_dict(self, rootfs_dirs):
+    def __rootfs_dir_to_dict(cls, rootfs_dirs):
         """
         Gets a string that contain 'connection=dir' splitted by
         space and return a dict
@@ -49,11 +56,11 @@ class DirectPlugin(ImagerPlugin):
         return krootfs_dir
 
     @classmethod
-    def do_create(self, subcmd, opts, *args):
+    def do_create(cls, subcmd, opts, *args):
         """
         Create direct image, called from creator as 'direct' cmd
         """
-        if len(args) != 7:
+        if len(args) != 8:
             raise errors.Usage("Extra arguments given")
 
         native_sysroot = args[0]
@@ -66,8 +73,9 @@ class DirectPlugin(ImagerPlugin):
 
         image_output_dir = args[5]
         oe_builddir = args[6]
+        compressor = args[7]
 
-        krootfs_dir = self.__rootfs_dir_to_dict(rootfs_dir)
+        krootfs_dir = cls.__rootfs_dir_to_dict(rootfs_dir)
 
         configmgr._ksconf = ksconf
 
@@ -77,6 +85,7 @@ class DirectPlugin(ImagerPlugin):
                                             bootimg_dir,
                                             kernel_dir,
                                             native_sysroot,
+                                            compressor,
                                             creatoropts)
 
         try:

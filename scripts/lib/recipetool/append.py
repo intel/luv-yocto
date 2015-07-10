@@ -245,27 +245,14 @@ def check_do_install(rd, targetpath):
 def appendfile(args):
     import oe.recipeutils
 
-    if not args.targetpath.startswith('/'):
-        logger.error('Target path should start with /')
-        return 2
-
-    if os.path.isdir(args.newfile):
-        logger.error('Specified new file "%s" is a directory' % args.newfile)
-        return 2
-
-    if not os.path.exists(args.destlayer):
-        logger.error('Destination layer directory "%s" does not exist' % args.destlayer)
-        return 2
-    if not os.path.exists(os.path.join(args.destlayer, 'conf', 'layer.conf')):
-        logger.error('conf/layer.conf not found in destination layer "%s"' % args.destlayer)
-        return 2
-
     stdout = ''
     try:
-        (stdout, _) = bb.process.run('LANG=C file -E -b %s' % args.newfile, shell=True)
+        (stdout, _) = bb.process.run('LANG=C file -b %s' % args.newfile, shell=True)
+        if 'cannot open' in stdout:
+            raise bb.process.ExecutionError(stdout)
     except bb.process.ExecutionError as err:
         logger.debug('file command returned error: %s' % err)
-        pass
+        stdout = ''
     if stdout:
         logger.debug('file command output: %s' % stdout.rstrip())
         if ('executable' in stdout and not 'shell script' in stdout) or 'shared object' in stdout:
@@ -347,14 +334,132 @@ def appendfile(args):
         return 3
 
 
+def appendsrc(args, files, rd):
+    import oe.recipeutils
+
+    srcdir = rd.getVar('S', True)
+    workdir = rd.getVar('WORKDIR', True)
+
+    import bb.fetch
+    simplified = {}
+    src_uri = rd.getVar('SRC_URI', True).split()
+    for uri in src_uri:
+        simple_uri = bb.fetch.URI(uri)
+        simple_uri.params = {}
+        simplified[simple_uri] = uri
+
+    copyfiles = {}
+    extralines = []
+    for newfile, srcfile in files.iteritems():
+        src_destdir = os.path.dirname(srcfile)
+        if not args.use_workdir:
+            src_destdir = os.path.join(os.path.relpath(srcdir, workdir), src_destdir)
+        src_destdir = os.path.normpath(src_destdir)
+
+        source_uri = 'file://{0}'.format(os.path.basename(srcfile))
+        if src_destdir and src_destdir != '.':
+            source_uri += ';subdir={0}'.format(src_destdir)
+
+        simple = bb.fetch.URI(source_uri)
+        simple.params = {}
+        if simple in simplified:
+            existing = simplified[simple]
+            if uri != existing:
+                logger.warn('{0!r} is already in SRC_URI, with different parameters: {1!r}, not adding'.format(source_uri, existing))
+            else:
+                logger.warn('{0!r} is already in SRC_URI, not adding'.format(source_uri))
+        else:
+            extralines.append('SRC_URI += {0}'.format(source_uri))
+        copyfiles[newfile] = srcfile
+
+    oe.recipeutils.bbappend_recipe(rd, args.destlayer, copyfiles, None, wildcardver=args.wildcard_version, machine=args.machine, extralines=extralines)
+
+
+def appendsrcfiles(parser, args):
+    recipedata = _parse_recipe(args.recipe, tinfoil)
+    if not recipedata:
+        parser.error('RECIPE must be a valid recipe name')
+
+    files = dict((f, os.path.join(args.destdir, os.path.basename(f)))
+                 for f in args.files)
+    return appendsrc(args, files, recipedata)
+
+
+def appendsrcfile(parser, args):
+    recipedata = _parse_recipe(args.recipe, tinfoil)
+    if not recipedata:
+        parser.error('RECIPE must be a valid recipe name')
+
+    if not args.destfile:
+        args.destfile = os.path.basename(args.file)
+    elif args.destfile.endswith('/'):
+        args.destfile = os.path.join(args.destfile, os.path.basename(args.file))
+
+    return appendsrc(args, {args.file: args.destfile}, recipedata)
+
+
+def layer(layerpath):
+    if not os.path.exists(os.path.join(layerpath, 'conf', 'layer.conf')):
+        raise argparse.ArgumentTypeError('{0!r} must be a path to a valid layer'.format(layerpath))
+    return layerpath
+
+
+def existing_path(filepath):
+    if not os.path.exists(filepath):
+        raise argparse.ArgumentTypeError('{0!r} must be an existing path'.format(filepath))
+    return filepath
+
+
+def existing_file(filepath):
+    filepath = existing_path(filepath)
+    if os.path.isdir(filepath):
+        raise argparse.ArgumentTypeError('{0!r} must be a file, not a directory'.format(filepath))
+    return filepath
+
+
+def destination_path(destpath):
+    if os.path.isabs(destpath):
+        raise argparse.ArgumentTypeError('{0!r} must be a relative path, not absolute'.format(destpath))
+    return destpath
+
+
+def target_path(targetpath):
+    if not os.path.isabs(targetpath):
+        raise argparse.ArgumentTypeError('{0!r} must be an absolute path, not relative'.format(targetpath))
+    return targetpath
+
+
 def register_command(subparsers):
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument('-m', '--machine', help='Make bbappend changes specific to a machine only', metavar='MACHINE')
+    common.add_argument('-w', '--wildcard-version', help='Use wildcard to make the bbappend apply to any recipe version', action='store_true')
+    common.add_argument('destlayer', metavar='DESTLAYER', help='Base directory of the destination layer to write the bbappend to', type=layer)
+
     parser_appendfile = subparsers.add_parser('appendfile',
-                                                    help='Create a bbappend to replace a file',
-                                                    description='')
-    parser_appendfile.add_argument('destlayer', help='Destination layer to write the bbappend to')
-    parser_appendfile.add_argument('targetpath', help='Path within the image to the file to be replaced')
-    parser_appendfile.add_argument('newfile', help='Custom file to replace it with')
-    parser_appendfile.add_argument('-r', '--recipe', help='Override recipe to apply to (default is to find which recipe already packages it)')
-    parser_appendfile.add_argument('-m', '--machine', help='Make bbappend changes specific to a machine only', metavar='MACHINE')
-    parser_appendfile.add_argument('-w', '--wildcard-version', help='Use wildcard to make the bbappend apply to any recipe version', action='store_true')
+                                              parents=[common],
+                                              help='Create/update a bbappend to replace a target file',
+                                              description='Creates a bbappend (or updates an existing one) to replace the specified file that appears in the target system, determining the recipe that packages the file and the required path and name for the bbappend automatically. Note that the ability to determine the recipe packaging a particular file depends upon the recipe\'s do_packagedata task having already run prior to running this command (which it will have when the recipe has been built successfully, which in turn will have happened if one or more of the recipe\'s packages is included in an image that has been built successfully).')
+    parser_appendfile.add_argument('targetpath', help='Path to the file to be replaced (as it would appear within the target image, e.g. /etc/motd)', type=target_path)
+    parser_appendfile.add_argument('newfile', help='Custom file to replace the target file with', type=existing_file)
+    parser_appendfile.add_argument('-r', '--recipe', help='Override recipe to apply to (default is to find which recipe already packages the file)')
     parser_appendfile.set_defaults(func=appendfile, parserecipes=True)
+
+    common_src = argparse.ArgumentParser(add_help=False, parents=[common])
+    common_src.add_argument('-W', '--workdir', help='Unpack file into WORKDIR rather than S', dest='use_workdir', action='store_true')
+    common_src.add_argument('recipe', metavar='RECIPE', help='Override recipe to apply to')
+
+    parser = subparsers.add_parser('appendsrcfiles',
+                                   parents=[common_src],
+                                   help='Create/update a bbappend to add or replace source files',
+                                   description='Creates a bbappend (or updates an existing one) to add or replace the specified file in the recipe sources, either those in WORKDIR or those in the source tree. This command lets you specify multiple files with a destination directory, so cannot specify the destination filename. See the `appendsrcfile` command for the other behavior.')
+    parser.add_argument('-d', '--destdir', help='Destination directory (relative to S or WORKDIR, defaults to ".")', default='', type=destination_path)
+    parser.add_argument('files', nargs='+', metavar='FILE', help='File(s) to be added to the recipe sources (WORKDIR or S)', type=existing_path)
+    parser.set_defaults(func=lambda a: appendsrcfiles(parser, a), parserecipes=True)
+
+    parser = subparsers.add_parser('appendsrcfile',
+                                   parents=[common_src],
+                                   help='Create/update a bbappend to add or replace a source file',
+                                   description='Creates a bbappend (or updates an existing one) to add or replace the specified files in the recipe sources, either those in WORKDIR or those in the source tree. This command lets you specify the destination filename, not just destination directory, but only works for one file. See the `appendsrcfiles` command for the other behavior.')
+    parser.add_argument('file', metavar='FILE', help='File to be added to the recipe sources (WORKDIR or S)', type=existing_path)
+    parser.add_argument('destfile', metavar='DESTFILE', nargs='?', help='Destination path (relative to S or WORKDIR, optional)', type=destination_path)
+    parser.set_defaults(func=lambda a: appendsrcfile(parser, a), parserecipes=True)

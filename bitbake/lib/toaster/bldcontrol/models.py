@@ -125,6 +125,9 @@ class BuildRequest(models.Model):
     def get_machine(self):
         return self.brvariable_set.get(name="MACHINE").value
 
+    def __str__(self):
+        return "%s %s" % (self.project, self.get_state_display())
+
 # These tables specify the settings for running an actual build.
 # They MUST be kept in sync with the tables in orm.models.Project*
 
@@ -156,3 +159,6 @@ class BRError(models.Model):
     errtype     = models.CharField(max_length=100)
     errmsg      = models.TextField()
     traceback   = models.TextField()
+
+    def __str__(self):
+        return "%s (%s)" % (self.errmsg, self.req)

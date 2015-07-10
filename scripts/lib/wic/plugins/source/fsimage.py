@@ -22,10 +22,14 @@ from wic.pluginbase import SourcePlugin
 from wic.utils.oe.misc import get_bitbake_var
 
 class FSImagePlugin(SourcePlugin):
+    """
+    Add an already existing filesystem image to the partition layout.
+    """
+
     name = 'fsimage'
 
     @classmethod
-    def do_install_disk(self, disk, disk_name, cr, workdir, oe_builddir,
+    def do_install_disk(cls, disk, disk_name, cr, workdir, oe_builddir,
                         bootimg_dir, kernel_dir, native_sysroot):
         """
         Called after all partitions have been prepared and assembled into a
@@ -34,7 +38,7 @@ class FSImagePlugin(SourcePlugin):
         pass
 
     @classmethod
-    def do_configure_partition(self, part, source_params, cr, cr_workdir,
+    def do_configure_partition(cls, part, source_params, cr, cr_workdir,
                                oe_builddir, bootimg_dir, kernel_dir,
                                native_sysroot):
         """
@@ -44,7 +48,7 @@ class FSImagePlugin(SourcePlugin):
         pass
 
     @classmethod
-    def do_prepare_partition(self, part, source_params, cr, cr_workdir,
+    def do_prepare_partition(cls, part, source_params, cr, cr_workdir,
                              oe_builddir, bootimg_dir, kernel_dir,
                              rootfs_dir, native_sysroot):
         """
@@ -58,7 +62,7 @@ class FSImagePlugin(SourcePlugin):
 
         msger.debug('Bootimg dir: %s' % bootimg_dir)
 
-        if ('file' not in source_params):
+        if 'file' not in source_params:
             msger.error("No file specified\n")
             return
 

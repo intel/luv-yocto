@@ -425,7 +425,7 @@ def get_package_mapping (pkg, basepkg, d):
 def get_package_additional_metadata (pkg_type, d):
     base_key = "PACKAGE_ADD_METADATA"
     for key in ("%s_%s" % (base_key, pkg_type.upper()), base_key):
-        if d.getVar(key) is None:
+        if d.getVar(key, False) is None:
             continue
         d.setVarFlag(key, "type", "list")
         if d.getVarFlag(key, "separator") is None:
@@ -1154,7 +1154,7 @@ populate_packages[dirs] = "${D}"
 python package_fixsymlinks () {
     import errno
     pkgdest = d.getVar('PKGDEST', True)
-    packages = d.getVar("PACKAGES").split()
+    packages = d.getVar("PACKAGES", False).split()
 
     dangling_links = {}
     pkg_files = {}
@@ -1917,7 +1917,7 @@ python package_depchains() {
 
 # Since bitbake can't determine which variables are accessed during package
 # iteration, we need to list them here:
-PACKAGEVARS = "FILES RDEPENDS RRECOMMENDS SUMMARY DESCRIPTION RSUGGESTS RPROVIDES RCONFLICTS PKG ALLOW_EMPTY pkg_postinst pkg_postrm INITSCRIPT_NAME INITSCRIPT_PARAMS DEBIAN_NOAUTONAME ALTERNATIVE PKGE PKGV PKGR USERADD_PARAM GROUPADD_PARAM CONFFILES SYSTEMD_SERVICE"
+PACKAGEVARS = "FILES RDEPENDS RRECOMMENDS SUMMARY DESCRIPTION RSUGGESTS RPROVIDES RCONFLICTS PKG ALLOW_EMPTY pkg_postinst pkg_postrm INITSCRIPT_NAME INITSCRIPT_PARAMS DEBIAN_NOAUTONAME ALTERNATIVE PKGE PKGV PKGR USERADD_PARAM GROUPADD_PARAM CONFFILES SYSTEMD_SERVICE LICENSE SECTION pkg_preinst pkg_prerm RREPLACES GROUPMEMS_PARAM SYSTEMD_AUTO_ENABLE"
 
 def gen_packagevar(d):
     ret = []

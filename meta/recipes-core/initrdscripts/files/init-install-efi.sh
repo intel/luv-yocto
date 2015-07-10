@@ -16,29 +16,30 @@ swap_ratio=5
 
 # Get a list of hard drives
 hdnamelist=""
-live_dev_name=${1%%/*}
+live_dev_name=`cat /proc/mounts | grep ${1%/} | awk '{print $1}'`
+live_dev_name=${live_dev_name#\/dev/}
 live_dev_name=${live_dev_name%%[0-9]*}
 
 echo "Searching for hard drives ..."
 
 for device in `ls /sys/block/`; do
     case $device in
-	loop*)
+        loop*)
             # skip loop device
-	    ;;
-	sr*)
+            ;;
+        sr*)
             # skip CDROM device
-	    ;;
-	ram*)
+            ;;
+        ram*)
             # skip ram device
-	    ;;
-	*)
-	    # skip the device LiveOS is on
-	    # Add valid hard drive name to the list
-	    if [ $device != $live_dev_name -a -e /dev/$device ]; then
-		hdnamelist="$hdnamelist $device"
-	    fi
-	    ;;
+            ;;
+        *)
+            # skip the device LiveOS is on
+            # Add valid hard drive name to the list
+            if [ $device != $live_dev_name -a -e /dev/$device ]; then
+                hdnamelist="$hdnamelist $device"
+            fi
+            ;;
     esac
 done
 
@@ -48,8 +49,8 @@ for hdname in $hdnamelist; do
     echo "-------------------------------"
     echo /dev/$hdname
     if [ -r /sys/block/$hdname/device/vendor ]; then
-	echo -n "VENDOR="
-	cat /sys/block/$hdname/device/vendor
+        echo -n "VENDOR="
+        cat /sys/block/$hdname/device/vendor
     fi
     if [ -r /sys/block/$hdname/device/model ]; then
         echo -n "MODEL="
@@ -62,18 +63,17 @@ for hdname in $hdnamelist; do
     echo
     # Get user choice
     while true; do
-	echo -n "Do you want to install this image there? [y/n] "
-	read answer
-	if [ "$answer" = "y" -o "$answer" = "n" ]; then
-	    break
-	fi
-	echo "Please answer y or n"
+        echo -n "Do you want to install this image there? [y/n] "
+        read answer
+        if [ "$answer" = "y" -o "$answer" = "n" ]; then
+            break
+        fi
+        echo "Please answer y or n"
     done
     if [ "$answer" = "y" ]; then
-	TARGET_DEVICE_NAME=$hdname
-	break
+        TARGET_DEVICE_NAME=$hdname
+        break
     fi
-
 done
 
 if [ -n "$TARGET_DEVICE_NAME" ]; then
@@ -83,7 +83,7 @@ else
     exit 1
 fi
 
-device=$TARGET_DEVICE_NAME
+device=/dev/$TARGET_DEVICE_NAME
 
 #
 # The udev automounter can cause pain here, kill it
@@ -94,12 +94,12 @@ rm -f /etc/udev/scripts/mount*
 #
 # Unmount anything the automounter had mounted
 #
-umount /dev/${device}* 2> /dev/null || /bin/true
+umount ${device}* 2> /dev/null || /bin/true
 
 mkdir -p /tmp
 cat /proc/mounts > /etc/mtab
 
-disk_size=$(parted /dev/${device} unit mb print | grep Disk | cut -d" " -f 3 | sed -e "s/MB//")
+disk_size=$(parted ${device} unit mb print | grep Disk | cut -d" " -f 3 | sed -e "s/MB//")
 
 swap_size=$((disk_size*swap_ratio/100))
 rootfs_size=$((disk_size-boot_size-swap_size))
@@ -117,32 +117,32 @@ if [ ! "${device#mmcblk}" = "${device}" ]; then
     part_prefix="p"
     rootwait="rootwait"
 fi
-bootfs=/dev/${device}${part_prefix}1
-rootfs=/dev/${device}${part_prefix}2
-swap=/dev/${device}${part_prefix}3
+bootfs=${device}${part_prefix}1
+rootfs=${device}${part_prefix}2
+swap=${device}${part_prefix}3
 
 echo "*****************"
 echo "Boot partition size:   $boot_size MB ($bootfs)"
 echo "Rootfs partition size: $rootfs_size MB ($rootfs)"
 echo "Swap partition size:   $swap_size MB ($swap)"
 echo "*****************"
-echo "Deleting partition table on /dev/${device} ..."
-dd if=/dev/zero of=/dev/${device} bs=512 count=2
+echo "Deleting partition table on ${device} ..."
+dd if=/dev/zero of=${device} bs=512 count=35
 
-echo "Creating new partition table on /dev/${device} ..."
-parted /dev/${device} mklabel gpt
+echo "Creating new partition table on ${device} ..."
+parted ${device} mklabel gpt
 
 echo "Creating boot partition on $bootfs"
-parted /dev/${device} mkpart primary 0% $boot_size
-parted /dev/${device} set 1 boot on
+parted ${device} mkpart boot fat32 0% $boot_size
+parted ${device} set 1 boot on
 
 echo "Creating rootfs partition on $rootfs"
-parted /dev/${device} mkpart primary $rootfs_start $rootfs_end
+parted ${device} mkpart root ext3 $rootfs_start $rootfs_end
 
 echo "Creating swap partition on $swap"
-parted /dev/${device} mkpart primary $swap_start 100%
+parted ${device} mkpart swap linux-swap $swap_start 100%
 
-parted /dev/${device} print
+parted ${device} print
 
 echo "Formatting $bootfs to vfat..."
 mkfs.vfat $bootfs
@@ -163,11 +163,13 @@ mount -o rw,loop,noatime,nodiratime /run/media/$1/$2 /src_root
 echo "Copying rootfs files..."
 cp -a /src_root/* /tgt_root
 if [ -d /tgt_root/etc/ ] ; then
-    echo "$swap                swap             swap       defaults              0  0" >> /tgt_root/etc/fstab
-    echo "$bootfs              /boot            vfat       defaults              1  2" >> /tgt_root/etc/fstab
+    boot_uuid=$(blkid -o value -s UUID ${device}1)
+    swap_part_uuid=$(blkid -o value -s PARTUUID ${device}3)
+    echo "/dev/disk/by-partuuid/$swap_part_uuid                swap             swap       defaults              0  0" >> /tgt_root/etc/fstab
+    echo "UUID=$boot_uuid              /boot            vfat       defaults              1  2" >> /tgt_root/etc/fstab
     # We dont want udev to mount our root device while we're booting...
     if [ -d /tgt_root/etc/udev/ ] ; then
-	echo "/dev/${device}" >> /tgt_root/etc/udev/mount.blacklist
+        echo "${device}" >> /tgt_root/etc/udev/mount.blacklist
     fi
 fi
 
@@ -183,6 +185,7 @@ mkdir -p $EFIDIR
 cp /run/media/$1/EFI/BOOT/*.efi $EFIDIR
 
 if [ -f /run/media/$1/EFI/BOOT/grub.cfg ]; then
+    root_part_uuid=$(blkid -o value -s PARTUUID ${device}2)
     GRUBCFG="$EFIDIR/grub.cfg"
     cp /run/media/$1/EFI/BOOT/grub.cfg $GRUBCFG
     # Update grub config for the installed image
@@ -195,7 +198,7 @@ if [ -f /run/media/$1/EFI/BOOT/grub.cfg ]; then
     # Delete any root= strings
     sed -i "s/ root=[^ ]*/ /" $GRUBCFG
     # Add the root= and other standard boot options
-    sed -i "s@linux /vmlinuz *@linux /vmlinuz root=$rootfs rw $rootwait quiet @" $GRUBCFG
+    sed -i "s@linux /vmlinuz *@linux /vmlinuz root=PARTUUID=$root_part_uuid rw $rootwait quiet @" $GRUBCFG
 fi
 
 if [ -d /run/media/$1/loader ]; then
@@ -211,7 +214,7 @@ if [ -d /run/media/$1/loader ]; then
     # delete any root= strings
     sed -i "s/ root=[^ ]*/ /" $GUMMIBOOT_CFGS
     # add the root= and other standard boot options
-    sed -i "s@options *@options root=$rootfs rw $rootwait quiet @" $GUMMIBOOT_CFGS
+    sed -i "s@options *@options root=PARTUUID=$rootuuid rw $rootwait quiet @" $GUMMIBOOT_CFGS
 fi
 
 umount /tgt_root

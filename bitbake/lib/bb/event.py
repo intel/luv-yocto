@@ -72,6 +72,10 @@ _eventfilter = None
 
 def execute_handler(name, handler, event, d):
     event.data = d
+    addedd = False
+    if 'd' not in __builtins__:
+        __builtins__['d'] = d
+        addedd = True
     try:
         ret = handler(event)
     except (bb.parse.SkipRecipe, bb.BBHandledException):
@@ -87,6 +91,8 @@ def execute_handler(name, handler, event, d):
         raise
     finally:
         del event.data
+        if addedd:
+            del __builtins__['d']
 
 def fire_class_handlers(event, d):
     if isinstance(event, logging.LogRecord):
@@ -496,6 +502,16 @@ class TargetsTreeGenerated(Event):
     def __init__(self, model):
         Event.__init__(self)
         self._model = model
+
+class ReachableStamps(Event):
+    """
+    An event listing all stamps reachable after parsing
+    which the metadata may use to clean up stale data
+    """
+
+    def __init__(self, stamps):
+        Event.__init__(self)
+        self.stamps = stamps
 
 class FilesMatchingFound(Event):
     """

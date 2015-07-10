@@ -25,6 +25,12 @@ import logging
 
 logger = logging.getLogger('devtool')
 
+
+class DevtoolError(Exception):
+    """Exception for handling devtool errors"""
+    pass
+
+
 def exec_build_env_command(init_path, builddir, cmd, watch=False, **options):
     """Run a program in bitbake build context"""
     import bb
@@ -73,6 +79,22 @@ def exec_watch(cmd, **options):
         raise bb.process.ExecutionError(cmd, process.returncode, buf, None)
 
     return buf, None
+
+def exec_fakeroot(d, cmd, **kwargs):
+    """Run a command under fakeroot (pseudo, in fact) so that it picks up the appropriate file permissions"""
+    # Grab the command and check it actually exists
+    fakerootcmd = d.getVar('FAKEROOTCMD', True)
+    if not os.path.exists(fakerootcmd):
+        logger.error('pseudo executable %s could not be found - have you run a build yet? pseudo-native should install this and if you have run any build then that should have been built')
+        return 2
+    # Set up the appropriate environment
+    newenv = dict(os.environ)
+    fakerootenv = d.getVar('FAKEROOTENV', True)
+    for varvalue in fakerootenv.split():
+        if '=' in varvalue:
+            splitval = varvalue.split('=', 1)
+            newenv[splitval[0]] = splitval[1]
+    return subprocess.call("%s %s" % (fakerootcmd, cmd), env=newenv, **kwargs)
 
 def setup_tinfoil():
     """Initialize tinfoil api from bitbake"""

@@ -53,21 +53,18 @@ function tableInit(ctx){
               tableData: tableData,
               tableParams: tableParams
           }, null, libtoaster.dumpsUrlParams(tableParams));
-        },
-
-        error: function (_data) {
-          console.warn("Call failed");
-          console.warn(_data);
         }
     });
   }
 
   function updateTable(tableData) {
     var tableBody = table.children("tbody");
-    var paginationBtns = $('#pagination-'+ctx.tableName);
+    var pagination = $('#pagination-'+ctx.tableName);
+    var paginationBtns = pagination.children('ul');
+    var tableContainer = $("#table-container-"+ctx.tableName);
 
+    tableContainer.css("visibility", "hidden");
     /* To avoid page re-layout flicker when paging set fixed height */
-    table.css("visibility", "hidden");
     table.css("padding-bottom", table.height());
 
     /* Reset table components */
@@ -83,25 +80,58 @@ function tableInit(ctx){
     tableTotal = tableData.total;
 
     if (tableData.total === 0){
-      $("#table-container-"+ctx.tableName).hide();
-      $("#new-search-input-"+ctx.tableName).val(tableParams.search);
-      $("#no-results-"+ctx.tableName).show();
+      tableContainer.hide();
+      /* If we were searching show the new search bar and return */
+      if (tableParams.search){
+        $("#new-search-input-"+ctx.tableName).val(tableParams.search);
+        $("#no-results-"+ctx.tableName).show();
+      }
+      table.trigger("table-done", [tableData.total, tableParams]);
+
       return;
+
+    /* We don't want to clutter the place with the table chrome if there
+     * are only a few results */
+    } else if (tableData.total <= 10 &&
+               !tableParams.filter &&
+               !tableParams.search){
+      $("#table-chrome-"+ctx.tableName).hide();
+      pagination.hide();
     } else {
-      $("#table-container-"+ctx.tableName).show();
+      tableContainer.show();
       $("#no-results-"+ctx.tableName).hide();
     }
 
-
     setupTableChrome(tableData);
 
-
     /* Add table data rows */
+    var column_index;
     for (var i in tableData.rows){
+      /* only display if the column is display-able */
       var row = $("<tr></tr>");
+      column_index = -1;
       for (var key_j in tableData.rows[i]){
+
+        /* if we have a static: version of a key, prefer the static: version for rendering */
+        var orig_key_j = key_j;
+
+        if (key_j.indexOf("static:") === 0) {
+          if (key_j.substr("static:".length) in tableData.rows[i]) {
+            continue;
+          }
+          orig_key_j = key_j.substr("static:".length)
+        } else if (("static:" + key_j) in tableData.rows[i]) {
+          key_j = "static:" + key_j;
+        }
+
+        /* we skip over un-displayable column entries */
+        column_index += 1;
+        if (! tableData.columns[column_index].displayable) {
+          continue;
+        }
+
         var td = $("<td></td>");
-        td.prop("class", key_j);
+        td.prop("class", orig_key_j);
         if (tableData.rows[i][key_j]){
           td.html(tableData.rows[i][key_j]);
         }
@@ -137,33 +167,38 @@ function tableInit(ctx){
     var end = tableParams.page + 2;
     var numPages = Math.ceil(tableData.total/tableParams.limit);
 
-    if (tableParams.page < 3)
-      end = 5;
+    if (numPages >  1){
+      if (tableParams.page < 3)
+        end = 5;
 
-    for (var page_i=1; page_i <= numPages;  page_i++){
-      if (page_i >= start && page_i <= end){
-        var btn = $('<li><a href="#" class="page">'+page_i+'</a></li>');
+      for (var page_i=1; page_i <= numPages;  page_i++){
+        if (page_i >= start && page_i <= end){
+          var btn = $('<li><a href="#" class="page">'+page_i+'</a></li>');
 
-        if (page_i === tableParams.page){
-          btn.addClass("active");
+          if (page_i === tableParams.page){
+            btn.addClass("active");
+          }
+
+          /* Add the click handler */
+          btn.click(pageButtonClicked);
+          paginationBtns.append(btn);
         }
-
-        /* Add the click handler */
-        btn.click(pageButtonClicked);
-        paginationBtns.append(btn);
       }
     }
-    table.css("padding-bottom", 0);
+
     loadColumnsPreference();
 
-    $("table").css("visibility", "visible");
+    table.css("padding-bottom", 0);
+    tableContainer.css("visibility", "visible");
+
+    table.trigger("table-done", [tableData.total, tableParams]);
   }
 
   function setupTableChrome(tableData){
     if (tableChromeDone === true)
       return;
 
-    var tableHeadRow = table.find("thead tr");
+    var tableHeadRow = table.find("thead#tableheader");
     var editColMenu = $("#table-chrome-"+ctx.tableName).find(".editcol");
 
     tableHeadRow.html("");
@@ -176,6 +211,9 @@ function tableInit(ctx){
     /* Add table header and column toggle menu */
     for (var i in tableData.columns){
       var col = tableData.columns[i];
+      if (col.displayable === false) {
+        continue;
+      }
       var header = $("<th></th>");
       header.prop("class", col.field_name);
 
@@ -223,23 +261,14 @@ function tableInit(ctx){
         var filterBtn = $('<a href="#" role="button" class="pull-right btn btn-mini" data-toggle="modal"><i class="icon-filter filtered"></i></a>');
 
         filterBtn.data('filter-name', col.filter_name);
+        filterBtn.prop('id', col.filter_name);
         filterBtn.click(filterOpenClicked);
 
         /* If we're currently being filtered setup the visial indicator */
         if (tableParams.filter &&
             tableParams.filter.match('^'+col.filter_name)) {
 
-            filterBtn.addClass("btn-primary");
-
-            filterBtn.tooltip({
-                html: true,
-                title: '<button class="btn btn-small btn-primary" onClick=\'$("#clear-filter-btn").click();\'>Clear filter</button>',
-                placement: 'bottom',
-                delay: {
-                  hide: 1500,
-                  show: 400,
-                },
-            });
+            filterBtnActive(filterBtn, true);
         }
         header.append(filterBtn);
       }
@@ -270,6 +299,26 @@ function tableInit(ctx){
     } /* End for each column */
 
     tableChromeDone = true;
+  }
+
+  /* Toggles the active state of the filter button */
+  function filterBtnActive(filterBtn, active){
+    if (active) {
+      filterBtn.addClass("btn-primary");
+
+      filterBtn.tooltip({
+          html: true,
+          title: '<button class="btn btn-small btn-primary" onClick=\'$("#clear-filter-btn-'+ ctx.tableName +'").click();\'>Clear filter</button>',
+          placement: 'bottom',
+          delay: {
+            hide: 1500,
+            show: 400,
+          },
+      });
+    } else {
+      filterBtn.removeClass("btn-primary");
+      filterBtn.tooltip('destroy');
+    }
   }
 
   /* Display or hide table columns based on the cookie preference or defaults */
@@ -365,18 +414,19 @@ function tableInit(ctx){
      */
     var params = {
       'name' : filterName,
-      'search': tableParams.search
+      'search': tableParams.search,
+      'cmd': 'filterinfo',
     };
 
     $.ajax({
         type: "GET",
-        url: ctx.url + 'filterinfo',
+        url: ctx.url,
         data: params,
         headers: { 'X-CSRFToken' : $.cookie('csrftoken')},
         success: function (filterData) {
-          var filterActionRadios = $('#filter-actions');
+          var filterActionRadios = $('#filter-actions-'+ctx.tableName);
 
-          $('#filter-modal-title').text(filterData.title);
+          $('#filter-modal-title-'+ctx.tableName).text(filterData.title);
 
           filterActionRadios.text("");
 
@@ -387,6 +437,10 @@ function tableInit(ctx){
             var actionTitle = filterAction.title + ' (' + filterAction.count + ')';
 
             var radioInput = action.children("input");
+
+            if (Number(filterAction.count) == 0){
+              radioInput.attr("disabled", "disabled");
+            }
 
             action.children(".filter-title").text(actionTitle);
 
@@ -404,7 +458,7 @@ function tableInit(ctx){
             filterActionRadios.append(action);
           }
 
-          $('#filter-modal').modal('show');
+          $('#filter-modal-'+ctx.tableName).modal('show');
         }
     });
   }
@@ -417,17 +471,18 @@ function tableInit(ctx){
     e.stopPropagation();
   });
 
-  $(".pagesize").val(tableParams.limit);
+  $(".pagesize-"+ctx.tableName).val(tableParams.limit);
 
   /* page size selector  */
-  $(".pagesize").change(function(){
+  $(".pagesize-"+ctx.tableName).change(function(e){
     tableParams.limit = Number(this.value);
     if ((tableParams.page * tableParams.limit) > tableTotal)
       tableParams.page = 1;
 
     loadData(tableParams);
     /* sync the other selectors on the page */
-    $(".pagesize").val(this.value);
+    $(".pagesize-"+ctx.tableName).val(this.value);
+    e.preventDefault();
   });
 
   $("#search-submit-"+ctx.tableName).click(function(e){
@@ -435,7 +490,13 @@ function tableInit(ctx){
 
     tableParams.page = 1;
     tableParams.search = searchTerm;
-    tableParams.filter = null;
+
+    /* If a filter was active we remove it */
+    if (tableParams.filter) {
+      var filterBtn = $("#" + tableParams.filter.split(":")[0]);
+      filterBtnActive(filterBtn, false);
+      tableParams.filter = null;
+    }
 
     loadData(tableParams);
 
@@ -463,23 +524,31 @@ function tableInit(ctx){
     e.preventDefault();
   });
 
-  $("#clear-filter-btn").click(function(){
+  $("#clear-filter-btn-"+ctx.tableName).click(function(){
+    var filterBtn = $("#" + tableParams.filter.split(":")[0]);
+    filterBtnActive(filterBtn, false);
+
     tableParams.filter = null;
     loadData(tableParams);
   });
 
-  $("#filter-modal-form").submit(function(e){
+  $("#filter-modal-form-"+ctx.tableName).submit(function(e){
     e.preventDefault();
 
     tableParams.filter = $(this).find("input[type='radio']:checked").val();
 
+    var filterBtn = $("#" + tableParams.filter.split(":")[0]);
+
     /* All === remove filter */
-    if (tableParams.filter.match(":all$"))
+    if (tableParams.filter.match(":all$")) {
       tableParams.filter = null;
+      filterBtnActive(filterBtn, false);
+    } else {
+      filterBtnActive(filterBtn, true);
+    }
 
     loadData(tableParams);
 
-
-    $('#filter-modal').modal('hide');
+    $(this).parent().modal('hide');
   });
 }

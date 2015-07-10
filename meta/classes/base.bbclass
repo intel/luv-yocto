@@ -71,7 +71,7 @@ def base_dep_prepend(d):
     # INHIBIT_DEFAULT_DEPS doesn't apply to the patch command.  Whether or  not
     # we need that built is the responsibility of the patch function / class, not
     # the application.
-    if not d.getVar('INHIBIT_DEFAULT_DEPS'):
+    if not d.getVar('INHIBIT_DEFAULT_DEPS', False):
         if (d.getVar('HOST_SYS', True) != d.getVar('BUILD_SYS', True)):
             deps += " virtual/${TARGET_PREFIX}gcc virtual/${TARGET_PREFIX}compilerlibs virtual/libc "
     return deps
@@ -97,6 +97,7 @@ PATH_prepend = "${@extra_path_elements(d)}"
 def get_lic_checksum_file_list(d):
     filelist = []
     lic_files = d.getVar("LIC_FILES_CHKSUM", True) or ''
+    tmpdir = d.getVar("TMPDIR", True)
 
     urls = lic_files.split()
     for url in urls:
@@ -105,6 +106,8 @@ def get_lic_checksum_file_list(d):
         try:
             path = bb.fetch.decodeurl(url)[2]
             if path[0] == '/':
+                if path.startswith(tmpdir):
+                    continue
                 filelist.append(path + ":" + str(os.path.exists(path)))
         except bb.fetch.MalformedUrl:
             raise bb.build.FuncFailed(d.getVar('PN', True) + ": LIC_FILES_CHKSUM contains an invalid URL: " + url)
@@ -338,6 +341,11 @@ python () {
     if pkgconfigflags:
         pkgconfig = (d.getVar('PACKAGECONFIG', True) or "").split()
         pn = d.getVar("PN", True)
+
+        for pconfig in pkgconfig:
+            if pconfig not in pkgconfigflags:
+                bb.warn("%s: invalid PACKAGECONFIG: %s" % (pn, pconfig))
+
         mlprefix = d.getVar("MLPREFIX", True)
 
         def expandFilter(appends, extension, prefix):

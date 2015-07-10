@@ -242,6 +242,9 @@ python buildhistory_emit_pkghistory() {
         pkginfo.size = int(pkgdata['PKGSIZE'])
 
         write_pkghistory(pkginfo, d)
+
+    # Create files-in-<package-name>.txt files containing a list of files of each recipe's package
+    bb.build.exec_func("buildhistory_list_pkg_files", d)
 }
 
 
@@ -435,6 +438,16 @@ buildhistory_list_files() {
 	( cd $1 && find . -printf "%M %-10u %-10g %10s %p -> %l\n" | sort -k5 | sed 's/ * -> $//' > $2 )
 }
 
+buildhistory_list_pkg_files() {
+        file_prefix="files-in-"
+
+        # Create individual files-in-package for each recipe's package
+        for pkgdir in $(find ${PKGDEST}/* -maxdepth 0 -type d); do
+                pkgname=$(basename ${pkgdir})
+                outfile="${BUILDHISTORY_DIR_PACKAGE}/${pkgname}/${file_prefix}${pkgname}.txt"
+                buildhistory_list_files ${pkgdir} ${outfile}
+        done
+}
 
 buildhistory_get_imageinfo() {
 	if [ "${@bb.utils.contains('BUILDHISTORY_FEATURES', 'image', '1', '0', d)}" = "0" ] ; then
@@ -580,6 +593,15 @@ END
 			git tag -f build-minus-3 build-minus-2 > /dev/null 2>&1 || true
 			git tag -f build-minus-2 build-minus-1 > /dev/null 2>&1 || true
 			git tag -f build-minus-1 > /dev/null 2>&1 || true
+		fi
+		# If the user hasn't set up their name/email, set some defaults
+		# just for this repo (otherwise the commit will fail with older
+		# versions of git)
+		if ! git config user.email > /dev/null ; then
+			git config --local user.email "buildhistory@${DISTRO}"
+		fi
+		if ! git config user.name > /dev/null ; then
+			git config --local user.name "buildhistory"
 		fi
 		# Check if there are new/changed files to commit (other than metadata-revs)
 		repostatus=`git status --porcelain | grep -v " metadata-revs$"`

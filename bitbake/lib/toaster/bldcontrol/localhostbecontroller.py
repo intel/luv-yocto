@@ -113,11 +113,11 @@ class LocalhostBEController(BuildEnvironmentController):
         # get the file length; we need to detect the _last_ start of the toaster UI, not the first
         toaster_ui_log_filelength = 0
         if os.path.exists(toaster_ui_log_filepath):
-            with open(toaster_ui_log_filepath, "r") as f:
+            with open(toaster_ui_log_filepath, "w") as f:
                 f.seek(0, 2)    # jump to the end
                 toaster_ui_log_filelength = f.tell()
 
-        cmd = "bash -c \"source %s/oe-init-build-env %s 2>&1 >toaster_server.log && bitbake --read conf/toaster-pre.conf --postread conf/toaster.conf --server-only -t xmlrpc -B 0.0.0.0:0 2>&1 >>toaster_server.log \"" % (self.pokydirname, self.be.builddir)
+        cmd = "bash -c \"source %s/oe-init-build-env %s 2>&1 >toaster_server.log && bitbake --read %s/conf/toaster-pre.conf --postread %s/conf/toaster.conf --server-only -t xmlrpc -B 0.0.0.0:0 2>&1 >>toaster_server.log \"" % (self.pokydirname, self.be.builddir, self.be.builddir, self.be.builddir)
 
         port = "-1"
         logger.debug("localhostbecontroller: starting builder \n%s\n" % cmd)
@@ -139,7 +139,7 @@ class LocalhostBEController(BuildEnvironmentController):
             with open(filepath, "r") as f:
                 f.seek(filepos)
                 for line in f:
-                    if line.startswith("NOTE: ToasterUI waiting for events"):
+                    if line.startswith("Bitbake server started on demand"):
                         return True
             return False
 
@@ -317,3 +317,25 @@ class LocalhostBEController(BuildEnvironmentController):
         import shutil
         shutil.rmtree(os.path.join(self.be.sourcedir, "build"))
         assert not os.path.exists(self.be.builddir)
+
+
+    def triggerBuild(self, bitbake, layers, variables, targets):
+        # set up the buid environment with the needed layers
+        self.setLayers(bitbake, layers)
+        self.writeConfFile("conf/toaster-pre.conf", variables)
+        self.writeConfFile("conf/toaster.conf", raw = "INHERIT+=\"toaster buildhistory\"")
+
+        # get the bb server running with the build req id and build env id
+        bbctrl = self.getBBController()
+
+        # trigger the build command
+        task = reduce(lambda x, y: x if len(y)== 0 else y, map(lambda y: y.task, targets))
+        if len(task) == 0:
+            task = None
+
+        bbctrl.build(list(map(lambda x:x.target, targets)), task)
+
+        logger.debug("localhostbecontroller: Build launched, exiting. Follow build logs at %s/toaster_ui.log" % self.be.builddir)
+
+        # disconnect from the server
+        bbctrl.disconnect()

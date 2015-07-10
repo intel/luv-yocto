@@ -27,7 +27,7 @@ class Mic_Bootloader(F8_Bootloader):
                  forceLBA=False, location="", md5pass="", password="",
                  upgrade=False, menus=""):
         F8_Bootloader.__init__(self, writePriority, appendLine, driveorder,
-                                forceLBA, location, md5pass, password, upgrade)
+                               forceLBA, location, md5pass, password, upgrade)
 
         self.menus = ""
         self.ptable = "msdos"
@@ -44,6 +44,7 @@ class Mic_Bootloader(F8_Bootloader):
     def _getParser(self):
         op = F8_Bootloader._getParser(self)
         op.add_option("--menus", dest="menus")
-        op.add_option("--ptable", dest="ptable", type="string")
+        op.add_option("--ptable", dest="ptable", choices=("msdos", "gpt"),
+                      default="msdos")
         return op
 

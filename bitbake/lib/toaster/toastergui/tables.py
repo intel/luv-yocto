@@ -19,18 +19,75 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-from widgets import ToasterTable
+from toastergui.widgets import ToasterTable, ToasterTemplateView
 from orm.models import Recipe, ProjectLayer, Layer_Version, Machine, Project
 from django.db.models import Q, Max
 from django.conf.urls import url
+from django.core.urlresolvers import reverse
 from django.views.generic import TemplateView
+
+
+class ProjectFiltersMixin(object):
+    """Common mixin for recipe, machine in project filters"""
+
+    def filter_in_project(self, count_only=False):
+        query = self.queryset.filter(layer_version__in=self.project_layers)
+        if count_only:
+            return query.count()
+
+        self.queryset = query
+
+    def filter_not_in_project(self, count_only=False):
+        query = self.queryset.exclude(layer_version__in=self.project_layers)
+        if count_only:
+            return query.count()
+
+        self.queryset = query
 
 class LayersTable(ToasterTable):
     """Table of layers in Toaster"""
 
     def __init__(self, *args, **kwargs):
-        ToasterTable.__init__(self)
+        super(LayersTable, self).__init__(*args, **kwargs)
         self.default_orderby = "layer__name"
+
+    def get_context_data(self, **kwargs):
+        context = super(LayersTable, self).get_context_data(**kwargs)
+
+        project = Project.objects.get(pk=kwargs['pid'])
+
+        context['project'] = project
+        context['projectlayers'] = map(lambda prjlayer: prjlayer.layercommit.id, ProjectLayer.objects.filter(project=project))
+
+        return context
+
+
+    def setup_filters(self, *args, **kwargs):
+        project = Project.objects.get(pk=kwargs['pid'])
+        self.project_layers = ProjectLayer.objects.filter(project=project)
+
+
+        self.add_filter(title="Filter by project layers",
+                        name="in_current_project",
+                        filter_actions=[
+                            self.make_filter_action("in_project", "Layers added to this project", self.filter_in_project),
+                            self.make_filter_action("not_in_project", "Layers not added to this project", self.filter_not_in_project)
+                        ])
+
+    def filter_in_project(self, count_only=False):
+        query = self.queryset.filter(projectlayer__in=self.project_layers)
+        if count_only:
+            return query.count()
+
+        self.queryset = query
+
+    def filter_not_in_project(self, count_only=False):
+        query = self.queryset.exclude(projectlayer__in=self.project_layers)
+        if count_only:
+            return query.count()
+
+        self.queryset = query
+
 
     def setup_queryset(self, *args, **kwargs):
         prj = Project.objects.get(pk = kwargs['pid'])
@@ -69,7 +126,7 @@ class LayersTable(ToasterTable):
         self.add_column(title="Git repository URL",
                         help_text="The Git repository for the layer source code",
                         hidden=True,
-                        static_data_name="git_url",
+                        static_data_name="layer__vcs_url",
                         static_data_template=git_url_template)
 
         git_dir_template = '''
@@ -129,17 +186,60 @@ class LayersTable(ToasterTable):
         self.add_column(title="Add | Delete",
                         help_text="Add or delete layers to / from your project",
                         hideable=False,
+                        filter_name="in_current_project",
                         static_data_name="add-del-layers",
                         static_data_template='{% include "layer_btn.html" %}')
 
+        project = Project.objects.get(pk=kwargs['pid'])
+        self.add_column(title="LayerDetailsUrl",
+                        displayable = False,
+                        field_name="layerDetailsUrl",
+                        computation = lambda x: reverse('layerdetails', args=(project.id, x.id)))
 
-class MachinesTable(ToasterTable):
+
+
+
+class LayerDetails(ToasterTemplateView):
+    def get_context_data(self, **kwargs):
+        context = super(LayerDetails, self).get_context_data(**kwargs)
+        from toastergui.views import _lv_to_dict
+
+        context['project'] = Project.objects.get(pk=kwargs['pid'])
+        context['layerversion'] = Layer_Version.objects.get(pk=kwargs['layerid'])
+        context['layerdict'] = _lv_to_dict(context['project'], context['layerversion'])
+        context['layerdeps'] = {"list": [
+            [{"id": y.id, "name": y.layer.name} for y in x.depends_on.get_equivalents_wpriority(context['project'])][0] for x in context['layerversion'].dependencies.all()]}
+        context['projectlayers'] = map(lambda prjlayer: prjlayer.layercommit.id, ProjectLayer.objects.filter(project=context['project']))
+
+        self.context_entries = ['project', 'layerversion', 'projectlayers', 'layerdict', 'layerdeps']
+
+        return context
+
+
+class MachinesTable(ToasterTable, ProjectFiltersMixin):
     """Table of Machines in Toaster"""
 
     def __init__(self, *args, **kwargs):
-        ToasterTable.__init__(self)
+        super(MachinesTable, self).__init__(*args, **kwargs)
         self.empty_state = "No machines maybe you need to do a build?"
         self.default_orderby = "name"
+
+    def get_context_data(self, **kwargs):
+        context = super(MachinesTable, self).get_context_data(**kwargs)
+        context['project'] = Project.objects.get(pk=kwargs['pid'])
+        context['projectlayers'] = map(lambda prjlayer: prjlayer.layercommit.id, ProjectLayer.objects.filter(project=context['project']))
+        return context
+
+    def setup_filters(self, *args, **kwargs):
+        project = Project.objects.get(pk=kwargs['pid'])
+        self.project_layers = project.projectlayer_equivalent_set()
+
+        self.add_filter(title="Filter by project machines",
+                        name="in_current_project",
+                        filter_actions=[
+                            self.make_filter_action("in_project", "Machines provided by layers added to this project", self.filter_in_project),
+                            self.make_filter_action("not_in_project", "Machines provided by layers not added to this project", self.filter_not_in_project)
+                        ])
 
     def setup_queryset(self, *args, **kwargs):
         prj = Project.objects.get(pk = kwargs['pid'])
@@ -178,30 +278,84 @@ class MachinesTable(ToasterTable):
         self.add_column(title="Machine file",
                         hidden=True,
                         static_data_name="machinefile",
-                        static_data_template=machine_file_template,
-                        field_name="name")
+                        static_data_template=machine_file_template)
 
         self.add_column(title="Select",
                         help_text="Sets the selected machine as the project machine. You can only have one machine per project",
                         hideable=False,
+                        filter_name="in_current_project",
                         static_data_name="add-del-layers",
-                        static_data_template='{% include "machine_btn.html" %}',
-                        field_name="layer_version__id")
+                        static_data_template='{% include "machine_btn.html" %}')
 
 
+class LayerMachinesTable(MachinesTable):
+    """ Smaller version of the Machines table for use in layer details """
 
-class RecipesTable(ToasterTable):
+    def __init__(self, *args, **kwargs):
+        super(LayerMachinesTable, self).__init__(*args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super(LayerMachinesTable, self).get_context_data(**kwargs)
+        context['layerversion'] = Layer_Version.objects.get(pk=kwargs['layerid'])
+        return context
+
+
+    def setup_queryset(self, *args, **kwargs):
+        MachinesTable.setup_queryset(self, *args, **kwargs)
+
+        self.queryset = self.queryset.filter(layer_version__pk=int(kwargs['layerid']))
+        self.static_context_extra['in_prj'] = ProjectLayer.objects.filter(Q(project=kwargs['pid']) and Q(layercommit=kwargs['layerid'])).count()
+
+    def setup_columns(self, *args, **kwargs):
+        self.add_column(title="Machine",
+                        hideable=False,
+                        orderable=True,
+                        field_name="name")
+
+        self.add_column(title="Description",
+                        field_name="description")
+
+        select_btn_template = '<a href="{% url "project" extra.pid %}#/machineselect={{data.name}}" class="btn btn-block select-machine-btn" {% if extra.in_prj == 0%}disabled="disabled"{%endif%}>Select machine</a>'
+
+        self.add_column(title="Select machine",
+                        static_data_name="add-del-layers",
+                        static_data_template=select_btn_template)
+
+
+class RecipesTable(ToasterTable, ProjectFiltersMixin):
     """Table of Recipes in Toaster"""
 
     def __init__(self, *args, **kwargs):
-        ToasterTable.__init__(self)
+        super(RecipesTable, self).__init__(*args, **kwargs)
         self.empty_state = "Toaster has no recipe information. To generate recipe information you can configure a layer source then run a build."
         self.default_orderby = "name"
+
+    def get_context_data(self, **kwargs):
+        project = Project.objects.get(pk=kwargs['pid'])
+        context = super(RecipesTable, self).get_context_data(**kwargs)
+
+        context['project'] = project
+
+        context['projectlayers'] = map(lambda prjlayer: prjlayer.layercommit.id, ProjectLayer.objects.filter(project=context['project']))
+
+        return context
+
+    def setup_filters(self, *args, **kwargs):
+        project = Project.objects.get(pk=kwargs['pid'])
+        self.project_layers = project.projectlayer_equivalent_set()
+
+        self.add_filter(title="Filter by project recipes",
+                        name="in_current_project",
+                        filter_actions=[
+                            self.make_filter_action("in_project", "Recipes provided by layers added to this project", self.filter_in_project),
+                            self.make_filter_action("not_in_project", "Recipes provided by layers not added to this project", self.filter_not_in_project)
+                        ])
+
 
     def setup_queryset(self, *args, **kwargs):
         prj = Project.objects.get(pk = kwargs['pid'])
 
-        self.queryset = Recipe.objects.filter(Q(layer_version__up_branch__name= prj.release.name) | Q(layer_version__build__in = prj.build_set.all())).filter(name__regex=r'.{1,}.*')
+        self.queryset = Recipe.objects.filter(layer_version__in = prj.compatible_layerversions())
 
         search_maxids = map(lambda i: i[0], list(self.queryset.values('name').distinct().annotate(max_id=Max('id')).values_list('max_id')))
 
@@ -233,6 +387,7 @@ class RecipesTable(ToasterTable):
 
         self.add_column(title="Recipe file",
                         help_text="Path to the recipe .bb file",
+                        hidden=True,
                         static_data_name="recipe-file",
                         static_data_template=recipe_file_template)
 
@@ -260,20 +415,58 @@ class RecipesTable(ToasterTable):
         self.add_column(title="Revision",
                         field_name="layer_version__get_vcs_reference")
 
-
         self.add_column(title="Build",
                         help_text="Add or delete recipes to and from your project",
                         hideable=False,
+                        filter_name="in_current_project",
                         static_data_name="add-del-layers",
                         static_data_template='{% include "recipe_btn.html" %}')
 
-# This needs to be staticaly defined here as django reads the url patterns
-# on start up
-urlpatterns = (
-  url(r'^machines/(?P<cmd>\w+)*', MachinesTable.as_view(),
-      name=MachinesTable.__name__.lower()),
-  url(r'^layers/(?P<cmd>\w+)*', LayersTable.as_view(),
-      name=LayersTable.__name__.lower()),
-  url(r'^recipes/(?P<cmd>\w+)*', RecipesTable.as_view(),
-      name=RecipesTable.__name__.lower()),
-)
+        project = Project.objects.get(pk=kwargs['pid'])
+        self.add_column(title="Project compatible Layer ID",
+                        displayable = False,
+                        field_name = "projectcompatible_layer",
+                        computation = lambda x: (x.layer_version.get_equivalents_wpriority(project)[0]))
+
+class LayerRecipesTable(RecipesTable):
+    """ Smaller version of the Recipes table for use in layer details """
+
+    def __init__(self, *args, **kwargs):
+        super(LayerRecipesTable, self).__init__(*args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super(LayerRecipesTable, self).get_context_data(**kwargs)
+        context['layerversion'] = Layer_Version.objects.get(pk=kwargs['layerid'])
+        return context
+
+
+    def setup_queryset(self, *args, **kwargs):
+        RecipesTable.setup_queryset(self, *args, **kwargs)
+        self.queryset = self.queryset.filter(layer_version__pk=int(kwargs['layerid']))
+
+        self.static_context_extra['in_prj'] = ProjectLayer.objects.filter(Q(project=kwargs['pid']) and Q(layercommit=kwargs['layerid'])).count()
+
+    def setup_columns(self, *args, **kwargs):
+        self.add_column(title="Recipe",
+                        help_text="Information about a single piece of software, including where to download the source, configuration options, how to compile the source files and how to package the compiled output",
+                        hideable=False,
+                        orderable=True,
+                        field_name="name")
+
+        self.add_column(title="Description",
+                        field_name="get_description_or_summary")
+
+
+        build_recipe_template ='<button class="btn btn-block build-target-btn" data-target-name="{{data.name}}" {%if extra.in_prj == 0 %}disabled="disabled"{%endif%}>Build recipe</button>'
+
+        self.add_column(title="Build recipe",
+                        static_data_name="add-del-layers",
+                        static_data_template=build_recipe_template)
+
+class ProjectLayersRecipesTable(RecipesTable):
+    """ Table that lists only recipes available for layers added to the project """
+
+    def setup_queryset(self, *args, **kwargs):
+        super(ProjectLayersRecipesTable, self).setup_queryset(*args, **kwargs)
+        prj = Project.objects.get(pk = kwargs['pid'])
+        self.queryset = self.queryset.filter(layer_version__in = prj.projectlayer_equivalent_set())

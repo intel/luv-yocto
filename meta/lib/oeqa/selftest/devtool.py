@@ -60,9 +60,31 @@ class DevtoolBase(oeSelfTest):
             self.add_command_to_tearDown('bitbake-layers remove-layer %s || true' % templayerdir)
             result = runCmd('bitbake-layers add-layer %s' % templayerdir, cwd=self.builddir)
 
+    def _process_ls_output(self, output):
+        """
+        Convert ls -l output to a format we can reasonably compare from one context
+        to another (e.g. from host to target)
+        """
+        filelist = []
+        for line in output.splitlines():
+            splitline = line.split()
+            # Remove trailing . on perms
+            splitline[0] = splitline[0].rstrip('.')
+            # Remove leading . on paths
+            splitline[-1] = splitline[-1].lstrip('.')
+            # Drop fields we don't want to compare
+            del splitline[7]
+            del splitline[6]
+            del splitline[5]
+            del splitline[4]
+            del splitline[1]
+            filelist.append(' '.join(splitline))
+        return filelist
+
 
 class DevtoolTests(DevtoolBase):
 
+    @testcase(1158)
     def test_create_workspace(self):
         # Check preconditions
         workspacedir = os.path.join(self.builddir, 'workspace')
@@ -85,6 +107,7 @@ class DevtoolTests(DevtoolBase):
         self.assertNotIn(tempdir, result.output)
         self.assertIn(workspacedir, result.output)
 
+    @testcase(1159)
     def test_devtool_add(self):
         # Check preconditions
         workspacedir = os.path.join(self.builddir, 'workspace')
@@ -119,6 +142,7 @@ class DevtoolTests(DevtoolBase):
             bindir = bindir[1:]
         self.assertTrue(os.path.isfile(os.path.join(installdir, bindir, 'pv')), 'pv binary not found in D')
 
+    @testcase(1162)
     def test_devtool_add_library(self):
         # Check preconditions
         workspacedir = os.path.join(self.builddir, 'workspace')
@@ -159,6 +183,7 @@ class DevtoolTests(DevtoolBase):
         self.assertFalse(matches, 'Stamp files exist for recipe libftdi that should have been cleaned')
         self.assertFalse(os.path.isfile(os.path.join(staging_libdir, 'libftdi1.so.2.1.0')), 'libftdi binary still found in STAGING_LIBDIR after cleaning')
 
+    @testcase(1160)
     def test_devtool_add_fetch(self):
         # Check preconditions
         workspacedir = os.path.join(self.builddir, 'workspace')
@@ -205,6 +230,7 @@ class DevtoolTests(DevtoolBase):
         checkvars['SRC_URI'] = url.replace(testver, '${PV}')
         self._test_recipe_contents(recipefile, checkvars, [])
 
+    @testcase(1161)
     def test_devtool_add_fetch_git(self):
         # Check preconditions
         workspacedir = os.path.join(self.builddir, 'workspace')
@@ -256,6 +282,7 @@ class DevtoolTests(DevtoolBase):
         checkvars['SRCREV'] = checkrev
         self._test_recipe_contents(recipefile, checkvars, [])
 
+    @testcase(1164)
     def test_devtool_modify(self):
         # Check preconditions
         workspacedir = os.path.join(self.builddir, 'workspace')
@@ -307,6 +334,7 @@ class DevtoolTests(DevtoolBase):
         matches = glob.glob(stampprefix + '*')
         self.assertFalse(matches, 'Stamp files exist for recipe mdadm that should have been cleaned')
 
+    @testcase(1166)
     def test_devtool_modify_invalid(self):
         # Check preconditions
         workspacedir = os.path.join(self.builddir, 'workspace')
@@ -339,6 +367,7 @@ class DevtoolTests(DevtoolBase):
             self.assertNotEqual(result.status, 0, 'devtool modify on %s should have failed' % testrecipe)
             self.assertIn('ERROR: ', result.output, 'devtool modify on %s should have given an ERROR' % testrecipe)
 
+    @testcase(1165)
     def test_devtool_modify_git(self):
         # Check preconditions
         workspacedir = os.path.join(self.builddir, 'workspace')
@@ -372,6 +401,7 @@ class DevtoolTests(DevtoolBase):
         # Try building
         bitbake(testrecipe)
 
+    @testcase(1167)
     def test_devtool_modify_localfiles(self):
         # Check preconditions
         workspacedir = os.path.join(self.builddir, 'workspace')
@@ -404,6 +434,7 @@ class DevtoolTests(DevtoolBase):
         # Try building
         bitbake(testrecipe)
 
+    @testcase(1169)
     def test_devtool_update_recipe(self):
         # Check preconditions
         workspacedir = os.path.join(self.builddir, 'workspace')
@@ -450,6 +481,7 @@ class DevtoolTests(DevtoolBase):
             else:
                 raise AssertionError('Unexpected modified file in status: %s' % line)
 
+    @testcase(1172)
     def test_devtool_update_recipe_git(self):
         # Check preconditions
         workspacedir = os.path.join(self.builddir, 'workspace')
@@ -524,6 +556,7 @@ class DevtoolTests(DevtoolBase):
                         break
                 self.assertTrue(matched, 'Unexpected diff remove line: %s' % line)
 
+    @testcase(1170)
     def test_devtool_update_recipe_append(self):
         # Check preconditions
         workspacedir = os.path.join(self.builddir, 'workspace')
@@ -599,6 +632,7 @@ class DevtoolTests(DevtoolBase):
             self.assertEqual(expectedlines, f.readlines())
         # Deleting isn't expected to work under these circumstances
 
+    @testcase(1171)
     def test_devtool_update_recipe_append_git(self):
         # Check preconditions
         workspacedir = os.path.join(self.builddir, 'workspace')
@@ -695,6 +729,7 @@ class DevtoolTests(DevtoolBase):
             self.assertEqual(expectedlines, f.readlines())
         # Deleting isn't expected to work under these circumstances
 
+    @testcase(1163)
     def test_devtool_extract(self):
         # Check preconditions
         workspacedir = os.path.join(self.builddir, 'workspace')
@@ -708,6 +743,7 @@ class DevtoolTests(DevtoolBase):
         self.assertTrue(os.path.exists(os.path.join(tempdir, 'Makefile.am')), 'Extracted source could not be found')
         self.assertTrue(os.path.isdir(os.path.join(tempdir, '.git')), 'git repository for external source tree not found')
 
+    @testcase(1168)
     def test_devtool_reset_all(self):
         # Check preconditions
         workspacedir = os.path.join(self.builddir, 'workspace')
@@ -796,9 +832,32 @@ class DevtoolTests(DevtoolBase):
         console.expect("login:", timeout=120)
         # Now really test deploy-target
         result = runCmd('devtool deploy-target -c %s root@%s' % (testrecipe, testhost))
-        result = runCmd('ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@%s %s' % (testhost, testcommand))
+        # Run a test command to see if it was installed properly
+        sshargs = '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'
+        result = runCmd('ssh %s root@%s %s' % (sshargs, testhost, testcommand))
+        # Check if it deployed all of the files with the right ownership/perms
+        # First look on the host - need to do this under pseudo to get the correct ownership/perms
+        installdir = get_bb_var('D', testrecipe)
+        fakerootenv = get_bb_var('FAKEROOTENV', testrecipe)
+        fakerootcmd = get_bb_var('FAKEROOTCMD', testrecipe)
+        result = runCmd('%s %s find . -type f -exec ls -l {} \;' % (fakerootenv, fakerootcmd), cwd=installdir)
+        filelist1 = self._process_ls_output(result.output)
+
+        # Now look on the target
+        tempdir2 = tempfile.mkdtemp(prefix='devtoolqa')
+        self.track_for_cleanup(tempdir2)
+        tmpfilelist = os.path.join(tempdir2, 'files.txt')
+        with open(tmpfilelist, 'w') as f:
+            for line in filelist1:
+                splitline = line.split()
+                f.write(splitline[-1] + '\n')
+        result = runCmd('cat %s | ssh -q %s root@%s \'xargs ls -l\'' % (tmpfilelist, sshargs, testhost))
+        filelist2 = self._process_ls_output(result.output)
+        filelist1.sort(key=lambda item: item.split()[-1])
+        filelist2.sort(key=lambda item: item.split()[-1])
+        self.assertEqual(filelist1, filelist2)
         # Test undeploy-target
         result = runCmd('devtool undeploy-target -c %s root@%s' % (testrecipe, testhost))
-        result = runCmd('ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@%s %s' % (testhost, testcommand), ignore_status=True)
+        result = runCmd('ssh %s root@%s %s' % (sshargs, testhost, testcommand), ignore_status=True)
         self.assertNotEqual(result, 0, 'undeploy-target did not remove command as it should have')
         console.close()

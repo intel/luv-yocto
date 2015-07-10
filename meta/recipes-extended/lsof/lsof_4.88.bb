@@ -17,21 +17,18 @@ LIC_FILES_CHKSUM = "file://${S}/00README;beginline=645;endline=679;md5=964df275d
 python do_unpack () {
     # temporarily change S for unpack
     # of lsof_${PV}
-    s = d.getVar('S')
+    s = d.getVar('S', False)
     d.setVar('S', '${WORKDIR}/lsof_${PV}')
     bb.build.exec_func('base_do_unpack', d)
     # temporarily change SRC_URI for unpack
     # of lsof_${PV}_src
-    src_uri = d.getVar('SRC_URI')
+    src_uri = d.getVar('SRC_URI', False)
     d.setVar('SRC_URI', '${LOCALSRC}')
     d.setVar('S', s)
     bb.build.exec_func('base_do_unpack', d)
     d.setVar('SRC_URI', src_uri)
 }
 
-export LSOF_OS = "${TARGET_OS}"
-LSOF_OS_libc-uclibc = "linux"
-LSOF_OS_libc-glibc = "linux"
 export LSOF_INCLUDE = "${STAGING_INCDIR}"
 
 do_configure () {
@@ -42,7 +39,7 @@ do_configure () {
                 LINUX_CLIB="-DGLIBCV=${LINUX_CLIB}"
                 export LINUX_CLIB
         fi
-	yes | ./Configure ${LSOF_OS}
+	yes | ./Configure linux
 }
 
 export I = "${STAGING_INCDIR}"

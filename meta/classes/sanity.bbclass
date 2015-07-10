@@ -209,7 +209,7 @@ def check_toolchain(data):
 def check_conf_exists(fn, data):
     bbpath = []
     fn = data.expand(fn)
-    vbbpath = data.getVar("BBPATH")
+    vbbpath = data.getVar("BBPATH", False)
     if vbbpath:
         bbpath += vbbpath.split(":")
     for p in bbpath:
@@ -536,6 +536,12 @@ def sanity_handle_abichanges(status, d):
                 sstate_clean_manifest(f, d)
             with open(abifile, "w") as f:
                 f.write(current_abi)
+        elif abi == "10" and current_abi == "11":
+            bb.note("Converting staging layout from version 10 to layout version 11")
+            # Files in xf86-video-modesetting moved to xserver-xorg and bitbake can't currently handle that:
+            subprocess.call(d.expand("rm ${TMPDIR}/sysroots/*/usr/lib/xorg/modules/drivers/modesetting_drv.so ${TMPDIR}/sysroots/*/pkgdata/runtime/xf86-video-modesetting* ${TMPDIR}/sysroots/*/pkgdata/runtime-reverse/xf86-video-modesetting* ${TMPDIR}/sysroots/*/pkgdata/shlibs2/xf86-video-modesetting*"), shell=True)
+            with open(abifile, "w") as f:
+                f.write(current_abi)
         elif (abi != current_abi):
             # Code to convert from one ABI to another could go here if possible.
             status.addresult("Error, TMPDIR has changed its layout version number (%s to %s) and you need to either rebuild, revert or adjust it at your own risk.\n" % (abi, current_abi))
@@ -698,6 +704,19 @@ def check_sanity_everybuild(status, d):
     if "." in paths or "./" in paths or "" in paths:
         status.addresult("PATH contains '.', './' or '' (empty element), which will break the build, please remove this.\nParsed PATH is " + str(paths) + "\n")
 
+    # Check if /tmp is writable
+    from string import ascii_letters
+    from random import choice
+    filename = "bb_writetest.%s" % os.getpid()
+    testfile = os.path.join("/tmp", filename)
+    try:
+        f = open(testfile, "w")
+        f.write("".join(choice(ascii_letters) for x in range(1024)))
+        f.close()
+        os.remove(testfile)
+    except:
+        status.addresult("Failed to write into /tmp. Please verify your filesystem.")
+
     # Check that the DISTRO is valid, if set
     # need to take into account DISTRO renaming DISTRO
     distro = d.getVar('DISTRO', True)
@@ -824,6 +843,15 @@ def check_sanity_everybuild(status, d):
     # Check vmdk and live can't be built together.
     if 'vmdk' in d.getVar('IMAGE_FSTYPES', True) and 'live' in d.getVar('IMAGE_FSTYPES', True):
         status.addresult("Error, IMAGE_FSTYPES vmdk and live can't be built together\n")
+
+    # Check vdi and live can't be built together.
+    if 'vdi' in d.getVar('IMAGE_FSTYPES', True) and 'live' in d.getVar('IMAGE_FSTYPES', True):
+        status.addresult("Error, IMAGE_FSTYPES vdi and live can't be built together\n")
+
+    # Check /bin/sh links to dash or bash
+    real_sh = os.path.realpath('/bin/sh')
+    if not real_sh.endswith('/dash') and not real_sh.endswith('/bash'):
+        status.addresult("Error, /bin/sh links to %s, must be dash or bash\n" % real_sh)
 
 def check_sanity(sanity_data):
     class SanityStatus(object):

@@ -20,12 +20,13 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 from django.db import models
-from django.db.models import F, Q
+from django.db.models import F, Q, Avg
 from django.utils import timezone
 
 
 from django.core import validators
 from django.conf import settings
+import django.db.models.signals
 
 class GitURLValidator(validators.URLValidator):
     import re
@@ -56,7 +57,11 @@ class ToasterSetting(models.Model):
 
 class ProjectManager(models.Manager):
     def create_project(self, name, release):
-        prj = self.model(name = name, bitbake_version = release.bitbake_version, release = release)
+        if release is not None:
+            prj = self.model(name = name, bitbake_version = release.bitbake_version, release = release)
+        else:
+            prj = self.model(name = name, bitbake_version = None, release = None)
+
         prj.save()
 
         for defaultconf in ToasterSetting.objects.filter(name__startswith="DEFCONF_"):
@@ -65,6 +70,8 @@ class ProjectManager(models.Manager):
                 name = name,
                 value = defaultconf.value)
 
+        if release is None:
+            return prj
 
         for rdl in release.releasedefaultlayer_set.all():
             try:
@@ -81,15 +88,18 @@ class ProjectManager(models.Manager):
     def create(self, *args, **kwargs):
         raise Exception("Invalid call to Project.objects.create. Use Project.objects.create_project() to create a project")
 
-    def get_or_create(self, *args, **kwargs):
+    def get_or_create(self, **kwargs):
+        # allow project creation for default data
+        if 'pk' in kwargs and kwargs['pk'] == 0:
+            return super(ProjectManager, self).get_or_create(**kwargs)
         raise Exception("Invalid call to Project.objects.get_or_create. Use Project.objects.create_project() to create a project")
 
 class Project(models.Model):
     search_allowed_fields = ['name', 'short_description', 'release__name', 'release__branch_name']
     name = models.CharField(max_length=100)
     short_description = models.CharField(max_length=50, blank=True)
-    bitbake_version = models.ForeignKey('BitbakeVersion')
-    release     = models.ForeignKey("Release")
+    bitbake_version = models.ForeignKey('BitbakeVersion', null=True)
+    release     = models.ForeignKey("Release", null=True)
     created     = models.DateTimeField(auto_now_add = True)
     updated     = models.DateTimeField(auto_now = True)
     # This is a horrible hack; since Toaster has no "User" model available when
@@ -143,7 +153,7 @@ class Project(models.Model):
         if (-1 == build_id):
             return( 0 )
         try:
-            return Build.objects.filter(id = build_id)[ 0 ].errors_no
+            return Build.objects.filter(id = build_id)[ 0 ].errors.count()
         except (Build.DoesNotExist,IndexError):
             return( "not_found" )
 
@@ -152,7 +162,7 @@ class Project(models.Model):
         if (-1 == build_id):
             return( 0 )
         try:
-            return Build.objects.filter(id = build_id)[ 0 ].warnings_no
+            return Build.objects.filter(id = build_id)[ 0 ].warnings.count()
         except (Build.DoesNotExist,IndexError):
             return( "not_found" )
 
@@ -171,18 +181,18 @@ class Project(models.Model):
             release = self.release
         # layers on the same branch or layers specifically set for this project
         queryset = Layer_Version.objects.filter((Q(up_branch__name = release.branch_name) & Q(project = None)) | Q(project = self) | Q(build__project = self))
+
         if layer_name is not None:
             # we select only a layer name
             queryset = queryset.filter(layer__name = layer_name)
 
         # order by layer version priority
-        queryset = queryset.filter(layer_source__releaselayersourcepriority__release = release).order_by("-layer_source__releaselayersourcepriority__priority")
+        queryset = queryset.filter(Q(layer_source=None) | Q(layer_source__releaselayersourcepriority__release = release)).select_related('layer_source', 'layer', 'up_branch', "layer_source__releaselayersourcepriority__priority").order_by("-layer_source__releaselayersourcepriority__priority")
 
         return queryset
 
-    # returns a set of layer-equivalent set of layers already in project
     def projectlayer_equivalent_set(self):
-        return [j for i in [x.layercommit.get_equivalents_wpriority(self) for x in self.projectlayer_set.all().select_related("up_branch")] for j in i]
+        return self.compatible_layerversions().filter(layer__name__in = [x.layercommit.layer.name for x in self.projectlayer_set.all()]).select_related("up_branch")
 
     def schedule_build(self):
         from bldcontrol.models import BuildRequest, BRTarget, BRLayer, BRVariable, BRBitbake
@@ -198,16 +208,32 @@ class Project(models.Model):
                 commit = l.layercommit.get_vcs_reference()
                 print("ii Building layer ", l.layercommit.layer.name, " at vcs point ", commit)
                 BRLayer.objects.create(req = br, name = l.layercommit.layer.name, giturl = l.layercommit.layer.vcs_url, commit = commit, dirpath = l.layercommit.dirpath)
+
+            br.state = BuildRequest.REQ_QUEUED
+            now = timezone.now()
+            br.build = Build.objects.create(project = self,
+                                completed_on=now,
+                                started_on=now,
+                                )
             for t in self.projecttarget_set.all():
                 BRTarget.objects.create(req = br, target = t.target, task = t.task)
+                Target.objects.create(build = br.build, target = t.target)
+
             for v in self.projectvariable_set.all():
                 BRVariable.objects.create(req = br, name = v.name, value = v.value)
 
-            br.state = BuildRequest.REQ_QUEUED
+
+            try:
+                br.build.machine = self.projectvariable_set.get(name = 'MACHINE').value
+                br.build.save()
+            except ProjectVariable.DoesNotExist:
+                pass
             br.save()
         except Exception as e:
             br.delete()
-            raise e
+            import sys
+            et, ei, tb = sys.exc_info()
+            raise type(e), e, tb
         return br
 
 class Build(models.Model):
@@ -223,16 +249,13 @@ class Build(models.Model):
 
     search_allowed_fields = ['machine', 'cooker_log_path', "target__target", "target__target_image_file__file_name"]
 
-    project = models.ForeignKey(Project, null = True)
+    project = models.ForeignKey(Project)            # must have a project
     machine = models.CharField(max_length=100)
     distro = models.CharField(max_length=100)
     distro_version = models.CharField(max_length=100)
     started_on = models.DateTimeField()
     completed_on = models.DateTimeField()
-    timespent = models.IntegerField(default=0)
     outcome = models.IntegerField(choices=BUILD_OUTCOME, default=IN_PROGRESS)
-    errors_no = models.IntegerField(default=0)
-    warnings_no = models.IntegerField(default=0)
     cooker_log_path = models.CharField(max_length=500)
     build_name = models.CharField(max_length=100)
     bitbake_version = models.CharField(max_length=50)
@@ -247,7 +270,6 @@ class Build(models.Model):
         return completeper
 
     def eta(self):
-        from django.utils import timezone
         eta = timezone.now()
         completeper = self.completeper()
         if self.completeper() > 0:
@@ -263,13 +285,33 @@ class Build(models.Model):
     def toaster_exceptions(self):
         return self.logmessage_set.filter(level=LogMessage.EXCEPTION)
 
+    @property
+    def errors(self):
+        return (self.logmessage_set.filter(level=LogMessage.ERROR)|self.logmessage_set.filter(level=LogMessage.EXCEPTION))
+
+    @property
+    def warnings(self):
+        return self.logmessage_set.filter(level=LogMessage.WARNING)
+
+    @property
+    def timespent_seconds(self):
+        return (self.completed_on - self.started_on).total_seconds()
+
+    def get_current_status(self):
+        from bldcontrol.models import BuildRequest
+        if self.outcome == Build.IN_PROGRESS and self.buildrequest.state != BuildRequest.REQ_INPROGRESS:
+            return self.buildrequest.get_state_display()
+        return self.get_outcome_display()
+
+    def __str__(self):
+        return "%d %s %s" % (self.id, self.project, ",".join([t.target for t in self.target_set.all()]))
+
 
 # an Artifact is anything that results from a Build, and may be of interest to the user, and is not stored elsewhere
 class BuildArtifact(models.Model):
     build = models.ForeignKey(Build)
     file_name = models.FilePathField()
     file_size = models.IntegerField()
-
 
     def get_local_file_name(self):
         try:
@@ -282,9 +324,7 @@ class BuildArtifact(models.Model):
 
 
     def is_available(self):
-        if settings.MANAGED and build.project is not None:
-            return build.buildrequest.environment.has_artifact(file_path)
-        return False
+        return build.buildrequest.environment.has_artifact(file_path)
 
 class ProjectTarget(models.Model):
     project = models.ForeignKey(Project)
@@ -295,6 +335,7 @@ class Target(models.Model):
     search_allowed_fields = ['target', 'file_name']
     build = models.ForeignKey(Build)
     target = models.CharField(max_length=100)
+    task = models.CharField(max_length=100, null=True)
     is_image = models.BooleanField(default = False)
     image_size = models.IntegerField(default=0)
     license_manifest_path = models.CharField(max_length=500, null=True)
@@ -435,8 +476,8 @@ class Task(models.Model):
     script_type = models.IntegerField(choices=TASK_CODING, default=CODING_NA)
     line_number = models.IntegerField(default=0)
     disk_io = models.IntegerField(null=True)
-    cpu_usage = models.DecimalField(max_digits=6, decimal_places=2, null=True)
-    elapsed_time = models.DecimalField(max_digits=6, decimal_places=2, null=True)
+    cpu_usage = models.DecimalField(max_digits=8, decimal_places=2, null=True)
+    elapsed_time = models.DecimalField(max_digits=8, decimal_places=2, null=True)
     sstate_result = models.IntegerField(choices=SSTATE_RESULT, default=SSTATE_NA)
     message = models.CharField(max_length=240)
     logfile = models.FilePathField(max_length=255, blank=True)
@@ -457,7 +498,7 @@ class Task_Dependency(models.Model):
     depends_on = models.ForeignKey(Task, related_name='task_dependencies_depends')
 
 class Package(models.Model):
-    search_allowed_fields = ['name', 'version', 'revision', 'recipe__name', 'recipe__version', 'recipe__license', 'recipe__layer_version__layer__name', 'recipe__layer_version__branch', 'recipe__layer_version__commit', 'recipe__layer_version__layer__local_path', 'installed_name']
+    search_allowed_fields = ['name', 'version', 'revision', 'recipe__name', 'recipe__version', 'recipe__license', 'recipe__layer_version__layer__name', 'recipe__layer_version__branch', 'recipe__layer_version__commit', 'recipe__layer_version__local_path', 'installed_name']
     build = models.ForeignKey('Build')
     recipe = models.ForeignKey('Recipe', null=True)
     name = models.CharField(max_length=100)
@@ -528,7 +569,7 @@ class Package_File(models.Model):
     size = models.IntegerField()
 
 class Recipe(models.Model):
-    search_allowed_fields = ['name', 'version', 'file_path', 'section', 'summary', 'description', 'license', 'layer_version__layer__name', 'layer_version__branch', 'layer_version__commit', 'layer_version__layer__local_path', 'layer_version__layer_source__name']
+    search_allowed_fields = ['name', 'version', 'file_path', 'section', 'summary', 'description', 'license', 'layer_version__layer__name', 'layer_version__branch', 'layer_version__commit', 'layer_version__local_path', 'layer_version__layer_source__name']
 
     layer_source = models.ForeignKey('LayerSource', default = None, null = True)  # from where did we get this recipe
     up_id = models.IntegerField(null = True, default = None)                    # id of entry in the source
@@ -544,6 +585,7 @@ class Recipe(models.Model):
     homepage = models.URLField(blank=True)
     bugtracker = models.URLField(blank=True)
     file_path = models.FilePathField(max_length=255)
+    pathflags = models.CharField(max_length=200, blank=True)
 
     def get_layersource_view_url(self):
         if self.layer_source is None:
@@ -554,18 +596,6 @@ class Recipe(models.Model):
 
     def __unicode__(self):
         return "Recipe " + self.name + ":" + self.version
-
-    def get_local_path(self):
-        if settings.MANAGED and self.layer_version.build is not None and self.layer_version.build.project is not None:
-            # strip any tag prefixes ('virtual:native:')
-            layer_path=self.layer_version.layer.local_path.split(":")[-1]
-            recipe_path=self.file_path.split(":")[-1]
-            if 0 == recipe_path.find(layer_path):
-                return recipe_path[len(layer_path)+1:]
-            else:
-                return recipe_path
-
-        return self.file_path
 
     def get_vcs_recipe_file_link_url(self):
         return self.layer_version.get_vcs_file_link_url(self.file_path)
@@ -579,7 +609,8 @@ class Recipe(models.Model):
             return ""
 
     class Meta:
-        unique_together = ("layer_version", "file_path")
+        unique_together = (("layer_version", "file_path", "pathflags"), )
+
 
 class Recipe_DependencyManager(models.Manager):
     use_for_related_fields = True
@@ -785,8 +816,11 @@ class LayerIndexLayerSource(LayerSource):
             print "EE: could not connect to %s, skipping update: %s\n%s" % (self.apiurl, e, traceback.format_exc(e))
             return
 
-        # update branches; only those that we already have names listed in the Releases table
+        # update branches; only those that we already have names listed in the
+        # Releases table
         whitelist_branch_names = map(lambda x: x.branch_name, Release.objects.all())
+        if len(whitelist_branch_names) == 0:
+            raise Exception("Failed to make list of branches to fetch")
 
         print "Fetching branches"
         branches_info = _get_json_response(apilinks['branches']
@@ -976,7 +1010,6 @@ class Layer(models.Model):
     up_date = models.DateTimeField(null = True, default = None)
 
     name = models.CharField(max_length=100)
-    local_path = models.FilePathField(max_length=255, null = True, default = None)
     layer_index_url = models.URLField()
     vcs_url = GitURLField(default = None, null = True)
     vcs_web_url = models.URLField(null = True, default = None)
@@ -1008,6 +1041,8 @@ class Layer_Version(models.Model):
     commit = models.CharField(max_length=100)           # LayerBranch.vcs_last_rev
     dirpath = models.CharField(max_length=255, null = True, default = None)          # LayerBranch.vcs_subdir
     priority = models.IntegerField(default = 0)         # if -1, this is a default layer
+
+    local_path = models.FilePathField(max_length=1024, default = "/")  # where this layer was checked-out
 
     project = models.ForeignKey('Project', null = True, default = None)   # Set if this layer is project-specific; always set for imported layers, and project-set branches
 
@@ -1061,42 +1096,7 @@ class Layer_Version(models.Model):
         return self._handle_url_path(self.layer.vcs_web_tree_base_url, '')
 
     def get_equivalents_wpriority(self, project):
-        """ Returns an ordered layerversion list that satisfies a LayerVersionDependency using the layer name and the current Project Releases' LayerSource priority """
-
-        # layers created for this project, or coming from a build inthe project
-        query = Q(project = project) | Q(build__project = project)
-        if self.up_branch is not None:
-            # the same up_branch name
-            query |= Q(up_branch__name=self.up_branch.name)
-        else:
-            # or we have a layer in the project that's similar to mine (See the layer.name constraint below)
-            query |= Q(projectlayer__project=project)
-
-        candidate_layer_versions = list(Layer_Version.objects.filter(layer__name = self.layer.name).filter(query).select_related('layer_source', 'layer', 'up_branch').order_by("-id"))
-
-        # optimization - if we have only one, we don't need no stinking sort
-        if len(candidate_layer_versions) == 1:
-            return candidate_layer_versions
-
-#        raise Exception(candidate_layer_versions)
-
-        release_priorities = {}
-
-        for ls_id, prio in map(lambda x: (x.layer_source_id, x.priority), project.release.releaselayersourcepriority_set.all().order_by("-priority")):
-            release_priorities[ls_id] = prio
-
-        def _get_ls_priority(ls):
-            # if there is no layer source, we have minus infinite priority, as we don't want this layer selected
-            if ls == None:
-                return -10000
-            try:
-                return release_priorities[ls.id]
-            except IndexError:
-                raise Exception("Unknown %d %s" % (ls.id, release_priorities))
-
-        return sorted( candidate_layer_versions ,
-                key = lambda x: _get_ls_priority(x.layer_source),
-                reverse = True)
+        return project.compatible_layerversions(layer_name = self.layer.name)
 
     def get_vcs_reference(self):
         if self.commit is not None and len(self.commit) > 0:
@@ -1182,3 +1182,17 @@ class LogMessage(models.Model):
     message=models.CharField(max_length=240)
     pathname = models.FilePathField(max_length=255, blank=True)
     lineno = models.IntegerField(null=True)
+
+    def __str__(self):
+        return "%s %s %s" % (self.get_level_display(), self.message, self.build)
+
+def invalidate_cache(**kwargs):
+    from django.core.cache import cache
+    try:
+      cache.clear()
+    except Exception as e:
+      print "Problem with cache backend: Failed to clear cache"
+      pass
+
+django.db.models.signals.post_save.connect(invalidate_cache)
+django.db.models.signals.post_delete.connect(invalidate_cache)

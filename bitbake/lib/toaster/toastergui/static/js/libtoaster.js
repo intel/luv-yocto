@@ -10,22 +10,22 @@ var libtoaster = (function (){
    * xhrUrl: the url to get the JSON from expects JSON in the form:
    *  { "list": [ { "name": "test", "detail" : "a test thing"  }, .... ] }
    * xhrParams: the data/parameters to pass to the getJSON url e.g.
-   *  { 'type' : 'projects' } the text typed will be passed as 'value'.
+   *  { 'type' : 'projects' } the text typed will be passed as 'search'.
    *  selectedCB: function to call once an item has been selected one
    *  arg of the item.
    */
-  function _makeTypeahead (jQElement, xhrParams, selectedCB) {
+  function _makeTypeahead (jQElement, xhrUrl, xhrParams, selectedCB) {
 
     jQElement.typeahead({
         source: function(query, process){
-          xhrParams.value = query;
-          $.getJSON(libtoaster.ctx.xhrDataTypeaheadUrl, this.options.xhrParams, function(data){
+          xhrParams.search = query;
+          $.getJSON(xhrUrl, this.options.xhrParams, function(data){
             if (data.error !== "ok") {
               console.log("Error getting data from server "+data.error);
               return;
             }
 
-            return process (data.list);
+            return process (data.rows);
           });
         },
         updater: function(item) {
@@ -41,7 +41,7 @@ var libtoaster = (function (){
           return $('<span></span>').text(item.name).get(0);
         },
         sorter: function (items) { return items; },
-        xhrUrl: libtoaster.ctx.xhrDataTypeaheadUrl,
+        xhrUrl: xhrUrl,
         xhrParams: xhrParams,
     });
 
@@ -93,7 +93,7 @@ var libtoaster = (function (){
   }
 
   /* cancelABuild:
-   * url: xhr_projectbuild
+   * url: projectbuilds
    * builds_ids: space separated list of build request ids
    * onsuccess: callback for successful execution
    * onfail: callback for failed execution
@@ -120,11 +120,11 @@ var libtoaster = (function (){
   }
 
   /* Get a project's configuration info */
-  function _getProjectInfo(url, projectId, onsuccess, onfail){
+  function _getProjectInfo(url, onsuccess, onfail){
     $.ajax({
-        type: "POST",
+        type: "GET",
+        data : { format: "json" },
         url: url,
-        data: { project_id : projectId },
         headers: { 'X-CSRFToken' : $.cookie('csrftoken')},
         success: function (_data) {
           if (_data.error !== "ok") {
@@ -150,7 +150,7 @@ var libtoaster = (function (){
   function _editCurrentProject(data, onSuccess, onFail){
     $.ajax({
         type: "POST",
-        url: libtoaster.ctx.xhrProjectEditUrl,
+        url: libtoaster.ctx.projectPageUrl + "?format=json",
         data: data,
         headers: { 'X-CSRFToken' : $.cookie('csrftoken')},
         success: function (data) {
@@ -170,17 +170,17 @@ var libtoaster = (function (){
     });
   }
 
-  function _getLayerDepsForProject(projectId, layerId, onSuccess, onFail){
+  function _getLayerDepsForProject(url, onSuccess, onFail){
     /* Check for dependencies not in the current project */
-    $.getJSON(libtoaster.ctx.xhrDataTypeaheadUrl,
-      { type: 'layerdeps', 'value': layerId , project_id: projectId },
+    $.getJSON(url,
+      { format: 'json' },
       function(data) {
         if (data.error != "ok") {
           console.log(data.error);
           if (onFail !== undefined)
             onFail(data);
         } else {
-          onSuccess(data);
+          onSuccess(data.layerdeps);
         }
       }, function() {
         console.log("E: Failed to make request");
@@ -216,14 +216,16 @@ var libtoaster = (function (){
       str += "&";
     }
 
+    /* Maintain the current hash */
+    str += window.location.hash;
+
     return str;
   }
 
   function _addRmLayer(layerObj, add, doneCb){
     if (add === true) {
       /* If adding get the deps for this layer */
-      libtoaster.getLayerDepsForProject(libtoaster.ctx.projectId,
-        layerObj.id,
+      libtoaster.getLayerDepsForProject(layerObj.url,
         function (layers) {
 
         /* got result for dependencies */
@@ -338,6 +340,8 @@ function reload_params(params) {
 
 /* Things that happen for all pages */
 $(document).ready(function() {
+
+  var ajaxLoadingTimer;
 
   /* If we don't have a console object which might be the case in some
      * browsers, no-op it to avoid undefined errors.
@@ -479,6 +483,31 @@ $(document).ready(function() {
     if (location.href.search('#warnings') > -1) {
         $('#collapse-warnings').addClass('in');
     }
+
+    /* Show the loading notification if nothing has happend after 1.5
+     * seconds
+     */
+    $(document).bind("ajaxStart", function(){
+      if (ajaxLoadingTimer)
+        window.clearTimeout(ajaxLoadingTimer);
+
+      ajaxLoadingTimer = window.setTimeout(function() {
+        $("#loading-notification").fadeIn();
+      }, 1200);
+    });
+
+    $(document).bind("ajaxStop", function(){
+      if (ajaxLoadingTimer)
+        window.clearTimeout(ajaxLoadingTimer);
+
+      $("#loading-notification").fadeOut();
+    });
+
+    $(document).ajaxError(function(event, jqxhr, settings, errMsg){
+      console.warn("Problem with xhr call");
+      console.warn(errMsg);
+      console.warn(jqxhr.responseText);
+    });
 
     function check_for_duplicate_ids () {
       /* warn about duplicate element ids */

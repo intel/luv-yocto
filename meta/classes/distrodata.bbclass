@@ -3,11 +3,16 @@ addhandler distro_eventhandler
 distro_eventhandler[eventmask] = "bb.event.BuildStarted"
 python distro_eventhandler() {
     import oe.distro_check as dc
+    import csv
     logfile = dc.create_log_file(e.data, "distrodata.csv")
+
     lf = bb.utils.lockfile("%s.lock" % logfile)
-    f = open(logfile, "a")
-    f.write("Package,Description,Owner,License,VerMatch,Version,Upsteam,Reason,Recipe Status,Distro 1,Distro 2,Distro 3\n")
-    f.close()
+    with open(logfile, "a") as f:
+        writer = csv.writer(f)
+        writer.writerow(['Package', 'Description', 'Owner', 'License', 
+            'VerMatch', 'Version', 'Upstream', 'Reason', 'Recipe Status',
+            'Distro 1', 'Distro 2', 'Distro 3'])
+        f.close()
     bb.utils.unlockfile(lf)
 
     return
@@ -99,6 +104,7 @@ python do_distrodata_np() {
 addtask distrodata
 do_distrodata[nostamp] = "1"
 python do_distrodata() {
+        import csv
         logpath = d.getVar('LOG_DIR', True)
         bb.utils.mkdirhier(logpath)
         logfile = os.path.join(logpath, "distrodata.csv")
@@ -177,14 +183,13 @@ python do_distrodata() {
         result = dist_check.compare_in_distro_packages_list(distro_check_dir, localdata)
 
         lf = bb.utils.lockfile("%s.lock" % logfile)
-        f = open(logfile, "a")
-        f.write("%s,%s,%s,%s,%s,%s,%s,%s,%s" % \
-                  (pname, pdesc, maintainer, plicense, vermatch, pcurver, pupver, noupdate_reason, rstatus))
-        line = ""
-        for i in result:
-            line = line + "," + i
-        f.write(line + "\n")
-        f.close()
+        with open(logfile, "a") as f:
+            row = [pname, pdesc, maintainer, plicense, vermatch, pcurver, pupver, noupdate_reason, rstatus]
+            row.extend(result)
+
+            writer = csv.writer(f)
+            writer.writerow(row)
+            f.close()
         bb.utils.unlockfile(lf)
 }
 
@@ -199,45 +204,33 @@ do_distrodataall() {
 addhandler checkpkg_eventhandler
 checkpkg_eventhandler[eventmask] = "bb.event.BuildStarted bb.event.BuildCompleted"
 python checkpkg_eventhandler() {
+    import csv
+
     def parse_csv_file(filename):
         package_dict = {}
-        fd = open(filename, "r")
-        lines = fd.read().rsplit("\n")
-        fd.close()
 
-        first_line = ''
-        index = 0
-        for line in lines:
-            #Skip the first line
-            if index == 0:
-                first_line = line
-                index += 1
-                continue
-            elif line == '':
-                continue
-            index += 1
-            package_name = line.rsplit("\t")[0]
-            if '-native' in package_name or 'nativesdk-' in package_name:
-                original_name = package_name.rsplit('-native')[0]
-                if original_name == '':
-                    original_name = package_name.rsplit('nativesdk-')[0]
-                if original_name in package_dict:
+        with open(filename, "r") as f:
+            reader = csv.reader(f, delimiter='\t')
+            for row in reader:
+                pn = row[0]
+
+                if reader.line_num == 1:
+                    header = row
                     continue
-                else:
-                    package_dict[package_name] = line
-            else:
-                new_name = package_name + "-native"
-                if not(new_name in package_dict):
-                    new_name = 'nativesdk-' + package_name
-                if new_name in package_dict:
-                    del package_dict[new_name]
-                package_dict[package_name] = line
 
-        fd = open(filename, "w")
-        fd.write("%s\n"%first_line)
-        for el in package_dict:
-            fd.write(package_dict[el] + "\n")
-        fd.close()
+                if '-native' in pn or 'nativesdk-' in pn:
+                    continue
+
+                if not pn in package_dict.keys():
+                    package_dict[pn] = row
+            f.close()
+
+        with open(filename, "w") as f:
+            writer = csv.writer(f, delimiter='\t')
+            writer.writerow(header)
+            for pn in package_dict.keys():
+                writer.writerow(package_dict[pn])
+            f.close()
 
         del package_dict
 
@@ -246,9 +239,13 @@ python checkpkg_eventhandler() {
         logfile = dc.create_log_file(e.data, "checkpkg.csv")
 
         lf = bb.utils.lockfile("%s.lock" % logfile)
-        f = open(logfile, "a")
-        f.write("Package\tVersion\tUpver\tLicense\tSection\tHome\tRelease\tDepends\tBugTracker\tPE\tDescription\tStatus\tTracking\tURI\tMAINTAINER\tNoUpReason\n")
-        f.close()
+        with open(logfile, "a") as f:
+            writer = csv.writer(f, delimiter='\t')
+            headers = ['Package', 'Version', 'Upver', 'License', 'Section',
+                'Home', 'Release', 'Depends', 'BugTracker', 'PE', 'Description',
+                'Status', 'Tracking', 'URI', 'MAINTAINER', 'NoUpReason']
+            writer.writerow(headers)
+            f.close()
         bb.utils.unlockfile(lf)
     elif bb.event.getName(e) == "BuildCompleted":
         import os
@@ -264,14 +261,19 @@ addtask checkpkg
 do_checkpkg[nostamp] = "1"
 python do_checkpkg() {
         localdata = bb.data.createCopy(d)
+        import csv
         import re
         import tempfile
         import subprocess
+        import oe.recipeutils
+        from bb.utils import vercmp_string
+        from bb.fetch2 import FetchError, NoMethodError, decodeurl
 
         """first check whether a uri is provided"""
         src_uri = d.getVar('SRC_URI', True)
         if not src_uri:
                 return
+        uri_type, _, _, _, _, _ = decodeurl(src_uri)
 
         """initialize log files."""
         logpath = d.getVar('LOG_DIR', True)
@@ -311,10 +313,7 @@ python do_checkpkg() {
 
         pdesc = localdata.getVar('DESCRIPTION', True)
         pgrp = localdata.getVar('SECTION', True)
-        if localdata.getVar('PRSPV', True):
-                pversion = localdata.getVar('PRSPV', True)
-        else:
-                pversion = localdata.getVar('PV', True)
+        pversion = localdata.getVar('PV', True)
         plicense = localdata.getVar('LICENSE', True)
         psection = localdata.getVar('SECTION', True)
         phome = localdata.getVar('HOMEPAGE', True)
@@ -326,70 +325,62 @@ python do_checkpkg() {
         maintainer = localdata.getVar('RECIPE_MAINTAINER', True)
 
         """ Get upstream version version """
-        pupver = None
-        pstatus = "ErrUnknown"
-        found = 0
+        pupver = ""
+        pstatus = ""
 
-        for uri in src_uri.split():
-            m = re.compile('(?P<type>[^:]*)').match(uri)
-            if not m:
-                raise MalformedUrl(uri)
-            elif m.group('type') in ('http', 'https', 'ftp', 'cvs', 'svn', 'git'):
-                found = 1
-                psrcuri = uri
-                pproto = m.group('type')
-                break
-        if not found:
-                pproto = "file"
+        try:
+            uv = oe.recipeutils.get_recipe_upstream_version(localdata)
 
-        if pproto in ['http', 'https', 'ftp', 'git']:
-            try:
-                ud = bb.fetch2.FetchData(psrcuri, d)
-                pupver = ud.method.latest_versionstring(ud, d)
-                if pproto == 'git':
-                    if pupver == "":
-                        pupver = pversion.rsplit("+")[0]
-                    if re.search(pversion, "gitrAUTOINC"):
-                        pupver += "+gitrAUTOINC+"
-                    else:
-                        pupver += "+gitAUTOINC+"
-                    latest_revision = ud.method.latest_revision(ud, d, ud.names[0])
-                    pupver += latest_revision[:10]
-            except Exception as inst:
-                bb.warn("%s: unexpected error: %s" % (pname, repr(inst)))
+            pupver = uv['version']
+        except Exception as e:
+            if e is FetchError:
                 pstatus = "ErrAccess"
-        elif pproto == "file":
-            """Local files are always updated"""
-            pupver = pversion
-        else:
-            pstatus = "ErrUnsupportedProto"
-            bb.note("do_checkpkg, protocol %s isn't implemented" % pproto)
+            elif e is NoMethodError:
+                pstatus = "ErrUnsupportedProto"
+            else:
+                pstatus = "ErrUnknown"
 
+        """Set upstream version status"""
         if not pupver:
             pupver = "N/A"
-        elif pupver == pversion:
-            pstatus = "MATCH"
         else:
-            pstatus = "UPDATE"
+            pv, _, _ = oe.recipeutils.get_recipe_pv_without_srcpv(pversion, uri_type)
+            upv, _, _ = oe.recipeutils.get_recipe_pv_without_srcpv(pupver, uri_type)
+
+            cmp = vercmp_string(pv, upv)
+            if cmp == -1:
+                pstatus = "UPDATE"
+            elif cmp == 0:
+                pstatus = "MATCH"
 
         """Read from manual distro tracking fields as alternative"""
         pmver = d.getVar("RECIPE_UPSTREAM_VERSION", True)
         if not pmver:
             pmver = "N/A"
             pmstatus = "ErrNoRecipeData"
-        elif pmver == pupver:
-            pmstatus = "MATCH"
         else:
-            pmstatus = "UPDATE"
+            mpv, _, _ = oe.recipeutils.get_recipe_pv_without_srcpv(pmver, uri_type)
+            upv, _, _ = oe.recipeutils.get_recipe_pv_without_srcpv(pupver, uri_type)
 
+            cmp = vercmp_string(mpv, upv)
+            if cmp == -1:
+                pmstatus = "UPDATE"
+            elif cmp == 0:
+                pmstatus = "MATCH"
+            else:
+                pmstatus = ""
+
+        psrcuri = psrcuri.split()[0]
         pdepends = "".join(pdepends.split("\t"))
         pdesc = "".join(pdesc.split("\t"))
         no_upgr_reason = d.getVar('RECIPE_NO_UPDATE_REASON', True)
         lf = bb.utils.lockfile("%s.lock" % logfile)
-        f = open(logfile, "a")
-        f.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % \
-                  (pname,pversion,pupver,plicense,psection, phome,prelease, pdepends,pbugtracker,ppe,pdesc,pstatus,pmver,psrcuri,maintainer, no_upgr_reason))
-        f.close()
+        with open(logfile, "a") as f:
+            writer = csv.writer(f, delimiter='\t')
+            writer.writerow([pname, pversion, pupver, plicense, psection, phome, 
+                prelease, pdepends, pbugtracker, ppe, pdesc, pstatus, pmver, 
+                psrcuri, maintainer, no_upgr_reason])
+            f.close()
         bb.utils.unlockfile(lf)
 }
 
@@ -452,12 +443,14 @@ addhandler checklicense_eventhandler
 checklicense_eventhandler[eventmask] = "bb.event.BuildStarted"
 python checklicense_eventhandler() {
     """initialize log files."""
+    import csv
     import oe.distro_check as dc
     logfile = dc.create_log_file(e.data, "missinglicense.csv")
     lf = bb.utils.lockfile("%s.lock" % logfile)
-    f = open(logfile, "a")
-    f.write("Package\tLicense\tMissingLicense\n")
-    f.close()
+    with open(logfile, "a") as f:
+        writer = csv.writer(f, delimiter='\t')
+        writer.writerow(['Package', 'License', 'MissingLicense'])
+        f.close()
     bb.utils.unlockfile(lf)
     return
 }
@@ -465,6 +458,7 @@ python checklicense_eventhandler() {
 addtask checklicense
 do_checklicense[nostamp] = "1"
 python do_checklicense() {
+    import csv
     import shutil
     logpath = d.getVar('LOG_DIR', True)
     bb.utils.mkdirhier(logpath)
@@ -477,10 +471,10 @@ python do_checklicense() {
                           .replace(',', '').replace(" ", "").split("&"))):
         if not os.path.isfile(os.path.join(generic_directory, license_type)):
             lf = bb.utils.lockfile("%s.lock" % logfile)
-            f = open(logfile, "a")
-            f.write("%s\t%s\t%s\n" % \
-                (pn,license_types,license_type))
-            f.close()
+            with open(logfile, "a") as f:
+                writer = csv.writer(f, delimiter='\t')
+                writer.writerow([pn, license_types, license_type])
+                f.close()
             bb.utils.unlockfile(lf)
     return
 }

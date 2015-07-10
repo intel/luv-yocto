@@ -20,8 +20,7 @@ from django.conf.urls import patterns, include, url
 from django.views.generic import RedirectView, TemplateView
 
 from django.http import HttpResponseBadRequest
-import tables
-from widgets import ToasterTemplateView
+from toastergui import tables
 
 urlpatterns = patterns('toastergui.views',
         # landing page
@@ -77,50 +76,60 @@ urlpatterns = patterns('toastergui.views',
 
         url(r'^projects/$', 'projects', name='all-projects'),
 
-        url(r'^project/$', lambda x: HttpResponseBadRequest(), name='base_project'),
-
         url(r'^project/(?P<pid>\d+)/$', 'project', name='project'),
         url(r'^project/(?P<pid>\d+)/configuration$', 'projectconf', name='projectconf'),
         url(r'^project/(?P<pid>\d+)/builds/$', 'projectbuilds', name='projectbuilds'),
 
-        url(r'^project/(?P<pid>\d+)/layer/(?P<layerid>\d+)$', 'layerdetails', name='layerdetails'),
-        url(r'^project/(?P<pid>\d+)/layer/$', lambda x,pid: HttpResponseBadRequest(), name='base_layerdetails'),
-
         # the import layer is a project-specific functionality;
         url(r'^project/(?P<pid>\d+)/importlayer$', 'importlayer', name='importlayer'),
 
+        # the table pages that have been converted to ToasterTable widget
         url(r'^project/(?P<pid>\d+)/machines/$',
-            ToasterTemplateView.as_view(template_name="generic-toastertable-page.html"),
+            tables.MachinesTable.as_view(template_name="generic-toastertable-page.html"),
             { 'table_name': tables.MachinesTable.__name__.lower(),
               'title' : 'All compatible machines' },
-            name="all-machines"),
+            name="projectmachines"),
 
         url(r'^project/(?P<pid>\d+)/recipes/$',
-            ToasterTemplateView.as_view(template_name="generic-toastertable-page.html"),
+            tables.RecipesTable.as_view(template_name="generic-toastertable-page.html"),
             { 'table_name': tables.RecipesTable.__name__.lower(),
               'title' : 'All compatible recipes' },
-            name="all-targets"),
+            name="projecttargets"),
+
+        url(r'^project/(?P<pid>\d+)/availablerecipes/$',
+            tables.ProjectLayersRecipesTable.as_view(template_name="generic-toastertable-page.html"),
+            { 'table_name': tables.ProjectLayersRecipesTable.__name__.lower(),
+              'title' : 'Recipes available for layers in the current project' },
+            name="projectavailabletargets"),
 
         url(r'^project/(?P<pid>\d+)/layers/$',
-            ToasterTemplateView.as_view(template_name="generic-toastertable-page.html"),
+            tables.LayersTable.as_view(template_name="generic-toastertable-page.html"),
             { 'table_name': tables.LayersTable.__name__.lower(),
               'title' : 'All compatible layers' },
-            name="all-layers"),
+            name="projectlayers"),
 
+        url(r'^project/(?P<pid>\d+)/layer/(?P<layerid>\d+)$',
+            tables.LayerDetails.as_view(template_name='layerdetails.html'),
+            name='layerdetails'),
 
-        url(r'^xhr_build/$', 'xhr_build', name='xhr_build'),
-        url(r'^xhr_projectbuild/(?P<pid>\d+)$', 'xhr_projectbuild', name='xhr_projectbuild'),
-        url(r'^xhr_projectinfo/$', 'xhr_projectinfo', name='xhr_projectinfo'),
-        url(r'^xhr_projectedit/(?P<pid>\d+)$', 'xhr_projectedit', name='xhr_projectedit'),
-        url(r'^xhr_configvaredit/(?P<pid>\d+)$', 'xhr_configvaredit', name='xhr_configvaredit'),
+        url(r'^project/(?P<pid>\d+)/layer/(?P<layerid>\d+)/recipes/$',
+            tables.LayerRecipesTable.as_view(template_name="generic-toastertable-page.html"),
+            { 'table_name': tables.LayerRecipesTable.__name__.lower(),
+              'title' : 'All recipes in layer' },
+             name=tables.LayerRecipesTable.__name__.lower()),
+
+        url(r'^project/(?P<pid>\d+)/layer/(?P<layerid>\d+)/machines/$',
+            tables.LayerMachinesTable.as_view(template_name="generic-toastertable-page.html"),
+            { 'table_name': tables.LayerMachinesTable.__name__.lower(),
+              'title' : 'All machines in layer' },
+            name=tables.LayerMachinesTable.__name__.lower()),
+
 
         url(r'^xhr_datatypeahead/(?P<pid>\d+)$', 'xhr_datatypeahead', name='xhr_datatypeahead'),
+        url(r'^xhr_configvaredit/(?P<pid>\d+)$', 'xhr_configvaredit', name='xhr_configvaredit'),
+
         url(r'^xhr_importlayer/$', 'xhr_importlayer', name='xhr_importlayer'),
         url(r'^xhr_updatelayer/$', 'xhr_updatelayer', name='xhr_updatelayer'),
-        url(r'^xhr_tables/(?P<pid>\d+)/', include('toastergui.tables')),
-
-        # dashboard for failed build requests
-        url(r'^project/(?P<pid>\d+)/buildrequest/(?P<brid>\d+)$', 'buildrequestdetails', name='buildrequestdetails'),
 
         # default redirection
         url(r'^$', RedirectView.as_view( url= 'landing')),

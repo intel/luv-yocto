@@ -168,7 +168,7 @@ def read_settings():
 # cleanup !
 def clean_up(testdir):
     # TODO: delete the test dir
-    #run_shell_cmd("rm -rf -- '%s'" % testdir)
+    run_shell_cmd("rm -rf -- '%s'" % testdir)
     pass
 
 if __name__ == "__main__":
@@ -181,7 +181,7 @@ if __name__ == "__main__":
     no_failures = 1
     try:
         if options.testdir is not None and os.path.exists(options.testdir):
-            testdir = options.testdir
+            testdir = os.path.abspath(options.testdir)
             config.logger.info("No checkout, using %s" % testdir)
         else:
             need_cleanup = True

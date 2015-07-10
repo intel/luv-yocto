@@ -156,20 +156,13 @@
         showhideImmediateTableAction( clname, sh, orderkey );
     }
 
-    //
-    // saves a cookie with selected order field
-    //
-    function saveOrderCookie( orderfield ) {
-        $.cookie("orderby", orderfield, { path: $(location).attr('pathname') });
-    }
-
     </script>
 
 <!-- control header -->
 <div class="navbar">
     <div class="navbar-inner">
         <form class="navbar-search input-append pull-left" id="searchform">
-            <input class="input-xxlarge" id="search" name="search" type="text" placeholder="Search {%if object_search_display %}{{object_search_display}}{%else%}{{objectname}}{%endif%}" value="{{request.GET.search}}"/>{% if request.GET.search %}<a href="javascript:$('#search').val('');searchform.submit()" class="add-on btn" tabindex="-1"><i class="icon-remove"></i></a>{%endif%}
+            <input class="input-xxlarge" id="search" name="search" type="text" placeholder="Search {%if object_search_display %}{{object_search_display}}{%else%}{{objectname}}{%endif%}" value="{%if request.GET.search %}{{request.GET.search}}{% endif %}"/>{% if request.GET.search %}<a href="javascript:$('#search').val('');searchform.submit()" class="add-on btn" tabindex="-1"><i class="icon-remove"></i></a>{%endif%}
             <input type="hidden" name="orderby" value="{{request.GET.orderby}}">
             <input type="hidden" name="page" value="1">
             <button class="btn" type="submit" value="Search">Search</button>
@@ -198,7 +191,12 @@
                                        onclick="showhideTableColumn(
                                            $(this).attr('id'),
                                            $(this).is(':checked'),
-                                           '{{i.orderkey}}' )"
+                                           {% if i.ordericon %}
+                                              '{{i.orderkey}}'
+                                           {% else %}
+                                              undefined
+                                           {% endif %}
+                                       )"
                                    {%else%}
                                        checked disabled
                                    {% endif %}/>   {{i.name}}
@@ -228,9 +226,9 @@
     <thead>
         <!-- Table header row; generated from "tablecols" entry in the context dict -->
         <tr>
-            {% for tc in tablecols %}<th class="{{tc.dclass}} {{tc.clclass}}">
+            {% for tc in tablecols %}<th class="{%if tc.dclass%}{{tc.dclass}}{%endif%} {% if tc.clclass %}{{tc.clclass}}{% endif %}">
                 {%if tc.qhelp%}<i class="icon-question-sign get-help" title="{{tc.qhelp}}"></i>{%endif%}
-                {%if tc.orderfield%}<a {%if tc.ordericon%} class="sorted" {%endif%}href="javascript:reload_params({'page': 1, 'orderby' : '{{tc.orderfield}}' })" onclick="saveOrderCookie('{{tc.orderfield}}')">{{tc.name}}</a>{%else%}<span class="muted">{{tc.name}}</span>{%endif%}
+                {%if tc.orderfield%}<a {%if tc.ordericon%} class="sorted" {%endif%}href="javascript:reload_params({'page': 1, 'orderby' : '{{tc.orderfield}}' })">{{tc.name}}</a>{%else%}<span class="muted">{{tc.name}}</span>{%endif%}
                 {%if tc.ordericon%} <i class="icon-caret-{{tc.ordericon}}"></i>{%endif%}
                 {%if tc.filter%}<div class="btn-group pull-right">
                     <a href="#filter_{{tc.filter.class}}" role="button" class="btn btn-mini {%if request.GET.filter%}{{tc.filter.options|filtered_icon:request.GET.filter}} {%endif%}" {%if request.GET.filter and tc.filter.options|filtered_tooltip:request.GET.filter %} title="<p>{{tc.filter.options|filtered_tooltip:request.GET.filter}}</p><p><a class='btn btn-small btn-primary' href=javascript:reload_params({'filter':''})>Show all {% if filter_search_display %}{{filter_search_display}}{% else %}{{objectname}}{% endif %}</a></p>" {%endif%} data-toggle="modal"> <i class="icon-filter filtered"></i> </a>

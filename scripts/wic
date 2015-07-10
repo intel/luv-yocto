@@ -52,7 +52,8 @@ if bitbake_exe:
 else:
     bitbake_main = None
 
-from wic.utils.oe.misc import find_bitbake_env_lines, set_bitbake_env_lines
+from wic.utils.oe.misc import get_bitbake_var
+from wic.utils.errors import WicError
 from image import engine
 from image import help as hlp
 
@@ -89,23 +90,30 @@ def wic_create_subcommand(args, usage_str):
     parser = optparse.OptionParser(usage=usage_str)
 
     parser.add_option("-o", "--outdir", dest="outdir",
-                      action="store", help="name of directory to create image in")
-    parser.add_option("-i", "--infile", dest="properties_file",
-                      action="store", help="name of file containing the values for image properties as a JSON file")
+                      help="name of directory to create image in")
     parser.add_option("-e", "--image-name", dest="image_name",
-                      action="store", help="name of the image to use the artifacts from e.g. core-image-sato")
-    parser.add_option("-r", "--rootfs-dir", dest="rootfs_dir",
-                      action="callback", callback=callback_rootfs_dir, type="string",
-                      help="path to the /rootfs dir to use as the .wks rootfs source")
+                      help="name of the image to use the artifacts from "
+                           "e.g. core-image-sato")
+    parser.add_option("-r", "--rootfs-dir", dest="rootfs_dir", type="string",
+                      action="callback", callback=callback_rootfs_dir,
+                      help="path to the /rootfs dir to use as the "
+                           ".wks rootfs source")
     parser.add_option("-b", "--bootimg-dir", dest="bootimg_dir",
-                      action="store", help="path to the dir containing the boot artifacts (e.g. /EFI or /syslinux dirs) to use as the .wks bootimg source")
+                      help="path to the dir containing the boot artifacts "
+                           "(e.g. /EFI or /syslinux dirs) to use as the "
+                           ".wks bootimg source")
     parser.add_option("-k", "--kernel-dir", dest="kernel_dir",
-                      action="store", help="path to the dir containing the kernel to use in the .wks bootimg")
+                      help="path to the dir containing the kernel to use "
+                           "in the .wks bootimg")
     parser.add_option("-n", "--native-sysroot", dest="native_sysroot",
-                      action="store", help="path to the native sysroot containing the tools to use to build the image")
+                      help="path to the native sysroot containing the tools "
+                           "to use to build the image")
     parser.add_option("-p", "--skip-build-check", dest="build_check",
                       action="store_false", default=True, help="skip the build check")
     parser.add_option("-f", "--build-rootfs", action="store_true", help="build rootfs")
+    parser.add_option("-c", "--compress-with", choices=("gzip", "bzip2", "xz"),
+                      dest='compressor',
+                      help="compress image with specified compressor")
     parser.add_option("-D", "--debug", dest="debug", action="store_true",
                       default=False, help="output debug information")
 
@@ -120,30 +128,29 @@ def wic_create_subcommand(args, usage_str):
         logging.error("Can't build roofs as bitbake is not in the $PATH")
         sys.exit(1)
 
-    if not options.image_name and not (options.rootfs_dir and
-                                       options.bootimg_dir and
-                                       options.kernel_dir and
-                                       options.native_sysroot):
-        print "Build artifacts not completely specified, exiting."
-        print "  (Use 'wic -e' or 'wic -r -b -k -n' to specify artifacts)"
-        sys.exit(1)
+    if not options.image_name:
+        missed = []
+        for val, opt in [(options.rootfs_dir, 'rootfs-dir'),
+                         (options.bootimg_dir, 'bootimg-dir'),
+                         (options.kernel_dir, 'kernel-dir'),
+                         (options.native_sysroot, 'native-sysroot')]:
+            if not val:
+                missed.append(opt)
+        if missed:
+            print "The following build artifacts are not specified:"
+            print "  " + ", ".join(missed)
+            sys.exit(1)
 
     if not options.image_name:
         options.build_check = False
 
-    if options.build_check and not options.properties_file:
+    if options.build_check:
         print "Checking basic build environment..."
         if not engine.verify_build_env():
             print "Couldn't verify build environment, exiting\n"
             sys.exit(1)
         else:
             print "Done.\n"
-
-    bitbake_env_lines = find_bitbake_env_lines(options.image_name)
-    if not bitbake_env_lines:
-        print "Couldn't get bitbake environment, exiting."
-        sys.exit(1)
-    set_bitbake_env_lines(bitbake_env_lines)
 
     bootimg_dir = ""
 
@@ -158,9 +165,10 @@ def wic_create_subcommand(args, usage_str):
                             cookerdata.CookerConfiguration()):
                 sys.exit(1)
 
-        (rootfs_dir, kernel_dir, bootimg_dir, native_sysroot) \
-            = engine.find_artifacts(options.image_name)
-
+        rootfs_dir = get_bitbake_var("IMAGE_ROOTFS", options.image_name)
+        kernel_dir = get_bitbake_var("DEPLOY_DIR_IMAGE", options.image_name)
+        native_sysroot = get_bitbake_var("STAGING_DIR_NATIVE",
+                                         options.image_name)
     else:
         if options.build_rootfs:
             print "Image name is not specified, exiting. (Use -e/--image-name to specify it)\n"
@@ -171,7 +179,9 @@ def wic_create_subcommand(args, usage_str):
     if not wks_file.endswith(".wks"):
         wks_file = engine.find_canned_image(scripts_path, wks_file)
         if not wks_file:
-            print "No image named %s found, exiting.  (Use 'wic list images' to list available images, or specify a fully-qualified OE kickstart (.wks) filename)\n" % wks_file
+            print "No image named %s found, exiting.  (Use 'wic list images' "\
+                  "to list available images, or specify a fully-qualified OE "\
+                  "kickstart (.wks) filename)\n" % args[0]
             sys.exit(1)
 
     image_output_dir = ""
@@ -224,9 +234,9 @@ def wic_create_subcommand(args, usage_str):
     rootfs_dir = rootfs_dir_to_args(krootfs_dir)
 
     print "Creating image(s)...\n"
-    engine.wic_create(args, wks_file, rootfs_dir, bootimg_dir, kernel_dir,
+    engine.wic_create(wks_file, rootfs_dir, bootimg_dir, kernel_dir,
                       native_sysroot, scripts_path, image_output_dir,
-                      options.debug, options.properties_file)
+                      options.compressor, options.debug)
 
 
 def wic_list_subcommand(args, usage_str):
@@ -241,12 +251,6 @@ def wic_list_subcommand(args, usage_str):
                       help="dump the possible values for image properties to a JSON file")
 
     (options, args) = parser.parse_args(args)
-
-    bitbake_env_lines = find_bitbake_env_lines(None)
-    if not bitbake_env_lines:
-        print "Couldn't get bitbake environment, exiting."
-        sys.exit(1)
-    set_bitbake_env_lines(bitbake_env_lines)
 
     if not engine.wic_list(args, scripts_path, options.properties_file):
         logging.error("Bad list arguments, exiting\n")
@@ -276,7 +280,7 @@ subcommands = {
                   hlp.wic_list_help],
     "plugins":   [wic_help_topic_subcommand,
                   wic_help_topic_usage,
-                  hlp.wic_plugins_help],
+                  hlp.get_wic_plugins_help()],
     "overview":  [wic_help_topic_subcommand,
                   wic_help_topic_usage,
                   hlp.wic_overview_help],
@@ -304,15 +308,13 @@ def main(argv):
                 parser.print_help()
                 sys.exit(1)
 
-    hlp.invoke_subcommand(args, parser, hlp.wic_help_usage, subcommands)
+    return hlp.invoke_subcommand(args, parser, hlp.wic_help_usage, subcommands)
 
 
 if __name__ == "__main__":
     try:
-        ret = main(sys.argv[1:])
-    except Exception:
-        ret = 1
-        import traceback
-        traceback.print_exc(5)
-    sys.exit(ret)
+        sys.exit(main(sys.argv[1:]))
+    except WicError as err:
+        print >> sys.stderr, "ERROR:", err
+        sys.exit(1)
 
