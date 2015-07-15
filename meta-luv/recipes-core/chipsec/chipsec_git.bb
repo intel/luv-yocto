@@ -7,12 +7,11 @@ LICENSE = "GPLv2"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=8c16666ae6c159876a0ba63099614381"
 
 SRC_URI = "git://github.com/chipsec/chipsec.git \
-    file://0003-chipsec_main.py-Remove-absolute-reference-to-python-.patch \
     file://0005-tool-setup.py-Delete-Windows-drivers-from-data_files.patch \
     file://0006-drivers-linux-Don-t-build-userland-app-automatically.patch \
     file://chipsec file://luv-parser-chipsec"
 
-SRCREV="4f1f52265caf5636e846f59f3d484c374a397daa"
+SRCREV="a080525f36cb353285e9ee72d001aecd6b20290f"
 
 DEPENDS = "virtual/kernel python-core nasm-native"
 RDEPENDS_${PN} = "python python-shell python-stringold python-xml \
