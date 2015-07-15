@@ -15,7 +15,7 @@ HOMEPAGE = "http://biosbits.org/"
 LICENSE = "GPLv3"
 LIC_FILES_CHKSUM = "file://boot/COPYING;md5=71a9ec458a3c65c2bfb461b227ef3049"
 
-PV="1154"
+PV="1219"
 
 inherit autotools
 inherit deploy
@@ -29,8 +29,8 @@ SRC_URI = "http://biosbits.org/downloads/${BPN}-${PV}.zip  \
            file://0001-only-output-to-log.patch;apply=no \
           "
 
-SRC_URI[md5sum] = "b30ac94d672c436b62bb9c0ec5fee9db"
-SRC_URI[sha256sum] = "5b7314142f3be970b26669cbbb9c507c1d8b4ee485d9333ec5f63309cbc65a6b"
+SRC_URI[md5sum] = "7afa5edd935c2ada2ee75f546b66043e"
+SRC_URI[sha256sum] = "e16f4ffa2499f18cbf2ea8850ffcfc59ff266ca893904eb532762db059326960"
 
 S = "${WORKDIR}/bits-${PV}"
 
