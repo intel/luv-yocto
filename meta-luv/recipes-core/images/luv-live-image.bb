@@ -40,6 +40,10 @@ build_img() {
     VFAT_RESULTS_UUID=05d61523
     VFAT_RESULTS_LABEL="luv-results"
 
+    if [ -e ${VFAT_RESULTS} ]; then
+        rm ${VFAT_RESULTS}
+    fi
+
     mkdosfs -C ${VFAT_RESULTS} -S 512 -i ${VFAT_RESULTS_UUID} \
             -n ${VFAT_RESULTS_LABEL} $VFAT_RESULTS_BLOCKS
 
