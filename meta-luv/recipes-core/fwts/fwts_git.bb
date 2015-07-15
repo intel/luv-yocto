@@ -4,12 +4,11 @@ HOMEPAGE = "https://wiki.ubuntu.com/Kernel/Reference/fwts"
 LICENSE = "GPLv2+"
 LIC_FILES_CHKSUM = "file://src/main.c;beginline=1;endline=16;md5=9bd929284041f05a42b0b6a7b1864a31"
 
-PV = "15.03.01+git${SRCPV}"
+PV = "15.07.00+git${SRCPV}"
 
-SRCREV = "aba49d907484b153071320d396407bd35c0e4123"
+SRCREV = "765fa9cfc1e4dc7322b323a7569f53df0e5d862c"
 SRC_URI = "git://kernel.ubuntu.com/hwe/fwts.git \
            file://luv-parser-fwts \
-           file://uefi-efi_runtime-eliminate-confusing-error-message-of-get_variable.patch \
           "
 
 S = "${WORKDIR}/git"
