@@ -42,7 +42,7 @@
 #              defaults, not set to 'n'. To properly expand a defconfig like
 #              this, specify: KCONFIG_MODE="--alldefconfig" in the kernel
 #              recipe.
-#   
+# 
 #   example configuration addition:
 #            SRC_URI += "file://smp.cfg"
 #   example patch addition (for kernel v3.4 only):
@@ -60,7 +60,7 @@ require recipes-kernel/linux/linux-yocto.inc
 SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/mfleming/efi.git;protocol=git;branch=${KBRANCH};name=machine"
 SRC_URI += "file://defconfig"
 
-LINUX_VERSION ?= "3.13"
+LINUX_VERSION ?= "4.1"
 LINUX_VERSION_EXTENSION ?= "-efitest"
 
 # Override SRCREV to point to a different commit in a bbappend file to
