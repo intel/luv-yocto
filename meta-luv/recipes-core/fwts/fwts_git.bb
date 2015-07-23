@@ -9,6 +9,7 @@ PV = "15.07.00+git${SRCPV}"
 SRCREV = "765fa9cfc1e4dc7322b323a7569f53df0e5d862c"
 SRC_URI = "git://kernel.ubuntu.com/hwe/fwts.git \
            file://luv-parser-fwts \
+           file://0001-cpu-cpufreq-Iterate-over-the-correct-number-of-CPUs-.patch \
           "
 
 S = "${WORKDIR}/git"
