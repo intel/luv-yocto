@@ -6,15 +6,16 @@ require recipes-kernel/linux/linux-yocto.inc
 
 LINUX_VERSION ?= "3.19.5"
 
-KMETA = "meta"
+KMETA = "kernel-meta"
 KCONF_BSP_AUDIT_LEVEL = "2"
 
-SRCREV_machine ?= "6c21811060c03100a32d0acc493df5fb3743b7c8"
-SRCREV_meta ?= "118f27167f4626fc7c71cefbec7c55a41d3a6d62"
+SRCREV_machine ?= "e152349de59b43b2a75f2c332b44171df461d5a0"
+SRCREV_meta ?= "361c186effc0b0038dfbfd3fe71ecf3df5edb43d"
 
 PV = "${LINUX_VERSION}+git${SRCPV}"
 
-SRC_URI = "git://git.yoctoproject.org/linux-yocto-3.19.git;bareclone=1;branch=${KBRANCH},meta;name=machine,meta"
+SRC_URI = "git://git.yoctoproject.org/linux-yocto-3.19.git;branch=${KBRANCH};name=machine \
+           git://git.yoctoproject.org/yocto-kernel-cache;type=kmeta;name=meta;branch=yocto-3.19;destsuffix=${KMETA}"
 
 COMPATIBLE_MACHINE = "(qemux86)"
 

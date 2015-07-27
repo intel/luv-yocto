@@ -89,6 +89,7 @@ PACKAGECONFIG[xkbcommon] = "--enable-xkbcommon,--disable-xkbcommon,libxkbcommon"
 PACKAGECONFIG[iptc] = "--enable-libiptc,--disable-libiptc,iptables"
 PACKAGECONFIG[ldconfig] = "--enable-ldconfig,--disable-ldconfig,,"
 PACKAGECONFIG[selinux] = "--enable-selinux,--disable-selinux,libselinux"
+PACKAGECONFIG[valgrind] = "ac_cv_header_valgrind_memcheck_h=yes ac_cv_header_valgrind_valgrind_h=yes ,ac_cv_header_valgrind_memcheck_h=no ac_cv_header_valgrind_valgrind_h=no ,valgrind"
 
 CACHED_CONFIGUREVARS += "ac_cv_path_KILL=${base_bindir}/kill"
 CACHED_CONFIGUREVARS += "ac_cv_path_KMOD=${base_bindir}/kmod"
@@ -307,10 +308,11 @@ FILES_${PN}-dev += "${base_libdir}/security/*.la ${datadir}/dbus-1/interfaces/ $
 RDEPENDS_${PN} += "kmod dbus util-linux-mount udev (= ${EXTENDPKGV})"
 RDEPENDS_${PN} += "volatile-binds"
 
-RRECOMMENDS_${PN} += "systemd-serialgetty systemd-compat-units udev-hwdb\
-                      util-linux-agetty \
-                      util-linux-fsck e2fsprogs-e2fsck \
-                      kernel-module-autofs4 kernel-module-unix kernel-module-ipv6 os-release \
+RRECOMMENDS_${PN} += "systemd-serialgetty systemd-vconsole-setup \
+                      systemd-compat-units udev-hwdb \
+                      util-linux-agetty  util-linux-fsck e2fsprogs-e2fsck \
+                      kernel-module-autofs4 kernel-module-unix kernel-module-ipv6 \
+                      os-release \
 "
 
 PACKAGES =+ "udev-dbg udev udev-hwdb"

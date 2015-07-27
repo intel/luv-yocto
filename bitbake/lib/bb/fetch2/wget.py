@@ -101,12 +101,172 @@ class Wget(FetchMethod):
         return True
 
     def checkstatus(self, fetch, ud, d):
+        import urllib2, socket, httplib
+        from urllib import addinfourl
+        from bb.fetch2 import FetchConnectionCache
+
+        class HTTPConnectionCache(httplib.HTTPConnection):
+            if fetch.connection_cache:
+                def connect(self):
+                    """Connect to the host and port specified in __init__."""
+
+                    sock = fetch.connection_cache.get_connection(self.host, self.port)
+                    if sock:
+                        self.sock = sock
+                    else:
+                        self.sock = socket.create_connection((self.host, self.port),
+                                    self.timeout, self.source_address)
+                        fetch.connection_cache.add_connection(self.host, self.port, self.sock)
+
+                    if self._tunnel_host:
+                        self._tunnel()
+
+        class CacheHTTPHandler(urllib2.HTTPHandler):
+            def http_open(self, req):
+                return self.do_open(HTTPConnectionCache, req)
+
+            def do_open(self, http_class, req):
+                """Return an addinfourl object for the request, using http_class.
+
+                http_class must implement the HTTPConnection API from httplib.
+                The addinfourl return value is a file-like object.  It also
+                has methods and attributes including:
+                    - info(): return a mimetools.Message object for the headers
+                    - geturl(): return the original request URL
+                    - code: HTTP status code
+                """
+                host = req.get_host()
+                if not host:
+                    raise urlllib2.URLError('no host given')
+
+                h = http_class(host, timeout=req.timeout) # will parse host:port
+                h.set_debuglevel(self._debuglevel)
+
+                headers = dict(req.unredirected_hdrs)
+                headers.update(dict((k, v) for k, v in req.headers.items()
+                            if k not in headers))
+
+                # We want to make an HTTP/1.1 request, but the addinfourl
+                # class isn't prepared to deal with a persistent connection.
+                # It will try to read all remaining data from the socket,
+                # which will block while the server waits for the next request.
+                # So make sure the connection gets closed after the (only)
+                # request.
+
+                # Don't close connection when connection_cache is enabled,
+                if fetch.connection_cache is None: 
+                    headers["Connection"] = "close"
+                else:
+                    headers["Connection"] = "Keep-Alive" # Works for HTTP/1.0
+
+                headers = dict(
+                    (name.title(), val) for name, val in headers.items())
+
+                if req._tunnel_host:
+                    tunnel_headers = {}
+                    proxy_auth_hdr = "Proxy-Authorization"
+                    if proxy_auth_hdr in headers:
+                        tunnel_headers[proxy_auth_hdr] = headers[proxy_auth_hdr]
+                        # Proxy-Authorization should not be sent to origin
+                        # server.
+                        del headers[proxy_auth_hdr]
+                    h.set_tunnel(req._tunnel_host, headers=tunnel_headers)
+
+                try:
+                    h.request(req.get_method(), req.get_selector(), req.data, headers)
+                except socket.error, err: # XXX what error?
+                    # Don't close connection when cache is enabled.
+                    if fetch.connection_cache is None:
+                        h.close()
+                    raise urllib2.URLError(err)
+                else:
+                    try:
+                        r = h.getresponse(buffering=True)
+                    except TypeError: # buffering kw not supported
+                        r = h.getresponse()
+
+                # Pick apart the HTTPResponse object to get the addinfourl
+                # object initialized properly.
+
+                # Wrap the HTTPResponse object in socket's file object adapter
+                # for Windows.  That adapter calls recv(), so delegate recv()
+                # to read().  This weird wrapping allows the returned object to
+                # have readline() and readlines() methods.
+
+                # XXX It might be better to extract the read buffering code
+                # out of socket._fileobject() and into a base class.
+                r.recv = r.read
+
+                # no data, just have to read
+                r.read()
+                class fp_dummy(object):
+                    def read(self):
+                        return ""
+                    def readline(self):
+                        return ""
+                    def close(self):
+                        pass
+
+                resp = addinfourl(fp_dummy(), r.msg, req.get_full_url())
+                resp.code = r.status
+                resp.msg = r.reason
+
+                # Close connection when server request it.
+                if fetch.connection_cache is not None:
+                    if 'Connection' in r.msg and r.msg['Connection'] == 'close':
+                        fetch.connection_cache.remove_connection(h.host, h.port)
+
+                return resp
+
+        def export_proxies(d):
+            variables = ['http_proxy', 'HTTP_PROXY', 'https_proxy', 'HTTPS_PROXY',
+                            'ftp_proxy', 'FTP_PROXY', 'no_proxy', 'NO_PROXY']
+            exported = False
+
+            for v in variables:
+                if v in os.environ.keys():
+                    exported = True
+                else:
+                    v_proxy = d.getVar(v, True)
+                    if v_proxy is not None:
+                        os.environ[v] = v_proxy
+                        exported = True
+
+            return exported
+
+        def head_method(self):
+            return "HEAD"
+
+        exported_proxies = export_proxies(d)
+
+        # XXX: Since Python 2.7.9 ssl cert validation is enabled by default
+        # see PEP-0476, this causes verification errors on some https servers
+        # so disable by default.
+        import ssl
+        ssl_context = None
+        if hasattr(ssl, '_create_unverified_context'):
+            ssl_context = ssl._create_unverified_context()
+
+        if exported_proxies == True and ssl_context is not None:
+            opener = urllib2.build_opener(urllib2.ProxyHandler, CacheHTTPHandler,
+                    urllib2.HTTPSHandler(context=ssl_context))
+        elif exported_proxies == False and ssl_context is not None:
+            opener = urllib2.build_opener(CacheHTTPHandler,
+                    urllib2.HTTPSHandler(context=ssl_context))
+        elif exported_proxies == True and ssl_context is None:
+            opener = urllib2.build_opener(urllib2.ProxyHandler, CacheHTTPHandler)
+        else:
+            opener = urllib2.build_opener(CacheHTTPHandler)
+
+        urllib2.Request.get_method = head_method
+        urllib2.install_opener(opener)
 
         uri = ud.url.split(";")[0]
-        fetchcmd = self.basecmd + " --spider '%s'" % uri
 
-        self._runwget(ud, d, fetchcmd, True)
-
+        try:
+            urllib2.urlopen(uri)
+        except:
+            return False
         return True
 
     def _parse_path(self, regex, s):
@@ -347,12 +507,12 @@ class Wget(FetchMethod):
         if not re.search("\d+", package):
             current_version[1] = re.sub('_', '.', current_version[1])
             current_version[1] = re.sub('-', '.', current_version[1])
-            return current_version[1]
+            return (current_version[1], '')
 
         package_regex = self._init_regexes(package, ud, d)
         if package_regex is None:
             bb.warn("latest_versionstring: package %s don't match pattern" % (package))
-            return ""
+            return ('', '')
         bb.debug(3, "latest_versionstring, regex: %s" % (package_regex.pattern))
 
         uri = ""
@@ -370,12 +530,12 @@ class Wget(FetchMethod):
 
                 dirver_pn_regex = re.compile("%s\d?" % (re.escape(pn)))
                 if not dirver_pn_regex.search(dirver):
-                    return self._check_latest_version_by_dir(dirver,
-                        package, package_regex, current_version, ud, d)
+                    return (self._check_latest_version_by_dir(dirver,
+                        package, package_regex, current_version, ud, d), '')
 
             uri = bb.fetch.encodeurl([ud.type, ud.host, path, ud.user, ud.pswd, {}])
         else:
             uri = regex_uri
 
-        return self._check_latest_version(uri, package, package_regex,
-                current_version, ud, d)
+        return (self._check_latest_version(uri, package, package_regex,
+                current_version, ud, d), '')

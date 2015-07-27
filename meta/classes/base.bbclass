@@ -47,7 +47,7 @@ def lsb_distro_identifier(d):
     return oe.lsb.distro_identifier(adjust_func)
 
 die() {
-	bbfatal "$*"
+	bbfatal_log "$*"
 }
 
 oe_runmake_call() {
@@ -152,9 +152,6 @@ python base_do_unpack() {
         fetcher.unpack(rootdir)
     except bb.fetch2.BBFetchException as e:
         raise bb.build.FuncFailed(e)
-
-    if not os.path.exists(s_dir):
-        bb.warn('%s: the directory %s (%s) pointed to by the S variable doesn\'t exist - please set S within the recipe to point to where the source has been unpacked to' % (d.getVar('PN', True), d.getVar('S', False), s_dir))
 }
 
 def pkgarch_mapping(d):
@@ -210,7 +207,8 @@ addhandler base_eventhandler
 base_eventhandler[eventmask] = "bb.event.ConfigParsed bb.event.BuildStarted bb.event.RecipePreFinalise"
 python base_eventhandler() {
     if isinstance(e, bb.event.ConfigParsed):
-        e.data.setVar("NATIVELSBSTRING", lsb_distro_identifier(e.data))
+        if not e.data.getVar("NATIVELSBSTRING", False):
+            e.data.setVar("NATIVELSBSTRING", lsb_distro_identifier(e.data))
         e.data.setVar('BB_VERSION', bb.__version__)
         pkgarch_mapping(e.data)
         oe.utils.features_backfill("DISTRO_FEATURES", e.data)

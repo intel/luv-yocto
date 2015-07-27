@@ -61,6 +61,7 @@ export PERL_ARCHLIB = "${STAGING_LIBDIR}${PERL_OWN_DIR}/perl/${@get_perl_version
 inherit kernelsrc
 
 B = "${WORKDIR}/${BPN}-${PV}"
+SPDX_S = "${S}/tools/perf"
 
 SCRIPTING_DEFINES = "${@perf_feature_enabled('perf-scripting', '', 'NO_LIBPERL=1 NO_LIBPYTHON=1',d)}"
 TUI_DEFINES = "${@perf_feature_enabled('perf-tui', '', 'NO_NEWT=1',d)}"
@@ -120,24 +121,33 @@ do_configure_prepend () {
     rm -rf ${B}/
     mkdir ${B}/
 
-    #kernels before 3.1 do not support WERROR env variable
-    sed -i 's,-Werror ,,' ${S}/tools/perf/Makefile
-    if [ -e "${S}/tools/perf/config/Makefile" ]; then
-        sed -i 's,-Werror ,,' ${S}/tools/perf/config/Makefile
-    fi
-
     # If building a multlib based perf, the incorrect library path will be
     # detected by perf, since it triggers via: ifeq ($(ARCH),x86_64). In a 32 bit
     # build, with a 64 bit multilib, the arch won't match and the detection of a 
     # 64 bit build (and library) are not exected. To ensure that libraries are
     # installed to the correct location, we can use the weak assignment in the
     # config/Makefile.
+    #
+    # Also need to relocate .config-detected to $(OUTPUT)/config-detected
+    # as two builds (e.g. perf and lib32-perf from mutlilib can conflict
+    # with each other if its in the shared source directory
+    #
     if [ -e "${S}/tools/perf/config/Makefile" ]; then
         # Match $(prefix)/$(lib) and $(prefix)/lib
         sed -i -e 's,^libdir = \($(prefix)/.*lib\),libdir ?= \1,' \
                -e 's,^perfexecdir = \(.*\),perfexecdir ?= \1,' \
+               -e 's,\.config-detected,$(OUTPUT)/config-detected,g' \
             ${S}/tools/perf/config/Makefile
     fi
+    if [ -e "${S}/tools/perf/Makefile.perf" ]; then
+        sed -i -e 's,\.config-detected,$(OUTPUT)/config-detected,g' \
+            ${S}/tools/perf/Makefile.perf
+    fi
+    if [ -e "${S}/tools/build/Makefile.build" ]; then
+        sed -i -e 's,\.config-detected,$(OUTPUT)/config-detected,g' \
+            ${S}/tools/build/Makefile.build
+    fi
+
     # We need to ensure the --sysroot option in CC is preserved
     if [ -e "${S}/tools/perf/Makefile.perf" ]; then
         sed -i 's,CC = $(CROSS_COMPILE)gcc,#CC,' ${S}/tools/perf/Makefile.perf

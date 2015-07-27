@@ -617,10 +617,11 @@ def find_layerdir(fn):
 def replace_dir_vars(path, d):
     """Replace common directory paths with appropriate variable references (e.g. /etc becomes ${sysconfdir})"""
     dirvars = {}
-    for var in d:
+    # Sort by length so we get the variables we're interested in first
+    for var in sorted(d.keys(), key=len):
         if var.endswith('dir') and var.lower() == var:
             value = d.getVar(var, True)
-            if value.startswith('/') and not '\n' in value:
+            if value.startswith('/') and not '\n' in value and value not in dirvars:
                 dirvars[value] = var
     for dirpath in sorted(dirvars.keys(), reverse=True):
         path = path.replace(dirpath, '${%s}' % dirvars[dirpath])
@@ -644,6 +645,12 @@ def get_recipe_pv_without_srcpv(pv, uri_type):
             pv = m.group('ver')
             pfx = m.group('pfx')
             sfx = m.group('sfx')
+    else:
+        regex = re.compile("(?P<pfx>(v|r|))(?P<ver>((\d+[\.\-_]*)+))")
+        m = regex.match(pv)
+        if m:
+            pv = m.group('ver')
+            pfx = m.group('pfx')
 
     return (pv, pfx, sfx)
 
@@ -667,8 +674,17 @@ def get_recipe_upstream_version(rd):
     ru['type'] = 'U'
     ru['datetime'] = ''
 
+    # XXX: If don't have SRC_URI means that don't have upstream sources so
+    # returns 1.0.
+    src_uris = rd.getVar('SRC_URI', True)
+    if not src_uris:
+        ru['version'] = '1.0'
+        ru['type'] = 'M'
+        ru['datetime'] = datetime.now()
+        return ru
+
     # XXX: we suppose that the first entry points to the upstream sources
-    src_uri = rd.getVar('SRC_URI', True).split()[0] 
+    src_uri = src_uris.split()[0]
     uri_type, _, _, _, _, _ =  decodeurl(src_uri)
 
     pv = rd.getVar('PV', True)
@@ -694,21 +710,30 @@ def get_recipe_upstream_version(rd):
     else:
         ud = bb.fetch2.FetchData(src_uri, rd)
         pupver = ud.method.latest_versionstring(ud, rd)
+        (upversion, revision) = pupver
 
+        # format git version version+gitAUTOINC+HASH
         if uri_type == 'git':
             (pv, pfx, sfx) = get_recipe_pv_without_srcpv(pv, uri_type)
 
-            latest_revision = ud.method.latest_revision(ud, rd, ud.names[0])
+            # if contains revision but not upversion use current pv
+            if upversion == '' and revision:
+                upversion = pv
 
-            # if contains revision but not pupver use current pv
-            if pupver == '' and latest_revision:
-                pupver = pv
+            if upversion:
+                tmp = upversion
+                upversion = ''
 
-            if pupver != '':
-                pupver = pfx + pupver + sfx + latest_revision[:10]
+                if pfx:
+                    upversion = pfx + tmp
+                else:
+                    upversion = tmp
 
-        if pupver != '':
-            ru['version'] = pupver
+                if sfx:
+                    upversion = upversion + sfx + revision[:10]
+
+        if upversion:
+            ru['version'] = upversion
             ru['type'] = 'A'
 
         ru['datetime'] = datetime.now()

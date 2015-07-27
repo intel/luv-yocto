@@ -279,8 +279,15 @@ class Git(FetchMethod):
             if subdir != "":
                 runfetchcmd("%s read-tree %s%s" % (ud.basecmd, ud.revisions[ud.names[0]], readpathspec), d)
                 runfetchcmd("%s checkout-index -q -f -a" % ud.basecmd, d)
+            elif not ud.nobranch:
+                branchname =  ud.branches[ud.names[0]]
+                runfetchcmd("%s checkout -B %s %s" % (ud.basecmd, branchname, \
+                            ud.revisions[ud.names[0]]), d)
+                runfetchcmd("%s branch --set-upstream %s origin/%s" % (ud.basecmd, branchname, \
+                            branchname), d)
             else:
                 runfetchcmd("%s checkout %s" % (ud.basecmd, ud.revisions[ud.names[0]]), d)
+
         return True
 
     def clean(self, ud, d):
@@ -364,25 +371,28 @@ class Git(FetchMethod):
         by searching through the tags output of ls-remote, comparing
         versions and returning the highest match.
         """
-        verstring = ""
+        pupver = ('', '')
+
         tagregex = re.compile(d.getVar('GITTAGREGEX', True) or "(?P<pver>([0-9][\.|_]?)+)")
         try:
-            output = self._lsremote(ud, d, "refs/tags/*^{}")
+            output = self._lsremote(ud, d, "refs/tags/*")
         except bb.fetch2.FetchError or bb.fetch2.NetworkAccess:
-            return ""
+            return pupver
 
+        verstring = ""
+        revision = ""
         for line in output.split("\n"):
             if not line:
                 break
 
-            line = line.split("/")[-1]
+            tag_head = line.split("/")[-1]
             # Ignore non-released branches
-            m = re.search("(alpha|beta|rc|final)+", line)
+            m = re.search("(alpha|beta|rc|final)+", tag_head)
             if m:
                 continue
 
             # search for version in the line
-            tag = tagregex.search(line)
+            tag = tagregex.search(tag_head)
             if tag == None:
                 continue
 
@@ -391,9 +401,12 @@ class Git(FetchMethod):
 
             if verstring and bb.utils.vercmp(("0", tag, ""), ("0", verstring, "")) < 0:
                 continue
-            verstring = tag
 
-        return verstring
+            verstring = tag
+            revision = line.split()[0]
+            pupver = (verstring, revision)
+
+        return pupver
 
     def _build_revision(self, ud, d, name):
         return ud.revisions[name]

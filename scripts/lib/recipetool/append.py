@@ -280,6 +280,9 @@ def appendfile(args):
                 alternative_pns.append(pn[1:])
             elif pn.startswith('!'):
                 postinst_pns.append(pn[1:])
+            elif selectpn:
+                # hit here with multilibs
+                continue
             else:
                 selectpn = pn
 
@@ -346,13 +349,17 @@ def appendsrc(args, files, rd):
     for uri in src_uri:
         simple_uri = bb.fetch.URI(uri)
         simple_uri.params = {}
-        simplified[simple_uri] = uri
+        simplified[str(simple_uri)] = uri
 
     copyfiles = {}
     extralines = []
     for newfile, srcfile in files.iteritems():
         src_destdir = os.path.dirname(srcfile)
         if not args.use_workdir:
+            if rd.getVar('S', True) == rd.getVar('STAGING_KERNEL_DIR', True):
+                srcdir = os.path.join(workdir, 'git')
+                if not bb.data.inherits_class('kernel-yocto', rd):
+                    logger.warn('S == STAGING_KERNEL_DIR and non-kernel-yocto, unable to determine path to srcdir, defaulting to ${WORKDIR}/git')
             src_destdir = os.path.join(os.path.relpath(srcdir, workdir), src_destdir)
         src_destdir = os.path.normpath(src_destdir)
 
@@ -362,9 +369,10 @@ def appendsrc(args, files, rd):
 
         simple = bb.fetch.URI(source_uri)
         simple.params = {}
-        if simple in simplified:
-            existing = simplified[simple]
-            if uri != existing:
+        simple_str = str(simple)
+        if simple_str in simplified:
+            existing = simplified[simple_str]
+            if source_uri != existing:
                 logger.warn('{0!r} is already in SRC_URI, with different parameters: {1!r}, not adding'.format(source_uri, existing))
             else:
                 logger.warn('{0!r} is already in SRC_URI, not adding'.format(source_uri))
@@ -452,7 +460,7 @@ def register_command(subparsers):
                                    parents=[common_src],
                                    help='Create/update a bbappend to add or replace source files',
                                    description='Creates a bbappend (or updates an existing one) to add or replace the specified file in the recipe sources, either those in WORKDIR or those in the source tree. This command lets you specify multiple files with a destination directory, so cannot specify the destination filename. See the `appendsrcfile` command for the other behavior.')
-    parser.add_argument('-d', '--destdir', help='Destination directory (relative to S or WORKDIR, defaults to ".")', default='', type=destination_path)
+    parser.add_argument('-D', '--destdir', help='Destination directory (relative to S or WORKDIR, defaults to ".")', default='', type=destination_path)
     parser.add_argument('files', nargs='+', metavar='FILE', help='File(s) to be added to the recipe sources (WORKDIR or S)', type=existing_path)
     parser.set_defaults(func=lambda a: appendsrcfiles(parser, a), parserecipes=True)
 

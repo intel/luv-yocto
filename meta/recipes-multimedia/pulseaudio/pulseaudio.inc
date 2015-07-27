@@ -10,7 +10,7 @@ LIC_FILES_CHKSUM = "file://GPL;md5=4325afd396febcb659c36b49533135d4 \
 DEPENDS = "libatomics-ops liboil libsndfile1 libtool"
 # optional
 DEPENDS += "udev alsa-lib glib-2.0 dbus gconf"
-DEPENDS += "json-c gdbm speex libxml-parser-perl-native libcap"
+DEPENDS += "json-c gdbm speexdsp libxml-parser-perl-native libcap"
 
 inherit autotools pkgconfig useradd gettext perlnative bluetooth systemd
 
@@ -160,5 +160,15 @@ RDEPENDS_pulseaudio-misc += "pulseaudio-module-cli-protocol-unix"
 FILES_pulseaudio-module-gconf += "${libexecdir}/pulse/gconf-helper"
 FILES_pulseaudio-module-alsa-card += "${datadir}/pulseaudio/alsa-mixer"
 
+# The console-kit module is good to have on X11 systems (it keeps PulseAudio
+# running for the duration of the user login session). The device-manager and
+# x11-* modules are referenced from the start-pulseaudio-x11 script, so those
+# modules must be installed when X11 is enabled.
 RDEPENDS_pulseaudio-server += "\
-        ${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'pulseaudio-module-console-kit', '', d)}"
+        ${@bb.utils.contains('DISTRO_FEATURES', 'x11', '\
+                pulseaudio-module-console-kit \
+                pulseaudio-module-device-manager \
+                pulseaudio-module-x11-cork-request \
+                pulseaudio-module-x11-publish \
+                pulseaudio-module-x11-xsmp \
+        ', '', d)}"

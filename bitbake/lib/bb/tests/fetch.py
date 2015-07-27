@@ -630,7 +630,7 @@ class URLHandle(unittest.TestCase):
             result = bb.fetch.encodeurl(v)
             self.assertEqual(result, k)
 
-class FetchMethodTest(FetcherTest):
+class FetchLatestVersionTest(FetcherTest):
 
     test_git_uris = {
         # version pattern "X.Y.Z"
@@ -697,7 +697,8 @@ class FetchMethodTest(FetcherTest):
                 self.d.setVar("SRCREV", k[2])
                 self.d.setVar("GITTAGREGEX", k[3])
                 ud = bb.fetch2.FetchData(k[1], self.d)
-                verstring = ud.method.latest_versionstring(ud, self.d)
+                pupver= ud.method.latest_versionstring(ud, self.d)
+                verstring = pupver[0]
                 r = bb.utils.vercmp_string(v, verstring)
                 self.assertTrue(r == -1 or r == 0, msg="Package %s, version: %s <= %s" % (k[0], v, verstring))
 
@@ -707,6 +708,52 @@ class FetchMethodTest(FetcherTest):
                 self.d.setVar("REGEX_URI", k[2])
                 self.d.setVar("REGEX", k[3])
                 ud = bb.fetch2.FetchData(k[1], self.d)
-                verstring = ud.method.latest_versionstring(ud, self.d)
+                pupver = ud.method.latest_versionstring(ud, self.d)
+                verstring = pupver[0]
                 r = bb.utils.vercmp_string(v, verstring)
                 self.assertTrue(r == -1 or r == 0, msg="Package %s, version: %s <= %s" % (k[0], v, verstring))
+
+
+class FetchCheckStatusTest(FetcherTest):
+    test_wget_uris = ["http://www.cups.org/software/1.7.2/cups-1.7.2-source.tar.bz2",
+                      "http://www.cups.org/software/ipptool/ipptool-20130731-linux-ubuntu-i686.tar.gz",
+                      "http://www.cups.org/",
+                      "http://downloads.yoctoproject.org/releases/sato/sato-engine-0.1.tar.gz",
+                      "http://downloads.yoctoproject.org/releases/sato/sato-engine-0.2.tar.gz",
+                      "http://downloads.yoctoproject.org/releases/sato/sato-engine-0.3.tar.gz",
+                      "https://yoctoproject.org/",
+                      "https://yoctoproject.org/documentation",
+                      "http://downloads.yoctoproject.org/releases/opkg/opkg-0.1.7.tar.gz",
+                      "http://downloads.yoctoproject.org/releases/opkg/opkg-0.3.0.tar.gz",
+                      "ftp://ftp.gnu.org/gnu/autoconf/autoconf-2.60.tar.gz",
+                      "ftp://ftp.gnu.org/gnu/chess/gnuchess-5.08.tar.gz",
+                      "ftp://ftp.gnu.org/gnu/gmp/gmp-4.0.tar.gz",
+                      ]
+
+    if os.environ.get("BB_SKIP_NETTESTS") == "yes":
+        print("Unset BB_SKIP_NETTESTS to run network tests")
+    else:
+
+        def test_wget_checkstatus(self):
+            fetch = bb.fetch2.Fetch(self.test_wget_uris, self.d)
+            for u in self.test_wget_uris:
+                ud = fetch.ud[u]
+                m = ud.method
+                ret = m.checkstatus(fetch, ud, self.d)
+                self.assertTrue(ret, msg="URI %s, can't check status" % (u))
+
+
+        def test_wget_checkstatus_connection_cache(self):
+            from bb.fetch2 import FetchConnectionCache
+
+            connection_cache = FetchConnectionCache()
+            fetch = bb.fetch2.Fetch(self.test_wget_uris, self.d,
+                        connection_cache = connection_cache)
+
+            for u in self.test_wget_uris:
+                ud = fetch.ud[u]
+                m = ud.method
+                ret = m.checkstatus(fetch, ud, self.d)
+                self.assertTrue(ret, msg="URI %s, can't check status" % (u))
+
+            connection_cache.close_connections()

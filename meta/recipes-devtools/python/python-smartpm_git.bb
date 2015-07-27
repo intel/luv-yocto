@@ -18,6 +18,7 @@ SRC_URI = "\
           file://smart-improve-error-reporting.patch \
           file://smart-channelsdir.patch \
           file://smart-attempt.patch \
+          file://smart-attempt-fix.patch \
           file://smart-rpm4-fixes.patch \
           file://smart-add-for-rpm-ignoresize-check.patch \
           file://smart-already-installed-message.patch \
@@ -97,6 +98,7 @@ add_native_wrapper() {
 }
 
 do_install_append_class-native() {
+        sed -i -e 's|^#!.*/usr/bin/env python|#! /usr/bin/env nativepython|' ${D}${bindir}/smart
         add_native_wrapper
 }
 

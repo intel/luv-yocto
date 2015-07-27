@@ -329,14 +329,52 @@ exit $?
     else:
         logfile = sys.stdout
 
-    bb.debug(2, "Executing shell function %s" % func)
+    def readfifo(data):
+        lines = data.split('\0')
+        for line in lines:
+            splitval = line.split(' ', 1)
+            cmd = splitval[0]
+            if len(splitval) > 1:
+                value = splitval[1]
+            else:
+                value = ''
+            if cmd == 'bbplain':
+                bb.plain(value)
+            elif cmd == 'bbnote':
+                bb.note(value)
+            elif cmd == 'bbwarn':
+                bb.warn(value)
+            elif cmd == 'bberror':
+                bb.error(value)
+            elif cmd == 'bbfatal':
+                # The caller will call exit themselves, so bb.error() is
+                # what we want here rather than bb.fatal()
+                bb.error(value)
+            elif cmd == 'bbfatal_log':
+                bb.error(value, forcelog=True)
+            elif cmd == 'bbdebug':
+                splitval = value.split(' ', 1)
+                level = int(splitval[0])
+                value = splitval[1]
+                bb.debug(level, value)
 
-    try:
-        with open(os.devnull, 'r+') as stdin:
-            bb.process.run(cmd, shell=False, stdin=stdin, log=logfile)
-    except bb.process.CmdError:
-        logfn = d.getVar('BB_LOGFILE', True)
-        raise FuncFailed(func, logfn)
+    tempdir = d.getVar('T', True)
+    fifopath = os.path.join(tempdir, 'fifo.%s' % os.getpid())
+    if os.path.exists(fifopath):
+        os.unlink(fifopath)
+    os.mkfifo(fifopath)
+    with open(fifopath, 'r+') as fifo:
+        try:
+            bb.debug(2, "Executing shell function %s" % func)
+
+            try:
+                with open(os.devnull, 'r+') as stdin:
+                    bb.process.run(cmd, shell=False, stdin=stdin, log=logfile, extrafiles=[(fifo,readfifo)])
+            except bb.process.CmdError:
+                logfn = d.getVar('BB_LOGFILE', True)
+                raise FuncFailed(func, logfn)
+        finally:
+            os.unlink(fifopath)
 
     bb.debug(2, "Shell function %s finished" % func)
 
@@ -410,7 +448,10 @@ def _exec_task(fn, task, d, quieterr):
             self.triggered = False
             logging.Handler.__init__(self, logging.ERROR)
         def emit(self, record):
-            self.triggered = True
+            if getattr(record, 'forcelog', False):
+                self.triggered = False
+            else:
+                self.triggered = True
 
     # Handle logfiles
     si = open('/dev/null', 'r')
