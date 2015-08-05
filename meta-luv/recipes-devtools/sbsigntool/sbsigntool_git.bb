@@ -19,7 +19,7 @@ DEPENDS = "binutils openssl gnu-efi util-linux"
 
 S = "${WORKDIR}/git"
 
-do_configure_class-native() {
+do_configure() {
     if [ ! -e lib/ccan.git/Makefile ]; then
         git submodule init
         git submodule update
