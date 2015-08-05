@@ -1,0 +1,45 @@
+From 763589e15cc7c7acca7372d1f0c645605a240b9b Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Wed, 5 Aug 2015 10:17:57 -0700
+Subject: [PATCH] configure: Prevent unsafe cross-compilation
+
+When cross-compiling, directories from the host machine are included in
+EFI_CPPFLAGS. This triggers the following warning from the do_qa_configure
+task:
+
+  ERROR: This autoconf log indicates errors, it looked at host include
+  and/or library paths while determining system capabilities.
+
+In the autoconf config.log shows clearly the problem:
+
+  cc1: warning: include location "/usr/include/efi" is unsafe for
+  cross-compilation [-Wpoison-system-directories]
+  cc1: warning: include location "/usr/include/efi/x86_64" is unsafe
+  for cross-compilation [-Wpoison-system-directories]
+
+Thus, a "=" is prepended to that the sysroot prefix is added,
+as described in the gcc documentation.
+
+Upstream status: applicable only to LUV.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ configure.ac | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/configure.ac b/configure.ac
+index 0d8f0bb..6c6fb0b 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -65,7 +65,7 @@ PKG_CHECK_MODULES(uuid, uuid,
+ 
+ dnl gnu-efi headers require extra include dirs
+ EFI_ARCH=$(uname -m)
+-EFI_CPPFLAGS="-I/usr/include/efi -I/usr/include/efi/$EFI_ARCH \
++EFI_CPPFLAGS="-I=/usr/include/efi -I=/usr/include/efi/$EFI_ARCH \
+  -DEFI_FUNCTION_WRAPPER"
+ CPPFLAGS_save="$CPPFLAGS"
+ CPPFLAGS="$CPPFLAGS $EFI_CPPFLAGS"
+-- 
+1.9.1
+
