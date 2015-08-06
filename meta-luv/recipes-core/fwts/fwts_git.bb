@@ -4,12 +4,11 @@ HOMEPAGE = "https://wiki.ubuntu.com/Kernel/Reference/fwts"
 LICENSE = "GPLv2+"
 LIC_FILES_CHKSUM = "file://src/main.c;beginline=1;endline=16;md5=9bd929284041f05a42b0b6a7b1864a31"
 
-PV = "15.07.00+git${SRCPV}"
+PV = "15.08.00+git${SRCPV}"
 
-SRCREV = "765fa9cfc1e4dc7322b323a7569f53df0e5d862c"
+SRCREV = "9ddce1f2b3ee4ed56afa7b92f669b17aedfaa596"
 SRC_URI = "git://kernel.ubuntu.com/hwe/fwts.git \
            file://luv-parser-fwts \
-           file://0001-cpu-cpufreq-Iterate-over-the-correct-number-of-CPUs-.patch \
           "
 
 S = "${WORKDIR}/git"
