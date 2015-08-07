@@ -51,7 +51,7 @@
 #            SRC_URI += "file://feature.scc"
 #
 
-KBRANCH="stable"
+KBRANCH="memmap"
 inherit kernel
 require recipes-kernel/linux/linux-yocto.inc
 
