@@ -61,7 +61,7 @@ SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/mfleming/efi.git;protoc
 SRC_URI += "file://defconfig"
 
 LINUX_VERSION ?= "4.1"
-LINUX_VERSION_EXTENSION ?= "-efitest"
+LINUX_VERSION_EXTENSION ?= "-mfleming"
 
 # Override SRCREV to point to a different commit in a bbappend file to
 # build a different release of the Linux kernel.
