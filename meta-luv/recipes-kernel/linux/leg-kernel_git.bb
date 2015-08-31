@@ -8,10 +8,12 @@ DEPENDS_aarch64 += "libgcc"
 
 inherit kernel siteinfo deploy
 
-SRCREV = "${AUTOREV}"
-PV = "3.18+git${SRCREV}"
+# Build tag leg-20150804.0
+SRCREV = "8ceb073a662c26983126e5c515cf3ff350b76e0d"
 
-SRC_URI = "git://git.linaro.org/leg/acpi/leg-kernel.git;protocol=git;branch=leg-kernel file://defconfig"
+PV = "4.2+rc5git${SRCREV}"
+
+SRC_URI = "git://git.linaro.org/leg/acpi/leg-kernel.git;protocol=git;nobranch=1 file://defconfig"
 
 S = "${WORKDIR}/git"
 
