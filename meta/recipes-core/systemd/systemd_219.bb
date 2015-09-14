@@ -29,7 +29,7 @@ SRCREV = "85a6fabdd3e43cfab0fc6359e9f2a9e368d4a3ed"
 
 PV = "219-stable+git${SRCPV}"
 
-SRC_URI = "git://anongit.freedesktop.org/systemd/systemd-stable;branch=v219-stable;protocol=git \
+SRC_URI = "git://github.com/systemd/systemd-stable;branch=v219-stable;protocol=git \
            file://0002-shared-missing.h-fall-back-to-insecure-getenv.patch \
            file://0003-binfmt-Don-t-install-dependency-links-at-install-tim.patch \
            file://0004-configure-Check-for-additional-features-that-uclibc-.patch \
@@ -44,6 +44,7 @@ SRC_URI = "git://anongit.freedesktop.org/systemd/systemd-stable;branch=v219-stab
            file://0014-Revert-rules-remove-firmware-loading-rules.patch \
            file://0015-Revert-udev-remove-userspace-firmware-loading-suppor.patch \
            file://tmpfiles-pam.patch \
+           file://0001-Revert-core-mount-add-dependencies-to-dynamically-mo.patch \
            file://touchscreen.rules \
            file://00-create-volatile.conf \
            file://init \
@@ -61,7 +62,9 @@ GTKDOC_DOCDIR = "${S}/docs/"
 
 PACKAGECONFIG ??= "xz ldconfig \
                    ${@bb.utils.contains('DISTRO_FEATURES', 'pam', 'pam', '', d)} \
-                   ${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'xkbcommon', '', d)}"
+                   ${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'xkbcommon', '', d)} \
+                   ${@bb.utils.contains('DISTRO_FEATURES', 'selinux', 'selinux', '', d)} \
+                  "
 
 PACKAGECONFIG[journal-upload] = "--enable-libcurl,--disable-libcurl,curl"
 # Sign the journal for anti-tampering
@@ -85,6 +88,8 @@ PACKAGECONFIG[xkbcommon] = "--enable-xkbcommon,--disable-xkbcommon,libxkbcommon"
 # Update NAT firewall rules
 PACKAGECONFIG[iptc] = "--enable-libiptc,--disable-libiptc,iptables"
 PACKAGECONFIG[ldconfig] = "--enable-ldconfig,--disable-ldconfig,,"
+PACKAGECONFIG[selinux] = "--enable-selinux,--disable-selinux,libselinux"
+PACKAGECONFIG[valgrind] = "ac_cv_header_valgrind_memcheck_h=yes ac_cv_header_valgrind_valgrind_h=yes ,ac_cv_header_valgrind_memcheck_h=no ac_cv_header_valgrind_valgrind_h=no ,valgrind"
 
 CACHED_CONFIGUREVARS += "ac_cv_path_KILL=${base_bindir}/kill"
 CACHED_CONFIGUREVARS += "ac_cv_path_KMOD=${base_bindir}/kmod"
@@ -114,7 +119,6 @@ EXTRA_OECONF = " --with-rootprefix=${rootprefix} \
 EXTRA_OECONF_append_libc-uclibc = " --disable-myhostname "
 
 do_configure_prepend() {
-	export CPP="${HOST_PREFIX}cpp ${TOOLCHAIN_OPTIONS} ${HOST_CC_ARCH}"
 	export NM="${HOST_PREFIX}gcc-nm"
 	export AR="${HOST_PREFIX}gcc-ar"
 	export RANLIB="${HOST_PREFIX}gcc-ranlib"
@@ -303,10 +307,11 @@ FILES_${PN}-dev += "${base_libdir}/security/*.la ${datadir}/dbus-1/interfaces/ $
 RDEPENDS_${PN} += "kmod dbus util-linux-mount udev (= ${EXTENDPKGV})"
 RDEPENDS_${PN} += "volatile-binds"
 
-RRECOMMENDS_${PN} += "systemd-serialgetty systemd-compat-units udev-hwdb\
-                      util-linux-agetty \
-                      util-linux-fsck e2fsprogs-e2fsck \
-                      kernel-module-autofs4 kernel-module-unix kernel-module-ipv6 os-release \
+RRECOMMENDS_${PN} += "systemd-serialgetty systemd-vconsole-setup \
+                      systemd-compat-units udev-hwdb \
+                      util-linux-agetty  util-linux-fsck e2fsprogs-e2fsck \
+                      kernel-module-autofs4 kernel-module-unix kernel-module-ipv6 \
+                      os-release \
 "
 
 PACKAGES =+ "udev-dbg udev udev-hwdb"
