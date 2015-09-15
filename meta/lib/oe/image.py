@@ -11,10 +11,13 @@ def generate_image(arg):
             (type, create_img_cmd))
 
     try:
-        subprocess.check_output(create_img_cmd, stderr=subprocess.STDOUT)
+        output = subprocess.check_output(create_img_cmd,
+                                         stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
         return("Error: The image creation script '%s' returned %d:\n%s" %
                (e.cmd, e.returncode, e.output))
+
+    bb.note("Script output:\n%s" % output)
 
     return None
 
@@ -76,8 +79,8 @@ class ImageDepGraph(object):
 
     def _image_base_type(self, type):
         ctypes = self.d.getVar('COMPRESSIONTYPES', True).split()
-        if type in ["vmdk", "vdi", "live", "iso", "hddimg"]:
-            type = "ext3"
+        if type in ["vmdk", "vdi", "qcow2", "live", "iso", "hddimg"]:
+            type = "ext4"
         basetype = type
         for ctype in ctypes:
             if type.endswith("." + ctype):
@@ -191,7 +194,7 @@ class Image(ImageDepGraph):
 
         os.chdir(deploy_dir)
 
-        if link_name is not None:
+        if link_name:
             for type in subimages:
                 if os.path.exists(img_name + ".rootfs." + type):
                     dst = link_name + "." + type
@@ -262,14 +265,16 @@ class Image(ImageDepGraph):
     def _write_script(self, type, cmds):
         tempdir = self.d.getVar('T', True)
         script_name = os.path.join(tempdir, "create_image." + type)
+        rootfs_size = self._get_rootfs_size()
 
         self.d.setVar('img_creation_func', '\n'.join(cmds))
         self.d.setVarFlag('img_creation_func', 'func', 1)
         self.d.setVarFlag('img_creation_func', 'fakeroot', 1)
+        self.d.setVar('ROOTFS_SIZE', str(rootfs_size))
 
         with open(script_name, "w+") as script:
             script.write("%s" % bb.build.shell_trap_code())
-            script.write("export ROOTFS_SIZE=%d\n" % self._get_rootfs_size())
+            script.write("export ROOTFS_SIZE=%d\n" % rootfs_size)
             bb.data.emit_func('img_creation_func', script, self.d)
             script.write("img_creation_func\n")
 
@@ -321,6 +326,22 @@ class Image(ImageDepGraph):
 
         return image_cmd_groups
 
+    def _write_wic_env(self):
+        """
+        Write environment variables used by wic
+        to tmp/sysroots/<machine>/imgdata/<image>.env
+        """
+        stdir = self.d.getVar('STAGING_DIR_TARGET', True)
+        outdir = os.path.join(stdir, 'imgdata')
+        if not os.path.exists(outdir):
+            os.makedirs(outdir)
+        basename = self.d.getVar('IMAGE_BASENAME', True)
+        with open(os.path.join(outdir, basename) + '.env', 'w') as envf:
+            for var in self.d.getVar('WICVARS', True).split():
+                value = self.d.getVar(var, True)
+                if value:
+                    envf.write('%s="%s"\n' % (var, value.strip()))
+
     def create(self):
         bb.note("###### Generate images #######")
         pre_process_cmds = self.d.getVar("IMAGE_PREPROCESS_COMMAND", True)
@@ -331,6 +352,8 @@ class Image(ImageDepGraph):
         self._remove_old_symlinks()
 
         image_cmd_groups = self._get_imagecmds()
+
+        self._write_wic_env()
 
         for image_cmds in image_cmd_groups:
             # create the images in parallel

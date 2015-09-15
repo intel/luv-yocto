@@ -54,6 +54,13 @@ EXTRA_STAGING_FIXMES ?= ""
 
 SIGGEN_LOCKEDSIGS_CHECK_LEVEL ?= 'error'
 
+# The GnuPG key ID and passphrase to use to sign sstate archives (or unset to
+# not sign)
+SSTATE_SIG_KEY ?= ""
+SSTATE_SIG_PASSPHRASE ?= ""
+# Whether to verify the GnUPG signatures when extracting sstate archives
+SSTATE_VERIFY_SIG ?= "0"
+
 # Specify dirs in which the shell function is executed and don't use ${B}
 # as default dirs to avoid possible race about ${B} with other task.
 sstate_create_package[dirs] = "${SSTATE_BUILDDIR}"
@@ -150,17 +157,14 @@ def sstate_add(ss, source, dest, d):
 
 def sstate_install(ss, d):
     import oe.path
+    import oe.sstatesig
     import subprocess
 
     sharedfiles = []
     shareddirs = []
     bb.utils.mkdirhier(d.expand("${SSTATE_MANIFESTS}"))
 
-    d2 = d.createCopy()
-    extrainf = d.getVarFlag("do_" + ss['task'], 'stamp-extra-info', True)
-    if extrainf:
-        d2.setVar("SSTATE_MANMACH", extrainf)
-    manifest = d2.expand("${SSTATE_MANFILEPREFIX}.%s" % ss['task'])
+    manifest, d2 = oe.sstatesig.sstate_get_manifest_filename(ss['task'], d)
 
     if os.access(manifest, os.R_OK):
         bb.fatal("Package already staged (%s)?!" % manifest)
@@ -297,6 +301,10 @@ def sstate_installpkg(ss, d):
 
     d.setVar('SSTATE_INSTDIR', sstateinst)
     d.setVar('SSTATE_PKG', sstatepkg)
+
+    if bb.utils.to_boolean(d.getVar("SSTATE_VERIFY_SIG", True), False):
+        if subprocess.call(["gpg", "--verify", sstatepkg + ".sig", sstatepkg]) != 0:
+            bb.warn("Cannot verify signature on sstate package %s" % sstatepkg)
 
     for f in (d.getVar('SSTATEPREINSTFUNCS', True) or '').split() + ['sstate_unpack_package'] + (d.getVar('SSTATEPOSTUNPACKFUNCS', True) or '').split():
         bb.build.exec_func(f, d)
@@ -604,8 +612,12 @@ def pstaging_fetch(sstatefetch, sstatepkg, d):
 
     # Try a fetch from the sstate mirror, if it fails just return and
     # we will build the package
-    for srcuri in ['file://{0}'.format(sstatefetch),
-                   'file://{0}.siginfo'.format(sstatefetch)]:
+    uris = ['file://{0}'.format(sstatefetch),
+            'file://{0}.siginfo'.format(sstatefetch)]
+    if bb.utils.to_boolean(d.getVar("SSTATE_VERIFY_SIG", True), False):
+        uris += ['file://{0}.sig'.format(sstatefetch)]
+
+    for srcuri in uris:
         localdata.setVar('SRC_URI', srcuri)
         try:
             fetcher = bb.fetch2.Fetch([srcuri], localdata, cache=False)
@@ -664,6 +676,11 @@ sstate_create_package () {
 	fi
 	chmod 0664 $TFILE 
 	mv -f $TFILE ${SSTATE_PKG}
+
+	if [ -n "${SSTATE_SIG_KEY}" ]; then
+		rm -f ${SSTATE_PKG}.sig
+		echo ${SSTATE_SIG_PASSPHRASE} | gpg --batch --passphrase-fd 0 --detach-sign --local-user ${SSTATE_SIG_KEY} --output ${SSTATE_PKG}.sig ${SSTATE_PKG}
+	fi
 
 	cd ${WORKDIR}
 	rm -rf ${SSTATE_BUILDDIR}

@@ -33,12 +33,12 @@ INHIBIT_DEFAULT_DEPS = "1"
 
 PR = "r11"
 
-ADT_DEPLOY = "${TMPDIR}/deploy/sdk/"
+ADT_DEPLOY = "${DEPLOY_DIR}/sdk/"
 ADT_DIR = "${WORKDIR}/adt-installer/"
 S = "${WORKDIR}/opkg-${PV}"
 
-PV = "0.2.0"
-SRC_URI = "https://opkg.googlecode.com/files/opkg-${PV}.tar.gz \
+PV = "0.3.0"
+SRC_URI = "http://downloads.yoctoproject.org/releases/opkg/opkg-${PV}.tar.gz \
            file://wget_cache.patch \
            file://adt_installer \
            file://scripts/adt_installer_internal \
@@ -50,8 +50,8 @@ SRC_URI = "https://opkg.googlecode.com/files/opkg-${PV}.tar.gz \
            file://opkg/conf/opkg-sdk-i686.conf \
 	  "
 
-SRC_URI[md5sum] = "e8a6fd34fb2529191fe09dc14c934cc3"
-SRC_URI[sha256sum] = "81b7055eb4c12c5e5652339305c9236cf357890717d4bea063963f3f434d966f"
+SRC_URI[md5sum] = "3412cdc71d78b98facc84b19331ec64e"
+SRC_URI[sha256sum] = "7f735d1cdb8ef3718fb0f9fba44ca0d9a5c90d3a7f014f37a6d2f9474f54988f"
 
 ADTREPO ?= "http://adtrepo.yoctoproject.org/${SDK_VERSION}"
 

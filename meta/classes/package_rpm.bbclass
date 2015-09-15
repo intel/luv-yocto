@@ -196,6 +196,7 @@ python write_specfile () {
             path = rootpath.replace(walkpath, "")
             if path.endswith("DEBIAN") or path.endswith("CONTROL"):
                 continue
+            path = path.replace("%", "%%%%%%%%")
 
             # Treat all symlinks to directories as normal files.
             # os.walk() lists them as directories.
@@ -214,6 +215,7 @@ python write_specfile () {
                 for dir in dirs:
                     if dir == "CONTROL" or dir == "DEBIAN":
                         continue
+                    dir = dir.replace("%", "%%%%%%%%")
                     # All packages own the directories their files are in...
                     target.append('%dir "' + path + '/' + dir + '"')
             else:
@@ -227,6 +229,7 @@ python write_specfile () {
             for file in files:
                 if file == "CONTROL" or file == "DEBIAN":
                     continue
+                file = file.replace("%", "%%%%%%%%")
                 if conffiles.count(path + '/' + file):
                     target.append('%config "' + path + '/' + file + '"')
                 else:
@@ -642,6 +645,8 @@ python write_specfile () {
 
     specfile.close()
 }
+# Otherwise allarch packages may change depending on override configuration
+write_specfile[vardepsexclude] = "OVERRIDES"
 
 python do_package_rpm () {
     # We need a simple way to remove the MLPREFIX from the package name,
@@ -692,6 +697,8 @@ python do_package_rpm () {
     else:
         d.setVar('PACKAGE_ARCH_EXTEND', package_arch)
     pkgwritedir = d.expand('${PKGWRITEDIRRPM}/${PACKAGE_ARCH_EXTEND}')
+    d.setVar('RPM_PKGWRITEDIR', pkgwritedir)
+    bb.debug(1, 'PKGWRITEDIR: %s' % d.getVar('RPM_PKGWRITEDIR', True))
     pkgarch = d.expand('${PACKAGE_ARCH_EXTEND}${HOST_VENDOR}-${HOST_OS}')
     magicfile = d.expand('${STAGING_DIR_NATIVE}${datadir_native}/misc/magic.mgc')
     bb.utils.mkdirhier(pkgwritedir)
@@ -727,6 +734,9 @@ python do_package_rpm () {
     d.setVar('BUILDSPEC', cmd + "\n")
     d.setVarFlag('BUILDSPEC', 'func', '1')
     bb.build.exec_func('BUILDSPEC', d)
+
+    if d.getVar('RPM_SIGN_PACKAGES', True) == '1':
+        bb.build.exec_func("sign_rpm", d)
 }
 
 python () {

@@ -116,12 +116,13 @@ def LogResults(original_class):
         orig_method(self, result, *args, **kws)
         passed = True
         testMethod = getattr(self, self._testMethodName)
-
         #if test case is decorated then use it's number, else use it's name
         try:
             test_case = testMethod.test_case
         except AttributeError:
             test_case = self._testMethodName
+
+        class_name = str(testMethod.im_class).split("'")[1]
 
         #create custom logging level for filtering.
         custom_log_level = 100
@@ -143,18 +144,19 @@ def LogResults(original_class):
         local_log = logging.getLogger(caller)
 
         #check status of tests and record it
+
         for (name, msg) in result.errors:
-            if self._testMethodName == str(name).split(' ')[0]:
+            if (self._testMethodName == str(name).split(' ')[0]) and (class_name in str(name).split(' ')[1]):
                 local_log.results("Testcase "+str(test_case)+": ERROR")
                 local_log.results("Testcase "+str(test_case)+":\n"+msg)
                 passed = False
         for (name, msg) in result.failures:
-            if self._testMethodName == str(name).split(' ')[0]:
+            if (self._testMethodName == str(name).split(' ')[0]) and (class_name in str(name).split(' ')[1]):
                 local_log.results("Testcase "+str(test_case)+": FAILED")
                 local_log.results("Testcase "+str(test_case)+":\n"+msg)
                 passed = False
         for (name, msg) in result.skipped:
-            if self._testMethodName == str(name).split(' ')[0]:
+            if (self._testMethodName == str(name).split(' ')[0]) and (class_name in str(name).split(' ')[1]):
                 local_log.results("Testcase "+str(test_case)+": SKIPPED")
                 passed = False
         if passed:
@@ -186,3 +188,35 @@ def timeout(seconds):
         else:
             return fn
     return decorator
+
+__tag_prefix = "tag__"
+def tag(*args, **kwargs):
+    """Decorator that adds attributes to classes or functions
+    for use with the Attribute (-a) plugin.
+    """
+    def wrap_ob(ob):
+        for name in args:
+            setattr(ob, __tag_prefix + name, True)
+        for name, value in kwargs.iteritems():
+            setattr(ob, __tag_prefix + name, value)
+        return ob
+    return wrap_ob
+
+def gettag(obj, key, default=None):
+    key = __tag_prefix + key
+    if not isinstance(obj, unittest.TestCase):
+        return getattr(obj, key, default)
+    tc_method = getattr(obj, obj._testMethodName)
+    ret = getattr(tc_method, key, getattr(obj, key, default))
+    return ret
+
+def getAllTags(obj):
+    def __gettags(o):
+        r = {k[len(__tag_prefix):]:getattr(o,k) for k in dir(o) if k.startswith(__tag_prefix)}
+        return r
+    if not isinstance(obj, unittest.TestCase):
+        return __gettags(obj)
+    tc_method = getattr(obj, obj._testMethodName)
+    ret = __gettags(obj)
+    ret.update(__gettags(tc_method))
+    return ret

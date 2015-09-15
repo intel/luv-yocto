@@ -1,13 +1,11 @@
-{% extends "baseprojectpage.html" %}
+{% extends "base.html" %}
 {% load projecttags %}
 {% load humanize %}
 {% load static %}
+{% block pagecontent %}
 
-{% block localbreadcrumb %}
-<li>Import layer</li>
-{% endblock %}
+{% include "projecttopbar.html" %}
 
-{% block projectinfomain %}
 
         {% if project and project.release %}
                   <script src="{% static 'js/layerDepsModal.js' %}"></script>
@@ -27,14 +25,10 @@
                     });
                   </script>
 
-                <div class="page-header">
-                    <h1>Import layer</h1>
-                </div>
-
-                <form>
-                    <span class="help-block" style="padding-left:19px;">The layer you are importing must be compatible with <strong>{{project.release.description}}</strong>, which is the release you are using in this project.</span>
-                   <fieldset class="air">
+                <form class="span11">
+                   <fieldset>
                       <legend>Layer repository information</legend>
+                      <span class="help-block">The layer you are importing must be compatible with <strong>{{project.release.description}}</strong>, which is the release you are using in this project.</span>
                       <div class="alert alert-error" id="import-error" style="display:none">
                         <button type="button" class="close" data-dismiss="alert">&times;</button>
                         <h3>&nbsp;</h3>
@@ -43,7 +37,7 @@
                       </div>
 
                       <div class="control-group" id="layer-name-ctrl">
-                        <label class="control-label" for="import-layer-name">
+                        <label class="control-label air" for="import-layer-name">
                             Layer name
                             <span class="icon-question-sign get-help" title="Something like 'meta-mylayer'. Your layer name must be unique and can only include letters, numbers and dashes"></span>
                         </label>
@@ -123,7 +117,7 @@
                         </div>
                         <span class="help-inline">You can only add layers Toaster knows about</span>
                     </fieldset>
-                    <div class="form-actions" id="form-actions">
+                    <div class="air" id="form-actions">
                       <button class="btn btn-primary btn-large" data-toggle="modal" id="import-and-add-btn" data-target="#dependencies-message" disabled>Import and add to project</button>
                         <span class="help-inline" id="import-and-add-hint" style="vertical-align: middle;">To import a layer you need to enter a layer name, a Git repository URL and a revision (branch, tag or commit)</span>
                     </div>
@@ -141,5 +135,4 @@
                       </div>
 
           {% endif %}
-
 {% endblock %}

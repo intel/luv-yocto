@@ -50,13 +50,13 @@ class DirectPlugin(ImagerPlugin):
         """
         krootfs_dir = {}
         for rootfs_dir in rootfs_dirs.split(' '):
-            k, v = rootfs_dir.split('=')
-            krootfs_dir[k] = v
+            key, val = rootfs_dir.split('=')
+            krootfs_dir[key] = val
 
         return krootfs_dir
 
     @classmethod
-    def do_create(cls, subcmd, opts, *args):
+    def do_create(cls, opts, *args):
         """
         Create direct image, called from creator as 'direct' cmd
         """

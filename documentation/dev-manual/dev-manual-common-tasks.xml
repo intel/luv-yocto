@@ -3317,6 +3317,10 @@
                 <literallayout class='monospaced'>
      COMPATIBLE_MACHINE = '(qemux86|qemumips)'
                 </literallayout>
+                For more information on <filename>defconfig</filename> files,
+                see the
+                "<ulink url='&YOCTO_DOCS_KERNEL_DEV_URL;#changing-the-configuration'>Changing the Configuration</ulink>"
+                section in the Yocto Project Linux Kernel Development Manual.
             </para>
         </section>
 
@@ -4620,13 +4624,22 @@
         <title>Configuring the Kernel</title>
 
         <para>
-            Configuring the Yocto Project kernel consists of making sure the <filename>.config</filename>
-            file has all the right information in it for the image you are building.
-            You can use the <filename>menuconfig</filename> tool and configuration fragments to
-            make sure your <filename>.config</filename> file is just how you need it.
-            This section describes how to use <filename>menuconfig</filename>, create and use
-            configuration fragments, and how to interactively modify your <filename>.config</filename>
-            file to create the leanest kernel configuration file possible.
+            Configuring the Yocto Project kernel consists of making sure the
+            <filename>.config</filename> file has all the right information
+            in it for the image you are building.
+            You can use the <filename>menuconfig</filename> tool and
+            configuration fragments to make sure your
+            <filename>.config</filename> file is just how you need it.
+            You can also save known configurations in a
+            <filename>defconfig</filename> file that the build system can use
+            for kernel configuration.
+        </para>
+
+        <para>
+            This section describes how to use <filename>menuconfig</filename>,
+            create and use configuration fragments, and how to interactively
+            modify your <filename>.config</filename> file to create the
+            leanest kernel configuration file possible.
         </para>
 
         <para>
@@ -4656,18 +4669,23 @@
                 <ulink url='&YOCTO_DOCS_REF_URL;#structure-memres-core-script'><filename>oe-init-build-env-memres</filename></ulink>
                 script found in the
                 <link linkend='build-directory'>Build Directory</link>.
-                The following commands run <filename>menuconfig</filename> assuming the
-                <link linkend='source-directory'>Source Directory</link>
-                top-level folder is <filename>~/poky</filename>:
+                You must also be sure of the state of your build in the
+                <link linkend='source-directory'>Source Directory</link>.
+                The following commands run <filename>menuconfig</filename>
+                assuming the Source Directory's top-level folder is
+                <filename>~/poky</filename>:
                 <literallayout class='monospaced'>
      $ cd poky
      $ source oe-init-build-env
+     $ bitbake linux-yocto -c kernel_configme -f
      $ bitbake linux-yocto -c menuconfig
                 </literallayout>
-                Once <filename>menuconfig</filename> comes up, its standard interface allows you to
-                interactively examine and configure all the kernel configuration parameters.
-                After making your changes, simply exit the tool and save your changes to
-                create an updated version of the <filename>.config</filename> configuration file.
+                Once <filename>menuconfig</filename> comes up, its standard
+                interface allows you to interactively examine and configure
+                all the kernel configuration parameters.
+                After making your changes, simply exit the tool and save your
+                changes to create an updated version of the
+                <filename>.config</filename> configuration file.
             </para>
 
             <para>
@@ -4748,6 +4766,70 @@
             </para>
         </section>
 
+        <section id='creating-a-defconfig-file'>
+            <title>Creating a&nbsp;&nbsp;<filename>defconfig</filename> File</title>
+
+            <para>
+                A <filename>defconfig</filename> file is simply a
+                <filename>.config</filename> renamed to "defconfig".
+                You can use a <filename>defconfig</filename> file
+                to retain a known set of kernel configurations from which the
+                OpenEmbedded build system can draw to create the final
+                <filename>.config</filename> file.
+                <note>
+                    Out-of-the-box, the Yocto Project never ships a
+                    <filename>defconfig</filename> or
+                    <filename>.config</filename> file.
+                    The OpenEmbedded build system creates the final
+                    <filename>.config</filename> file used to configure the
+                    kernel.
+                </note>
+            </para>
+
+            <para>
+                To create a <filename>defconfig</filename>, start with a
+                complete, working Linux kernel <filename>.config</filename>
+                file.
+                Copy that file to the appropriate
+                <filename>${</filename><ulink url='&YOCTO_DOCS_REF_URL;#var-PN'><filename>PN</filename></ulink><filename>}</filename>
+                directory in your layer's
+                <filename>recipes-kernel/linux</filename> directory, and rename
+                the copied file to "defconfig".
+                Then, add the following lines to the linux-yocto
+                <filename>.bbappend</filename> file in your layer:
+                <literallayout class='monospaced'>
+     FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
+     SRC_URI += "file://defconfig"
+                </literallayout>
+                The
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-SRC_URI'><filename>SRC_URI</filename></ulink>
+                tells the build system how to search for the file, while the
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-FILESEXTRAPATHS'><filename>FILESEXTRAPATHS</filename></ulink>
+                extends the
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-FILESPATH'><filename>FILESPATH</filename></ulink>
+                variable (search directories) to include the
+                <filename>${PN}</filename> directory you created to hold the
+                configuration changes.
+                <note>
+                    The build system applies the configurations from the
+                    <filename>defconfig</filename> file before applying any
+                    subsequent configuration fragments.
+                    The final kernel configuration is a combination of the
+                    configurations in the <filename>defconfig</filename>
+                    file and any configuration fragments you provide.
+                    You need to realize that if you have any configuration
+                    fragments, the build system applies these on top of and
+                    after applying the existing defconfig file configurations.
+                </note>
+                For more information on configuring the kernel, see the
+                "<ulink url='&YOCTO_DOCS_KERNEL_DEV_URL;#changing-the-configuration'>Changing the Configuration</ulink>"
+                and
+                "<ulink url='&YOCTO_DOCS_KERNEL_DEV_URL;#generating-configuration-files'>Generating Configuration Files</ulink>"
+                sections, both in the Yocto Project Linux Kernel Development
+                Manual.
+            </para>
+        </section>
+
         <section id='creating-config-fragments'>
             <title>Creating Configuration Fragments</title>
 
@@ -4771,23 +4853,27 @@
      $ echo "CONFIG_SMP=y" >> my_smp.cfg
                 </literallayout>
                 <note>
-                    All configuration files must use the <filename>.cfg</filename> extension in order
-                    for the OpenEmbedded build system to recognize them as a configuration fragment.
+                    All configuration fragment files must use the
+                    <filename>.cfg</filename> extension in order for the
+                    OpenEmbedded build system to recognize them as a
+                    configuration fragment.
                 </note>
             </para>
 
             <para>
-                Where do you put your configuration files?
-                You can place these configuration files in the same area pointed to by
+                Where do you put your configuration fragment files?
+                You can place these files in the same area pointed to by
                 <ulink url='&YOCTO_DOCS_REF_URL;#var-SRC_URI'><filename>SRC_URI</filename></ulink>.
-                The OpenEmbedded build system will pick up the configuration and add it to the
-                kernel's configuration.
-                For example, suppose you had a set of configuration options in a file called
-                <filename>myconfig.cfg</filename>.
-                If you put that file inside a directory named <filename>linux-yocto</filename>
-                that resides in the same directory as the kernel's append file and then add
-                a <filename>SRC_URI</filename> statement such as the following to the kernel's append file,
-                those configuration options will be picked up and applied when the kernel is built.
+                The OpenEmbedded build system picks up the configuration and
+                adds it to the kernel's configuration.
+                For example, suppose you had a set of configuration options
+                in a file called <filename>myconfig.cfg</filename>.
+                If you put that file inside a directory named
+                <filename>linux-yocto</filename> that resides in the same
+                directory as the kernel's append file and then add a
+                <filename>SRC_URI</filename> statement such as the following
+                to the kernel's append file, those configuration options
+                will be picked up and applied when the kernel is built.
                 <literallayout class='monospaced'>
      SRC_URI += "file://myconfig.cfg"
                 </literallayout>
@@ -4843,9 +4929,10 @@
 
             <para>
                 For each output warning, a message points to the file
-                that contains a list of the options and a pointer to the config
-                fragment that defines them.
-                Collectively, the files are the key to streamlining the configuration.
+                that contains a list of the options and a pointer to the
+                configuration fragment that defines them.
+                Collectively, the files are the key to streamlining the
+                configuration.
             </para>
 
             <para>
@@ -4934,9 +5021,6 @@
             Furthermore, the <link linkend='build-directory'>Build Directory</link> is
             <filename>build</filename> and is located in <filename>poky</filename> and
             the kernel is based on the Linux 3.4 kernel.
-            For general information on how to configure the most efficient build, see the
-            "<ulink url='&YOCTO_DOCS_QS_URL;#building-image'>Building an Image</ulink>" section
-            in the Yocto Project Quick Start.
         </para>
 
         <para>
@@ -8656,9 +8740,19 @@
                 <ulink url='&YOCTO_DOCS_REF_URL;#var-BBPATH'><filename>BBPATH</filename></ulink>
                 is extended in the layer's
                 <filename>layer.conf</filename> file as normal).
-                Just remember that filenames need to map directly to test
-                (module) names and that you do not use module names that
-                collide with existing core tests.
+                Just remember the following:
+                <itemizedlist>
+                    <listitem><para>Filenames need to map directly to test
+                        (module) names.
+                        </para></listitem>
+                    <listitem><para>Do not use module names that
+                        collide with existing core tests.
+                        </para></listitem>
+                    <listitem><para>Minimally, an empty
+                        <filename>__init__.py</filename> file must exist
+                        in the runtime directory.
+                        </para></listitem>
+                </itemizedlist>
             </para>
 
             <para>
@@ -9079,6 +9173,14 @@
             you debug and fix them.
             This section presents a real-world example of an error encountered
             on the Yocto Project autobuilder and the process used to fix it.
+            <note>
+                If you cannot properly fix a <filename>make</filename> race
+                condition, you can work around it by clearing either the
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-PARALLEL_MAKE'><filename>PARALLEL_MAKE</filename></ulink>
+                or
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-PARALLEL_MAKEINST'><filename>PARALLEL_MAKEINST</filename></ulink>
+                variables.
+            </note>
         </para>
 
         <section id='the-failure'>

@@ -29,10 +29,14 @@ import multiprocessing
 import fcntl
 import subprocess
 import glob
+import fnmatch
 import traceback
 import errno
+import signal
 from commands import getstatusoutput
 from contextlib import contextmanager
+from ctypes import cdll
+
 
 logger = logging.getLogger("BitBake.Util")
 
@@ -412,10 +416,30 @@ def fileslocked(files):
     for lock in locks:
         bb.utils.unlockfile(lock)
 
-def lockfile(name, shared=False, retry=True):
+@contextmanager
+def timeout(seconds):
+    def timeout_handler(signum, frame):
+        pass
+
+    original_handler = signal.signal(signal.SIGALRM, timeout_handler)
+
+    try:
+        signal.alarm(seconds)
+        yield
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, original_handler)
+
+def lockfile(name, shared=False, retry=True, block=False):
     """
-    Use the file fn as a lock file, return when the lock has been acquired.
-    Returns a variable to pass to unlockfile().
+    Use the specified file as a lock file, return when the lock has
+    been acquired. Returns a variable to pass to unlockfile().
+    Parameters:
+        retry: True to re-try locking if it fails, False otherwise
+        block: True to block until the lock succeeds, False otherwise
+    The retry and block parameters are kind of equivalent unless you
+    consider the possibility of sending a signal to the process to break
+    out - at which point you want block=True rather than retry=True.
     """
     dirname = os.path.dirname(name)
     mkdirhier(dirname)
@@ -428,7 +452,7 @@ def lockfile(name, shared=False, retry=True):
     op = fcntl.LOCK_EX
     if shared:
         op = fcntl.LOCK_SH
-    if not retry:
+    if not retry and not block:
         op = op | fcntl.LOCK_NB
 
     while True:
@@ -719,7 +743,12 @@ def movefile(src, dest, newmtime = None, sstat = None):
     renamefailed = 1
     if sstat[stat.ST_DEV] == dstat[stat.ST_DEV]:
         try:
-            os.rename(src, dest)
+            # os.rename needs to know the dest path ending with file name
+            # so append the file name to a path only if it's a dir specified
+            srcfname = os.path.basename(src)
+            destpath = os.path.join(dest, srcfname) if os.path.isdir(dest) \
+                        else dest
+            os.rename(src, destpath)
             renamefailed = 0
         except Exception as e:
             if e[0] != errno.EXDEV:
@@ -1241,11 +1270,43 @@ def get_file_layer(filename, d):
     for collection in collections:
         collection_res[collection] = d.getVar('BBFILE_PATTERN_%s' % collection, True) or ''
 
-    # Use longest path so we handle nested layers
-    matchlen = 0
-    match = None
-    for collection, regex in collection_res.iteritems():
-        if len(regex) > matchlen and re.match(regex, filename):
-            matchlen = len(regex)
-            match = collection
-    return match
+    def path_to_layer(path):
+        # Use longest path so we handle nested layers
+        matchlen = 0
+        match = None
+        for collection, regex in collection_res.iteritems():
+            if len(regex) > matchlen and re.match(regex, path):
+                matchlen = len(regex)
+                match = collection
+        return match
+
+    result = None
+    bbfiles = (d.getVar('BBFILES', True) or '').split()
+    bbfilesmatch = False
+    for bbfilesentry in bbfiles:
+        if fnmatch.fnmatch(filename, bbfilesentry):
+            bbfilesmatch = True
+            result = path_to_layer(bbfilesentry)
+
+    if not bbfilesmatch:
+        # Probably a bbclass
+        result = path_to_layer(filename)
+
+    return result
+
+
+# Constant taken from http://linux.die.net/include/linux/prctl.h
+PR_SET_PDEATHSIG = 1
+
+class PrCtlError(Exception):
+    pass
+
+def signal_on_parent_exit(signame):
+    """
+    Trigger signame to be sent when the parent process dies
+    """
+    signum = getattr(signal, signame)
+    # http://linux.die.net/man/2/prctl
+    result = cdll['libc.so.6'].prctl(PR_SET_PDEATHSIG, signum)
+    if result != 0:
+        raise PrCtlError('prctl failed with error code %s' % result)

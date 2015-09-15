@@ -172,10 +172,13 @@ python buildhistory_emit_pkghistory() {
         for item in os.listdir(pkghistdir):
             if item != "latest" and item != "latest_srcrev":
                 if item not in packagelist:
-                    subdir = os.path.join(pkghistdir, item)
-                    for subfile in os.listdir(subdir):
-                        os.unlink(os.path.join(subdir, subfile))
-                    os.rmdir(subdir)
+                    itempath = os.path.join(pkghistdir, item)
+                    if os.path.isdir(itempath):
+                        for subfile in os.listdir(itempath):
+                            os.unlink(os.path.join(itempath, subfile))
+                        os.rmdir(itempath)
+                    else:
+                        os.unlink(itempath)
 
     rcpinfo = RecipeInfo(pn)
     rcpinfo.pe = pe
@@ -435,24 +438,26 @@ buildhistory_get_sdk_installed_target() {
 buildhistory_list_files() {
 	# List the files in the specified directory, but exclude date/time etc.
 	# This awk script is somewhat messy, but handles where the size is not printed for device files under pseudo
-	( cd $1 && find . -printf "%M %-10u %-10g %10s %p -> %l\n" | sort -k5 | sed 's/ * -> $//' > $2 )
+	if [ "$3" = "fakeroot" ] ; then
+		( cd $1 && ${FAKEROOTENV} ${FAKEROOTCMD} find . ! -path . -printf "%M %-10u %-10g %10s %p -> %l\n" | sort -k5 | sed 's/ * -> $//' > $2 )
+	else
+		( cd $1 && find . ! -path . -printf "%M %-10u %-10g %10s %p -> %l\n" | sort -k5 | sed 's/ * -> $//' > $2 )
+	fi
 }
 
 buildhistory_list_pkg_files() {
-        file_prefix="files-in-"
-
-        # Create individual files-in-package for each recipe's package
-        for pkgdir in $(find ${PKGDEST}/* -maxdepth 0 -type d); do
-                pkgname=$(basename ${pkgdir})
-                outfolder="${BUILDHISTORY_DIR_PACKAGE}/${pkgname}"
-                outfile="${outfolder}/${file_prefix}${pkgname}.txt"
-                # Make sure the output folder, exist so we can create the files-in-$pkgname.txt file
-                if [ ! -d ${outfolder} ] ; then
-                        bbdebug 2 "Folder ${outfolder} does not exist, file ${outfile} not created"
-                        continue
-                fi
-                buildhistory_list_files ${pkgdir} ${outfile}
-        done
+	# Create individual files-in-package for each recipe's package
+	for pkgdir in $(find ${PKGDEST}/* -maxdepth 0 -type d); do
+		pkgname=$(basename $pkgdir)
+		outfolder="${BUILDHISTORY_DIR_PACKAGE}/$pkgname"
+		outfile="$outfolder/files-in-package.txt"
+		# Make sure the output folder exists so we can create the file
+		if [ ! -d $outfolder ] ; then
+			bbdebug 2 "Folder $outfolder does not exist, file $outfile not created"
+			continue
+		fi
+		buildhistory_list_files $pkgdir $outfile fakeroot
+	done
 }
 
 buildhistory_get_imageinfo() {
@@ -580,6 +585,42 @@ def buildhistory_get_cmdline(d):
     return '%s %s' % (bincmd, ' '.join(sys.argv[1:]))
 
 
+buildhistory_single_commit() {
+	if [ "$3" = "" ] ; then
+		commitopts="${BUILDHISTORY_DIR}/ --allow-empty"
+		item="No changes"
+	else
+		commitopts="$3 metadata-revs"
+		item="$3"
+	fi
+	if [ "${BUILDHISTORY_BUILD_FAILURES}" = "0" ] ; then
+		result="succeeded"
+	else
+		result="failed"
+	fi
+	case ${BUILDHISTORY_BUILD_INTERRUPTED} in
+		1)
+			result="$result (interrupted)"
+			;;
+		2)
+			result="$result (force interrupted)"
+			;;
+	esac
+	commitmsgfile=`mktemp`
+	cat > $commitmsgfile << END
+$item: Build ${BUILDNAME} of ${DISTRO} ${DISTRO_VERSION} for machine ${MACHINE} on $2
+
+cmd: $1
+
+result: $result
+
+metadata revisions:
+END
+	cat ${BUILDHISTORY_DIR}/metadata-revs >> $commitmsgfile
+	git commit $commitopts -F $commitmsgfile --author "${BUILDHISTORY_COMMIT_AUTHOR}" > /dev/null
+	rm $commitmsgfile
+}
+
 buildhistory_commit() {
 	if [ ! -d ${BUILDHISTORY_DIR} ] ; then
 		# Code above that creates this dir never executed, so there can't be anything to commit
@@ -618,14 +659,14 @@ END
 			# porcelain output looks like "?? packages/foo/bar"
 			# Ensure we commit metadata-revs with the first commit
 			for entry in `echo "$repostatus" | awk '{print $2}' | awk -F/ '{print $1}' | sort | uniq` ; do
-				git commit $entry metadata-revs -m "$entry: Build ${BUILDNAME} of ${DISTRO} ${DISTRO_VERSION} for machine ${MACHINE} on $HOSTNAME" -m "cmd: $CMDLINE" --author "${BUILDHISTORY_COMMIT_AUTHOR}" > /dev/null
+				buildhistory_single_commit "$CMDLINE" "$HOSTNAME" "$entry"
 			done
 			git gc --auto --quiet
-			if [ "${BUILDHISTORY_PUSH_REPO}" != "" ] ; then
-				git push -q ${BUILDHISTORY_PUSH_REPO}
-			fi
 		else
-			git commit ${BUILDHISTORY_DIR}/ --allow-empty -m "No changes: Build ${BUILDNAME} of ${DISTRO} ${DISTRO_VERSION} for machine ${MACHINE} on $HOSTNAME" -m "cmd: $CMDLINE" --author "${BUILDHISTORY_COMMIT_AUTHOR}" > /dev/null
+			buildhistory_single_commit "$CMDLINE" "$HOSTNAME"
+		fi
+		if [ "${BUILDHISTORY_PUSH_REPO}" != "" ] ; then
+			git push -q ${BUILDHISTORY_PUSH_REPO}
 		fi) || true
 }
 
@@ -633,7 +674,11 @@ python buildhistory_eventhandler() {
     if e.data.getVar('BUILDHISTORY_FEATURES', True).strip():
         if e.data.getVar("BUILDHISTORY_COMMIT", True) == "1":
             bb.note("Writing buildhistory")
-            bb.build.exec_func("buildhistory_commit", e.data)
+            localdata = bb.data.createCopy(e.data)
+            localdata.setVar('BUILDHISTORY_BUILD_FAILURES', str(e._failures))
+            interrupted = getattr(e, '_interrupted', 0)
+            localdata.setVar('BUILDHISTORY_BUILD_INTERRUPTED', str(interrupted))
+            bb.build.exec_func("buildhistory_commit", localdata)
 }
 
 addhandler buildhistory_eventhandler

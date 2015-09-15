@@ -164,6 +164,9 @@ class Rootfs(object):
         pre_process_cmds = self.d.getVar("ROOTFS_PREPROCESS_COMMAND", True)
         post_process_cmds = self.d.getVar("ROOTFS_POSTPROCESS_COMMAND", True)
 
+        postinst_intercepts_dir = self.d.getVar("POSTINST_INTERCEPTS_DIR", True)
+        if not postinst_intercepts_dir:
+            postinst_intercepts_dir = self.d.expand("${COREBASE}/scripts/postinst-intercepts")
         intercepts_dir = os.path.join(self.d.getVar('WORKDIR', True),
                                       "intercept_scripts")
 
@@ -173,8 +176,7 @@ class Rootfs(object):
 
         bb.utils.mkdirhier(self.deploy_dir_image)
 
-        shutil.copytree(self.d.expand("${COREBASE}/scripts/postinst-intercepts"),
-                        intercepts_dir)
+        shutil.copytree(postinst_intercepts_dir, intercepts_dir)
 
         shutil.copy(self.d.expand("${COREBASE}/meta/files/deploydir_readme.txt"),
                     self.deploy_dir_image +
@@ -228,6 +230,14 @@ class Rootfs(object):
 
         runtime_pkgmanage = bb.utils.contains("IMAGE_FEATURES", "package-management",
                          True, False, self.d)
+        sysvcompat_in_distro = bb.utils.contains("DISTRO_FEATURES", [ "systemd", "sysvinit" ],
+                         True, False, self.d)
+        image_rorfs = bb.utils.contains("IMAGE_FEATURES", "read-only-rootfs",
+                         True, False, self.d)
+        if sysvcompat_in_distro and not image_rorfs:
+            pkg_to_remove = ""
+        else:
+            pkg_to_remove = "update-rc.d"
         if not runtime_pkgmanage:
             # Remove components that we don't need if we're not going to install
             # additional packages at runtime
@@ -235,13 +245,13 @@ class Rootfs(object):
                 installed_pkgs_dir = self.d.expand('${WORKDIR}/installed_pkgs.txt')
                 pkgs_to_remove = list()
                 with open(installed_pkgs_dir, "r+") as installed_pkgs:
-                    pkgs_installed = installed_pkgs.read().split('\n')
+                    pkgs_installed = installed_pkgs.read().splitlines()
                     for pkg_installed in pkgs_installed[:]:
                         pkg = pkg_installed.split()[0]
                         if pkg in ["update-rc.d",
                                 "base-passwd",
                                 "shadow",
-                                "update-alternatives",
+                                "update-alternatives", pkg_to_remove,
                                 self.d.getVar("ROOTFS_BOOTSTRAP_INSTALL", True)
                                 ]:
                             pkgs_to_remove.append(pkg)
@@ -277,7 +287,7 @@ class Rootfs(object):
             bb.note("> Executing %s intercept ..." % script)
 
             try:
-                subprocess.check_output(script_full)
+                subprocess.check_call(script_full)
             except subprocess.CalledProcessError as e:
                 bb.warn("The postinstall intercept hook '%s' failed (exit code: %d)! See log for details!" %
                         (script, e.returncode))
@@ -408,9 +418,13 @@ class RpmRootfs(Rootfs):
 
     def _create(self):
         pkgs_to_install = self.manifest.parse_initial_manifest()
+        rpm_pre_process_cmds = self.d.getVar('RPM_PREPROCESS_COMMANDS', True)
+        rpm_post_process_cmds = self.d.getVar('RPM_POSTPROCESS_COMMANDS', True)
 
         # update PM index files
         self.pm.write_index()
+
+        execute_pre_post_process(self.d, rpm_pre_process_cmds)
 
         self.pm.dump_all_available_pkgs()
 
@@ -434,6 +448,10 @@ class RpmRootfs(Rootfs):
         self.pm.install_complementary()
 
         self._setup_dbg_rootfs(['/etc/rpm', '/var/lib/rpm', '/var/lib/smart'])
+
+        execute_pre_post_process(self.d, rpm_post_process_cmds)
+
+        self._log_check()
 
         if self.inc_rpm_image_gen == "1":
             self.pm.backup_packaging_data()
@@ -615,12 +633,16 @@ class DpkgRootfs(DpkgOpkgRootfs):
 
     def _create(self):
         pkgs_to_install = self.manifest.parse_initial_manifest()
+        deb_pre_process_cmds = self.d.getVar('DEB_PREPROCESS_COMMANDS', True)
+        deb_post_process_cmds = self.d.getVar('DEB_POSTPROCESS_COMMANDS', True)
 
         alt_dir = self.d.expand("${IMAGE_ROOTFS}/var/lib/dpkg/alternatives")
         bb.utils.mkdirhier(alt_dir)
 
         # update PM index files
         self.pm.write_index()
+
+        execute_pre_post_process(self.d, deb_pre_process_cmds)
 
         self.pm.update()
 
@@ -639,9 +661,11 @@ class DpkgRootfs(DpkgOpkgRootfs):
 
         self.pm.run_pre_post_installs()
 
+        execute_pre_post_process(self.d, deb_post_process_cmds)
+
     @staticmethod
     def _depends_list():
-        return ['DEPLOY_DIR_DEB', 'DEB_SDK_ARCH', 'APTCONF_TARGET', 'APT_ARGS', 'DPKG_ARCH', 'DEB_PREPROCESS_COMMANDS', 'DEB_POSTPROCESS_COMMAND']
+        return ['DEPLOY_DIR_DEB', 'DEB_SDK_ARCH', 'APTCONF_TARGET', 'APT_ARGS', 'DPKG_ARCH', 'DEB_PREPROCESS_COMMANDS', 'DEB_POSTPROCESS_COMMANDS']
 
     def _get_delayed_postinsts(self):
         status_file = self.image_rootfs + "/var/lib/dpkg/status"

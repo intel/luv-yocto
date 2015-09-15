@@ -28,7 +28,7 @@ usage() {
     echo "  MACHINE - the machine name (optional, autodetected from KERNEL filename if unspecified)"
     echo "  RAMFS - boot a ramfs-based image"
     echo "  ISO - boot an ISO image"
-    echo "  VM - boot a vmdk image"
+    echo "  VM - boot a virtual machine image (= a file representing a full disk with boot loader)"
     echo "  Simplified QEMU command-line options can be passed with:"
     echo "    nographic - disables video console"
     echo "    serial - enables a serial console on /dev/ttyS0"
@@ -68,6 +68,7 @@ SCRIPT_QEMU_OPT=""
 SCRIPT_QEMU_EXTRA_OPT=""
 SCRIPT_KERNEL_OPT=""
 SERIALSTDIO=""
+TCPSERIAL_PORTNUM=""
 KVM_ENABLED="no"
 KVM_ACTIVE="no"
 
@@ -93,7 +94,7 @@ process_filename() {
 		    error "conflicting FSTYPE types [$FSTYPE] and [$EXT]"
 		fi
 		;;
-	/vmdk/)
+	/hddimg/|/hdddirect/|/vmdk/)
 		FSTYPE=$EXT
 		VM=$filename
 		;;
@@ -113,25 +114,9 @@ while true; do
             [ -z "$MACHINE" ] && MACHINE=$arg || \
                 error "conflicting MACHINE types [$MACHINE] and [$arg]"
             ;;
-        "ext2" | "ext3" | "ext4" | "jffs2" | "nfs" | "btrfs")
+        "ext2" | "ext3" | "ext4" | "jffs2" | "nfs" | "btrfs" | "hddimg" | "hdddirect" )
             [ -z "$FSTYPE" -o "$FSTYPE" = "$arg" ] && FSTYPE=$arg || \
                 error "conflicting FSTYPE types [$FSTYPE] and [$arg]"
-            ;;
-        *-image*)
-            [ -z "$ROOTFS" ] || \
-		error "conflicting ROOTFS args [$ROOTFS] and [$arg]"
-            if [ -f "$arg" ]; then
-                process_filename $arg
-            elif [ -d "$arg" ]; then
-                # Handle the case where the nfsroot dir has -image-
-                # in the pathname
-                echo "Assuming $arg is an nfs rootfs"
-                FSTYPE=nfs
-                ROOTFS=$arg
-            else
-                ROOTFS=$arg
-                LAZY_ROOTFS="true"
-            fi
             ;;
         "ramfs")
             FSTYPE=cpio.gz
@@ -149,6 +134,9 @@ while true; do
             SCRIPT_QEMU_OPT="$SCRIPT_QEMU_OPT -serial stdio"
             SCRIPT_KERNEL_OPT="$SCRIPT_KERNEL_OPT console=ttyS0"
             SERIALSTDIO="1"
+            ;;
+        "tcpserial="*)
+            TCPSERIAL_PORTNUM=${arg##tcpserial=}
             ;;
 	"biosdir="*)
             CUSTOMBIOSDIR="${arg##biosdir=}"
@@ -187,6 +175,22 @@ while true; do
             ;;
         "publicvnc")
             SCRIPT_QEMU_OPT="$SCRIPT_QEMU_OPT -vnc 0.0.0.0:0"
+            ;;
+        *-image*)
+            [ -z "$ROOTFS" ] || \
+		error "conflicting ROOTFS args [$ROOTFS] and [$arg]"
+            if [ -f "$arg" ]; then
+                process_filename $arg
+            elif [ -d "$arg" ]; then
+                # Handle the case where the nfsroot dir has -image-
+                # in the pathname
+                echo "Assuming $arg is an nfs rootfs"
+                FSTYPE=nfs
+                ROOTFS=$arg
+            else
+                ROOTFS=$arg
+                LAZY_ROOTFS="true"
+            fi
             ;;
         "") break ;;
         *)
@@ -231,12 +235,12 @@ if [ "$FSTYPE" = "nfs" -a -z "$ROOTFS" ]; then
 fi
 
 if [ -z "$MACHINE" ]; then
-    if [ "x$FSTYPE" = "xvmdk" ]; then
+    if [ "x$FSTYPE" = "xvmdk" ] || [ "x$FSTYPE" = "xhddimg" ] || [ "x$FSTYPE" = "xhdddirect" ]; then
         MACHINE=`basename $VM | sed -n 's/.*\(qemux86-64\|qemux86\|qemuarm64\|qemuarm\|qemumips64\|qemumips\|qemuppc\|qemush4\).*/\1/p'`
         if [ -z "$MACHINE" ]; then
-            error "Unable to set MACHINE from vmdk filename [$VM]"
+            error "Unable to set MACHINE from image filename [$VM]"
         fi
-        echo "Set MACHINE to [$MACHINE] based on vmdk [$VM]"
+        echo "Set MACHINE to [$MACHINE] based on image [$VM]"
     else
         MACHINE=`basename $KERNEL | sed -n 's/.*\(qemux86-64\|qemux86\|qemuarm64\|qemuarm\|qemumips64\|qemumips\|qemuppc\|qemush4\).*/\1/p'`
         if [ -z "$MACHINE" ]; then
@@ -398,7 +402,12 @@ setup_sysroot() {
         OECORE_NATIVE_SYSROOT=$OE_TMPDIR/sysroots/$BUILD_SYS
     fi 
 
-    OECORE_MACHINE_SYSROOT=$OE_TMPDIR/sysroots/$MACHINE
+    # Some recipes store the BIOS under $OE_TMPDIR/sysroots/$MACHINE,
+    # now defined as OECORE_MACHINE_SYSROOT. The latter is used when searching
+    # BIOS, VGA BIOS and keymaps.
+    if [ -z "$OECORE_MACHINE_SYSROOT" ]; then
+        OECORE_MACHINE_SYSROOT=$OE_TMPDIR/sysroots/$MACHINE
+    fi
 }
 
 # Locate a rootfs image to boot which matches our expected
@@ -434,7 +443,7 @@ if [ -e "$ROOTFS" -a -z "$FSTYPE" ]; then
     fi
 fi
 
-if [ -z "$KERNEL" -a "x$FSTYPE" != "xvmdk" ]; then
+if [ -z "$KERNEL" -a "x$FSTYPE" != "xvmdk" -a "x$FSTYPE" != "xhddimg" -a "x$FSTYPE" != "xhdddirect" ]; then
     setup_path_vars 1
     eval kernel_file=\$${machine2}_DEFAULT_KERNEL
     KERNEL=$DEPLOY_DIR_IMAGE/$kernel_file
@@ -460,10 +469,14 @@ fi
 if [ "$LAZY_ROOTFS" = "true" ]; then
     setup_path_vars 1
     echo "Assuming $ROOTFS really means $DEPLOY_DIR_IMAGE/$ROOTFS-$MACHINE.$FSTYPE"
-    ROOTFS=$DEPLOY_DIR_IMAGE/$ROOTFS-$MACHINE.$FSTYPE
+    if [ "$FSTYPE" = "hddimg" -o "x$FSTYPE" = "xhdddirect" ]; then
+        VM=$DEPLOY_DIR_IMAGE/$ROOTFS-$MACHINE.$FSTYPE
+    else
+        ROOTFS=$DEPLOY_DIR_IMAGE/$ROOTFS-$MACHINE.$FSTYPE
+    fi
 fi
 
-if [ -z "$ROOTFS" -a "x$FSTYPE" != "xvmdk" ]; then
+if [ -z "$ROOTFS" -a "x$FSTYPE" != "xvmdk" -a "x$FSTYPE" != "xhddimg" -a "x$FSTYPE" != "xhdddirect" ]; then
     setup_path_vars 1
     T=$DEPLOY_DIR_IMAGE
     eval rootfs_list=\$${machine2}_DEFAULT_ROOTFS
@@ -479,7 +492,7 @@ ROOTFS=`readlink -f $ROOTFS`
 
 echo ""
 echo "Continuing with the following parameters:"
-if [ "x$FSTYPE" != "xvmdk" ]; then
+if [ "x$FSTYPE" != "xvmdk" -a "x$FSTYPE" != "xhddimg" -a "x$FSTYPE" != "xhdddirect" ]; then
     echo "KERNEL: [$KERNEL]"
     echo "ROOTFS: [$ROOTFS]"
 else
@@ -488,7 +501,7 @@ fi
 echo "FSTYPE: [$FSTYPE]"
 
 setup_sysroot
-# OECORE_NATIVE_SYSROOT is now set for all cases
+# OECORE_NATIVE_SYSROOT and OECORE_MACHINE_SYSROOT are now set for all cases
 
 INTERNAL_SCRIPT="$0-internal"
 if [ ! -f "$INTERNAL_SCRIPT" -o ! -r "$INTERNAL_SCRIPT" ]; then
@@ -499,12 +512,16 @@ OVERRIDE_VGA="true"
 
 # Specify directory for BIOS, VGA BIOS and keymaps
 if [ ! -z "$CUSTOMBIOSDIR" ]; then
-    if [ -d "$OECORE_MACHINE_SYSROOT/$CUSTOMBIOSDIR" ]; then
+    if [ -d "$OECORE_NATIVE_SYSROOT/$CUSTOMBIOSDIR" ]; then
+        echo "Assuming biosdir is $OECORE_NATIVE_SYSROOT/$CUSTOMBIOSDIR"
+        SCRIPT_QEMU_OPT="$SCRIPT_QEMU_OPT -L $OECORE_NATIVE_SYSROOT/$CUSTOMBIOSDIR"
+    elif [ -d "$OECORE_MACHINE_SYSROOT/$CUSTOMBIOSDIR" ]; then
         echo "Assuming biosdir is $OECORE_MACHINE_SYSROOT/$CUSTOMBIOSDIR"
         SCRIPT_QEMU_OPT="$SCRIPT_QEMU_OPT -L $OECORE_MACHINE_SYSROOT/$CUSTOMBIOSDIR"
     else
         if [ ! -d "$CUSTOMBIOSDIR" ]; then
             echo "Custom BIOS directory not found. Tried: $CUSTOMBIOSDIR"
+            echo "and $OECORE_NATIVE_SYSROOT/$CUSTOMBIOSDIR"
             echo "and $OECORE_MACHINE_SYSROOT/$CUSTOMBIOSDIR"
             exit 1;
         fi

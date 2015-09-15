@@ -1,14 +1,26 @@
-{% extends "baseprojectpage.html" %}
+{% extends "base.html" %}
 {% load projecttags %}
 {% load humanize %}
 {% load static %}
-{% block localbreadcrumb %}
-<li><a href="{% url 'projectlayers' project.id %}">All compatible layers</a></li>
-<li>
-  {{layerversion.layer.name}} ({{layerversion.get_vcs_reference|truncatechars:13}})
-</li>
-{% endblock %}
-{% block projectinfomain %}
+
+{% block pagecontent %}
+
+<div class="section">
+  <ul class="breadcrumb">
+    <li class="muted">{{project.name}}:</li>
+    <li>
+      <a href="{% url 'project' project.id %}">Configuration</a>
+      <span class="divider">&rarr;</span>
+    </li>
+    <li><a href="{% url 'projectlayers' project.id %}">Compatible layers</a>
+      <span class="divider">&rarr;</span>
+    </li>
+    <li class="active">
+      {{layerversion.layer.name}} ({{layerversion.get_vcs_reference|truncatechars:13}})
+    </li>
+  </ul>
+</div>
+
 {# If this is not an imported layer then hide the edit ui #}
 {% if not layerversion.layer_source_id or layerversion.layer_source.sourcetype != layerversion.layer_source.TYPE_IMPORTED %}
 <style scoped>
@@ -44,7 +56,7 @@
       {% else %}
         inCurrentPrj : false,
       {% endif %}
-        url : "{% url 'layerdetails' project.id layerversion.id  %}",
+        layerdetailurl : "{% url 'layerdetails' project.id layerversion.id  %}",
         sourceId: {{layerversion.layer_source_id|json}},
       }
     };

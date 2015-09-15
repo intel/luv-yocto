@@ -628,7 +628,7 @@ def verify_checksum(ud, d, precomputed={}):
     }
 
 
-def verify_donestamp(ud, d):
+def verify_donestamp(ud, d, origud=None):
     """
     Check whether the done stamp file has the right checksums (if the fetch
     method supports them). If it doesn't, delete the done stamp and force
@@ -640,7 +640,8 @@ def verify_donestamp(ud, d):
     if not os.path.exists(ud.donestamp):
         return False
 
-    if not ud.method.supports_checksum(ud):
+    if (not ud.method.supports_checksum(ud) or
+        (origud and not origud.method.supports_checksum(origud))):
         # done stamp exists, checksums not supported; assume the local file is
         # current
         return True
@@ -777,7 +778,7 @@ def localpath(url, d):
     fetcher = bb.fetch2.Fetch([url], d)
     return fetcher.localpath(url)
 
-def runfetchcmd(cmd, d, quiet = False, cleanup = []):
+def runfetchcmd(cmd, d, quiet=False, cleanup=None):
     """
     Run cmd returning the command output
     Raise an error if interrupted or cmd fails
@@ -801,6 +802,9 @@ def runfetchcmd(cmd, d, quiet = False, cleanup = []):
                   'GIT_SMART_HTTP',
                   'SSH_AUTH_SOCK', 'SSH_AGENT_PID',
                   'SOCKS5_USER', 'SOCKS5_PASSWD']
+
+    if not cleanup:
+        cleanup = []
 
     for var in exportvars:
         val = d.getVar(var, True)
@@ -919,7 +923,7 @@ def try_mirror_url(fetch, origud, ud, ld, check = False):
 
         os.chdir(ld.getVar("DL_DIR", True))
 
-        if not verify_donestamp(ud, ld) or ud.method.need_update(ud, ld):
+        if not verify_donestamp(ud, ld, origud) or ud.method.need_update(ud, ld):
             ud.method.download(ud, ld)
             if hasattr(ud.method,"build_mirror_data"):
                 ud.method.build_mirror_data(ud, ld)
@@ -1267,7 +1271,7 @@ class FetchData(object):
 class FetchMethod(object):
     """Base class for 'fetch'ing data"""
 
-    def __init__(self, urls = []):
+    def __init__(self, urls=None):
         self.urls = []
 
     def supports(self, urldata, d):
@@ -1552,11 +1556,11 @@ class Fetch(object):
 
         return local
 
-    def download(self, urls = []):
+    def download(self, urls=None):
         """
         Fetch all urls
         """
-        if len(urls) == 0:
+        if not urls:
             urls = self.urls
 
         network = self.d.getVar("BB_NO_NETWORK", True)
@@ -1586,7 +1590,8 @@ class Fetch(object):
                 os.chdir(self.d.getVar("DL_DIR", True))
 
                 firsterr = None
-                if not localpath and ((not verify_donestamp(ud, self.d)) or m.need_update(ud, self.d)):
+                verified_stamp = verify_donestamp(ud, self.d)
+                if not localpath and (not verified_stamp or m.need_update(ud, self.d)):
                     try:
                         if not trusted_network(self.d, ud.url):
                             raise UntrustedUrl(ud.url)
@@ -1614,7 +1619,8 @@ class Fetch(object):
                             logger.debug(1, str(e))
                         firsterr = e
                         # Remove any incomplete fetch
-                        m.clean(ud, self.d)
+                        if not verified_stamp:
+                            m.clean(ud, self.d)
                         logger.debug(1, "Trying MIRRORS")
                         mirrors = mirror_from_string(self.d.getVar('MIRRORS', True))
                         localpath = try_mirrors(self, self.d, ud, mirrors)
@@ -1634,12 +1640,12 @@ class Fetch(object):
             finally:
                 bb.utils.unlockfile(lf)
 
-    def checkstatus(self, urls = []):
+    def checkstatus(self, urls=None):
         """
         Check all urls exist upstream
         """
 
-        if len(urls) == 0:
+        if not urls:
             urls = self.urls
 
         for u in urls:
@@ -1662,12 +1668,12 @@ class Fetch(object):
             if not ret:
                 raise FetchError("URL %s doesn't work" % u, u)
 
-    def unpack(self, root, urls = []):
+    def unpack(self, root, urls=None):
         """
         Check all urls exist upstream
         """
 
-        if len(urls) == 0:
+        if not urls:
             urls = self.urls
 
         for u in urls:
@@ -1685,12 +1691,12 @@ class Fetch(object):
             if ud.lockfile:
                 bb.utils.unlockfile(lf)
 
-    def clean(self, urls = []):
+    def clean(self, urls=None):
         """
         Clean files that the fetcher gets or places
         """
 
-        if len(urls) == 0:
+        if not urls:
             urls = self.urls
 
         for url in urls:

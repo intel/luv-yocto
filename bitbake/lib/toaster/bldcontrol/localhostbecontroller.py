@@ -54,7 +54,7 @@ class LocalhostBEController(BuildEnvironmentController):
         if cwd is None:
             cwd = self.be.sourcedir
 
-        #logger.debug("lbc_shellcmmd: (%s) %s" % (cwd, command))
+        logger.debug("lbc_shellcmmd: (%s) %s" % (cwd, command))
         p = subprocess.Popen(command, cwd = cwd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (out,err) = p.communicate()
         p.wait()
@@ -63,27 +63,22 @@ class LocalhostBEController(BuildEnvironmentController):
                 err = "command: %s \n%s" % (command, out)
             else:
                 err = "command: %s \n%s" % (command, err)
-            #logger.warn("localhostbecontroller: shellcmd error %s" % err)
+            logger.warn("localhostbecontroller: shellcmd error %s" % err)
             raise ShellCmdException(err)
         else:
-            #logger.debug("localhostbecontroller: shellcmd success")
+            logger.debug("localhostbecontroller: shellcmd success")
             return out
-
-    def _createdirpath(self, path):
-        from os.path import dirname as DN
-        if path == "":
-            raise Exception("Invalid path creation specified.")
-        if not os.path.exists(DN(path)):
-            self._createdirpath(DN(path))
-        if not os.path.exists(path):
-            os.mkdir(path, 0755)
 
     def _setupBE(self):
         assert self.pokydirname and os.path.exists(self.pokydirname)
-        self._createdirpath(self.be.builddir)
-        self._shellcmd("bash -c \"source %s/oe-init-build-env %s\"" % (self.pokydirname, self.be.builddir))
+        path = self.be.builddir
+        if not path:
+            raise Exception("Invalid path creation specified.")
+        if not os.path.exists(path):
+            os.makedirs(path, 0755)
+        self._shellcmd("bash -c \"source %s/oe-init-build-env %s\"" % (self.pokydirname, path))
         # delete the templateconf.cfg; it may come from an unsupported layer configuration
-        os.remove(os.path.join(self.be.builddir, "conf/templateconf.cfg"))
+        os.remove(os.path.join(path, "conf/templateconf.cfg"))
 
 
     def writeConfFile(self, file_name, variable_list = None, raw = None):
@@ -139,13 +134,13 @@ class LocalhostBEController(BuildEnvironmentController):
             with open(filepath, "r") as f:
                 f.seek(filepos)
                 for line in f:
-                    if line.startswith("Bitbake server started on demand"):
+                    if line.startswith("NOTE: ToasterUI waiting for events"):
                         return True
             return False
 
         retries = 0
         started = False
-        while not started and retries < 10:
+        while not started and retries < 50:
             started = _toaster_ui_started(toaster_ui_log_filepath, toaster_ui_log_filelength)
             import time
             logger.debug("localhostbecontroller: Waiting bitbake server to start")
@@ -155,7 +150,7 @@ class LocalhostBEController(BuildEnvironmentController):
         if not started:
             toaster_ui_log = open(os.path.join(self.be.builddir, "toaster_ui.log"), "r").read()
             toaster_server_log = open(os.path.join(self.be.builddir, "toaster_server.log"), "r").read()
-            raise BuildSetupException("localhostbecontroller: Bitbake server did not start in 5 seconds, aborting (Error: '%s' '%s')" % (toaster_ui_log, toaster_server_log))
+            raise BuildSetupException("localhostbecontroller: Bitbake server did not start in 25 seconds, aborting (Error: '%s' '%s')" % (toaster_ui_log, toaster_server_log))
 
         logger.debug("localhostbecontroller: Started bitbake server")
 

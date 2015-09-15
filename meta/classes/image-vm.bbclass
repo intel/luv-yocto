@@ -1,20 +1,23 @@
 
-SYSLINUX_ROOT ?= "root=/dev/sda2"
 SYSLINUX_PROMPT ?= "0"
-SYSLINUX_TIMEOUT ?= "10"
 SYSLINUX_LABELS = "boot"
 LABELS_append = " ${SYSLINUX_LABELS} "
 
+# Using an initramfs is optional. Enable it by setting INITRD_IMAGE.
+INITRD_IMAGE ?= ""
+INITRD ?= "${@'${DEPLOY_DIR_IMAGE}/${INITRD_IMAGE}-${MACHINE}.cpio.gz' if '${INITRD_IMAGE}' else ''}"
+do_bootdirectdisk[depends] += "${@'${INITRD_IMAGE}:do_rootfs' if '${INITRD_IMAGE}' else ''}"
+
 # need to define the dependency and the ROOTFS for directdisk
 do_bootdirectdisk[depends] += "${PN}:do_rootfs"
-ROOTFS ?= "${DEPLOY_DIR_IMAGE}/${IMAGE_BASENAME}-${MACHINE}.ext3"
+ROOTFS ?= "${DEPLOY_DIR_IMAGE}/${IMAGE_BASENAME}-${MACHINE}.ext4"
 
 # creating VM images relies on having a hddimg so ensure we inherit it here.
 inherit boot-directdisk
 
-IMAGE_TYPEDEP_vmdk = "ext3"
-IMAGE_TYPEDEP_vdi = "ext3"
-IMAGE_TYPEDEP_qcow2 = "ext3"
+IMAGE_TYPEDEP_vmdk = "ext4"
+IMAGE_TYPEDEP_vdi = "ext4"
+IMAGE_TYPEDEP_qcow2 = "ext4"
 IMAGE_TYPES_MASKED += "vmdk vdi qcow2"
 
 create_vmdk_image () {

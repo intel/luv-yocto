@@ -35,6 +35,10 @@ if [ ! -w "$BUILDDIR" ]; then
     exit 1
 fi
 
+# Attempting removal of sticky,setuid bits from BUILDDIR, BUILDDIR/conf
+chmod -st "$BUILDDIR" 2>/dev/null || echo "WARNING: unable to chmod $BUILDDIR"
+chmod -st "$BUILDDIR/conf" 2>/dev/null || echo "WARNING: unable to chmod $BUILDDIR/conf"
+
 cd "$BUILDDIR"
 
 if [ -f "$BUILDDIR/conf/templateconf.cfg" ]; then

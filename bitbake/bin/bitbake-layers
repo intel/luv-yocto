@@ -54,6 +54,8 @@ def logger_create(name, output=sys.stderr):
 
 logger = logger_create('bitbake-layers', sys.stdout)
 
+class UserError(Exception):
+    pass
 
 class Commands():
     def __init__(self):
@@ -62,24 +64,22 @@ class Commands():
 
     def init_bbhandler(self, config_only = False):
         if not self.bbhandler:
-            self.bbhandler = bb.tinfoil.Tinfoil()
+            self.bbhandler = bb.tinfoil.Tinfoil(tracking=True)
             self.bblayers = (self.bbhandler.config_data.getVar('BBLAYERS', True) or "").split()
             self.bbhandler.prepare(config_only)
+            layerconfs = self.bbhandler.config_data.varhistory.get_variable_items_files('BBFILE_COLLECTIONS', self.bbhandler.config_data)
+            self.bbfile_collections = {layer: os.path.dirname(os.path.dirname(path)) for layer, path in layerconfs.iteritems()}
+
 
     def do_show_layers(self, args):
         """show current configured layers"""
         self.init_bbhandler(config_only = True)
         logger.plain("%s  %s  %s" % ("layer".ljust(20), "path".ljust(40), "priority"))
         logger.plain('=' * 74)
-        for layerdir in self.bblayers:
+        for layer, _, regex, pri in self.bbhandler.cooker.recipecache.bbfile_config_priorities:
+            layerdir = self.bbfile_collections.get(layer, None)
             layername = self.get_layer_name(layerdir)
-            layerpri = 0
-            for layer, _, regex, pri in self.bbhandler.cooker.recipecache.bbfile_config_priorities:
-                if regex.match(os.path.join(layerdir, 'test')):
-                    layerpri = pri
-                    break
-
-            logger.plain("%s  %s  %d" % (layername.ljust(20), layerdir.ljust(40), layerpri))
+            logger.plain("%s  %s  %d" % (layername.ljust(20), layerdir.ljust(40), pri))
 
 
     def do_add_layer(self, args):
@@ -120,6 +120,8 @@ Removes the specified layer from bblayers.conf
 
         if args.layerdir.startswith('*'):
             layerdir = args.layerdir
+        elif not '/' in args.layerdir:
+            layerdir = '*/%s' % args.layerdir
         else:
             layerdir = os.path.abspath(args.layerdir)
         (_, notremoved) = bb.utils.edit_bblayers_conf(bblayers_conf, None, layerdir)
@@ -265,6 +267,7 @@ Removes the specified layer from bblayers.conf
         apiurl = self.bbhandler.config_data.getVar('BBLAYERS_LAYERINDEX_URL', True)
         if not apiurl:
             logger.error("Cannot get BBLAYERS_LAYERINDEX_URL")
+            return 1
         else:
             if apiurl[-1] != '/':
                 apiurl += '/'
@@ -387,7 +390,7 @@ are overlayed will also be listed, with a " (skipped)" suffix.
 """
         self.init_bbhandler()
 
-        items_listed = self.list_recipes('Overlayed recipes', None, True, args.same_version, args.filenames, True)
+        items_listed = self.list_recipes('Overlayed recipes', None, True, args.same_version, args.filenames, True, None)
 
         # Check for overlayed .bbclass files
         classes = defaultdict(list)
@@ -450,11 +453,22 @@ skipped recipes will also be listed, with a " (skipped)" suffix.
 """
         self.init_bbhandler()
 
-        title = 'Available recipes:'
-        self.list_recipes(title, args.pnspec, False, False, args.filenames, args.multiple)
+        inheritlist = args.inherits.split(',') if args.inherits else []
+        if inheritlist or args.pnspec or args.multiple:
+            title = 'Matching recipes:'
+        else:
+            title = 'Available recipes:'
+        self.list_recipes(title, args.pnspec, False, False, args.filenames, args.multiple, inheritlist)
 
 
-    def list_recipes(self, title, pnspec, show_overlayed_only, show_same_ver_only, show_filenames, show_multi_provider_only):
+    def list_recipes(self, title, pnspec, show_overlayed_only, show_same_ver_only, show_filenames, show_multi_provider_only, inherits):
+        if inherits:
+            bbpath = str(self.bbhandler.config_data.getVar('BBPATH', True))
+            for classname in inherits:
+                classfile = 'classes/%s.bbclass' % classname
+                if not bb.utils.which(bbpath, classfile, history=False):
+                    raise UserError('No class named %s found in BBPATH' % classfile)
+
         pkg_pn = self.bbhandler.cooker.recipecache.pkg_pn
         (latest_versions, preferred_versions) = bb.providers.findProviders(self.bbhandler.config_data, self.bbhandler.cooker.recipecache, pkg_pn)
         allproviders = bb.providers.allProviders(self.bbhandler.cooker.recipecache)
@@ -492,6 +506,9 @@ skipped recipes will also be listed, with a " (skipped)" suffix.
                     logger.plain("%s:", pn)
                 logger.plain("  %s %s%s", layer.ljust(20), ver, skipped)
 
+        global_inherit = (self.bbhandler.config_data.getVar('INHERIT', True) or "").split()
+        cls_re = re.compile('classes/')
+
         preffiles = []
         items_listed = False
         for p in sorted(pkg_pn):
@@ -503,11 +520,28 @@ skipped recipes will also be listed, with a " (skipped)" suffix.
                 pref = preferred_versions[p]
                 realfn = bb.cache.Cache.virtualfn2realfn(pref[1])
                 preffile = realfn[0]
+
                 # We only display once per recipe, we should prefer non extended versions of the
                 # recipe if present (so e.g. in OpenEmbedded, openssl rather than nativesdk-openssl
                 # which would otherwise sort first).
                 if realfn[1] and realfn[0] in self.bbhandler.cooker.recipecache.pkg_fn:
                     continue
+
+                if inherits:
+                    matchcount = 0
+                    recipe_inherits = self.bbhandler.cooker_data.inherits.get(preffile, [])
+                    for cls in recipe_inherits:
+                        if cls_re.match(cls):
+                            continue
+                        classname = os.path.splitext(os.path.basename(cls))[0]
+                        if classname in global_inherit:
+                            continue
+                        elif classname in inherits:
+                            matchcount += 1
+                    if matchcount != len(inherits):
+                        # No match - skip this recipe
+                        continue
+
                 if preffile not in preffiles:
                     preflayer = self.get_file_layer(preffile)
                     multilayer = False
@@ -595,7 +629,7 @@ build results (as the layer priority order has effectively changed).
                     return layerdir
             return None
 
-        appended_recipes = []
+        applied_appends = []
         for layer in layers:
             overlayed = []
             for f in self.bbhandler.cooker.collection.overlayed.iterkeys():
@@ -623,31 +657,27 @@ build results (as the layer priority order has effectively changed).
                                     logger.warn('Overwriting file %s', fdest)
                             bb.utils.copyfile(f1full, fdest)
                             if ext == '.bb':
-                                if f1 in self.bbhandler.cooker.collection.appendlist:
-                                    appends = self.bbhandler.cooker.collection.appendlist[f1]
-                                    if appends:
-                                        logger.plain('  Applying appends to %s' % fdest )
-                                        for appendname in appends:
-                                            if layer_path_match(appendname):
-                                                self.apply_append(appendname, fdest)
-                                    appended_recipes.append(f1)
+                                for append in self.bbhandler.cooker.collection.get_file_appends(f1full):
+                                    if layer_path_match(append):
+                                        logger.plain('  Applying append %s to %s' % (append, fdest))
+                                        self.apply_append(append, fdest)
+                                        applied_appends.append(append)
 
         # Take care of when some layers are excluded and yet we have included bbappends for those recipes
-        for recipename in self.bbhandler.cooker.collection.appendlist.iterkeys():
-            if recipename not in appended_recipes:
-                appends = self.bbhandler.cooker.collection.appendlist[recipename]
+        for b in self.bbhandler.cooker.collection.bbappends:
+            (recipename, appendname) = b
+            if appendname not in applied_appends:
                 first_append = None
-                for appendname in appends:
-                    layer = layer_path_match(appendname)
-                    if layer:
-                        if first_append:
-                            self.apply_append(appendname, first_append)
-                        else:
-                            fdest = appendname[len(layer):]
-                            fdest = os.path.normpath(os.sep.join([outputdir,fdest]))
-                            bb.utils.mkdirhier(os.path.dirname(fdest))
-                            bb.utils.copyfile(appendname, fdest)
-                            first_append = fdest
+                layer = layer_path_match(appendname)
+                if layer:
+                    if first_append:
+                        self.apply_append(appendname, first_append)
+                    else:
+                        fdest = appendname[len(layer):]
+                        fdest = os.path.normpath(os.sep.join([outputdir,fdest]))
+                        bb.utils.mkdirhier(os.path.dirname(fdest))
+                        bb.utils.copyfile(appendname, fdest)
+                        first_append = fdest
 
         # Get the regex for the first layer in our list (which is where the conf/layer.conf file will
         # have come from)
@@ -683,25 +713,22 @@ build results (as the layer priority order has effectively changed).
                                 logger.warning("File %s does not match the flattened layer's BBFILES setting, you may need to edit conf/layer.conf or move the file elsewhere" % f1full)
 
     def get_file_layer(self, filename):
-        for layer, _, regex, _ in self.bbhandler.cooker.recipecache.bbfile_config_priorities:
-            if regex.match(filename):
-                for layerdir in self.bblayers:
-                    if regex.match(os.path.join(layerdir, 'test')) and re.match(layerdir, filename):
-                        return self.get_layer_name(layerdir)
-        return "?"
+        layerdir = self.get_file_layerdir(filename)
+        if layerdir:
+            return self.get_layer_name(layerdir)
+        else:
+            return '?'
 
     def get_file_layerdir(self, filename):
-        for layer, _, regex, _ in self.bbhandler.cooker.recipecache.bbfile_config_priorities:
-            if regex.match(filename):
-                for layerdir in self.bblayers:
-                    if regex.match(os.path.join(layerdir, 'test')) and re.match(layerdir, filename):
-                        return layerdir
-        return "?"
+        layer = bb.utils.get_file_layer(filename, self.bbhandler.config_data)
+        return self.bbfile_collections.get(layer, None)
 
     def remove_layer_prefix(self, f):
         """Remove the layer_dir prefix, e.g., f = /path/to/layer_dir/foo/blah, the
            return value will be: layer_dir/foo/blah"""
         f_layerdir = self.get_file_layerdir(f)
+        if not f_layerdir:
+            return f
         prefix = os.path.join(os.path.dirname(f_layerdir), '')
         return f[len(prefix):] if f.startswith(prefix) else f
 
@@ -709,13 +736,11 @@ build results (as the layer priority order has effectively changed).
         return os.path.basename(layerdir.rstrip(os.sep))
 
     def apply_append(self, appendname, recipename):
-        appendfile = open(appendname, 'r')
-        recipefile = open(recipename, 'a')
-        recipefile.write('\n')
-        recipefile.write('##### bbappended from %s #####\n' % self.get_file_layer(appendname))
-        recipefile.writelines(appendfile.readlines())
-        recipefile.close()
-        appendfile.close()
+        with open(appendname, 'r') as appendfile:
+            with open(recipename, 'a') as recipefile:
+                recipefile.write('\n')
+                recipefile.write('##### bbappended from %s #####\n' % self.get_file_layer(appendname))
+                recipefile.writelines(appendfile.readlines())
 
     def do_show_appends(self, args):
         """list bbappend files and recipe files they apply to
@@ -723,18 +748,21 @@ build results (as the layer priority order has effectively changed).
 Lists recipes with the bbappends that apply to them as subitems.
 """
         self.init_bbhandler()
-        if not self.bbhandler.cooker.collection.appendlist:
-            logger.plain('No append files found')
-            return 0
 
         logger.plain('=== Appended recipes ===')
 
         pnlist = list(self.bbhandler.cooker_data.pkg_pn.keys())
         pnlist.sort()
+        appends = False
         for pn in pnlist:
-            self.show_appends_for_pn(pn)
+            if self.show_appends_for_pn(pn):
+                appends = True
 
-        self.show_appends_for_skipped()
+        if self.show_appends_for_skipped():
+            appends = True
+
+        if not appends:
+            logger.plain('No append files found')
 
     def show_appends_for_pn(self, pn):
         filenames = self.bbhandler.cooker_data.pkg_pn[pn]
@@ -745,12 +773,12 @@ Lists recipes with the bbappends that apply to them as subitems.
                                              self.bbhandler.cooker_data.pkg_pn)
         best_filename = os.path.basename(best[3])
 
-        self.show_appends_output(filenames, best_filename)
+        return self.show_appends_output(filenames, best_filename)
 
     def show_appends_for_skipped(self):
         filenames = [os.path.basename(f)
                     for f in self.bbhandler.cooker.skiplist.iterkeys()]
-        self.show_appends_output(filenames, None, " (skipped)")
+        return self.show_appends_output(filenames, None, " (skipped)")
 
     def show_appends_output(self, filenames, best_filename, name_suffix = ''):
         appended, missing = self.get_appends_for_files(filenames)
@@ -764,7 +792,9 @@ Lists recipes with the bbappends that apply to them as subitems.
                 if best_filename in missing:
                     logger.warn('%s: missing append for preferred version',
                                 best_filename)
-
+            return True
+        else:
+            return False
 
     def get_appends_for_files(self, filenames):
         appended, notappended = [], []
@@ -878,20 +908,19 @@ NOTE: .bbappend files can impact the dependencies.
 
             # The 'require/include xxx' in the bb file
             pv_re = re.compile(r"\${PV}")
-            fnfile = open(f, 'r')
-            line = fnfile.readline()
-            while line:
-                m, keyword = self.match_require_include(line)
-                # Found the 'require/include xxxx'
-                if m:
-                    needed_file = m.group(1)
-                    # Replace the ${PV} with the real PV
-                    if pv_re.search(needed_file) and f in self.bbhandler.cooker_data.pkg_pepvpr:
-                        pv = self.bbhandler.cooker_data.pkg_pepvpr[f][1]
-                        needed_file = re.sub(r"\${PV}", pv, needed_file)
-                    self.print_cross_files(bbpath, keyword, layername, f, needed_file, args.filenames, ignore_layers)
+            with open(f, 'r') as fnfile:
                 line = fnfile.readline()
-            fnfile.close()
+                while line:
+                    m, keyword = self.match_require_include(line)
+                    # Found the 'require/include xxxx'
+                    if m:
+                        needed_file = m.group(1)
+                        # Replace the ${PV} with the real PV
+                        if pv_re.search(needed_file) and f in self.bbhandler.cooker_data.pkg_pepvpr:
+                            pv = self.bbhandler.cooker_data.pkg_pepvpr[f][1]
+                            needed_file = re.sub(r"\${PV}", pv, needed_file)
+                        self.print_cross_files(bbpath, keyword, layername, f, needed_file, args.filenames, ignore_layers)
+                    line = fnfile.readline()
 
         # The "require/include xxx" in conf/machine/*.conf, .inc and .bbclass
         conf_re = re.compile(".*/conf/machine/[^\/]*\.conf$")
@@ -905,20 +934,19 @@ NOTE: .bbappend files can impact the dependencies.
                     f = os.path.join(dirpath, name)
                     s = conf_re.match(f) or inc_re.match(f) or bbclass_re.match(f)
                     if s:
-                        ffile = open(f, 'r')
-                        line = ffile.readline()
-                        while line:
-                            m, keyword = self.match_require_include(line)
-                            # Only bbclass has the "inherit xxx" here.
-                            bbclass=""
-                            if not m and f.endswith(".bbclass"):
-                                m, keyword = self.match_inherit(line)
-                                bbclass=".bbclass"
-                            # Find a 'require/include xxxx'
-                            if m:
-                                self.print_cross_files(bbpath, keyword, layername, f, m.group(1) + bbclass, args.filenames, ignore_layers)
+                        with open(f, 'r') as ffile:
                             line = ffile.readline()
-                        ffile.close()
+                            while line:
+                                m, keyword = self.match_require_include(line)
+                                # Only bbclass has the "inherit xxx" here.
+                                bbclass=""
+                                if not m and f.endswith(".bbclass"):
+                                    m, keyword = self.match_inherit(line)
+                                    bbclass=".bbclass"
+                                # Find a 'require/include xxxx'
+                                if m:
+                                    self.print_cross_files(bbpath, keyword, layername, f, m.group(1) + bbclass, args.filenames, ignore_layers)
+                                line = ffile.readline()
 
     def print_cross_files(self, bbpath, keyword, layername, f, needed_filename, show_filenames, ignore_layers):
         """Print the depends that crosses a layer boundary"""
@@ -995,6 +1023,7 @@ def main():
     parser_show_recipes = add_command('show-recipes', cmds.do_show_recipes)
     parser_show_recipes.add_argument('-f', '--filenames', help='instead of the default formatting, list filenames of higher priority recipes with the ones they overlay indented underneath', action='store_true')
     parser_show_recipes.add_argument('-m', '--multiple', help='only list where multiple recipes (in the same layer or different layers) exist for the same recipe name', action='store_true')
+    parser_show_recipes.add_argument('-i', '--inherits', help='only list recipes that inherit the named class', metavar='CLASS', default='')
     parser_show_recipes.add_argument('pnspec', nargs='?', help='optional recipe name specification (wildcards allowed, enclose in quotes to avoid shell expansion)')
 
     parser_show_appends = add_command('show-appends', cmds.do_show_appends)
@@ -1024,7 +1053,11 @@ def main():
     elif args.quiet:
         logger.setLevel(logging.ERROR)
 
-    ret = args.func(args)
+    try:
+        ret = args.func(args)
+    except UserError as err:
+        logger.error(str(err))
+        ret = 1
 
     return ret
 

@@ -19,7 +19,7 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-from toastergui.widgets import ToasterTable, ToasterTemplateView
+from toastergui.widgets import ToasterTable
 from orm.models import Recipe, ProjectLayer, Layer_Version, Machine, Project
 from django.db.models import Q, Max
 from django.conf.urls import url
@@ -193,27 +193,13 @@ class LayersTable(ToasterTable):
         project = Project.objects.get(pk=kwargs['pid'])
         self.add_column(title="LayerDetailsUrl",
                         displayable = False,
-                        field_name="layerDetailsUrl",
+                        field_name="layerdetailurl",
                         computation = lambda x: reverse('layerdetails', args=(project.id, x.id)))
 
-
-
-
-class LayerDetails(ToasterTemplateView):
-    def get_context_data(self, **kwargs):
-        context = super(LayerDetails, self).get_context_data(**kwargs)
-        from toastergui.views import _lv_to_dict
-
-        context['project'] = Project.objects.get(pk=kwargs['pid'])
-        context['layerversion'] = Layer_Version.objects.get(pk=kwargs['layerid'])
-        context['layerdict'] = _lv_to_dict(context['project'], context['layerversion'])
-        context['layerdeps'] = {"list": [
-            [{"id": y.id, "name": y.layer.name} for y in x.depends_on.get_equivalents_wpriority(context['project'])][0] for x in context['layerversion'].dependencies.all()]}
-        context['projectlayers'] = map(lambda prjlayer: prjlayer.layercommit.id, ProjectLayer.objects.filter(project=context['project']))
-
-        self.context_entries = ['project', 'layerversion', 'projectlayers', 'layerdict', 'layerdeps']
-
-        return context
+        self.add_column(title="name",
+                        displayable = False,
+                        field_name="name",
+                        computation = lambda x: x.layer.name)
 
 
 class MachinesTable(ToasterTable, ProjectFiltersMixin):
@@ -243,9 +229,8 @@ class MachinesTable(ToasterTable, ProjectFiltersMixin):
 
     def setup_queryset(self, *args, **kwargs):
         prj = Project.objects.get(pk = kwargs['pid'])
-        compatible_layers = prj.compatible_layerversions()
-
-        self.queryset = Machine.objects.filter(layer_version__in=compatible_layers).order_by(self.default_orderby)
+        self.queryset = prj.get_all_compatible_machines()
+        self.queryset = self.queryset.order_by(self.default_orderby)
 
     def setup_columns(self, *args, **kwargs):
 
@@ -304,7 +289,7 @@ class LayerMachinesTable(MachinesTable):
         MachinesTable.setup_queryset(self, *args, **kwargs)
 
         self.queryset = self.queryset.filter(layer_version__pk=int(kwargs['layerid']))
-        self.static_context_extra['in_prj'] = ProjectLayer.objects.filter(Q(project=kwargs['pid']) and Q(layercommit=kwargs['layerid'])).count()
+        self.static_context_extra['in_prj'] = ProjectLayer.objects.filter(Q(project=kwargs['pid']) & Q(layercommit=kwargs['layerid'])).count()
 
     def setup_columns(self, *args, **kwargs):
         self.add_column(title="Machine",
@@ -315,7 +300,7 @@ class LayerMachinesTable(MachinesTable):
         self.add_column(title="Description",
                         field_name="description")
 
-        select_btn_template = '<a href="{% url "project" extra.pid %}#/machineselect={{data.name}}" class="btn btn-block select-machine-btn" {% if extra.in_prj == 0%}disabled="disabled"{%endif%}>Select machine</a>'
+        select_btn_template = '<a href="{% url "project" extra.pid %}?setMachine={{data.name}}" class="btn btn-block select-machine-btn" {% if extra.in_prj == 0%}disabled="disabled"{%endif%}>Select machine</a>'
 
         self.add_column(title="Select machine",
                         static_data_name="add-del-layers",
@@ -355,11 +340,7 @@ class RecipesTable(ToasterTable, ProjectFiltersMixin):
     def setup_queryset(self, *args, **kwargs):
         prj = Project.objects.get(pk = kwargs['pid'])
 
-        self.queryset = Recipe.objects.filter(layer_version__in = prj.compatible_layerversions())
-
-        search_maxids = map(lambda i: i[0], list(self.queryset.values('name').distinct().annotate(max_id=Max('id')).values_list('max_id')))
-
-        self.queryset = self.queryset.filter(id__in=search_maxids).select_related('layer_version', 'layer_version__layer', 'layer_version__up_branch', 'layer_source')
+        self.queryset = prj.get_all_compatible_recipes()
         self.queryset = self.queryset.order_by(self.default_orderby)
 
 
@@ -444,7 +425,7 @@ class LayerRecipesTable(RecipesTable):
         RecipesTable.setup_queryset(self, *args, **kwargs)
         self.queryset = self.queryset.filter(layer_version__pk=int(kwargs['layerid']))
 
-        self.static_context_extra['in_prj'] = ProjectLayer.objects.filter(Q(project=kwargs['pid']) and Q(layercommit=kwargs['layerid'])).count()
+        self.static_context_extra['in_prj'] = ProjectLayer.objects.filter(Q(project=kwargs['pid']) & Q(layercommit=kwargs['layerid'])).count()
 
     def setup_columns(self, *args, **kwargs):
         self.add_column(title="Recipe",
@@ -457,7 +438,7 @@ class LayerRecipesTable(RecipesTable):
                         field_name="get_description_or_summary")
 
 
-        build_recipe_template ='<button class="btn btn-block build-target-btn" data-target-name="{{data.name}}" {%if extra.in_prj == 0 %}disabled="disabled"{%endif%}>Build recipe</button>'
+        build_recipe_template ='<button class="btn btn-block build-recipe-btn" data-recipe-name="{{data.name}}" {%if extra.in_prj == 0 %}disabled="disabled"{%endif%}>Build recipe</button>'
 
         self.add_column(title="Build recipe",
                         static_data_name="add-del-layers",

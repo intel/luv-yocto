@@ -15,7 +15,10 @@ SDK_RDEPENDS_append_task-populate-sdk-ext = " ${SDK_TARGETS}"
 
 SDK_RELOCATE_AFTER_INSTALL_task-populate-sdk-ext = "0"
 
-SDK_META_CONF_WHITELIST ?= "MACHINE DISTRO PACKAGE_CLASSES"
+SDK_LOCAL_CONF_WHITELIST ?= ""
+SDK_LOCAL_CONF_BLACKLIST ?= "CONF_VERSION BB_NUMBER_THREADS PARALLEL_MAKE PRSERV_HOST"
+SDK_INHERIT_BLACKLIST ?= "buildhistory icecc"
+SDK_UPDATE_URL ?= ""
 
 SDK_TARGETS ?= "${PN}"
 OE_INIT_ENV_SCRIPT ?= "oe-init-build-env"
@@ -83,12 +86,18 @@ python copy_buildsystem () {
     config.set('General', 'bitbake_subdir', conf_bbpath)
     config.set('General', 'init_path', conf_initpath)
     config.set('General', 'core_meta_subdir', core_meta_subdir)
+    config.add_section('SDK')
+    config.set('SDK', 'sdk_targets', d.getVar('SDK_TARGETS', True))
+    updateurl = d.getVar('SDK_UPDATE_URL', True)
+    if updateurl:
+        config.set('SDK', 'updateserver', updateurl)
     bb.utils.mkdirhier(os.path.join(baseoutpath, 'conf'))
     with open(os.path.join(baseoutpath, 'conf', 'devtool.conf'), 'w') as f:
         config.write(f)
 
     # Create a layer for new recipes / appends
-    bb.process.run("devtool --basepath %s create-workspace --create-only %s" % (baseoutpath, os.path.join(baseoutpath, 'workspace')))
+    bbpath = d.getVar('BBPATH', True)
+    bb.process.run(['devtool', '--bbpath', bbpath, '--basepath', baseoutpath, 'create-workspace', '--create-only', os.path.join(baseoutpath, 'workspace')])
 
     # Create bblayers.conf
     bb.utils.mkdirhier(baseoutpath + '/conf')
@@ -108,19 +117,34 @@ python copy_buildsystem () {
         f.write('    "\n')
 
     # Create local.conf
+    local_conf_whitelist = (d.getVar('SDK_LOCAL_CONF_WHITELIST', True) or '').split()
+    local_conf_blacklist = (d.getVar('SDK_LOCAL_CONF_BLACKLIST', True) or '').split()
+    def handle_var(varname, origvalue, op, newlines):
+        if varname in local_conf_blacklist or (origvalue.strip().startswith('/') and not varname in local_conf_whitelist):
+            newlines.append('# Removed original setting of %s\n' % varname)
+            return None, op, 0, True
+        else:
+            return origvalue, op, 0, True
+    varlist = ['[^#=+ ]*']
+    builddir = d.getVar('TOPDIR', True)
+    with open(builddir + '/conf/local.conf', 'r') as f:
+        oldlines = f.readlines()
+    (updated, newlines) = bb.utils.edit_metadata(oldlines, varlist, handle_var)
+
     with open(baseoutpath + '/conf/local.conf', 'w') as f:
         f.write('# WARNING: this configuration has been automatically generated and in\n')
         f.write('# most cases should not be edited. If you need more flexibility than\n')
         f.write('# this configuration provides, it is strongly suggested that you set\n')
         f.write('# up a proper instance of the full build system and use that instead.\n\n')
+        for line in newlines:
+            if line.strip() and not line.startswith('#'):
+                f.write(line)
 
         f.write('INHERIT += "%s"\n\n' % 'uninative')
         f.write('CONF_VERSION = "%s"\n\n' % d.getVar('CONF_VERSION', False))
 
-        # This is a bit of a hack, but we really don't want these dependencies
-        # (we're including them in the SDK as nativesdk- versions instead)
-        f.write('POKYQEMUDEPS_forcevariable = ""\n\n')
-        f.write('EXTRA_IMAGEDEPENDS_remove = "qemu-native qemu-helper-native"\n\n')
+        # Some classes are not suitable for SDK, remove them from INHERIT
+        f.write('INHERIT_remove = "%s"\n' % d.getVar('SDK_INHERIT_BLACKLIST'))
 
         # Bypass the default connectivity check if any
         f.write('CONNECTIVITY_CHECK_URIS = ""\n\n')
@@ -133,8 +157,6 @@ python copy_buildsystem () {
         # Ensure locked sstate cache objects are re-used without error
         f.write('SIGGEN_LOCKEDSIGS_CHECK_LEVEL = "warn"\n\n')
 
-        for varname in d.getVar('SDK_META_CONF_WHITELIST', True).split():
-            f.write('%s = "%s"\n' % (varname, d.getVar(varname, True)))
         f.write('require conf/locked-sigs.inc\n')
         f.write('require conf/work-config.inc\n')
 
@@ -162,13 +184,21 @@ python copy_buildsystem () {
         pass
 }
 
+def extsdk_get_buildtools_filename(d):
+    # This is somewhat of a hack
+    localdata = bb.data.createCopy(d)
+    localdata.setVar('PN', 'buildtools-tarball')
+    return localdata.expand('${SDK_NAME}-buildtools-nativesdk-standalone-*.sh')
+
 install_tools() {
 	install -d ${SDK_OUTPUT}/${SDKPATHNATIVE}${bindir_nativesdk}
-	ln -sr ${SDK_OUTPUT}/${SDKPATH}/${scriptrelpath}/devtool ${SDK_OUTPUT}/${SDKPATHNATIVE}${bindir_nativesdk}/devtool
-	ln -sr ${SDK_OUTPUT}/${SDKPATH}/${scriptrelpath}/recipetool ${SDK_OUTPUT}/${SDKPATHNATIVE}${bindir_nativesdk}/recipetool
+	lnr ${SDK_OUTPUT}/${SDKPATH}/${scriptrelpath}/devtool ${SDK_OUTPUT}/${SDKPATHNATIVE}${bindir_nativesdk}/devtool
+	lnr ${SDK_OUTPUT}/${SDKPATH}/${scriptrelpath}/recipetool ${SDK_OUTPUT}/${SDKPATHNATIVE}${bindir_nativesdk}/recipetool
 	touch ${SDK_OUTPUT}/${SDKPATH}/.devtoolbase
 
-	install ${SDK_DEPLOY}/${DISTRO}-${TCLIBC}-${SDK_ARCH}-buildtools-tarball-${TUNE_PKGARCH}-buildtools-nativesdk-standalone-${DISTRO_VERSION}.sh ${SDK_OUTPUT}/${SDKPATH}
+	# find latest buildtools-tarball and install it
+	buildtools_path=`ls -t1 ${SDK_DEPLOY}/${@extsdk_get_buildtools_filename(d)} | head -n1`
+	install $buildtools_path ${SDK_OUTPUT}/${SDKPATH}
 
 	install ${SDK_DEPLOY}/${BUILD_ARCH}-nativesdk-libc.tar.bz2 ${SDK_OUTPUT}/${SDKPATH}
 }
@@ -188,7 +218,7 @@ SDK_PRE_INSTALL_COMMAND_task-populate-sdk-ext = "${sdk_ext_preinst}"
 sdk_ext_postinst() {
 	printf "\nExtracting buildtools...\n"
 	cd $target_sdk_dir
-	printf "buildtools\ny" | ./*buildtools-tarball* > /dev/null
+	printf "buildtools\ny" | ./*buildtools-nativesdk-standalone* > /dev/null
 
 	# Make sure when the user sets up the environment, they also get
 	# the buildtools-tarball tools in their path.
@@ -204,11 +234,13 @@ sdk_ext_postinst() {
 	# For now this is where uninative.bbclass expects the tarball
 	mv *-nativesdk-libc.tar.* $target_sdk_dir/`dirname ${oe_init_build_env_path}`
 
-	printf "Preparing build system...\n"
-	# dash which is /bin/sh on Ubuntu will not preserve the
-	# current working directory when first ran, nor will it set $1 when
-	# sourcing a script. That is why this has to look so ugly.
-	sh -c ". buildtools/environment-setup* > preparing_build_system.log && cd $target_sdk_dir/`dirname ${oe_init_build_env_path}` && set $target_sdk_dir && . $target_sdk_dir/${oe_init_build_env_path} $target_sdk_dir >> preparing_build_system.log && bitbake ${SDK_TARGETS} >> preparing_build_system.log" || { echo "SDK preparation failed: see `pwd`/preparing_build_system.log" ; exit 1 ; }
+	if [ "$prepare_buildsystem" != "no" ]; then
+	    printf "Preparing build system...\n"
+	    # dash which is /bin/sh on Ubuntu will not preserve the
+	    # current working directory when first ran, nor will it set $1 when
+	    # sourcing a script. That is why this has to look so ugly.
+	    sh -c ". buildtools/environment-setup* > preparing_build_system.log && cd $target_sdk_dir/`dirname ${oe_init_build_env_path}` && set $target_sdk_dir && . $target_sdk_dir/${oe_init_build_env_path} $target_sdk_dir >> preparing_build_system.log && bitbake ${SDK_TARGETS} >> preparing_build_system.log" || { echo "SDK preparation failed: see `pwd`/preparing_build_system.log" ; exit 1 ; }
+	fi
 	echo done
 }
 

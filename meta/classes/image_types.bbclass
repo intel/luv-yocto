@@ -14,7 +14,7 @@ def imagetypes_getdepends(d):
     ctypes = d.getVar('COMPRESSIONTYPES', True).split()
     for type in (d.getVar('IMAGE_FSTYPES', True) or "").split():
         if type in ["vmdk", "vdi", "qcow2", "live", "iso", "hddimg"]:
-            type = "ext3"
+            type = "ext4"
         basetype = type
         for ctype in ctypes:
             if type.endswith("." + ctype):
@@ -49,8 +49,16 @@ oe_mkext234fs () {
 		extra_imagecmd=$@
 	fi
 
+	# If generating an empty image the size of the sparse block should be large
+	# enough to allocate an ext4 filesystem using 4096 bytes per inode, this is
+	# about 60K, so dd needs a minimum count of 60, with bs=1024 (bytes per IO)
+	eval local COUNT=\"0\"
+	eval local MIN_COUNT=\"60\"
+	if [ $ROOTFS_SIZE -lt $MIN_COUNT ]; then
+		eval COUNT=\"$MIN_COUNT\"
+	fi
 	# Create a sparse image block
-	dd if=/dev/zero of=${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.rootfs.$fstype seek=$ROOTFS_SIZE count=0 bs=1k
+	dd if=/dev/zero of=${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.rootfs.$fstype seek=$ROOTFS_SIZE count=$COUNT bs=1024
 	mkfs.$fstype -F $extra_imagecmd ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.rootfs.$fstype -d ${IMAGE_ROOTFS}
 }
 
@@ -71,7 +79,19 @@ IMAGE_CMD_btrfs () {
 IMAGE_CMD_squashfs = "mksquashfs ${IMAGE_ROOTFS} ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.rootfs.squashfs ${EXTRA_IMAGECMD} -noappend"
 IMAGE_CMD_squashfs-xz = "mksquashfs ${IMAGE_ROOTFS} ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.rootfs.squashfs-xz ${EXTRA_IMAGECMD} -noappend -comp xz"
 IMAGE_CMD_squashfs-lzo = "mksquashfs ${IMAGE_ROOTFS} ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.rootfs.squashfs-lzo ${EXTRA_IMAGECMD} -noappend -comp lzo"
-IMAGE_CMD_tar = "tar -cvf ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.rootfs.tar -C ${IMAGE_ROOTFS} ."
+
+# By default, tar from the host is used, which can be quite old. If
+# you need special parameters (like --xattrs) which are only supported
+# by GNU tar upstream >= 1.27, then override that default:
+# IMAGE_CMD_TAR = "tar --xattrs --xattrs-include=*"
+# IMAGE_DEPENDS_tar_append = " tar-replacement-native"
+# EXTRANATIVEPATH += "tar-native"
+#
+# The GNU documentation does not specify whether --xattrs-include is necessary.
+# In practice, it turned out to be not needed when creating archives and
+# required when extracting, but it seems prudent to use it in both cases.
+IMAGE_CMD_TAR ?= "tar"
+IMAGE_CMD_tar = "${IMAGE_CMD_TAR} -cvf ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.rootfs.tar -C ${IMAGE_ROOTFS} ."
 
 do_rootfs[cleandirs] += "${WORKDIR}/cpio_append"
 IMAGE_CMD_cpio () {
@@ -100,7 +120,11 @@ UBI_VOLNAME ?= "${MACHINE}-rootfs"
 multiubi_mkfs() {
 	local mkubifs_args="$1"
 	local ubinize_args="$2"
-	local vname="_$3"
+	if [ -z "$3" ]; then
+		local vname=""
+	else
+		local vname="_$3"
+	fi
 
 	echo \[ubifs\] > ubinize${vname}.cfg
 	echo mode=ubi >> ubinize${vname}.cfg
@@ -138,9 +162,21 @@ IMAGE_CMD_multiubi () {
 	done
 }
 
-IMAGE_CMD_ubi = "multiubi_mkfs "${MKUBIFS_ARGS}" "${UBINIZE_ARGS}" "${UBI_VOLNAME}""
+IMAGE_CMD_ubi () {
+	multiubi_mkfs "${MKUBIFS_ARGS}" "${UBINIZE_ARGS}"
+}
 
 IMAGE_CMD_ubifs = "mkfs.ubifs -r ${IMAGE_ROOTFS} -o ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.rootfs.ubifs ${MKUBIFS_ARGS}"
+
+IMAGE_CMD_wic () {
+	out=${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}
+	wks=${FILE_DIRNAME}/${IMAGE_BASENAME}.${MACHINE}.wks
+	[ -e $wks ] || wks=${FILE_DIRNAME}/${IMAGE_BASENAME}.wks
+	[ -e $wks ] || bbfatal "Kiskstart file $wks doesn't exist"
+	BUILDDIR=${TOPDIR} wic create $wks --vars ${STAGING_DIR_TARGET}/imgdata/ -e ${IMAGE_BASENAME} -o $out/
+	mv $out/build/${IMAGE_BASENAME}*.direct $out.rootfs.wic
+	rm -rf $out/
+}
 
 EXTRA_IMAGECMD = ""
 
@@ -170,6 +206,7 @@ IMAGE_DEPENDS_elf = "virtual/kernel mkelfimage-native"
 IMAGE_DEPENDS_ubi = "mtd-utils-native"
 IMAGE_DEPENDS_ubifs = "mtd-utils-native"
 IMAGE_DEPENDS_multiubi = "mtd-utils-native"
+IMAGE_DEPENDS_wic = "parted-native"
 
 # This variable is available to request which values are suitable for IMAGE_FSTYPES
 IMAGE_TYPES = " \
@@ -189,6 +226,7 @@ IMAGE_TYPES = " \
     vdi \
     qcow2 \
     elf \
+    wic wic.gz wic.bz2 wic.lzma \
 "
 
 COMPRESSIONTYPES = "gz bz2 lzma xz lz4 sum"
@@ -216,3 +254,7 @@ IMAGE_EXTENSION_live = "hddimg iso"
 # The IMAGE_TYPES_MASKED variable will be used to mask out from the IMAGE_FSTYPES,
 # images that will not be built at do_rootfs time: vmdk, vdi, qcow2, hddimg, iso, etc.
 IMAGE_TYPES_MASKED ?= ""
+
+# The WICVARS variable is used to define list of bitbake variables used in wic code
+# variables from this list is written to <image>.env file
+WICVARS ?= "BBLAYERS DEPLOY_DIR_IMAGE HDDDIR IMAGE_BASENAME IMAGE_BOOT_FILES IMAGE_LINK_NAME IMAGE_ROOTFS INITRAMFS_FSTYPES INITRD ISODIR MACHINE_ARCH ROOTFS_SIZE STAGING_DATADIR STAGING_DIR_NATIVE STAGING_LIBDIR TARGET_SYS"

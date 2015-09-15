@@ -32,7 +32,9 @@ ROOTFS_BOOTSTRAP_INSTALL = "${@bb.utils.contains("IMAGE_FEATURES", "package-mana
 
 # packages to install from features
 FEATURE_INSTALL = "${@' '.join(oe.packagegroup.required_packages(oe.data.typed_value('IMAGE_FEATURES', d), d))}"
+FEATURE_INSTALL[vardepvalue] = "${FEATURE_INSTALL}"
 FEATURE_INSTALL_OPTIONAL = "${@' '.join(oe.packagegroup.optional_packages(oe.data.typed_value('IMAGE_FEATURES', d), d))}"
+FEATURE_INSTALL_OPTIONAL[vardepvalue] = "${FEATURE_INSTALL_OPTIONAL}"
 
 # Define some very basic feature package groups
 FEATURE_PACKAGES_package-management = "${ROOTFS_PKGMANAGE}"
@@ -456,6 +458,20 @@ rootfs_trim_schemas () {
 			mv $schema.new $schema
 		fi
 	done
+}
+
+rootfs_check_host_user_contaminated () {
+	contaminated="${WORKDIR}/host-user-contaminated.txt"
+	HOST_USER_UID="$(PSEUDO_UNLOAD=1 id -u)"
+	HOST_USER_GID="$(PSEUDO_UNLOAD=1 id -g)"
+
+	find "${IMAGE_ROOTFS}" -wholename "${IMAGE_ROOTFS}/home" -prune \
+	    -user "$HOST_USER_UID" -o -group "$HOST_USER_GID" >"$contaminated"
+
+	if [ -s "$contaminated" ]; then
+		echo "WARNING: Paths in the rootfs are owned by the same user or group as the user running bitbake. See the logfile for the specific paths."
+		cat "$contaminated" | sed "s,^,  ,"
+	fi
 }
 
 # Make any absolute links in a sysroot relative

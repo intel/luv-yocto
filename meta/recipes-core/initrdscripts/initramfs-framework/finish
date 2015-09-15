@@ -22,7 +22,20 @@ finish_run() {
 			fi
 
 			if [ -e "$bootparam_root" ]; then
-				mount $bootparam_root $ROOTFS_DIR
+				flags=""
+				if [ -n "$bootparam_ro" ]; then
+					if [  -n "$bootparam_rootflags" ]; then
+						bootparam_rootflags="$bootparam_rootflags,"
+					fi
+					bootparam_rootflags="${bootparam_rootflags}ro"
+				fi
+				if [ -n "$bootparam_rootflags" ]; then
+					flags="$flags -o$bootparam_rootflags"
+				fi
+				if [ -n "$bootparam_rootfstype" ]; then
+					flags="$flags -t$bootparam_rootfstype"
+				fi
+				mount $flags $bootparam_root $ROOTFS_DIR
 			else
 				debug "root '$bootparam_root' doesn't exist."
 			fi
@@ -40,7 +53,7 @@ finish_run() {
 		mount --move /sys $ROOTFS_DIR/sys
 
 		cd $ROOTFS_DIR
-		exec switch_root -c /dev/console $ROOTFS_DIR /sbin/init
+		exec switch_root -c /dev/console $ROOTFS_DIR ${bootparam_init:-/sbin/init}
 	else
 		debug "No rootfs has been set"
 	fi

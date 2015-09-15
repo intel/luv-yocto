@@ -12,7 +12,31 @@ import unittest
 import inspect
 import subprocess
 import bb
-from oeqa.utils.decorators import LogResults
+from oeqa.utils.decorators import LogResults, gettag
+from sys import exc_info, exc_clear
+
+def getVar(obj):
+    #extend form dict, if a variable didn't exists, need find it in testcase
+    class VarDict(dict):
+        def __getitem__(self, key):
+            return gettag(obj, key)
+    return VarDict()
+
+def checkTags(tc, tagexp):
+    return eval(tagexp, None, getVar(tc))
+
+
+def filterByTagExp(testsuite, tagexp):
+    if not tagexp:
+        return testsuite
+    caseList = []
+    for each in testsuite:
+        if not isinstance(each, unittest.BaseTestSuite):
+            if checkTags(each, tagexp):
+                caseList.append(each)
+        else:
+            caseList.append(filterByTagExp(each, tagexp))
+    return testsuite.__class__(caseList)
 
 def loadTests(tc, type="runtime"):
     if type == "runtime":
@@ -28,6 +52,7 @@ def loadTests(tc, type="runtime"):
     testloader = unittest.TestLoader()
     testloader.sortTestMethodsUsing = None
     suites = [testloader.loadTestsFromName(name) for name in tc.testslist]
+    suites = filterByTagExp(suites, getattr(tc, "tagexp", None))
 
     def getTests(test):
         '''Return all individual tests executed when running the suite.'''
@@ -85,6 +110,8 @@ def runTests(tc, type="runtime"):
 
     suite = loadTests(tc, type)
     bb.note("Test modules  %s" % tc.testslist)
+    if hasattr(tc, "tagexp") and tc.tagexp:
+        bb.note("Filter test cases by tags: %s" % tc.tagexp)
     bb.note("Found %s tests" % suite.countTestCases())
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
@@ -98,9 +125,9 @@ class oeTest(unittest.TestCase):
 
     @classmethod
     def hasPackage(self, pkg):
-
-        if re.search(pkg, oeTest.tc.pkgmanifest):
-            return True
+        for item in oeTest.tc.pkgmanifest.split('\n'):
+            if re.match(pkg, item):
+                return True
         return False
 
     @classmethod
@@ -116,6 +143,26 @@ class oeRuntimeTest(oeTest):
     def __init__(self, methodName='runTest'):
         self.target = oeRuntimeTest.tc.target
         super(oeRuntimeTest, self).__init__(methodName)
+
+    def setUp(self):
+        # Check if test needs to run
+        if self.tc.sigterm:
+            self.fail("Got SIGTERM")
+        elif (type(self.target).__name__ == "QemuTarget"):
+            self.assertTrue(self.target.check(), msg = "Qemu not running?")
+
+    def tearDown(self):
+        # If a test fails or there is an exception
+        if not exc_info() == (None, None, None):
+            exc_clear()
+            #Only dump for QemuTarget
+            if (type(self.target).__name__ == "QemuTarget"):
+                self.tc.host_dumper.create_dir(self._testMethodName)
+                self.tc.host_dumper.dump_host()
+                self.target.target_dumper.dump_target(
+                        self.tc.host_dumper.dump_dir)
+                print ("%s dump data stored in %s" % (self._testMethodName,
+                         self.tc.host_dumper.dump_dir))
 
     #TODO: use package_manager.py to install packages on any type of image
     def install_packages(self, packagelist):

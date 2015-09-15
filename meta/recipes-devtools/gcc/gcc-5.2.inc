@@ -71,6 +71,8 @@ SRC_URI = "\
            file://0037-pr65779.patch \
            file://0038-fix-g++-sysroot.patch \
            file://0039-libcc1-fix-libcc1-s-install-path-and-rpath.patch \
+           file://0040-nativesdk-gcc-support.patch \
+           file://0041-handle-target-sysroot-multilib.patch \
           "
 
 BACKPORTS = ""

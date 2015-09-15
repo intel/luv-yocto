@@ -1,6 +1,8 @@
 SUMMARY = "Creates metadata indexes for RPM package repositories"
 HOMEPAGE = "http://createrepo.baseurl.org/"
 
+RECIPE_NO_UPDATE_REASON = "Versions after 0.9.* use YUM, so we hold at 0.4.11"
+
 LICENSE = "GPLv2+"
 LIC_FILES_CHKSUM = "file://COPYING;md5=18810669f13b87348459e611d31ab760"
 
@@ -9,14 +11,15 @@ RDEPENDS_${PN}_class-target = "libxml2-python"
 
 PR = "r9"
 
-SRC_URI= "http://createrepo.baseurl.org/download/${BP}.tar.gz \
-          file://fix-native-install.patch \
-          file://python-scripts-should-use-interpreter-from-env.patch \
-	  file://createrepo-rpm549.patch \
-	  file://recommends.patch \
-	  file://createrepo-dbpath.patch \
-	  file://rpm-createsolvedb.py \
-         "
+SRC_URI = "http://createrepo.baseurl.org/download/${BP}.tar.gz \
+           file://fix-native-install.patch \
+           file://python-scripts-should-use-interpreter-from-env.patch \
+           file://createrepo-rpm549.patch \
+           file://recommends.patch \
+           file://createrepo-dbpath.patch \
+           file://dumpMetadata-disable-signature-validation.patch \
+           file://rpm-createsolvedb.py \
+           "
 
 SRC_URI[md5sum] = "3e9ccf4abcffe3f49af078c83611eda2"
 SRC_URI[sha256sum] = "a73ae11a0dcde8bde36d900bc3f7f8f1083ba752c70a5c61b72d1e1e7608f21b"

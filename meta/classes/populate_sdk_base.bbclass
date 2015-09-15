@@ -55,6 +55,7 @@ SDK_PRE_INSTALL_COMMAND ?= ""
 SDK_POST_INSTALL_COMMAND ?= ""
 SDK_RELOCATE_AFTER_INSTALL ?= "1"
 
+SDKEXTPATH ?= "~/${@d.getVar('DISTRO', True)}_sdk"
 SDK_TITLE ?= "${@d.getVar('DISTRO_NAME', True) or d.getVar('DISTRO', True)} SDK"
 
 SDK_TARGET_MANIFEST = "${SDK_DEPLOY}/${TOOLCHAIN_OUTPUTNAME}.target.manifest"
@@ -79,6 +80,11 @@ python write_host_sdk_manifest () {
 
 POPULATE_SDK_POST_TARGET_COMMAND_append = " write_target_sdk_manifest ; "
 POPULATE_SDK_POST_HOST_COMMAND_append = " write_host_sdk_manifest; "
+
+# Some archs override this, we need the nativesdk version
+# turns out this is hard to get from the datastore due to TRANSLATED_TARGET_ARCH
+# manipulation.
+SDK_OLDEST_KERNEL = "2.6.32"
 
 fakeroot python do_populate_sdk() {
     from oe.sdk import populate_sdk
@@ -154,7 +160,8 @@ EOF
 	# substitute variables
 	sed -i -e 's#@SDK_ARCH@#${SDK_ARCH}#g' \
 		-e 's#@SDKPATH@#${SDKPATH}#g' \
-		-e 's#@OLDEST_KERNEL@#${OLDEST_KERNEL}#g' \
+		-e 's#@SDKEXTPATH@#${SDKEXTPATH}#g' \
+		-e 's#@OLDEST_KERNEL@#${SDK_OLDEST_KERNEL}#g' \
 		-e 's#@REAL_MULTIMACH_TARGET_SYS@#${REAL_MULTIMACH_TARGET_SYS}#g' \
 		-e 's#@SDK_TITLE@#${SDK_TITLE}#g' \
 		-e 's#@SDK_VERSION@#${SDK_VERSION}#g' \

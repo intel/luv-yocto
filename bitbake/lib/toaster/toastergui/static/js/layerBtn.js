@@ -11,8 +11,7 @@ function layerBtnsInit(ctx) {
     var thisBtn = $(this);
 
     libtoaster.addRmLayer(layerObj, add, function (layerDepsList){
-      var alertMsg = $("#alert-msg");
-      alertMsg.html(libtoaster.makeLayerAddRmAlertMsg(layerObj, layerDepsList, add));
+      libtoaster.showChangeNotification(libtoaster.makeLayerAddRmAlertMsg(layerObj, layerDepsList, add));
 
       /* In-cell notification */
       var notification = $('<div id="temp-inline-notify" style="display: none; font-size: 11px; line-height: 1.3;" class="tooltip-inner"></div>');
@@ -53,8 +52,20 @@ function layerBtnsInit(ctx) {
         });
       }
 
-      $("#zone1alerts, #zone1alerts *").fadeIn();
     });
+  });
+
+  $(".build-recipe-btn").unbind('click');
+  $(".build-recipe-btn").click(function(e){
+    e.preventDefault();
+    var recipe = $(this).data('recipe-name');
+
+    libtoaster.startABuild(libtoaster.ctx.projectBuildsUrl,
+      libtoaster.ctx.projectId, recipe,
+      function(){
+        /* Success */
+        window.location.replace(libtoaster.ctx.projectBuildsUrl);
+      });
   });
 
   /* Setup the initial state of the buttons */

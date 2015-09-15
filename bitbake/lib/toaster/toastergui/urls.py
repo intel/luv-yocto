@@ -21,6 +21,7 @@ from django.views.generic import RedirectView, TemplateView
 
 from django.http import HttpResponseBadRequest
 from toastergui import tables
+from toastergui import typeaheads
 
 urlpatterns = patterns('toastergui.views',
         # landing page
@@ -87,13 +88,13 @@ urlpatterns = patterns('toastergui.views',
         url(r'^project/(?P<pid>\d+)/machines/$',
             tables.MachinesTable.as_view(template_name="generic-toastertable-page.html"),
             { 'table_name': tables.MachinesTable.__name__.lower(),
-              'title' : 'All compatible machines' },
+              'title' : 'Compatible machines' },
             name="projectmachines"),
 
         url(r'^project/(?P<pid>\d+)/recipes/$',
             tables.RecipesTable.as_view(template_name="generic-toastertable-page.html"),
             { 'table_name': tables.RecipesTable.__name__.lower(),
-              'title' : 'All compatible recipes' },
+              'title' : 'Compatible recipes' },
             name="projecttargets"),
 
         url(r'^project/(?P<pid>\d+)/availablerecipes/$',
@@ -105,12 +106,11 @@ urlpatterns = patterns('toastergui.views',
         url(r'^project/(?P<pid>\d+)/layers/$',
             tables.LayersTable.as_view(template_name="generic-toastertable-page.html"),
             { 'table_name': tables.LayersTable.__name__.lower(),
-              'title' : 'All compatible layers' },
+              'title' : 'Compatible layers' },
             name="projectlayers"),
 
         url(r'^project/(?P<pid>\d+)/layer/(?P<layerid>\d+)$',
-            tables.LayerDetails.as_view(template_name='layerdetails.html'),
-            name='layerdetails'),
+            'layerdetails', name='layerdetails'),
 
         url(r'^project/(?P<pid>\d+)/layer/(?P<layerid>\d+)/recipes/$',
             tables.LayerRecipesTable.as_view(template_name="generic-toastertable-page.html"),
@@ -125,11 +125,28 @@ urlpatterns = patterns('toastergui.views',
             name=tables.LayerMachinesTable.__name__.lower()),
 
 
-        url(r'^xhr_datatypeahead/(?P<pid>\d+)$', 'xhr_datatypeahead', name='xhr_datatypeahead'),
-        url(r'^xhr_configvaredit/(?P<pid>\d+)$', 'xhr_configvaredit', name='xhr_configvaredit'),
+        # typeahead api end points
+        url(r'^xhr_typeahead/(?P<pid>\d+)/layers$',
+            typeaheads.LayersTypeAhead.as_view(), name='xhr_layerstypeahead'),
+        url(r'^xhr_typeahead/(?P<pid>\d+)/machines$',
+            typeaheads.MachinesTypeAhead.as_view(), name='xhr_machinestypeahead'),
+        url(r'^xhr_typeahead/(?P<pid>\d+)/recipes$',
+            typeaheads.RecipesTypeAhead.as_view(), name='xhr_recipestypeahead'),
+        url(r'^xhr_typeahead/projects$',
+            typeaheads.ProjectsTypeAhead.as_view(), name='xhr_projectstypeahead'),
+
+
+
+        url(r'^xhr_testreleasechange/(?P<pid>\d+)$', 'xhr_testreleasechange',
+            name='xhr_testreleasechange'),
+        url(r'^xhr_configvaredit/(?P<pid>\d+)$', 'xhr_configvaredit',
+            name='xhr_configvaredit'),
 
         url(r'^xhr_importlayer/$', 'xhr_importlayer', name='xhr_importlayer'),
         url(r'^xhr_updatelayer/$', 'xhr_updatelayer', name='xhr_updatelayer'),
+
+        # JS Unit tests
+        url(r'^js-unit-tests/$', 'jsunittests', name='js-unit-tests'),
 
         # default redirection
         url(r'^$', RedirectView.as_view( url= 'landing')),

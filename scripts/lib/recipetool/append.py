@@ -33,10 +33,6 @@ logger = logging.getLogger('recipetool')
 
 tinfoil = None
 
-def plugin_init(pluginlist):
-    # Don't need to do anything here right now, but plugins must have this function defined
-    pass
-
 def tinfoil_init(instance):
     global tinfoil
     tinfoil = instance
@@ -337,7 +333,7 @@ def appendfile(args):
         return 3
 
 
-def appendsrc(args, files, rd):
+def appendsrc(args, files, rd, extralines=None):
     import oe.recipeutils
 
     srcdir = rd.getVar('S', True)
@@ -352,7 +348,7 @@ def appendsrc(args, files, rd):
         simplified[str(simple_uri)] = uri
 
     copyfiles = {}
-    extralines = []
+    extralines = extralines or []
     for newfile, srcfile in files.iteritems():
         src_destdir = os.path.dirname(srcfile)
         if not args.use_workdir:

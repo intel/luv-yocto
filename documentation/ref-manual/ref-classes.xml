@@ -51,6 +51,22 @@
         that produce executable binaries (such as building the cross-compiler
         and a C library as pre-requisites, and splitting out of debug symbols
         during packaging).
+        <note>
+            Unlike e.g. Debian, OpenEmbedded recipes that produce packages
+            which
+            <link linkend='var-RDEPENDS'><filename>RDEPENDS</filename></link>
+            on
+            <link linkend='var-TUNE_PKGARCH'><filename>TUNE_PKGARCH</filename></link>
+            packages should never be made <filename>allarch</filename>, even
+            if they do not produce architecture-specific output. This would
+            cause the do_package_write_* tasks to have different signatures
+            for
+            <link linkend='var-MACHINE'><filename>MACHINE</filename></link>s
+            with different
+            <link linkend='var-TUNE_PKGARCH'><filename>TUNE_PKGARCH</filename></link>,
+            thus unnecessary rebuilds every single time an image for a different
+            MACHINE is built (even without any change to the recipe).
+        </note>
     </para>
 
     <para>
@@ -77,6 +93,10 @@
         For more details on the source archiver, see the
         "<ulink url='&YOCTO_DOCS_DEV_URL;#maintaining-open-source-license-compliance-during-your-products-lifecycle'>Maintaining Open Source License Compliance During Your Product's Lifecycle</ulink>"
         section in the Yocto Project Development Manual.
+        You can also see the
+        <link linkend='var-ARCHIVER_MODE'><filename>ARCHIVER_MODE</filename></link>
+        variable for information about the variable flags (varflags)
+        that help control archive creation.
     </para>
 </section>
 
@@ -856,7 +876,7 @@
         <literallayout class='monospaced'>
      inherit extrausers
      EXTRA_USERS_PARAMS = "\
-         useradd -P 1876*18 root; \
+         usermod -P 1876*18 root; \
          "
         </literallayout>
     </para>
@@ -2093,7 +2113,8 @@
         You can create a recipe that builds tools that run on the SDK machine
         a couple different ways:
         <itemizedlist>
-            <listitem><para>Create a <replaceable>myrecipe</replaceable><filename>-nativesdk.bb</filename>
+            <listitem><para>Create a
+                <filename>nativesdk-</filename><replaceable>myrecipe</replaceable><filename>.bb</filename>
                 recipe that inherits the <filename>nativesdk</filename> class.
                 If you use this method, you must order the inherit statement
                 in the recipe after all other inherit statements so that the
@@ -2132,7 +2153,7 @@
     </para>
 
     <para>
-        A number of classes exist that are could be generally useful in
+        A number of classes exist that could be generally useful in
         OE-Core but are never actually used within OE-Core itself.
         The <filename>oelint</filename> class is one such example.
         However, being aware of this class can reduce the proliferation of

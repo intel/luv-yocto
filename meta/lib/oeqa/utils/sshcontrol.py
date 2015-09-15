@@ -10,7 +10,6 @@ import subprocess
 import time
 import os
 import select
-import copy
 
 
 class SSHProcess(object):
@@ -33,7 +32,7 @@ class SSHProcess(object):
         self.logfile = None
 
         # Unset DISPLAY which means we won't trigger SSH_ASKPASS
-        env = copy.copy(os.environ)
+        env = os.environ.copy()
         if "DISPLAY" in env:
             del env['DISPLAY']
         self.options['env'] = env
@@ -43,7 +42,7 @@ class SSHProcess(object):
             with open(self.logfile, "a") as f:
                f.write("%s" % msg)
 
-    def run(self, command, timeout=None, logfile=None):
+    def _run(self, command, timeout=None, logfile=None):
         self.logfile = logfile
         self.starttime = time.time()
         output = ''
@@ -80,8 +79,18 @@ class SSHProcess(object):
 
         self.status = self.process.wait()
         self.output = output.rstrip()
-        return (self.status, self.output)
 
+    def run(self, command, timeout=None, logfile=None):
+        try:
+            self._run(command, timeout, logfile)
+        except:
+            # Need to guard against a SystemExit or other exception occuring whilst running
+            # and ensure we don't leave a process behind.
+            if self.process.poll() is None:
+                self.process.kill()
+                self.status = self.process.wait()
+            raise
+        return (self.status, self.output)
 
 class SSHControl(object):
     def __init__(self, ip, logfile=None, timeout=300, user='root', port=None):

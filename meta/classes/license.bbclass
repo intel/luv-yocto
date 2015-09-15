@@ -39,7 +39,7 @@ python license_create_manifest() {
         return 0
 
     pkg_dic = {}
-    for pkg in image_list_installed_packages(d).split("\n"):
+    for pkg in image_list_installed_packages(d).splitlines():
         pkg_info = os.path.join(d.getVar('PKGDATA_DIR', True),
                                 'runtime-reverse', pkg)
         pkg_name = os.path.basename(os.readlink(pkg_info))
@@ -375,8 +375,8 @@ def incompatible_license(d, dont_want_licenses, package=None):
     # Handles an "or" or two license sets provided by
     # flattened_licenses(), pick one that works if possible.
     def choose_lic_set(a, b):
-        return a if all(oe.license.license_ok(lic, dont_want_licenses) \
-		 for lic in a) else b
+        return a if all(oe.license.license_ok(canonical_license(d, lic), 
+                            dont_want_licenses) for lic in a) else b
 
     try:
         licenses = oe.license.flattened_licenses(license, choose_lic_set)

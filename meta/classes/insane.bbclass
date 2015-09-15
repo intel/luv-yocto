@@ -11,6 +11,7 @@
 #  -Check if packages contains .debug directories or .so files
 #   where they should be in -dev or -dbg
 #  -Check if config.log contains traces to broken autoconf tests
+#  -Check invalid characters (non-utf8) on some package metadata
 #  -Ensure that binaries in base_[bindir|sbindir|libdir] do not link
 #   into exec_prefix
 #  -Check that scripts in base_[bindir|sbindir|libdir] do not reference
@@ -31,12 +32,16 @@ WARN_QA ?= "ldflags useless-rpaths rpaths staticdev libdir xorg-driver-abi \
             installed-vs-shipped compile-host-path install-host-path \
             pn-overrides infodir build-deps file-rdeps \
             unknown-configure-option symlink-to-sysroot multilib \
+            invalid-pkgconfig host-user-contaminated \
             "
 ERROR_QA ?= "dev-so debug-deps dev-deps debug-files arch pkgconfig la \
             perms dep-cmp pkgvarcheck perm-config perm-line perm-link \
             split-strip packages-list pkgv-undefined var-undefined \
-            version-going-backwards expanded-d \
+            version-going-backwards expanded-d invalid-chars \
             "
+FAKEROOT_QA = "host-user-contaminated"
+FAKEROOT_QA[doc] = "QA tests which need to run under fakeroot. If any \
+enabled tests are listed here, the do_package_qa task will run under fakeroot."
 
 ALL_QA = "${WARN_QA} ${ERROR_QA}"
 
@@ -259,7 +264,7 @@ def package_qa_check_dev(path, name, d, elf, messages):
     """
 
     if not name.endswith("-dev") and not name.endswith("-dbg") and not name.endswith("-ptest") and not name.startswith("nativesdk-") and path.endswith(".so") and os.path.islink(path):
-        messages["dev-so"] = "non -dev/-dbg/-nativesdk package contains symlink .so: %s path '%s'" % \
+        messages["dev-so"] = "non -dev/-dbg/nativesdk- package contains symlink .so: %s path '%s'" % \
                  (name, package_qa_clean_path(path,d))
 
 QAPATHTEST[staticdev] = "package_qa_check_staticdev"
@@ -946,6 +951,57 @@ def package_qa_check_expanded_d(path,name,d,elf,messages):
                         sane = False
     return sane
 
+def package_qa_check_encoding(keys, encode, d):
+    def check_encoding(key,enc):
+        sane = True
+        value = d.getVar(key, True)
+        if value:
+            try:
+                s = unicode(value, enc)
+            except UnicodeDecodeError as e:
+                error_msg = "%s has non %s characters" % (key,enc)
+                sane = False
+                package_qa_handle_error("invalid-chars", error_msg, d)
+        return sane
+
+    for key in keys:
+        sane = check_encoding(key, encode)
+        if not sane:
+            break
+
+HOST_USER_UID := "${@os.getuid()}"
+HOST_USER_GID := "${@os.getgid()}"
+
+QAPATHTEST[host-user-contaminated] = "package_qa_check_host_user"
+def package_qa_check_host_user(path, name, d, elf, messages):
+    """Check for paths outside of /home which are owned by the user running bitbake."""
+
+    if not os.path.lexists(path):
+        return
+
+    dest = d.getVar('PKGDEST', True)
+    home = os.path.join(dest, 'home')
+    if path == home or path.startswith(home + os.sep):
+        return
+
+    try:
+        stat = os.lstat(path)
+    except OSError as exc:
+        import errno
+        if exc.errno != errno.ENOENT:
+            raise
+    else:
+        check_uid = int(d.getVar('HOST_USER_UID', True))
+        if stat.st_uid == check_uid:
+            messages["host-user-contaminated"] = "%s is owned by uid %d, which is the same as the user running bitbake. This may be due to host contamination" % (path, check_uid)
+            return False
+
+        check_gid = int(d.getVar('HOST_USER_GID', True))
+        if stat.st_gid == check_gid:
+            messages["host-user-contaminated"] = "%s is owned by gid %d, which is the same as the user running bitbake. This may be due to host contamination" % (path, check_gid)
+            return False
+    return True
+
 # The PACKAGE FUNC to scan each package
 python do_package_qa () {
     import subprocess
@@ -954,6 +1010,9 @@ python do_package_qa () {
     bb.note("DO PACKAGE QA")
 
     bb.build.exec_func("read_subpackage_metadata", d)
+
+    # Check non UTF-8 characters on recipe's metadata
+    package_qa_check_encoding(['DESCRIPTION', 'SUMMARY', 'LICENSE', 'SECTION'], 'utf-8', d)
 
     logdir = d.getVar('T', True)
     pkg = d.getVar('PN', True)
@@ -1139,6 +1198,16 @@ Missing inherit gettext?""" % (gt, config))
                 package_qa_handle_error("unknown-configure-option", error_msg, d)
         except subprocess.CalledProcessError:
             pass
+
+    # Check invalid PACKAGECONFIG
+    pkgconfig = (d.getVar("PACKAGECONFIG", True) or "").split()
+    if pkgconfig:
+        pkgconfigflags = d.getVarFlags("PACKAGECONFIG") or {}
+        for pconfig in pkgconfig:
+            if pconfig not in pkgconfigflags:
+                pn = d.getVar('PN', True)
+                error_msg = "%s: invalid PACKAGECONFIG: %s" % (pn, pconfig)
+                package_qa_handle_error("invalid-pkgconfig", error_msg, d)
 }
 
 python do_qa_unpack() {
@@ -1199,6 +1268,11 @@ python () {
         for var in 'RDEPENDS', 'RRECOMMENDS', 'RSUGGESTS', 'RCONFLICTS', 'RPROVIDES', 'RREPLACES', 'FILES', 'pkg_preinst', 'pkg_postinst', 'pkg_prerm', 'pkg_postrm', 'ALLOW_EMPTY':
             if d.getVar(var, False):
                 issues.append(var)
+
+        fakeroot_tests = d.getVar('FAKEROOT_QA', True).split()
+        if set(tests) & set(fakeroot_tests):
+            d.setVarFlag('do_package_qa', 'fakeroot', '1')
+            d.appendVarFlag('do_package_qa', 'depends', ' virtual/fakeroot-native:do_populate_sysroot')
     else:
         d.setVarFlag('do_package_qa', 'rdeptask', '')
     for i in issues:

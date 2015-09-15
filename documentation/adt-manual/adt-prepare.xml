@@ -465,9 +465,12 @@
         <para>
             To get the kernel and filesystem images, you either have to build them or download
             pre-built versions.
-            You can find examples for both these situations in the
-            "<ulink url='&YOCTO_DOCS_QS_URL;#test-run'>A Quick Test Run</ulink>" section of
-            the Yocto Project Quick Start.
+            For an example of how to build these images, see the
+            "<ulink url='&YOCTO_DOCS_QS_URL;#qs-buiding-images'>Buiding Images</ulink>"
+            section of the Yocto Project Quick Start.
+            For an example of downloading pre-build versions, see the
+            "<link linkend='using-pre-built'>Example Using Pre-Built Binaries and QEMU</link>"
+            section.
         </para>
 
         <para>
@@ -480,8 +483,8 @@
             and are ideal for experimentation using Yocto Project.
             For information on the image types you can build using the OpenEmbedded build system,
             see the
-            "<ulink url='&YOCTO_DOCS_REF_URL;#ref-images'>Images</ulink>" chapter in
-            the Yocto Project Reference Manual.
+            "<ulink url='&YOCTO_DOCS_REF_URL;#ref-images'>Images</ulink>"
+            chapter in the Yocto Project Reference Manual.
         </para>
 
         <para>
@@ -492,62 +495,28 @@
         </para>
 
         <para>
-            Furthermore, if you plan on remotely deploying and debugging your
-            application from within the
-            Eclipse IDE, you must have an image that contains the Yocto Target Communication
-            Framework (TCF) agent (<filename>tcf-agent</filename>).
-            By default, the Yocto Project provides only one type of pre-built
-            image that contains the <filename>tcf-agent</filename>.
-            And, those images are SDK (e.g.<filename>core-image-sato-sdk</filename>).
-        </para>
-
-        <para>
-            If you want to use a different image type that contains the <filename>tcf-agent</filename>,
-            you can do so one of two ways:
-            <itemizedlist>
-                <listitem><para>Modify the <filename>conf/local.conf</filename> configuration in
-                    the <ulink url='&YOCTO_DOCS_DEV_URL;#build-directory'>Build Directory</ulink>
-                    and then rebuild the image.
-                    With this method, you need to modify the
-                    <ulink url='&YOCTO_DOCS_REF_URL;#var-EXTRA_IMAGE_FEATURES'><filename>EXTRA_IMAGE_FEATURES</filename></ulink>
-                    variable to have the value of "tools-debug" before rebuilding the image.
-                    Once the image is rebuilt, the <filename>tcf-agent</filename> will be included
-                    in the image and is launched automatically after the boot.</para></listitem>
-                <listitem><para>Manually build the <filename>tcf-agent</filename>.
-                    To build the agent, follow these steps:
-                    <orderedlist>
-                        <listitem><para>Be sure the ADT is installed as described in the
-                            "<link linkend='installing-the-adt'>Installing the ADT and Toolchains</link>" section.
-                            </para></listitem>
-                        <listitem><para>Set up the cross-development environment as described in the
-                            "<link linkend='setting-up-the-cross-development-environment'>Setting
-                            Up the Cross-Development Environment</link>" section.</para></listitem>
-                        <listitem><para>Get the <filename>tcf-agent</filename> source code using
-                            the following commands:
-                            <literallayout class='monospaced'>
-     $ git clone http://git.eclipse.org/gitroot/tcf/org.eclipse.tcf.agent.git
-     $ cd org.eclipse.tcf.agent/agent
-                            </literallayout></para></listitem>
-                        <listitem><para>Locate the
-                            <filename>Makefile.inc</filename> file inside the
-                            <filename>agent</filename> folder and modify it
-                            for the cross-compilation environment by setting the
-                            <filename>OPSYS</filename> and
-                            <ulink url='&YOCTO_DOCS_REF_URL;#var-MACHINE'><filename>MACHINE</filename></ulink>
-                            variables according to your target.
-                            </para></listitem>
-                        <listitem><para>Use the cross-development tools to build the
-                            <filename>tcf-agent</filename>.
-                            Before you "Make" the file, be sure your cross-tools are set up first.
-                            See the "<link linkend='makefile-based-projects'>Makefile-Based Projects</link>"
-                            section for information on how to make sure the cross-tools are set up
-                            correctly.</para>
-                            <para>If the build is successful, the <filename>tcf-agent</filename> output will
-                            be <filename>obj/$(OPSYS)/$(MACHINE)/Debug/agent</filename>.</para></listitem>
-                        <listitem><para>Deploy the agent into the image's root filesystem.</para></listitem>
-                    </orderedlist>
-                </para></listitem>
-            </itemizedlist>
+            If you plan on remotely deploying and debugging your
+            application from within the Eclipse IDE, you must have an image
+            that contains the Yocto Target Communication Framework (TCF) agent
+            (<filename>tcf-agent</filename>).
+            You can do this by including the <filename>eclipse-debug</filename>
+            image feature.
+            <note>
+                See the
+                "<ulink url='&YOCTO_DOCS_REF_URL;#ref-features-image'>Image Features</ulink>"
+                section in the Yocto Project Reference Manual for information on
+                image features.
+            </note>
+            To include the <filename>eclipse-debug</filename> image feature,
+            modify your <filename>local.conf</filename> file in the
+            <ulink url='&YOCTO_DOCS_DEV_URL;#build-directory'>Build Directory</ulink>
+            so that the
+            <ulink url='&YOCTO_DOCS_REF_URL;#var-EXTRA_IMAGE_FEATURES'><filename>EXTRA_IMAGE_FEATURES</filename></ulink>
+            variable includes the "eclipse-debug" feature.
+            After modifying the configuration file, you can rebuild the image.
+            Once the image is rebuilt, the <filename>tcf-agent</filename>
+            will be included in the image and is launched automatically after
+            the boot.
         </para>
     </section>
 
@@ -622,50 +591,56 @@
 
     <para>
         As an alternative to locating and downloading a toolchain installer,
-        you can build the toolchain installer one of two ways if you have a
-        <ulink url='&YOCTO_DOCS_DEV_URL;#build-directory'>Build Directory</ulink>:
-        <itemizedlist>
-            <listitem><para>
-                Use <filename>bitbake meta-toolchain</filename>.
-                This method requires you to still install the target
-                sysroot by installing and extracting it separately.
-                For information on how to install the sysroot, see the
-                "<link linkend='extracting-the-root-filesystem'>Extracting the Root Filesystem</link>"
-                section.
-                </para></listitem>
-            <listitem><para>
-                Use <filename>bitbake</filename> <replaceable>image</replaceable> <filename>-c populate_sdk</filename>.
-                This method has significant advantages over the previous method
-                because it results in a toolchain installer that contains the
-                sysroot that matches your target root filesystem.
-                </para>
+        you can build the toolchain installer if you have a
+        <ulink url='&YOCTO_DOCS_DEV_URL;#build-directory'>Build Directory</ulink>.
+        <note>
+            Although not the preferred method, it is also possible to use
+            <filename>bitbake meta-toolchain</filename> to build the toolchain
+            installer.
+            If you do use this method, you must separately install and extract
+            the target sysroot.
+            For information on how to install the sysroot, see the
+            "<link linkend='extracting-the-root-filesystem'>Extracting the Root Filesystem</link>"
+            section.
+        </note>
+    </para>
 
-                <para>Another powerful feature is that the toolchain is
-                completely self-contained.
-                The binaries are linked against their own copy of
-                <filename>libc</filename>, which results in no dependencies
-                on the target system.
-                To achieve this, the pointer to the dynamic loader is
-                configured at install time since that path cannot be dynamically
-                altered.
-                This is the reason for a wrapper around the
-                <filename>populate_sdk</filename> archive.</para>
+    <para>
+        To build the toolchain installer and populate the SDK image, use the
+        following command:
+        <literallayout class='monospaced'>
+     $ bitbake <replaceable>image</replaceable> -c populate_sdk
+        </literallayout>
+        The command results in a toolchain installer that contains the sysroot
+        that matches your target root filesystem.
+    </para>
 
-                <para>Another feature is that only one set of cross-canadian
-                toolchain binaries are produced per architecture.
-                This feature takes advantage of the fact that the target
-                hardware can be passed to <filename>gcc</filename> as a set of
-                compiler options.
-                Those options are set up by the environment script and
-                contained in variables such as
-                <ulink url='&YOCTO_DOCS_REF_URL;#var-CC'><filename>CC</filename></ulink>
-                and
-                <ulink url='&YOCTO_DOCS_REF_URL;#var-LD'><filename>LD</filename></ulink>.
-                This reduces the space needed for the tools.
-                Understand, however, that a sysroot is still needed for every
-                target since those binaries are target-specific.
-                </para></listitem>
-        </itemizedlist>
+    <para>
+        Another powerful feature is that the toolchain is completely
+        self-contained.
+        The binaries are linked against their own copy of
+        <filename>libc</filename>, which results in no dependencies
+        on the target system.
+        To achieve this, the pointer to the dynamic loader is
+        configured at install time since that path cannot be dynamically
+        altered.
+        This is the reason for a wrapper around the
+        <filename>populate_sdk</filename> archive.
+    </para>
+
+    <para>
+        Another feature is that only one set of cross-canadian toolchain
+        binaries are produced per architecture.
+        This feature takes advantage of the fact that the target hardware can
+        be passed to <filename>gcc</filename> as a set of compiler options.
+        Those options are set up by the environment script and contained in
+        variables such as
+        <ulink url='&YOCTO_DOCS_REF_URL;#var-CC'><filename>CC</filename></ulink>
+        and
+        <ulink url='&YOCTO_DOCS_REF_URL;#var-LD'><filename>LD</filename></ulink>.
+        This reduces the space needed for the tools.
+        Understand, however, that a sysroot is still needed for every target
+        since those binaries are target-specific.
     </para>
 
     <para>
@@ -748,6 +723,261 @@
         variable in the Yocto Project Reference Manual's variable glossary.
     </para>
 </section>
+
+    <section id='using-pre-built'>
+        <title>Example Using Pre-Built Binaries and QEMU</title>
+
+        <para>
+            If hardware, libraries and services are stable, you can get started by using a pre-built binary
+            of the filesystem image, kernel, and toolchain and run it using the QEMU emulator.
+            This scenario is useful for developing application software.
+        </para>
+
+        <mediaobject>
+            <imageobject>
+            <imagedata fileref="figures/using-a-pre-built-image.png" format="PNG" align='center' scalefit='1'/>
+            </imageobject>
+            <caption>
+                <para>Using a Pre-Built Image</para>
+            </caption>
+        </mediaobject>
+
+        <para>
+            For this scenario, you need to do several things:
+        </para>
+
+        <itemizedlist>
+            <listitem><para>Install the appropriate stand-alone toolchain tarball.</para></listitem>
+            <listitem><para>Download the pre-built image that will boot with QEMU.
+                You need to be sure to get the QEMU image that matches your target machine’s
+                architecture (e.g. x86, ARM, etc.).</para></listitem>
+            <listitem><para>Download the filesystem image for your target machine's architecture.
+                </para></listitem>
+            <listitem><para>Set up the environment to emulate the hardware and then start the QEMU emulator.
+                </para></listitem>
+        </itemizedlist>
+
+        <section id='installing-the-toolchain'>
+            <title>Installing the Toolchain</title>
+
+            <para>
+                You can download a tarball installer, which includes the
+                pre-built toolchain, the <filename>runqemu</filename>
+                script, and support files from the appropriate directory under
+                <ulink url='&YOCTO_TOOLCHAIN_DL_URL;'></ulink>.
+                Toolchains are available for 32-bit and 64-bit x86 development
+                systems from the <filename>i686</filename> and
+                <filename>x86_64</filename> directories, respectively.
+                The toolchains the Yocto Project provides are based off the
+                <filename>core-image-sato</filename> image and contain
+                libraries appropriate for developing against that image.
+                Each type of development system supports five or more target
+                architectures.
+            </para>
+
+            <para>
+                The names of the tarball installer scripts are such that a
+                string representing the host system appears first in the
+                filename and then is immediately followed by a string
+                representing the target architecture.
+            </para>
+
+            <literallayout class='monospaced'>
+     poky-glibc-<replaceable>host_system</replaceable>-<replaceable>image_type</replaceable>-<replaceable>arch</replaceable>-toolchain-<replaceable>release_version</replaceable>.sh
+
+     Where:
+         <replaceable>host_system</replaceable> is a string representing your development system:
+
+                    i686 or x86_64.
+
+         <replaceable>image_type</replaceable> is a string representing the image you wish to
+                develop a Software Development Toolkit (SDK) for use against.
+                The Yocto Project builds toolchain installers using the
+                following BitBake command:
+
+                    bitbake core-image-sato -c populate_sdk
+
+         <replaceable>arch</replaceable> is a string representing the tuned target architecture:
+
+                    i586, x86_64, powerpc, mips, armv7a or armv5te
+
+         <replaceable>release_version</replaceable> is a string representing the release number of the
+                Yocto Project:
+
+                    &DISTRO;, &DISTRO;+snapshot
+            </literallayout>
+
+            <para>
+                For example, the following toolchain installer is for a 64-bit
+                development host system and a i586-tuned target architecture
+                based off the SDK for <filename>core-image-sato</filename>:
+                <literallayout class='monospaced'>
+     poky-glibc-x86_64-core-image-sato-i586-toolchain-&DISTRO;.sh
+                </literallayout>
+            </para>
+
+            <para>
+                Toolchains are self-contained and by default are installed into
+                <filename>/opt/poky</filename>.
+                However, when you run the toolchain installer, you can choose an
+                installation directory.
+            </para>
+
+            <para>
+                The following command shows how to run the installer given a toolchain tarball
+                for a 64-bit x86 development host system and a 32-bit x86 target architecture.
+                You must change the permissions on the toolchain
+                installer script so that it is executable.
+            </para>
+
+            <para>
+                The example assumes the toolchain installer is located in <filename>~/Downloads/</filename>.
+                <note>
+                    If you do not have write permissions for the directory into which you are installing
+                    the toolchain, the toolchain installer notifies you and exits.
+                    Be sure you have write permissions in the directory and run the installer again.
+                </note>
+            </para>
+
+            <para>
+                <literallayout class='monospaced'>
+     $ ~/Downloads/poky-glibc-x86_64-core-image-sato-i586-toolchain-&DISTRO;.sh
+                </literallayout>
+            </para>
+
+            <para>
+                For more information on how to install tarballs, see the
+                "<ulink url='&YOCTO_DOCS_ADT_URL;#using-an-existing-toolchain-tarball'>Using a Cross-Toolchain Tarball</ulink>" and
+                "<ulink url='&YOCTO_DOCS_ADT_URL;#using-the-toolchain-from-within-the-build-tree'>Using BitBake and the Build Directory</ulink>" sections in the Yocto Project Application Developer's Guide.
+            </para>
+        </section>
+
+        <section id='downloading-the-pre-built-linux-kernel'>
+            <title>Downloading the Pre-Built Linux Kernel</title>
+
+            <para>
+                You can download the pre-built Linux kernel suitable for running in the QEMU emulator from
+                <ulink url='&YOCTO_QEMU_DL_URL;'></ulink>.
+                Be sure to use the kernel that matches the architecture you want to simulate.
+                Download areas exist for the five supported machine architectures:
+                <filename>qemuarm</filename>, <filename>qemumips</filename>, <filename>qemuppc</filename>,
+                <filename>qemux86</filename>, and <filename>qemux86-64</filename>.
+            </para>
+
+            <para>
+                Most kernel files have one of the following forms:
+                <literallayout class='monospaced'>
+     *zImage-qemu<replaceable>arch</replaceable>.bin
+     vmlinux-qemu<replaceable>arch</replaceable>.bin
+
+     Where:
+         <replaceable>arch</replaceable> is a string representing the target architecture:
+                x86, x86-64, ppc, mips, or arm.
+                </literallayout>
+            </para>
+
+            <para>
+                You can learn more about downloading a Yocto Project kernel in the
+                "<ulink url='&YOCTO_DOCS_DEV_URL;#local-kernel-files'>Yocto Project Kernel</ulink>"
+                bulleted item in the Yocto Project Development Manual.
+            </para>
+        </section>
+
+        <section id='downloading-the-filesystem'>
+            <title>Downloading the Filesystem</title>
+
+            <para>
+                You can also download the filesystem image suitable for your target architecture from
+                <ulink url='&YOCTO_QEMU_DL_URL;'></ulink>.
+                Again, be sure to use the filesystem that matches the architecture you want
+                to simulate.
+            </para>
+
+            <para>
+                The filesystem image has two tarball forms: <filename>ext3</filename> and
+                <filename>tar</filename>.
+                You must use the <filename>ext3</filename> form when booting an image using the
+                QEMU emulator.
+                The <filename>tar</filename> form can be flattened out in your host development system
+                and used for build purposes with the Yocto Project.
+                <literallayout class='monospaced'>
+     core-image-<replaceable>profile</replaceable>-qemu<replaceable>arch</replaceable>.ext3
+     core-image-<replaceable>profile</replaceable>-qemu<replaceable>arch</replaceable>.tar.bz2
+
+     Where:
+         <replaceable>profile</replaceable> is the filesystem image's profile:
+                   lsb, lsb-dev, lsb-sdk, lsb-qt3, minimal, minimal-dev, sato,
+                   sato-dev, or sato-sdk. For information on these types of image
+                   profiles, see the "<ulink url='&YOCTO_DOCS_REF_URL;#ref-images'>Images</ulink>"
+                   chapter in the Yocto Project Reference Manual.
+
+         <replaceable>arch</replaceable> is a string representing the target architecture:
+                x86, x86-64, ppc, mips, or arm.
+                </literallayout>
+            </para>
+        </section>
+
+        <section id='setting-up-the-environment-and-starting-the-qemu-emulator'>
+            <title>Setting Up the Environment and Starting the QEMU Emulator</title>
+
+            <para>
+                Before you start the QEMU emulator, you need to set up the emulation environment.
+                The following command form sets up the emulation environment.
+                <literallayout class='monospaced'>
+     $ source &YOCTO_ADTPATH_DIR;/environment-setup-<replaceable>arch</replaceable>-poky-linux-<replaceable>if</replaceable>
+
+     Where:
+         <replaceable>arch</replaceable> is a string representing the target architecture:
+                i586, x86_64, ppc603e, mips, or armv5te.
+
+         <replaceable>if</replaceable> is a string representing an embedded application binary interface.
+              Not all setup scripts include this string.
+                </literallayout>
+            </para>
+
+            <para>
+                Finally, this command form invokes the QEMU emulator
+                <literallayout class='monospaced'>
+     $ runqemu <replaceable>qemuarch</replaceable> <replaceable>kernel-image</replaceable> <replaceable>filesystem-image</replaceable>
+
+     Where:
+         <replaceable>qemuarch</replaceable> is a string representing the target architecture: qemux86, qemux86-64,
+                    qemuppc, qemumips, or qemuarm.
+
+         <replaceable>kernel-image</replaceable> is the architecture-specific kernel image.
+
+         <replaceable>filesystem-image</replaceable> is the .ext3 filesystem image.
+
+                </literallayout>
+            </para>
+
+            <para>
+                Continuing with the example, the following two commands setup the emulation
+                environment and launch QEMU.
+                This example assumes the root filesystem (<filename>.ext3</filename> file) and
+                the pre-built kernel image file both reside in your home directory.
+                The kernel and filesystem are for a 32-bit target architecture.
+                <literallayout class='monospaced'>
+     $ cd $HOME
+     $ source &YOCTO_ADTPATH_DIR;/environment-setup-i586-poky-linux
+     $ runqemu qemux86 bzImage-qemux86.bin \
+     core-image-sato-qemux86.ext3
+                </literallayout>
+            </para>
+
+            <para>
+                The environment in which QEMU launches varies depending on the filesystem image and on the
+                target architecture.
+                For example, if you source the environment for the ARM target
+                architecture and then boot the minimal QEMU image, the emulator comes up in a new
+                shell in command-line mode.
+                However, if you boot the SDK image, QEMU comes up with a GUI.
+                <note>Booting the PPC image results in QEMU launching in the same shell in
+                command-line mode.</note>
+            </para>
+        </section>
+</section>
+
 </chapter>
 <!--
 vim: expandtab tw=80 ts=4

@@ -8,7 +8,7 @@ import glob
 
 import oeqa.utils.ftools as ftools
 from oeqa.selftest.base import oeSelfTest
-from oeqa.utils.commands import runCmd, bitbake, get_bb_var, create_temp_layer
+from oeqa.utils.commands import runCmd, bitbake, get_bb_var, create_temp_layer, runqemu
 from oeqa.utils.decorators import testcase
 
 class DevtoolBase(oeSelfTest):
@@ -51,7 +51,7 @@ class DevtoolBase(oeSelfTest):
                 bbappendfile = bbappend
                 break
         else:
-            self.assertTrue(False, 'bbappend for recipe %s does not seem to be created in test layer' % testrecipe)
+            self.fail('bbappend for recipe %s does not seem to be created in test layer' % testrecipe)
         return bbappendfile
 
     def _create_temp_layer(self, templayerdir, addlayer, templayername, priority=999, recipepathspec='recipes-*/*'):
@@ -170,7 +170,6 @@ class DevtoolTests(DevtoolBase):
         bitbake('libftdi -c cleansstate')
         # Test devtool build
         result = runCmd('devtool build libftdi')
-        self.add_command_to_tearDown('bitbake -c cleansstate libftdi')
         staging_libdir = get_bb_var('STAGING_LIBDIR', 'libftdi')
         self.assertTrue(staging_libdir, 'Could not query STAGING_LIBDIR variable')
         self.assertTrue(os.path.isfile(os.path.join(staging_libdir, 'libftdi1.so.2.1.0')), "libftdi binary not found in STAGING_LIBDIR. Output of devtool build libftdi %s" % result.output)
@@ -368,6 +367,36 @@ class DevtoolTests(DevtoolBase):
             self.assertNotEqual(result.status, 0, 'devtool modify on %s should have failed. devtool output: %s' %  (testrecipe, result.output))
             self.assertIn('ERROR: ', result.output, 'devtool modify on %s should have given an ERROR' % testrecipe)
 
+    def test_devtool_modify_native(self):
+        # Check preconditions
+        workspacedir = os.path.join(self.builddir, 'workspace')
+        self.assertTrue(not os.path.exists(workspacedir), 'This test cannot be run with a workspace directory under the build directory')
+        # Try modifying some recipes
+        tempdir = tempfile.mkdtemp(prefix='devtoolqa')
+        self.track_for_cleanup(tempdir)
+        self.track_for_cleanup(workspacedir)
+        self.add_command_to_tearDown('bitbake-layers remove-layer */workspace')
+
+        bbclassextended = False
+        inheritnative = False
+        testrecipes = 'mtools-native apt-native desktop-file-utils-native'.split()
+        for testrecipe in testrecipes:
+            checkextend = 'native' in (get_bb_var('BBCLASSEXTEND', testrecipe) or '').split()
+            if not bbclassextended:
+                bbclassextended = checkextend
+            if not inheritnative:
+                inheritnative = not checkextend
+            result = runCmd('devtool modify %s -x %s' % (testrecipe, os.path.join(tempdir, testrecipe)))
+            self.assertNotIn('ERROR: ', result.output, 'ERROR in devtool modify output: %s' % result.output)
+            result = runCmd('devtool build %s' % testrecipe)
+            self.assertNotIn('ERROR: ', result.output, 'ERROR in devtool build output: %s' % result.output)
+            result = runCmd('devtool reset %s' % testrecipe)
+            self.assertNotIn('ERROR: ', result.output, 'ERROR in devtool reset output: %s' % result.output)
+
+        self.assertTrue(bbclassextended, 'None of these recipes are BBCLASSEXTENDed to native - need to adjust testrecipes list: %s' % ', '.join(testrecipes))
+        self.assertTrue(inheritnative, 'None of these recipes do "inherit native" - need to adjust testrecipes list: %s' % ', '.join(testrecipes))
+
+
     @testcase(1165)
     def test_devtool_modify_git(self):
         # Check preconditions
@@ -518,8 +547,8 @@ class DevtoolTests(DevtoolBase):
         result = runCmd('echo "A new file" > devtool-new-file', cwd=tempdir)
         result = runCmd('git add devtool-new-file', cwd=tempdir)
         result = runCmd('git commit -m "Add a new file"', cwd=tempdir)
-        self.add_command_to_tearDown('cd %s; git checkout %s %s' % (os.path.dirname(recipefile), testrecipe, os.path.basename(recipefile)))
-        result = runCmd('devtool update-recipe %s' % testrecipe)
+        self.add_command_to_tearDown('cd %s; rm -rf %s; git checkout %s %s' % (os.path.dirname(recipefile), testrecipe, testrecipe, os.path.basename(recipefile)))
+        result = runCmd('devtool update-recipe -m srcrev %s' % testrecipe)
         result = runCmd('git status . --porcelain', cwd=os.path.dirname(recipefile))
         self.assertNotEqual(result.output.strip(), "", '%s recipe should be modified' % testrecipe)
         status = result.output.splitlines()
@@ -556,6 +585,26 @@ class DevtoolTests(DevtoolBase):
                         matched = True
                         break
                 self.assertTrue(matched, 'Unexpected diff remove line: %s' % line)
+        # Now try with auto mode
+        runCmd('cd %s; git checkout %s %s' % (os.path.dirname(recipefile), testrecipe, os.path.basename(recipefile)))
+        result = runCmd('devtool update-recipe %s' % testrecipe)
+        result = runCmd('git rev-parse --show-toplevel')
+        topleveldir = result.output.strip()
+        result = runCmd('git status . --porcelain', cwd=os.path.dirname(recipefile))
+        status = result.output.splitlines()
+        relpatchpath = os.path.join(os.path.relpath(os.path.dirname(recipefile), topleveldir), testrecipe)
+        expectedstatus = [('M', os.path.relpath(recipefile, topleveldir)),
+                          ('??', '%s/0001-Change-the-Makefile.patch' % relpatchpath),
+                          ('??', '%s/0002-Add-a-new-file.patch' % relpatchpath)]
+        for line in status:
+            statusline = line.split(None, 1)
+            for fstatus, fn in expectedstatus:
+                if fn == statusline[1]:
+                    if fstatus != statusline[0]:
+                        self.fail('Unexpected status in line: %s' % line)
+                    break
+            else:
+                self.fail('Unexpected modified file in line: %s' % line)
 
     @testcase(1170)
     def test_devtool_update_recipe_append(self):
@@ -679,7 +728,7 @@ class DevtoolTests(DevtoolBase):
         self.add_command_to_tearDown('bitbake-layers remove-layer %s || true' % templayerdir)
         result = runCmd('bitbake-layers add-layer %s' % templayerdir, cwd=self.builddir)
         # Create the bbappend
-        result = runCmd('devtool update-recipe %s -a %s' % (testrecipe, templayerdir))
+        result = runCmd('devtool update-recipe -m srcrev %s -a %s' % (testrecipe, templayerdir))
         self.assertNotIn('WARNING:', result.output)
         # Check recipe is still clean
         result = runCmd('git status . --porcelain', cwd=os.path.dirname(recipefile))
@@ -700,12 +749,12 @@ class DevtoolTests(DevtoolBase):
             self.assertEqual(expectedlines, f.readlines())
 
         # Check we can run it again and bbappend isn't modified
-        result = runCmd('devtool update-recipe %s -a %s' % (testrecipe, templayerdir))
+        result = runCmd('devtool update-recipe -m srcrev %s -a %s' % (testrecipe, templayerdir))
         with open(bbappendfile, 'r') as f:
             self.assertEqual(expectedlines, f.readlines())
         # Drop new commit and check SRCREV changes
         result = runCmd('git reset HEAD^', cwd=tempsrcdir)
-        result = runCmd('devtool update-recipe %s -a %s' % (testrecipe, templayerdir))
+        result = runCmd('devtool update-recipe -m srcrev %s -a %s' % (testrecipe, templayerdir))
         self.assertFalse(os.path.exists(os.path.join(appenddir, testrecipe)), 'Patch directory should not be created')
         result = runCmd('git rev-parse HEAD', cwd=tempsrcdir)
         expectedlines = ['SRCREV = "%s"\n' % result.output,
@@ -718,7 +767,7 @@ class DevtoolTests(DevtoolBase):
         os.remove(bbappendfile)
         result = runCmd('git commit -a -m "Change the Makefile"', cwd=tempsrcdir)
         result = runCmd('bitbake-layers remove-layer %s' % templayerdir, cwd=self.builddir)
-        result = runCmd('devtool update-recipe %s -a %s' % (testrecipe, templayerdir))
+        result = runCmd('devtool update-recipe -m srcrev %s -a %s' % (testrecipe, templayerdir))
         self.assertIn('WARNING: Specified layer is not currently enabled in bblayers.conf', result.output)
         self.assertFalse(os.path.exists(os.path.join(appenddir, testrecipe)), 'Patch directory should not be created')
         result = runCmd('git rev-parse HEAD', cwd=tempsrcdir)
@@ -799,12 +848,10 @@ class DevtoolTests(DevtoolBase):
             self.skipTest('No tap devices found - you must set up tap devices with scripts/runqemu-gen-tapdevs before running this test')
         workspacedir = os.path.join(self.builddir, 'workspace')
         self.assertTrue(not os.path.exists(workspacedir), 'This test cannot be run with a workspace directory under the build directory')
-        import pexpect
         # Definitions
         testrecipe = 'mdadm'
         testfile = '/sbin/mdadm'
         testimage = 'oe-selftest-image'
-        testhost = '192.168.7.2'
         testcommand = '/sbin/mdadm --help'
         # Build an image to run
         bitbake("%s qemu-native qemu-helper-native" % testimage)
@@ -821,44 +868,104 @@ class DevtoolTests(DevtoolBase):
         self.add_command_to_tearDown('bitbake -c clean %s' % testrecipe)
         result = runCmd('devtool modify %s -x %s' % (testrecipe, tempdir))
         # Test that deploy-target at this point fails (properly)
-        result = runCmd('devtool deploy-target -n %s root@%s' % (testrecipe, testhost), ignore_status=True)
+        result = runCmd('devtool deploy-target -n %s root@localhost' % testrecipe, ignore_status=True)
         self.assertNotEqual(result.output, 0, 'devtool deploy-target should have failed, output: %s' % result.output)
         self.assertNotIn(result.output, 'Traceback', 'devtool deploy-target should have failed with a proper error not a traceback, output: %s' % result.output)
         result = runCmd('devtool build %s' % testrecipe)
         # First try a dry-run of deploy-target
-        result = runCmd('devtool deploy-target -n %s root@%s' % (testrecipe, testhost))
+        result = runCmd('devtool deploy-target -n %s root@localhost' % testrecipe)
         self.assertIn('  %s' % testfile, result.output)
         # Boot the image
-        console = pexpect.spawn('runqemu %s %s qemuparams="-snapshot" nographic' % (machine, testimage))
-        console.expect("login:", timeout=120)
-        # Now really test deploy-target
-        result = runCmd('devtool deploy-target -c %s root@%s' % (testrecipe, testhost))
-        # Run a test command to see if it was installed properly
-        sshargs = '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'
-        result = runCmd('ssh %s root@%s %s' % (sshargs, testhost, testcommand))
-        # Check if it deployed all of the files with the right ownership/perms
-        # First look on the host - need to do this under pseudo to get the correct ownership/perms
-        installdir = get_bb_var('D', testrecipe)
-        fakerootenv = get_bb_var('FAKEROOTENV', testrecipe)
-        fakerootcmd = get_bb_var('FAKEROOTCMD', testrecipe)
-        result = runCmd('%s %s find . -type f -exec ls -l {} \;' % (fakerootenv, fakerootcmd), cwd=installdir)
-        filelist1 = self._process_ls_output(result.output)
+        with runqemu(testimage, self) as qemu:
+            # Now really test deploy-target
+            result = runCmd('devtool deploy-target -c %s root@%s' % (testrecipe, qemu.ip))
+            # Run a test command to see if it was installed properly
+            sshargs = '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'
+            result = runCmd('ssh %s root@%s %s' % (sshargs, qemu.ip, testcommand))
+            # Check if it deployed all of the files with the right ownership/perms
+            # First look on the host - need to do this under pseudo to get the correct ownership/perms
+            installdir = get_bb_var('D', testrecipe)
+            fakerootenv = get_bb_var('FAKEROOTENV', testrecipe)
+            fakerootcmd = get_bb_var('FAKEROOTCMD', testrecipe)
+            result = runCmd('%s %s find . -type f -exec ls -l {} \;' % (fakerootenv, fakerootcmd), cwd=installdir)
+            filelist1 = self._process_ls_output(result.output)
 
-        # Now look on the target
-        tempdir2 = tempfile.mkdtemp(prefix='devtoolqa')
-        self.track_for_cleanup(tempdir2)
-        tmpfilelist = os.path.join(tempdir2, 'files.txt')
-        with open(tmpfilelist, 'w') as f:
-            for line in filelist1:
-                splitline = line.split()
-                f.write(splitline[-1] + '\n')
-        result = runCmd('cat %s | ssh -q %s root@%s \'xargs ls -l\'' % (tmpfilelist, sshargs, testhost))
-        filelist2 = self._process_ls_output(result.output)
-        filelist1.sort(key=lambda item: item.split()[-1])
-        filelist2.sort(key=lambda item: item.split()[-1])
-        self.assertEqual(filelist1, filelist2)
-        # Test undeploy-target
-        result = runCmd('devtool undeploy-target -c %s root@%s' % (testrecipe, testhost))
-        result = runCmd('ssh %s root@%s %s' % (sshargs, testhost, testcommand), ignore_status=True)
-        self.assertNotEqual(result, 0, 'undeploy-target did not remove command as it should have')
-        console.close()
+            # Now look on the target
+            tempdir2 = tempfile.mkdtemp(prefix='devtoolqa')
+            self.track_for_cleanup(tempdir2)
+            tmpfilelist = os.path.join(tempdir2, 'files.txt')
+            with open(tmpfilelist, 'w') as f:
+                for line in filelist1:
+                    splitline = line.split()
+                    f.write(splitline[-1] + '\n')
+            result = runCmd('cat %s | ssh -q %s root@%s \'xargs ls -l\'' % (tmpfilelist, sshargs, qemu.ip))
+            filelist2 = self._process_ls_output(result.output)
+            filelist1.sort(key=lambda item: item.split()[-1])
+            filelist2.sort(key=lambda item: item.split()[-1])
+            self.assertEqual(filelist1, filelist2)
+            # Test undeploy-target
+            result = runCmd('devtool undeploy-target -c %s root@%s' % (testrecipe, qemu.ip))
+            result = runCmd('ssh %s root@%s %s' % (sshargs, qemu.ip, testcommand), ignore_status=True)
+            self.assertNotEqual(result, 0, 'undeploy-target did not remove command as it should have')
+
+    def test_devtool_build_image(self):
+        """Test devtool build-image plugin"""
+        # Check preconditions
+        workspacedir = os.path.join(self.builddir, 'workspace')
+        self.assertTrue(not os.path.exists(workspacedir), 'This test cannot be run with a workspace directory under the build directory')
+        image = 'core-image-minimal'
+        self.track_for_cleanup(workspacedir)
+        self.add_command_to_tearDown('bitbake-layers remove-layer */workspace')
+        self.add_command_to_tearDown('bitbake -c clean %s' % image)
+        bitbake('%s -c clean' % image)
+        # Add target and native recipes to workspace
+        for recipe in ('mdadm', 'parted-native'):
+            tempdir = tempfile.mkdtemp(prefix='devtoolqa')
+            self.track_for_cleanup(tempdir)
+            self.add_command_to_tearDown('bitbake -c clean %s' % recipe)
+            runCmd('devtool modify %s -x %s' % (recipe, tempdir))
+        # Try to build image
+        result = runCmd('devtool build-image %s' % image)
+        self.assertNotEqual(result, 0, 'devtool build-image failed')
+        # Check if image.bbappend has required content
+        bbappend = os.path.join(workspacedir, 'appends', image+'.bbappend')
+        self.assertTrue(os.path.isfile(bbappend), 'bbappend not created %s' % result.output)
+        # NOTE: native recipe parted-native should not be in IMAGE_INSTALL_append
+        self.assertTrue('IMAGE_INSTALL_append = " mdadm"\n' in open(bbappend).readlines(),
+                        'IMAGE_INSTALL_append = " mdadm" not found in %s' % bbappend)
+
+    def test_devtool_upgrade(self):
+        # Check preconditions
+        workspacedir = os.path.join(self.builddir, 'workspace')
+        self.assertTrue(not os.path.exists(workspacedir), 'This test cannot be run with a workspace directory under the build directory')
+        # Check parameters
+        result = runCmd('devtool upgrade -h')
+        for param in 'recipename srctree --version -V --branch -b --keep-temp --no-patch'.split():
+            self.assertIn(param, result.output)
+        # For the moment, we are using a real recipe.
+        recipe='devtool-upgrade'
+        version='0.2'
+        tempdir = tempfile.mkdtemp(prefix='devtoolqa')
+        # Check that recipe is not already under devtool control
+        result = runCmd('devtool status')
+        self.assertNotIn(recipe, result.output)
+        # Check upgrade. Code does not check if new PV is older or newer that current PV, so, it may be that
+        # we are downgrading instead of upgrading.
+        result = runCmd('devtool upgrade %s %s -V %s' % (recipe, tempdir, version))
+        # Check if srctree at least is populated
+        self.assertTrue(len(os.listdir(tempdir)) > 0, 'scrtree (%s) should be populated with new (%s) source code' % (tempdir, version))
+        # Check new recipe folder is present
+        self.assertTrue(os.path.exists(os.path.join(workspacedir,'recipes',recipe)), 'Recipe folder should exist')
+        # Check new recipe file is present
+        self.assertTrue(os.path.exists(os.path.join(workspacedir,'recipes',recipe,"%s_%s.bb" % (recipe,version))), 'Recipe folder should exist')
+        # Check devtool status and make sure recipe is present
+        result = runCmd('devtool status')
+        self.assertIn(recipe, result.output)
+        self.assertIn(tempdir, result.output)
+        # Check devtool reset recipe
+        result = runCmd('devtool reset %s -n' % recipe)
+        result = runCmd('devtool status')
+        self.assertNotIn(recipe, result.output)
+        self.track_for_cleanup(tempdir)
+        self.track_for_cleanup(workspacedir)
+        self.add_command_to_tearDown('bitbake-layers remove-layer */workspace')

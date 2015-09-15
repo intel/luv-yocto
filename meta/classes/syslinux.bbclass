@@ -38,6 +38,9 @@ ISO_BOOTCAT = "isolinux/boot.cat"
 MKISOFS_OPTIONS = "-no-emul-boot -boot-load-size 4 -boot-info-table"
 APPEND_prepend = " ${SYSLINUX_ROOT} "
 
+# Need UUID utility code.
+inherit fs-uuid
+
 syslinux_populate() {
 	DEST=$1
 	BOOTDIR=$2
@@ -181,7 +184,7 @@ python build_syslinux_cfg () {
                     cfgfile.write('initrd=/initrd ')
 
                 cfgfile.write('LABEL=%s '% (label))
-
+                append = replace_rootfs_uuid(d, append)
                 cfgfile.write('%s %s\n' % (append, btype[1]))
             else:
                 cfgfile.write('APPEND %s\n' % btype[1])

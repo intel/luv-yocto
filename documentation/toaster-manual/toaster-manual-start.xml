@@ -18,7 +18,7 @@
             You first need to be sure your build system is set up to run
             the Yocto Project.
             See the
-            "<ulink url='&YOCTO_DOCS_QS_URL;#yp-resources'>What You Need and How You Get It</ulink>"
+            "<ulink url='&YOCTO_DOCS_QS_URL;#yp-resources'>Setting Up to Use the Yocto Project</ulink>"
             section in the Yocto Project Quick Start for information on how
             to set up your system for the Yocto Project.
         </para>
@@ -28,9 +28,7 @@
         <title>Establishing Toaster System Dependencies</title>
 
         <para>
-            Toaster requires extra Python dependencies and
-            <ulink url='http://www.libslack.org/daemon/'><filename>daemon</filename></ulink>
-            in order to run.
+            Toaster requires extra Python dependencies in order to run.
             A Toaster requirements file named
             <filename>toaster-requirements.txt</filename> defines the
             Python dependencies.
@@ -100,6 +98,8 @@
             </para>
         </section>
 
+<!-- Commenting this section out for now in case it needs to be used again.
+
         <section id='toaster-install-daemon'>
             <title>Install <filename>daemon</filename></title>
 
@@ -136,6 +136,6 @@
                         </para></listitem>
                 </itemizedlist>
             </para>
-        </section>
+        </section> -->
     </section>
 </chapter>

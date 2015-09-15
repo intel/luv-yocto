@@ -124,7 +124,7 @@
                     development using the Yocto Project</emphasis>:  See the
                     "<ulink url='&YOCTO_DOCS_QS_URL;#the-linux-distro'>The Linux Distribution</ulink>"
                     and the
-                    "<ulink url='&YOCTO_DOCS_QS_URL;#packages'>The Packages</ulink>" sections both
+                    "<ulink url='&YOCTO_DOCS_QS_URL;#packages'>The Build Host Packages</ulink>" sections both
                     in the Yocto Project Quick Start for requirements.</para></listitem>
                 <listitem><para><emphasis>Establish a local copy of the project files on your
                     system</emphasis>:  You need this <link linkend='source-directory'>Source
@@ -223,7 +223,7 @@
                     "<link linkend='enabling-your-layer'>Enabling Your Layer</link>" section
                     for information on how to let the build system know about your new layer.</para>
                     <para>The entire process for building an image is overviewed in the section
-                    "<ulink url='&YOCTO_DOCS_QS_URL;#building-image'>Building an Image</ulink>" section
+                    "<ulink url='&YOCTO_DOCS_QS_URL;#qs-building-images'>Building Images</ulink>" section
                     of the Yocto Project Quick Start.
                     You might want to reference this information.</para></listitem>
                 <listitem><para><emphasis>Build the image</emphasis>:  The OpenEmbedded build system
@@ -451,7 +451,7 @@
                     <listitem><para><emphasis>Set up your host development system to support
                         development using the Yocto Project</emphasis>:  See
                         "<ulink url='&YOCTO_DOCS_QS_URL;#the-linux-distro'>The Linux Distribution</ulink>" and
-                        "<ulink url='&YOCTO_DOCS_QS_URL;#packages'>The Packages</ulink>" sections both
+                        "<ulink url='&YOCTO_DOCS_QS_URL;#packages'>The Build Host Packages</ulink>" sections both
                         in the Yocto Project Quick Start for requirements.</para></listitem>
                     <listitem><para><emphasis>Establish a local copy of project files on your
                         system</emphasis>:  Having the <link linkend='source-directory'>Source
@@ -476,7 +476,7 @@
                         (<filename>local.conf</filename> and <filename>bblayers.conf</filename>)
                         are configured appropriately.</para>
                         <para>The entire process for building an image is overviewed in the
-                        "<ulink url='&YOCTO_DOCS_QS_URL;#building-image'>Building an Image</ulink>"
+                        "<ulink url='&YOCTO_DOCS_QS_URL;#qs-building-images'>Building Images</ulink>"
                         section of the Yocto Project Quick Start.
                         You might want to reference this information.
                         You can find more information on BitBake in the
@@ -491,28 +491,44 @@
                         changing source files.
                         However, if you have to do this, you make the changes to the files in the
                         Build Directory.</para></listitem>
-                    <listitem><para><emphasis>Make kernel configuration changes
-                        if applicable</emphasis>:
-                        If your situation calls for changing the kernel's configuration, you can
-                        use the <filename>yocto-kernel</filename> script or <filename>menuconfig</filename>
-                        to enable and disable kernel configurations.
-                        Using the script lets you interactively set up kernel configurations.
-                        Using <filename>menuconfig</filename> allows you to interactively develop and test the
+                    <listitem><para><emphasis>Make kernel configuration changes if applicable</emphasis>:
+                        If your situation calls for changing the kernel's
+                        configuration, you can use
+                        <ulink url='&YOCTO_DOCS_KERNEL_DEV_URL;#generating-configuration-files'><filename>menuconfig</filename></ulink>,
+                        which allows you to interactively develop and test the
                         configuration changes you are making to the kernel.
-                        When saved, changes using <filename>menuconfig</filename> update the kernel's
-                        <filename>.config</filename> file.
-                        Try to resist the temptation of directly editing the <filename>.config</filename>
-                        file found in the Build Directory at
-                        <filename>tmp/sysroots/&lt;machine-name&gt;/kernel</filename>.
-                        Doing so, can produce unexpected results when the OpenEmbedded build system
-                        regenerates the configuration file.</para>
-                        <para>Once you are satisfied with the configuration changes made using
-                        <filename>menuconfig</filename>, you can directly compare the
-                        <filename>.config</filename> file against a saved original and gather those
-                        changes into a config fragment to be referenced from within the kernel's
-                        <filename>.bbappend</filename> file.</para></listitem>
+                        Saving changes you make with
+                        <filename>menuconfig</filename> updates
+                        the kernel's <filename>.config</filename> file.
+                        <note><title>Warning</title>
+                            Try to resist the temptation to directly edit an
+                            existing <filename>.config</filename> file, which is
+                            found in the Build Directory at
+                            <filename>tmp/sysroots/<replaceable>machine-name</replaceable>/kernel</filename>.
+                            Doing so, can produce unexpected results when the
+                            OpenEmbedded build system regenerates the configuration
+                            file.
+                        </note>
+                        Once you are satisfied with the configuration
+                        changes made using <filename>menuconfig</filename>
+                        and you have saved them, you can directly compare the
+                        resulting <filename>.config</filename> file against an
+                        existing original and gather those changes into a
+                        <link linkend='creating-config-fragments'>configuration fragment file</link>
+                        to be referenced from within the kernel's
+                        <filename>.bbappend</filename> file.</para>
+
+                        <para>Additionally, if you are working in a BSP layer
+                        and need to modify the BSP's kernel's configuration,
+                        you can use the
+                        <ulink url='&YOCTO_DOCS_BSP_URL;#managing-kernel-patches-and-config-items-with-yocto-kernel'><filename>yocto-kernel</filename></ulink>
+                        script as well as <filename>menuconfig</filename>.
+                        The <filename>yocto-kernel</filename> script lets
+                        you interactively set up kernel configurations.
+                        </para></listitem>
                     <listitem><para><emphasis>Rebuild the kernel image with your changes</emphasis>:
-                        Rebuilding the kernel image applies your changes.</para></listitem>
+                        Rebuilding the kernel image applies your changes.
+                        </para></listitem>
                 </orderedlist>
             </para>
         </section>
@@ -601,7 +617,7 @@
                     <para>For information on pre-built kernel image naming schemes for images
                     that can run on the QEMU emulator, see the
                     "<ulink url='&YOCTO_DOCS_QS_URL;#downloading-the-pre-built-linux-kernel'>Downloading the Pre-Built Linux Kernel</ulink>"
-                    section in the Yocto Project Quick Start.</para></listitem>
+                    section in the Yocto Project Application Developer's Guide.</para></listitem>
                 <listitem><para><emphasis>Install the ADT</emphasis>:
                     The ADT provides a target-specific cross-development toolchain, the root filesystem,
                     the QEMU emulator, and other tools that can help you develop your application.
@@ -630,7 +646,7 @@
                     section in the Yocto Project Application Developer's Guide for information
                     and the
                     "<ulink url='&YOCTO_DOCS_QS_URL;#installing-the-toolchain'>Installing the Toolchain</ulink>"
-                    in the Yocto Project Quick Start for information on finding and installing
+                    in the Yocto Project Application Developer's Guide for information on finding and installing
                     the correct toolchain based on your host development system and your target
                     architecture.
                     </para></listitem>
@@ -1147,7 +1163,7 @@
                                 If the architecture you need is not listed in
                                 the menu, you will need to build the image.
                                 See the
-                                "<ulink url='&YOCTO_DOCS_QS_URL;#building-image'>Building an Image</ulink>"
+                                "<ulink url='&YOCTO_DOCS_QS_URL;#qs-building-images'>Building Images</ulink>"
                                 section of the Yocto Project Quick Start for
                                 more information.</para></listitem>
                         </itemizedlist>
@@ -1705,44 +1721,17 @@
                     section.
                 </para>
             </footnote>
-            <note>
-                The workflow considers the entire build process for the
-                image and not just modification of the external source
-                code.
-            </note>
         </para>
 
-        <section id='establish-the-reference-image'>
-            <title>Establish the Reference Image</title>
-
-            <para>
-                The steps to clone the <filename>poky</filename> Git
-                repository, build out an image, and test it using QEMU
-                are well documented as follows:
-                <itemizedlist>
-                    <listitem><para>
-                        For information on how to set up a local copy of the
-                        <filename>poky</filename> repository and on how to
-                        build a Yocto Project image, see the
-                        "<ulink url='&YOCTO_DOCS_QS_URL;#building-image'>Building an Image</ulink>"
-                        section in the Yocto Project Quick Start.
-                        </para></listitem>
-                    <listitem><para>
-                        For information on how to test an image using QEMU, see
-                        the
-                        "<link linkend='dev-manual-qemu'>Using the Quick EMUlator (QEMU)</link>"
-                        section.
-                        </para></listitem>
-                </itemizedlist>
-            </para>
-
-            <para>
-                Before you start making modifications to your project's
-                source code, you should be sure you have the appropriate
-                local repositories and have a base image built using
-                BitBake that you can run on QEMU.
-            </para>
-        </section>
+        <para>
+            The steps in this section assume you have a previously built
+            image that is already either running in QEMU or running on actual
+            hardware.
+            Also, it is assumed that for deployment of the image to the
+            target, SSH is installed in the image and if the image is running
+            on real hardware that you have network access to and from your
+            development machine.
+        </para>
 
         <section id='update-your-external-source'>
             <title>Update Your External Source</title>
@@ -1790,18 +1779,12 @@
                 <literallayout class='monospaced'>
      $ devtool add <replaceable>your-project-name</replaceable>&nbsp;<replaceable>path-to-source</replaceable>
                 </literallayout>
-                Running <filename>devtool add</filename> modifies the
-                <filename>bblayers.conf</filename> that the
-                OpenEmbedded build system uses to build an image.
-                For more information on the <filename>bblayers.conf</filename>,
-                see the
-                "<ulink url='&YOCTO_DOCS_REF_URL;#structure-build-conf-bblayers.conf'><filename>build/conf/bblayers.conf</filename></ulink>"
-                section in the Yocto Project Reference Manual.
             </para>
 
             <para>
-                Running <filename>devtool add</filename> adds a new workspace
-                layer to the <filename>bblayers.conf</filename> file that
+                Running <filename>devtool</filename> for the first time
+                creates a workspace layer through the
+                <filename>bblayers.conf</filename> file that
                 is based on your project's location:
                 <literallayout class='monospaced'>
      <replaceable>path-to-source</replaceable>/<replaceable>build-directory</replaceable>/<replaceable>workspace-layer</replaceable>
@@ -1902,6 +1885,7 @@
             </para>
         </section>
 
+<!--
         <section id='dev-build-the-image'>
             <title>Build the Image</title>
 
@@ -1930,6 +1914,7 @@
                 section.
             </para>
         </section>
+-->
     </section>
 
     <section id='devtool-quick-reference'>
@@ -1987,7 +1972,8 @@
                 name and using <filename>--help</filename>:
                 <literallayout class='monospaced'>
      $ devtool add --help
-     usage: devtool add [-h] [--same-dir] [--version VERSION] recipename srctree
+     usage: devtool add [-h] [--same-dir] [--fetch URI] [--version VERSION]
+                        recipename srctree
 
      Adds a new recipe
 
@@ -1997,9 +1983,11 @@
 
      optional arguments:
        -h, --help            show this help message and exit
-       --same-dir, -s        Build in same directory as source (default: False)
+       --same-dir, -s        Build in same directory as source
+       --fetch URI, -f URI   Fetch the specified URI and extract it to create the
+                             source tree
        --version VERSION, -V VERSION
-                             Version to use within recipe (PV) (default: None)
+                             Version to use within recipe (PV)
                 </literallayout>
             </para>
         </section>
@@ -2018,11 +2006,11 @@
 
             <para>
                 The following example creates and adds a new recipe named
-                <filename>jackson-2.0</filename> to the workspace layer.
+                <filename>jackson</filename> to the workspace layer.
                 The source code built by the recipes resides in
                 <filename>/home/scottrif/sources/jackson</filename>:
                 <literallayout class='monospaced'>
-     $ devtool add jackson-2.0 /home/scottrif/sources/jackson
+     $ devtool add jackson /home/scottrif/sources/jackson
                 </literallayout>
                 <note>
                     For complete syntax, use the
@@ -2066,44 +2054,8 @@
             </para>
         </section>
 
-        <section id='devtool-creating-the-workspace'>
-            <title>Creating the Workspace Layer</title>
-
-            <para>
-                Use the <filename>devtool create-workspace</filename> command to
-                create a new workspace layer in your
-                <link linkend='build-directory'>Build Directory</link>.
-                When you create a new workspace layer, it is populated with the
-                <filename>README</filename> file and the
-                <filename>conf</filename> directory only.
-            </para>
-
-            <para>
-                The following example creates a new workspace layer in your
-                current working and by default names the workspace layer
-                "workspace":
-                <literallayout class='monospaced'>
-     $ devtool create-workspace
-                </literallayout>
-                <note>
-                    For complete syntax, use the
-                    <filename>devtool create-workspace --help</filename> command.
-                </note>
-            </para>
-
-            <para>
-                You can create a workspace layer anywhere by supplying
-                a pathname with the command.
-                The following command creates a new workspace layer named
-                "new-workspace":
-                <literallayout class='monospaced'>
-     $ devtool create-workspace /home/scottrif/new-workspace
-                </literallayout>
-            </para>
-        </section>
-
         <section id='devtool-modifying-a-recipe'>
-            <title>Modifying a Recipe</title>
+            <title>Modifying an Existing Recipe</title>
 
             <para>
                 Use the <filename>devtool modify</filename> command to begin
@@ -2128,18 +2080,62 @@
                 </literallayout>
                 Using the above command form, the default development branch
                 would be "devtool".
-            </para>
-
-            <para>
-                If you want to name a development branch, use the
-                <filename>-b</filename> option with the
-                <filename>-x</filename> option:
-                <literallayout class='monospaced'>
-     $ devtool modify -x -b <replaceable>branch</replaceable>&nbsp;<replaceable>recipe</replaceable>&nbsp;<replaceable>path-to-source</replaceable>
-                </literallayout>
                 <note>
                     For complete syntax, use the
                     <filename>devtool modify --help</filename> command.
+                </note>
+            </para>
+        </section>
+
+        <section id='devtool-updating-a-recipe'>
+            <title>Updating a Recipe</title>
+
+            <para>
+                Use the <filename>devtool update-recipe</filename> command to
+                update your recipe with patches that reflect changes you make
+                to the source files.
+                For example, if you know you are going to work on some
+                code, you could first use the
+                <link linkend='devtool-modifying-a-recipe'><filename>devtool modify</filename></link>
+                command to extract the code and set up the workspace.
+                After which, you could modify, compile, and test the code.
+            </para>
+
+            <para>
+                When you are satisfied with the results and you have committed
+                your changes to the Git repository, you can then
+                run the <filename>devtool update-recipe</filename> to create the
+                patches and update the recipe:
+                <literallayout class='monospaced'>
+     $ devtool update-recipe <replaceable>recipe</replaceable>
+                </literallayout>
+                If you run the <filename>devtool update-recipe</filename>
+                without committing your changes, the command ignores the
+                changes.
+             </para>
+
+             <para>
+                 Often, you might want to apply customizations made to your
+                 software in your own layer rather than apply them to the
+                 original recipe.
+                 If so, you can use the
+                 <filename>-a</filename> or <filename>--append</filename>
+                 option with the <filename>devtool update-recipe</filename>
+                 command.
+                 These options allow you to specify the layer into which to
+                 write an append file:
+                 <literallayout class='monospaced'>
+     $ devtool update-recipe <replaceable>recipe</replaceable> -a <replaceable>base-layer-directory</replaceable>
+                 </literallayout>
+                 The <filename>*.bbappend</filename> file is created at the
+                 appropriate path within the specified layer directory, which
+                 may or may not be in your <filename>bblayers.conf</filename>
+                 file.
+                 If an append file already exists, the command updates it
+                 appropriately.
+                <note>
+                    For complete syntax, use the
+                    <filename>devtool update-recipe --help</filename> command.
                 </note>
             </para>
         </section>
@@ -2168,31 +2164,6 @@
                 <note>
                     For complete syntax, use the
                     <filename>devtool reset --help</filename> command.
-                </note>
-            </para>
-        </section>
-
-        <section id='devtool-updating-a-recipe'>
-            <title>Updating a Recipe</title>
-
-            <para>
-                Use the <filename>devtool update-recipe</filename> command to
-                update your recipe with patches that reflect changes you make
-                to the source files.
-                For example, if you know you are going to work on some
-                code, you could first use the
-                <link linkend='devtool-modifying-a-recipe'><filename>devtool modify</filename></link>
-                command to extract the code and set up the workspace.
-                After which, you could modify, compile, and test the code.
-                When you are satisfied with the results you can then
-                run the <filename>devtool update-recipe</filename> to create the
-                patches and update the recipe:
-                <literallayout class='monospaced'>
-     $ devtool update-recipe <replaceable>recipe</replaceable>
-                </literallayout>
-                <note>
-                    For complete syntax, use the
-                    <filename>devtool update-recipe --help</filename> command.
                 </note>
             </para>
         </section>
@@ -2279,6 +2250,42 @@
                 </note>
             </para>
         </section>
+
+        <section id='devtool-creating-the-workspace'>
+            <title>Creating the Workspace Layer in an Alternative Location</title>
+
+            <para>
+                Use the <filename>devtool create-workspace</filename> command to
+                create a new workspace layer in your
+                <link linkend='build-directory'>Build Directory</link>.
+                When you create a new workspace layer, it is populated with the
+                <filename>README</filename> file and the
+                <filename>conf</filename> directory only.
+            </para>
+
+            <para>
+                The following example creates a new workspace layer in your
+                current working and by default names the workspace layer
+                "workspace":
+                <literallayout class='monospaced'>
+     $ devtool create-workspace
+                </literallayout>
+                <note>
+                    For complete syntax, use the
+                    <filename>devtool create-workspace --help</filename> command.
+                </note>
+            </para>
+
+            <para>
+                You can create a workspace layer anywhere by supplying
+                a pathname with the command.
+                The following command creates a new workspace layer named
+                "new-workspace":
+                <literallayout class='monospaced'>
+     $ devtool create-workspace /home/scottrif/new-workspace
+                </literallayout>
+            </para>
+        </section>
     </section>
 
     <section id="using-a-quilt-workflow">
@@ -2359,7 +2366,7 @@
                     <filename>bitbake -c cleanall <replaceable>package</replaceable></filename>).
                     Modifications will also disappear if you use the <filename>rm_work</filename>
                     feature as described in the
-                    "<ulink url='&YOCTO_DOCS_QS_URL;#building-image'>Building an Image</ulink>"
+                    "<ulink url='&YOCTO_DOCS_QS_URL;#qs-building-images'>Building Images</ulink>"
                     section of the Yocto Project Quick Start.
                     </note></para></listitem>
                 <listitem><para><emphasis>Generate the Patch:</emphasis>

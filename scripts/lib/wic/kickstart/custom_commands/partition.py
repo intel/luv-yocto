@@ -27,10 +27,11 @@
 import os
 import tempfile
 import uuid
+from optparse import OptionValueError
 
-from pykickstart.commands.partition import *
-from wic.utils.oe.misc import *
-from wic.kickstart.custom_commands import *
+from pykickstart.commands.partition import FC4_PartData, FC4_Partition
+from wic.utils.oe.misc import msger, parse_sourceparams
+from wic.utils.oe.misc import exec_cmd, exec_native_cmd
 from wic.plugin import pluginmgr
 
 partition_methods = {
@@ -39,13 +40,16 @@ partition_methods = {
     "do_configure_partition":None,
 }
 
-class Wic_PartData(Mic_PartData):
-    removedKeywords = Mic_PartData.removedKeywords
-    removedAttrs = Mic_PartData.removedAttrs
+class Wic_PartData(FC4_PartData):
+    removedKeywords = FC4_PartData.removedKeywords
+    removedAttrs = FC4_PartData.removedAttrs
 
     def __init__(self, *args, **kwargs):
-        Mic_PartData.__init__(self, *args, **kwargs)
+        FC4_PartData.__init__(self, *args, **kwargs)
         self.deleteRemovedAttrs()
+        self.align = kwargs.get("align", None)
+        self.extopts = kwargs.get("extopts", None)
+        self.part_type = kwargs.get("part_type", None)
         self.source = kwargs.get("source", None)
         self.sourceparams = kwargs.get("sourceparams", None)
         self.rootfs = kwargs.get("rootfs-dir", None)
@@ -59,8 +63,14 @@ class Wic_PartData(Mic_PartData):
         self.size = 0
 
     def _getArgsAsStr(self):
-        retval = Mic_PartData._getArgsAsStr(self)
+        retval = FC4_PartData._getArgsAsStr(self)
 
+        if self.align:
+            retval += " --align=%d" % self.align
+        if self.extopts:
+            retval += " --extoptions=%s" % self.extopts
+        if self.part_type:
+            retval += " --part-type=%s" % self.part_type
         if self.source:
             retval += " --source=%s" % self.source
             if self.sourceparams:
@@ -144,7 +154,7 @@ class Wic_PartData(Mic_PartData):
         else:
             return 0
 
-    def prepare(self, cr, cr_workdir, oe_builddir, rootfs_dir, bootimg_dir,
+    def prepare(self, creator, cr_workdir, oe_builddir, rootfs_dir, bootimg_dir,
                 kernel_dir, native_sysroot):
         """
         Prepare content for individual partitions, depending on
@@ -189,18 +199,18 @@ class Wic_PartData(Mic_PartData):
         self._source_methods = pluginmgr.get_source_plugin_methods(\
                                    self.source, partition_methods)
         self._source_methods["do_configure_partition"](self, self.sourceparams_dict,
-                                                       cr, cr_workdir,
+                                                       creator, cr_workdir,
                                                        oe_builddir,
                                                        bootimg_dir,
                                                        kernel_dir,
                                                        native_sysroot)
         self._source_methods["do_stage_partition"](self, self.sourceparams_dict,
-                                                   cr, cr_workdir,
+                                                   creator, cr_workdir,
                                                    oe_builddir,
                                                    bootimg_dir, kernel_dir,
                                                    native_sysroot)
         self._source_methods["do_prepare_partition"](self, self.sourceparams_dict,
-                                                     cr, cr_workdir,
+                                                     creator, cr_workdir,
                                                      oe_builddir,
                                                      bootimg_dir, kernel_dir, rootfs_dir,
                                                      native_sysroot)
@@ -417,10 +427,10 @@ class Wic_PartData(Mic_PartData):
         if self.label:
             label_str = "-n %s" % self.label
 
-        dosfs_cmd = "mkdosfs %s -S 512 -C %s %d" % (label_str, fs, blocks)
+        dosfs_cmd = "mkdosfs %s -S 512 -C %s %d" % (label_str, rootfs, blocks)
         exec_native_cmd(dosfs_cmd, native_sysroot)
 
-        chmod_cmd = "chmod 644 %s" % fs
+        chmod_cmd = "chmod 644 %s" % rootfs
         exec_cmd(chmod_cmd)
 
     def prepare_empty_partition_squashfs(self, cr_workdir, oe_builddir,
@@ -431,21 +441,21 @@ class Wic_PartData(Mic_PartData):
         msger.warning("Creating of an empty squashfs %s partition was attempted. " \
                       "Proceeding as requested." % self.mountpoint)
 
-        fs = "%s/fs_%s.%s" % (cr_workdir, self.label, self.fstype)
-        os.path.isfile(fs) and os.remove(fs)
+        path = "%s/fs_%s.%s" % (cr_workdir, self.label, self.fstype)
+        os.path.isfile(path) and os.remove(path)
 
         # it is not possible to create a squashfs without source data,
         # thus prepare an empty temp dir that is used as source
         tmpdir = tempfile.mkdtemp()
 
         squashfs_cmd = "mksquashfs %s %s -noappend" % \
-                       (tmpdir, fs)
+                       (tmpdir, path)
         exec_native_cmd(squashfs_cmd, native_sysroot)
 
         os.rmdir(tmpdir)
 
         # get the rootfs size in the right units for kickstart (kB)
-        du_cmd = "du -Lbks %s" % fs
+        du_cmd = "du -Lbks %s" % path
         out = exec_cmd(du_cmd)
         fs_size = out.split()[0]
 
@@ -455,22 +465,23 @@ class Wic_PartData(Mic_PartData):
         """
         Prepare a swap partition.
         """
-        fs = "%s/fs.%s" % (cr_workdir, self.fstype)
+        path = "%s/fs.%s" % (cr_workdir, self.fstype)
 
         dd_cmd = "dd if=/dev/zero of=%s bs=1k seek=%d count=0" % \
-            (fs, self.size)
+            (path, self.size)
         exec_cmd(dd_cmd)
 
         import uuid
         label_str = ""
         if self.label:
             label_str = "-L %s" % self.label
-        mkswap_cmd = "mkswap %s -U %s %s" % (label_str, str(uuid.uuid1()), fs)
+        mkswap_cmd = "mkswap %s -U %s %s" % (label_str, str(uuid.uuid1()), path)
         exec_native_cmd(mkswap_cmd, native_sysroot)
 
-class Wic_Partition(Mic_Partition):
-    removedKeywords = Mic_Partition.removedKeywords
-    removedAttrs = Mic_Partition.removedAttrs
+
+class Wic_Partition(FC4_Partition):
+    removedKeywords = FC4_Partition.removedKeywords
+    removedAttrs = FC4_Partition.removedAttrs
 
     def _getParser(self):
         def overhead_cb(option, opt_str, value, parser):
@@ -479,28 +490,37 @@ class Wic_Partition(Mic_Partition):
                                        (option, value))
             setattr(parser.values, option.dest, value)
 
-        op = Mic_Partition._getParser(self)
+        parser = FC4_Partition._getParser(self)
+
+        # The alignment value is given in kBytes. e.g., value 8 means that
+        # the partition is aligned to start from 8096 byte boundary.
+        parser.add_option("--align", type="int", action="store", dest="align",
+                          default=None)
+        parser.add_option("--extoptions", type="string", action="store", dest="extopts",
+                          default=None)
+        parser.add_option("--part-type", type="string", action="store", dest="part_type",
+                          default=None)
         # use specified source file to fill the partition
         # and calculate partition size
-        op.add_option("--source", type="string", action="store",
-                      dest="source", default=None)
+        parser.add_option("--source", type="string", action="store",
+                          dest="source", default=None)
         # comma-separated list of param=value pairs
-        op.add_option("--sourceparams", type="string", action="store",
-                      dest="sourceparams", default=None)
+        parser.add_option("--sourceparams", type="string", action="store",
+                          dest="sourceparams", default=None)
         # use specified rootfs path to fill the partition
-        op.add_option("--rootfs-dir", type="string", action="store",
-                      dest="rootfs", default=None)
+        parser.add_option("--rootfs-dir", type="string", action="store",
+                          dest="rootfs", default=None)
         # wether to add the partition in the partition table
-        op.add_option("--no-table", dest="no_table", action="store_true",
-                      default=False)
+        parser.add_option("--no-table", dest="no_table", action="store_true",
+                          default=False)
         # extra space beyond the partition size
-        op.add_option("--extra-space", dest="extra_space", action="store",
-                      type="size", nargs=1, default="10M")
-        op.add_option("--overhead-factor", dest="overhead_factor",
-                      action="callback", callback=overhead_cb, type="float",
-                      nargs=1, default=1.3)
-        op.add_option("--use-uuid", dest="use_uuid", action="store_true",
-                      default=False)
-        op.add_option("--uuid")
+        parser.add_option("--extra-space", dest="extra_space", action="store",
+                          type="size", nargs=1, default="10M")
+        parser.add_option("--overhead-factor", dest="overhead_factor",
+                          action="callback", callback=overhead_cb, type="float",
+                          nargs=1, default=1.3)
+        parser.add_option("--use-uuid", dest="use_uuid", action="store_true",
+                          default=False)
+        parser.add_option("--uuid")
 
-        return op
+        return parser

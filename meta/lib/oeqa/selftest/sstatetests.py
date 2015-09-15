@@ -153,7 +153,7 @@ class SStateTests(SStateBase):
                 expected_remaining_sstate += [x for x in target_sstate_after_build if x not in target_sstate_before_build if not any(pattern in x for pattern in ignore_patterns)]
             self.remove_config(global_config[idx])
             self.remove_recipeinc(target, target_config[idx])
-            self.assertEqual(result.status, 0)
+            self.assertEqual(result.status, 0, msg = "build of %s failed with %s" % (target, result.output))
 
         runCmd("sstate-cache-management.sh -y --cache-dir=%s --remove-duplicated --extra-archs=%s" % (self.sstate_path, ','.join(map(str, sstate_archs_list))))
         actual_remaining_sstate = [x for x in self.search_sstate(target + '.*?\.tgz$') if not any(pattern in x for pattern in ignore_patterns)]
@@ -203,6 +203,7 @@ class SStateTests(SStateBase):
         target_config.append('')
         self.run_test_sstate_cache_management_script('m4', global_config,  target_config, ignore_patterns=['populate_lic'])
 
+    @testcase(1270)
     def test_sstate_32_64_same_hash(self):
         """
         The sstate checksums for both native and target should not vary whether
@@ -219,14 +220,14 @@ BUILD_ARCH = \"x86_64\"
 BUILD_OS = \"linux\"
 """)
         self.track_for_cleanup(topdir + "/tmp-sstatesamehash")
-        bitbake("core-image-sato -S printdiff", ignore_status=True)
+        bitbake("core-image-sato -S none")
         self.write_config("""
 TMPDIR = \"${TOPDIR}/tmp-sstatesamehash2\"
 BUILD_ARCH = \"i686\"
 BUILD_OS = \"linux\"
 """)
         self.track_for_cleanup(topdir + "/tmp-sstatesamehash2")
-        bitbake("core-image-sato -S printdiff", ignore_status=True)
+        bitbake("core-image-sato -S none")
 
         def get_files(d):
             f = []
@@ -239,6 +240,7 @@ BUILD_OS = \"linux\"
         self.assertItemsEqual(files1, files2)
 
 
+    @testcase(1271)
     def test_sstate_nativelsbstring_same_hash(self):
         """
         The sstate checksums should be independent of whichever NATIVELSBSTRING is
@@ -247,19 +249,18 @@ BUILD_OS = \"linux\"
         """
 
         topdir = get_bb_var('TOPDIR')
-        targetvendor = get_bb_var('TARGET_VENDOR')
         self.write_config("""
 TMPDIR = \"${TOPDIR}/tmp-sstatesamehash\"
 NATIVELSBSTRING = \"DistroA\"
 """)
         self.track_for_cleanup(topdir + "/tmp-sstatesamehash")
-        bitbake("core-image-sato -S printdiff", ignore_status=True)
+        bitbake("core-image-sato -S none")
         self.write_config("""
 TMPDIR = \"${TOPDIR}/tmp-sstatesamehash2\"
 NATIVELSBSTRING = \"DistroB\"
 """)
         self.track_for_cleanup(topdir + "/tmp-sstatesamehash2")
-        bitbake("core-image-sato -S printdiff", ignore_status=True)
+        bitbake("core-image-sato -S none")
 
         def get_files(d):
             f = []
@@ -271,3 +272,37 @@ NATIVELSBSTRING = \"DistroB\"
         files2 = [x.replace("tmp-sstatesamehash2", "tmp-sstatesamehash") for x in files2]
         self.assertItemsEqual(files1, files2)
 
+    def test_sstate_allarch_samesigs(self):
+        """
+        The sstate checksums off allarch packages should be independent of whichever 
+        MACHINE is set. Check this using bitbake -S.
+        """
+
+        topdir = get_bb_var('TOPDIR')
+        targetos = get_bb_var('TARGET_OS')
+        targetvendor = get_bb_var('TARGET_VENDOR')
+        self.write_config("""
+TMPDIR = \"${TOPDIR}/tmp-sstatesamehash\"
+MACHINE = \"qemux86\"
+""")
+        self.track_for_cleanup(topdir + "/tmp-sstatesamehash")
+        bitbake("world -S none")
+        self.write_config("""
+TMPDIR = \"${TOPDIR}/tmp-sstatesamehash2\"
+MACHINE = \"qemuarm\"
+""")
+        self.track_for_cleanup(topdir + "/tmp-sstatesamehash2")
+        bitbake("world -S none")
+
+        def get_files(d):
+            f = []
+            for root, dirs, files in os.walk(d):
+                for name in files:
+                    if "do_build" not in name:
+                        f.append(os.path.join(root, name))
+            return f
+        files1 = get_files(topdir + "/tmp-sstatesamehash/stamps/all" + targetvendor + "-" + targetos)
+        files2 = get_files(topdir + "/tmp-sstatesamehash2/stamps/all" + targetvendor + "-" + targetos)
+        files2 = [x.replace("tmp-sstatesamehash2", "tmp-sstatesamehash") for x in files2]
+        self.maxDiff = None
+        self.assertItemsEqual(files1, files2)

@@ -61,6 +61,7 @@ SRC_URI += " \
         file://t-run-switches.t-perl5-perl.patch \
         file://ext-ODBM_File-hints-linux.pl-link-libgdbm_compat.patch \
         file://ext-ODBM_File-t-odbm.t-fix-the-path-of-dbmt_common.p.patch \
+        file://perl-PathTools-don-t-filter-out-blib-from-INC.patch \
 "
 
 # Fix test case issues
@@ -133,6 +134,7 @@ do_configure() {
         if [ "${TARGET_OS}" = "linux-uclibc" -o "${TARGET_OS}" = "linux-uclibceabi" ]; then
                 sed -i -e "s,\(d_crypt_r=\)'define',\1'undef',g" \
                        -e "s,\(d_futimes=\)'define',\1'undef',g" \
+                       -e "s,\(d_finitel=\)'define',\1'undef',g" \
                        -e "s,\(crypt_r_proto=\)'\w+',\1'0',g" \
                        -e "s,\(d_getnetbyname_r=\)'define',\1'undef',g" \
                        -e "s,\(getnetbyname_r_proto=\)'\w+',\1'0',g" \

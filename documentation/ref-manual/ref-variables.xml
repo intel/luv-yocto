@@ -283,6 +283,49 @@
             </glossdef>
         </glossentry>
 
+        <glossentry id='var-ARCHIVER_MODE'><glossterm>ARCHIVER_MODE</glossterm>
+            <info>
+                ARCHIVER_MODE[doc] = "Controls archive creation used when releasing source files."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    When used with the
+                    <link linkend='ref-classes-archiver'><filename>archiver</filename></link>
+                    class, determines the type of information used to create
+                    a released archive.
+                    You can use this variable to create archives of patched
+                    source, original source, configured source, and so forth
+                    by employing the following variable flags (varflags):
+                    <literallayout class='monospaced'>
+     ARCHIVER_MODE[src] = "original"                 # Uses original (unpacked) source
+                                                     # files.
+
+     ARCHIVER_MODE[src] = "patched"                  # Uses patched source files. This is
+                                                     # the default.
+
+     ARCHIVER_MODE[src] = "configured"               # Uses configured source files.
+
+     ARCHIVER_MODE[diff] = "1"                       # Uses patches between do_unpack and
+                                                     # do_patch.
+
+     ARCHIVER_MODE[diff-exclude] ?= "<replaceable>file</replaceable> <replaceable>file</replaceable> ..."  # Lists files and directories to
+                                                     # exclude from diff.
+
+     ARCHIVER_MODE[dumpdata] = "1"                   # Uses environment data.
+
+     ARCHIVER_MODE[recipe] = "1"                     # Uses recipe and include files.
+
+     ARCHIVER_MODE[srpm] = "1"                       # Uses RPM package files.
+                    </literallayout>
+                    For information on how the variable works, see the
+                    <filename>meta/classes/archiver.bbclass</filename> file
+                    in the
+                    <ulink url='&YOCTO_DOCS_DEV_URL;#source-directory'>Source Directory</ulink>.
+                </para>
+            </glossdef>
+        </glossentry>
+
         <glossentry id='var-AS'><glossterm>AS</glossterm>
             <info>
                 AS[doc] = "Minimal command and arguments to run the assembler."
@@ -603,6 +646,59 @@
             </glossdef>
         </glossentry>
 
+        <glossentry id='var-BB_ALLOWED_NETWORKS'><glossterm>BB_ALLOWED_NETWORKS</glossterm>
+            <info>
+                BB_ALLOWED_NETWORKS[doc] = "A list of hosts that the fetcher is allowed to use to obtain the required source code."
+            </info>
+            <glossdef>
+                <para>
+                    Specifies a space-delimited list of hosts that the fetcher
+                    is allowed to use to obtain the required source code.
+                    Following are considerations surrounding this variable:
+                    <itemizedlist>
+                        <listitem><para>
+                            This host list is only used if
+                            <filename>BB_NO_NETWORK</filename> is either not
+                            set or set to "0".
+                            </para></listitem>
+                        <listitem><para>
+                            Limited support for wildcard matching against the
+                            beginning of host names exists.
+                            For example, the following setting matches
+                            <filename>git.gnu.org</filename>,
+                            <filename>ftp.gnu.org</filename>, and
+                            <filename>foo.git.gnu.org</filename>.
+                            <literallayout class='monospaced'>
+     BB_ALLOWED_NETWORKS = "*.gnu.org"
+                            </literallayout>
+                            </para></listitem>
+                        <listitem><para>
+                            Mirrors not in the host list are skipped and
+                            logged in debug.
+                            </para></listitem>
+                        <listitem><para>
+                            Attempts to access networks not in the host list
+                            cause a failure.
+                            </para></listitem>
+                    </itemizedlist>
+                    Using <filename>BB_ALLOWED_NETWORKS</filename> in
+                    conjunction with
+                    <link linkend='var-PREMIRRORS'><filename>PREMIRRORS</filename></link>
+                    is very useful.
+                    Adding the host you want to use to
+                    <filename>PREMIRRORS</filename> results in the source code
+                    being fetched from an allowed location and avoids raising
+                    an error when a host that is not allowed is in a
+                    <link linkend='var-SRC_URI'><filename>SRC_URI</filename></link>
+                    statement.
+                    This is because the fetcher does not attempt to use the
+                    host listed in <filename>SRC_URI</filename> after a
+                    successful fetch from the
+                    <filename>PREMIRRORS</filename> occurs.
+                </para>
+            </glossdef>
+        </glossentry>
+
         <glossentry id='var-BB_DANGLINGAPPENDS_WARNONLY'><glossterm>BB_DANGLINGAPPENDS_WARNONLY</glossterm>
             <info>
                 BB_DANGLINGAPPENDS_WARNONLY[doc] = "Defines how BitBake handles situations where an append file (.bbappend) has no corresponding recipe file (.bb)."
@@ -851,8 +947,26 @@
                     The OpenEmbedded build system automatically configures
                     this variable to be equal to the number of cores on the
                     build system.
-                    To gain optimal parallelism, you should not have to
-                    override this variable.
+                    For example, a system with a dual core processor that
+                    also uses hyper-threading causes the
+                    <filename>BB_NUMBER_THREADS</filename> variable to default
+                    to "4".
+                </para>
+
+                <para>
+                    For single socket systems (i.e. one CPU), you should not
+                    have to override this variable to gain optimal parallelism
+                    during builds.
+                    However, if you have very large systems that employ
+                    multiple physical CPUs, you might want to make sure the
+                    <filename>BB_NUMBER_THREADS</filename> variable is not
+                    set higher than "20".
+                </para>
+
+                <para>
+                    For more information on speeding up builds, see the
+                    "<link linkend='speeding-up-the-build'>Speeding Up the Build</link>"
+                    section.
                 </para>
             </glossdef>
         </glossentry>
@@ -3613,7 +3727,12 @@
             <glossdef>
                 <para role="glossdeffirst">
 <!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
-                    The list of additional features to include in an image.
+                    A list of additional features to include in an image.
+                    When listing more than one feature, separate them with
+                    a space.
+                </para>
+
+                <para>
                     Typically, you configure this variable in your
                     <filename>local.conf</filename> file, which is found in the
                     <ulink url='&YOCTO_DOCS_DEV_URL;#build-directory'>Build Directory</ulink>.
@@ -4772,9 +4891,10 @@
                     <link linkend='ref-tasks-compile'><filename>do_compile</filename></link>
                     task that specify parallel compilation.
                     This variable usually takes the form of
-                    <filename>-j 4</filename>, where the number
-                    represents the maximum number of parallel threads
-                    <filename>make</filename> can run.
+                    "-j <replaceable>x</replaceable>", where
+                    <replaceable>x</replaceable> represents the maximum
+                    number of parallel threads <filename>make</filename> can
+                    run.
                     <note>
                         The options passed affect builds on all enabled
                         machines on the network, which are machines running the
@@ -5393,24 +5513,50 @@
 
         <glossentry id='var-IMAGE_POSTPROCESS_COMMAND'><glossterm>IMAGE_POSTPROCESS_COMMAND</glossterm>
             <info>
-                IMAGE_POSTPROCESS_COMMAND[doc] = "Added by classes to run post processing commands once the OpenEmbedded build system has created the image."
+                IMAGE_POSTPROCESS_COMMAND[doc] = "Specifies a list of functions to call once the OpenEmbedded build system has created the final image output files."
             </info>
             <glossdef>
                 <para role="glossdeffirst">
 <!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
-                    Added by classes to run post processing commands once the
-                    OpenEmbedded build system has created the image.
-                    You can specify shell commands separated by semicolons:
+                    Specifies a list of functions to call once the
+                    OpenEmbedded build system has created the final image
+                    output files.
+                    You can specify functions separated by semicolons:
                     <literallayout class='monospaced'>
-     IMAGE_POSTPROCESS_COMMAND += "<replaceable>shell_command</replaceable>; ... "
+     IMAGE_POSTPROCESS_COMMAND += "<replaceable>function</replaceable>; ... "
                     </literallayout>
                 </para>
 
                 <para>
-                    If you need to pass the path to the root filesystem within
-                    the command, you can use
+                    If you need to pass the root filesystem path to a command
+                    within the function, you can use
                     <filename>${IMAGE_ROOTFS}</filename>, which points to
-                    the root filesystem image.
+                    the directory that becomes the root filesystem image.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-IMAGE_PREPROCESS_COMMAND'><glossterm>IMAGE_PREPROCESS_COMMAND</glossterm>
+            <info>
+                IMAGE_PREPROCESS_COMMAND[doc] = "Specifies a list of functions to call before the OpenEmbedded build system has created the final image output files."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Specifies a list of functions to call before the
+                    OpenEmbedded build system has created the final image
+                    output files.
+                    You can specify functions separated by semicolons:
+                    <literallayout class='monospaced'>
+     IMAGE_PREPROCESS_COMMAND += "<replaceable>function</replaceable>; ... "
+                    </literallayout>
+                </para>
+
+                <para>
+                    If you need to pass the root filesystem path to a command
+                    within the function, you can use
+                    <filename>${IMAGE_ROOTFS}</filename>, which points to
+                    the directory that becomes the root filesystem image.
                 </para>
             </glossdef>
         </glossentry>
@@ -5600,6 +5746,7 @@
      cpio.gz
      cpio.xz
      cpio.lzma
+     vdi
      vmdk
      elf
                     </literallayout>
@@ -6206,6 +6353,79 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                         The <filename>KBRANCH</filename> statement identifies
                         the kernel branch to use when building for the Emenlow
                         BSP.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-KBUILD_DEFCONFIG'><glossterm>KBUILD_DEFCONFIG</glossterm>
+            <info>
+                KBUILD_DEFCONFIG[doc] = "Specifies an "in-tree" kernel configuration file for use during a kernel build."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    When used with the
+                    <link linkend='ref-classes-kernel-yocto'><filename>kernel-yocto</filename></link>
+                    class, specifies an "in-tree" kernel configuration file
+                    for use during a kernel build.
+                </para>
+
+                <para>
+                    Typically, when using a <filename>defconfig</filename> to
+                    configure a kernel during a build, you place the
+                    file in your layer in the same manner as you would
+                    patch files and configuration fragment files (i.e.
+                    "out-of-tree").
+                    However, if you want to use a <filename>defconfig</filename>
+                    file that is part of the kernel tree (i.e. "in-tree"),
+                    you can use the
+                    <filename>KBUILD_DEFCONFIG</filename> variable to point
+                    to the <filename>defconfig</filename> file.
+                </para>
+
+                <para>
+                    To use the variable, set it in the append file for your
+                    kernel recipe using the following form:
+                    <literallayout class='monospaced'>
+     KBUILD_DEFCONFIG_<link linkend='var-KMACHINE'>KMACHINE</link> ?= <replaceable>defconfig_file</replaceable>
+                    </literallayout>
+                    Here is an example from a "raspberrypi2"
+                    <filename>KMACHINE</filename> build that uses a
+                    <filename>defconfig</filename> file named
+                    "bcm2709_defconfig":
+                    <literallayout class='monospaced'>
+     KBUILD_DEFCONFIG_raspberrypi2 = "bcm2709_defconfig"
+                    </literallayout>
+                    As an alternative, you can use the following within your
+                    append file:
+                    <literallayout class='monospaced'>
+     KBUILD_DEFCONFIG_pn-linux-yocto ?= <replaceable>defconfig_file</replaceable>
+                    </literallayout>
+                    For more information on how to use the
+                    <filename>KBUILD_DEFCONFIG</filename> variable, see the
+                    "<ulink url='&YOCTO_DOCS_KERNEL_DEV_URL;#using-an-in-tree-defconfig-file'>Using an "In-Tree" <filename>defconfig</filename> File</ulink>"
+                    section.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-KERNEL_CLASSES'><glossterm>KERNEL_CLASSES</glossterm>
+            <info>
+                KERNEL_CLASSES[doc] = "A list of classes defining kernel image types that kernel class should inherit."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    A list of classes defining kernel image types that the
+                    <link linkend='ref-classes-kernel'><filename>kernel</filename></link>
+                    class should inherit.
+                    You typically append this variable to enable extended image
+                    types.
+                    An example is the "kernel-fitimage", which enables
+                    fitImage support and resides in
+                    <filename>meta/classes/kernel-fitimage.bbclass</filename>.
+                    You can register custom kernel image types with the
+                    <filename>kernel</filename> class using this variable.
                 </para>
             </glossdef>
         </glossentry>
@@ -8468,7 +8688,7 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
 
         <glossentry id='var-PARALLEL_MAKE'><glossterm>PARALLEL_MAKE</glossterm>
             <info>
-                PARALLEL_MAKE[doc] = "Specifies extra options that are passed to the make command during the compile tasks. This variable is usually in the form -j 4, where the number represents the maximum number of parallel threads make can run."
+                PARALLEL_MAKE[doc] = "Specifies extra options that are passed to the make command during the compile tasks. This variable is usually in the form -j x, where x represents the maximum number of parallel threads make can run."
             </info>
             <glossdef>
                 <para role="glossdeffirst">
@@ -8478,20 +8698,39 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     <link linkend='ref-tasks-compile'><filename>do_compile</filename></link>
                     task in order to specify parallel compilation on the local
                     build host.
-                    This variable is usually in the form "-j &lt;x&gt;",
-                    where x represents the maximum number of parallel threads
-                    <filename>make</filename> can run.
+                    This variable is usually in the form "-j <replaceable>x</replaceable>",
+                    where <replaceable>x</replaceable> represents the maximum
+                    number of parallel threads <filename>make</filename> can
+                    run.
                 </para>
 
                 <para>
-                    The OpenEmbedded build system automatically sets this
-                    variable to be equal to the number of cores the build
-                    system uses.
+                    By default, the OpenEmbedded build system automatically
+                    sets this variable to be equal to the number of cores the
+                    build system uses.
                     <note>
-                        Individual recipes might clear out this variable if
-                        the software being built has problems running its
-                        <filename>make</filename> process in parallel.
+                        If the software being built experiences dependency
+                        issues during the <filename>do_compile</filename>
+                        task that result in race conditions, you can clear
+                        the <filename>PARALLEL_MAKE</filename> variable within
+                        the recipe as a workaround.
+                        For information on addressing race conditions, see the
+                        "<ulink url='&YOCTO_DOCS_DEV_URL;#debugging-parallel-make-races'>Debugging Parallel Make Races</ulink>"
+                        section in the Yocto Project Development Manual.
                     </note>
+                    For single socket systems (i.e. one CPU), you should not
+                    have to override this variable to gain optimal parallelism
+                    during builds.
+                    However, if you have very large systems that employ
+                    multiple physical CPUs, you might want to make sure the
+                    <filename>PARALLEL_MAKE</filename> variable is not
+                    set higher than "-j 20".
+                </para>
+
+                <para>
+                    For more information on speeding up builds, see the
+                    "<link linkend='speeding-up-the-build'>Speeding Up the Build</link>"
+                    section.
                 </para>
             </glossdef>
         </glossentry>
@@ -8510,9 +8749,15 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     This variable defaults to the value of
                     <link linkend='var-PARALLEL_MAKE'><filename>PARALLEL_MAKE</filename></link>.
                     <note>
-                        Individual recipes might clear out this variable if
-                        the software being built has problems running its
-                        <filename>make install</filename> process in parallel.
+                        If the software being built experiences dependency
+                        issues during the
+                        <filename>do_install</filename> task that result in
+                        race conditions, you can clear the
+                        <filename>PARALLEL_MAKEINST</filename> variable within
+                        the recipe as a workaround.
+                        For information on addressing race conditions, see the
+                        "<ulink url='&YOCTO_DOCS_DEV_URL;#debugging-parallel-make-races'>Debugging Parallel Make Races</ulink>"
+                        section in the Yocto Project Development Manual.
                     </note>
                 </para>
             </glossdef>
@@ -8883,6 +9128,64 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
             </glossdef>
         </glossentry>
 
+        <glossentry id='var-POPULATE_SDK_POST_HOST_COMMAND'><glossterm>POPULATE_SDK_POST_HOST_COMMAND</glossterm>
+            <info>
+                POPULATE_SDK_POST_HOST_COMMAND[doc] = "Specifies a list of functions to call once the OpenEmbedded build system has created host part of the SDK."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Specifies a list of functions to call once the
+                    OpenEmbedded build system has created the host part of
+                    the SDK.
+                    You can specify functions separated by semicolons:
+                    <literallayout class='monospaced'>
+     POPULATE_SDK_POST_HOST_COMMAND += "<replaceable>function</replaceable>; ... "
+                    </literallayout>
+                </para>
+
+                <para>
+                    If you need to pass the SDK path to a command
+                    within a function, you can use
+                    <filename>${SDK_DIR}</filename>, which points to
+                    the parent directory used by the OpenEmbedded build
+                    system when creating SDK output.
+                    See the
+                    <link linkend='var-SDK_DIR'><filename>SDK_DIR</filename></link>
+                    variable for more information.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-POPULATE_SDK_POST_TARGET_COMMAND'><glossterm>POPULATE_SDK_POST_TARGET_COMMAND</glossterm>
+            <info>
+                POPULATE_SDK_POST_TARGET_COMMAND[doc] = "Specifies a list of functions to call once the OpenEmbedded build system has created target part of the SDK."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Specifies a list of functions to call once the
+                    OpenEmbedded build system has created the target part of
+                    the SDK.
+                    You can specify functions separated by semicolons:
+                    <literallayout class='monospaced'>
+     POPULATE_SDK_POST_TARGET_COMMAND += "<replaceable>function</replaceable>; ... "
+                    </literallayout>
+                </para>
+
+                <para>
+                    If you need to pass the SDK path to a command
+                    within a function, you can use
+                    <filename>${SDK_DIR}</filename>, which points to
+                    the parent directory used by the OpenEmbedded build
+                    system when creating SDK output.
+                    See the
+                    <link linkend='var-SDK_DIR'><filename>SDK_DIR</filename></link>
+                    variable for more information.
+                </para>
+            </glossdef>
+        </glossentry>
+
         <glossentry id='var-PR'><glossterm>PR</glossterm>
             <info>
                 PR[doc] = "The revision of the recipe. The default value for this variable is 'r0'."
@@ -8992,55 +9295,6 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     You can use <filename>file://</filename> URLs to point
                     to local directories or network shares as well.
                 </para>
-            </glossdef>
-        </glossentry>
-
-        <glossentry id='var-PRINC'><glossterm>PRINC</glossterm>
-            <info>
-                PRINC[doc] = "Causes the PR variable of .bbappend files to dynamically increment. This increment minimizes the impact of layer ordering. This variable defaults to '0'."
-            </info>
-            <glossdef>
-                <para role="glossdeffirst">
-<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
-                    The <filename>PRINC</filename> variable has been deprecated
-                    and triggers a warning if detected during a build.
-                    For
-                    <link linkend='var-PR'><filename>PR</filename></link>
-                    increments on changes, use the PR service instead.
-                    You can find out more about this service in the
-                    "<ulink url='&YOCTO_DOCS_DEV_URL;#working-with-a-pr-service'>Working With a PR Service</ulink>"
-                    section in the Yocto Project Development Manual.
-                </para>
-<!--
-
-                <para>
-                    Causes the
-                    <link linkend='var-PR'><filename>PR</filename></link>
-                    variable of <filename>.bbappend</filename> files to
-                    dynamically increment.
-                    This increment minimizes the impact of layer ordering.
-                </para>
-
-                <para>
-                    In order to ensure multiple <filename>.bbappend</filename>
-                    files can co-exist,
-                    <filename>PRINC</filename> should be self-referencing.
-                    This variable defaults to 0.
-                </para>
-
-                <para>
-                    Following is an example that increments
-                    <filename>PR</filename> by two:
-                    <literallayout class='monospaced'>
-     PRINC := "${@int(PRINC) + 2}"
-                    </literallayout>
-                    It is advisable not to use strings such as ".= '.1'" with the variable because
-                    this usage is very sensitive to layer ordering.
-                    You should avoid explicit assignments as they cannot
-                    adequately represent multiple
-                    <filename>.bbappend</filename> files.
-                </para>
--->
             </glossdef>
         </glossentry>
 
@@ -9626,26 +9880,113 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
             </glossdef>
         </glossentry>
 
-        <glossentry id='var-ROOTFS_POSTPROCESS_COMMAND'><glossterm>ROOTFS_POSTPROCESS_COMMAND</glossterm>
+        <glossentry id='var-ROOTFS_POSTINSTALL_COMMAND'><glossterm>ROOTFS_POSTINSTALL_COMMAND</glossterm>
             <info>
-                ROOTFS_POSTPROCESS_COMMAND[doc] = "Added by classes to run post processing commands once the OpenEmbedded build system has created the root filesystem."
+                ROOTFS_POSTINSTALL_COMMAND[doc] = "Specifies a list of functions to call after installing packages."
             </info>
             <glossdef>
                 <para role="glossdeffirst">
 <!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
-                    Added by classes to run post processing commands once the
-                    OpenEmbedded build system has created the root filesystem.
-                    You can specify shell commands separated by semicolons:
+                    Specifies a list of functions to call after the
+                    OpenEmbedded build system has installed packages.
+                    You can specify functions separated by semicolons:
                     <literallayout class='monospaced'>
-     ROOTFS_POSTPROCESS_COMMAND += "<replaceable>shell_command</replaceable>; ... "
+     ROOTFS_POSTINSTALL_COMMAND += "<replaceable>function</replaceable>; ... "
                     </literallayout>
                 </para>
 
                 <para>
-                    If you need to pass the path to the root filesystem within
-                    the command, you can use
+                    If you need to pass the root filesystem path to a command
+                    within a function, you can use
                     <filename>${IMAGE_ROOTFS}</filename>, which points to
-                    the root filesystem image.
+                    the directory that becomes the root filesystem image.
+                    See the
+                    <link linkend='var-IMAGE_ROOTFS'><filename>IMAGE_ROOTFS</filename></link>
+                    variable for more information.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-ROOTFS_POSTPROCESS_COMMAND'><glossterm>ROOTFS_POSTPROCESS_COMMAND</glossterm>
+            <info>
+                ROOTFS_POSTPROCESS_COMMAND[doc] = "Specifies a list of functions to call once the OpenEmbedded build system has created the root filesystem."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Specifies a list of functions to call once the
+                    OpenEmbedded build system has created the root filesystem.
+                    You can specify functions separated by semicolons:
+                    <literallayout class='monospaced'>
+     ROOTFS_POSTPROCESS_COMMAND += "<replaceable>function</replaceable>; ... "
+                    </literallayout>
+                </para>
+
+                <para>
+                    If you need to pass the root filesystem path to a command
+                    within a function, you can use
+                    <filename>${IMAGE_ROOTFS}</filename>, which points to
+                    the directory that becomes the root filesystem image.
+                    See the
+                    <link linkend='var-IMAGE_ROOTFS'><filename>IMAGE_ROOTFS</filename></link>
+                    variable for more information.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-ROOTFS_POSTUNINSTALL_COMMAND'><glossterm>ROOTFS_POSTUNINSTALL_COMMAND</glossterm>
+            <info>
+                ROOTFS_POSTUNINSTALL_COMMAND[doc] = "Specifies a list of functions to call after removal of unneeded packages."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Specifies a list of functions to call after the
+                    OpenEmbedded build system has removed unnecessary
+                    packages.
+                    When runtime package management is disabled in the
+                    image, several packages are removed including
+                    <filename>base-passwd</filename>,
+                    <filename>shadow</filename>, and
+                    <filename>update-alternatives</filename>.
+                    You can specify functions separated by semicolons:
+                    <literallayout class='monospaced'>
+     ROOTFS_POSTUNINSTALL_COMMAND += "<replaceable>function</replaceable>; ... "
+                    </literallayout>
+                </para>
+
+                <para>
+                    If you need to pass the root filesystem path to a command
+                    within a function, you can use
+                    <filename>${IMAGE_ROOTFS}</filename>, which points to
+                    the directory that becomes the root filesystem image.
+                    See the
+                    <link linkend='var-IMAGE_ROOTFS'><filename>IMAGE_ROOTFS</filename></link>
+                    variable for more information.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-ROOTFS_PREPROCESS_COMMAND'><glossterm>ROOTFS_PREPROCESS_COMMAND</glossterm>
+            <info>
+                ROOTFS_PREPROCESS_COMMAND[doc] = "Specifies a list of functions to call before the OpenEmbedded build system has created the root filesystem."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Specifies a list of functions to call before the
+                    OpenEmbedded build system has created the root filesystem.
+                    You can specify functions separated by semicolons:
+                    <literallayout class='monospaced'>
+     ROOTFS_PREPROCESS_COMMAND += "<replaceable>function</replaceable>; ... "
+                    </literallayout>
+                </para>
+
+                <para>
+                    If you need to pass the root filesystem path to a command
+                    within a function, you can use
+                    <filename>${IMAGE_ROOTFS}</filename>, which points to
+                    the directory that becomes the root filesystem image.
                     See the
                     <link linkend='var-IMAGE_ROOTFS'><filename>IMAGE_ROOTFS</filename></link>
                     variable for more information.
@@ -9999,6 +10340,39 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
             </glossdef>
         </glossentry>
 
+        <glossentry id='var-SDK_HOST_MANIFEST'><glossterm>SDK_HOST_MANIFEST</glossterm>
+            <info>
+                SDK_HOST_MANIFEST[doc] = "The manifest file for the host part of the SDK. This file lists all the installed packages that make up the host part of the SDK."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    The manifest file for the host part of the SDK.
+                    This file lists all the installed packages that make up
+                    the host part of SDK.
+                    The file contains package information on a line-per-package
+                    basis as follows:
+                    <literallayout class='monospaced'>
+     <replaceable>packagename</replaceable> <replaceable>packagearch</replaceable> <replaceable>version</replaceable>
+                    </literallayout>
+                </para>
+
+                <para>
+                    The
+                    <link linkend='ref-classes-populate-sdk-*'><filename>populate_sdk_base</filename></link>
+                    class defines the manifest file as follows:
+                    <literallayout class='monospaced'>
+     SDK_HOST_MANIFEST = "${SDK_DEPLOY}/${TOOLCHAIN_OUTPUTNAME}.host.manifest"
+                    </literallayout>
+                    The location is derived using the
+                    <link linkend='var-SDK_DEPLOY'><filename>SDK_DEPLOY</filename></link>
+                    and
+                    <link linkend='var-TOOLCHAIN_OUTPUTNAME'><filename>TOOLCHAIN_OUTPUTNAME</filename></link>
+                    variables.
+                </para>
+            </glossdef>
+        </glossentry>
+
         <glossentry id='var-SDK_NAME'><glossterm>SDK_NAME</glossterm>
             <info>
                 SDK_NAME[doc] = "The base name for SDK output files."
@@ -10084,6 +10458,34 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
             </glossdef>
         </glossentry>
 
+        <glossentry id='var-SDK_POSTPROCESS_COMMAND'><glossterm>SDK_POSTPROCESS_COMMAND</glossterm>
+            <info>
+                SDK_POSTPROCESS_COMMAND[doc] = "Specifies a list of functions to call once the OpenEmbedded build system has created the SDK."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Specifies a list of functions to call once the
+                    OpenEmbedded build system has created the SDK.
+                    You can specify functions separated by semicolons:
+                    <literallayout class='monospaced'>
+     SDK_POSTPROCESS_COMMAND += "<replaceable>function</replaceable>; ... "
+                    </literallayout>
+                </para>
+
+                <para>
+                    If you need to pass an SDK path to a command within a
+                    function, you can use
+                    <filename>${SDK_DIR}</filename>, which points to
+                    the parent directory used by the OpenEmbedded build system
+                    when creating SDK output.
+                    See the
+                    <link linkend='var-SDK_DIR'><filename>SDK_DIR</filename></link>
+                    variable for more information.
+                </para>
+            </glossdef>
+        </glossentry>
+
         <glossentry id='var-SDK_PREFIX'><glossterm>SDK_PREFIX</glossterm>
             <info>
                 SDK_PREFIX[doc] = "The toolchain binary prefix used for nativesdk recipes."
@@ -10125,6 +10527,39 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
             </glossdef>
         </glossentry>
 
+        <glossentry id='var-SDK_TARGET_MANIFEST'><glossterm>SDK_TARGET_MANIFEST</glossterm>
+            <info>
+                SDK_TARGET_MANIFEST[doc] = "The manifest file for the target part of the SDK. This file lists all the installed packages that make up the target part of the SDK."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    The manifest file for the target part of the SDK.
+                    This file lists all the installed packages that make up
+                    the target part of the SDK.
+                    The file contains package information on a line-per-package
+                    basis as follows:
+                    <literallayout class='monospaced'>
+     <replaceable>packagename</replaceable> <replaceable>packagearch</replaceable> <replaceable>version</replaceable>
+                    </literallayout>
+                </para>
+
+                <para>
+                    The
+                    <link linkend='ref-classes-populate-sdk-*'><filename>populate_sdk_base</filename></link>
+                    class defines the manifest file as follows:
+                    <literallayout class='monospaced'>
+     SDK_TARGET_MANIFEST = "${SDK_DEPLOY}/${TOOLCHAIN_OUTPUTNAME}.target.manifest"
+                    </literallayout>
+                    The location is derived using the
+                    <link linkend='var-SDK_DEPLOY'><filename>SDK_DEPLOY</filename></link>
+                    and
+                    <link linkend='var-TOOLCHAIN_OUTPUTNAME'><filename>TOOLCHAIN_OUTPUTNAME</filename></link>
+                    variables.
+                </para>
+            </glossdef>
+        </glossentry>
+
         <glossentry id='var-SDK_VENDOR'><glossterm>SDK_VENDOR</glossterm>
             <info>
                 SDK_VENDOR[doc] = "Specifies the name of the SDK vendor."
@@ -10133,6 +10568,32 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                 <para role="glossdeffirst">
 <!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
                     Specifies the name of the SDK vendor.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-SDK_VERSION'><glossterm>SDK_VERSION</glossterm>
+            <info>
+                SDK_VERSION[doc] = "Specifies the version for the SDK."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Specifies the version of the SDK.
+                    The distribution configuration file (e.g.
+                    <filename>/meta-yocto/conf/distro/poky.conf</filename>)
+                    defines the <filename>SDK_VERSION</filename> as follows:
+                    <literallayout class='monospaced'>
+     SDK_VERSION := "${@'${DISTRO_VERSION}'.replace('snapshot-${DATE}','snapshot')}"
+                    </literallayout>
+                </para>
+
+                <para>
+                    For additional information, see the
+                    <link linkend='var-DISTRO_VERSION'><filename>DISTRO_VERSION</filename></link>
+                    and
+                    <link linkend='var-DATE'><filename>DATE</filename></link>
+                    variables.
                 </para>
             </glossdef>
         </glossentry>
@@ -12529,6 +12990,32 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
             </glossdef>
         </glossentry>
 
+        <glossentry id='var-TOOLCHAIN_OUTPUTNAME'><glossterm>TOOLCHAIN_OUTPUTNAME</glossterm>
+            <info>
+                TOOLCHAIN_OUTPUTNAME[doc] = "Defines the name used for the toolchain output."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    This variable defines the name used for the toolchain
+                    output.
+                    The
+                    <link linkend='ref-classes-populate-sdk-*'><filename>populate_sdk_base</filename></link>
+                    class sets the
+                    <filename>TOOLCHAIN_OUTPUTNAME</filename> variable as
+                    follows:
+                    <literallayout class='monospaced'>
+     TOOLCHAIN_OUTPUTNAME ?= "${SDK_NAME}-toolchain-${SDK_VERSION}"
+                    </literallayout>
+                    See the
+                    <link linkend='var-SDK_NAME'><filename>SDK_NAME</filename></link>
+                    and
+                    <link linkend='var-SDK_VERSION'><filename>SDK_VERSION</filename></link>
+                    variables for additional information.
+                </para>
+            </glossdef>
+        </glossentry>
+
         <glossentry id='var-TOOLCHAIN_TARGET_TASK'><glossterm>TOOLCHAIN_TARGET_TASK</glossterm>
             <info>
                 TOOLCHAIN_TARGET_TASK[doc] = "This variable lists packages the OpenEmbedded build system uses when it creates the target part of an SDK, which includes libraries and headers."
@@ -13110,6 +13597,42 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     If you do not specifically set this variable, the
                     OpenEmbedded build process passes and uses "all" for the
                     target during the U-Boot building process.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-UNKNOWN_CONFIGURE_WHITELIST'><glossterm>UNKNOWN_CONFIGURE_WHITELIST</glossterm>
+            <info>
+               UNKNOWN_CONFIGURE_WHITELIST[doc] = "Specifies a list of options that, if reported by the configure script as being invalid, should not generate a warning during the do_configure task."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Specifies a list of options that, if reported by the
+                    configure script as being invalid, should not generate a
+                    warning during the
+                    <link linkend='ref-tasks-configure'><filename>do_configure</filename></link>
+                    task.
+                    Normally, invalid configure options are simply not passed
+                    to the configure script (e.g. should be removed from
+                    <link linkend='var-EXTRA_OECONF'><filename>EXTRA_OECONF</filename></link>).
+                    However, common options, for example, exist that are passed
+                    to all configure scripts at a class level that might not
+                    be valid for some configure scripts.
+                    It follows that no benefit exists in seeing a warning about
+                    these options.
+                    For these cases, the options are added to
+                    <filename>UNKNOWN_CONFIGURE_WHITELIST</filename>.
+                </para>
+
+                <para>
+                    The configure arguments check that uses
+                    <filename>UNKNOWN_CONFIGURE_WHITELIST</filename> is part
+                    of the
+                    <link linkend='ref-classes-insane'><filename>insane</filename></link>
+                    class and is only enabled if the recipe inherits the
+                    <link linkend='ref-classes-autotools'><filename>autotools</filename></link>
+                    class.
                 </para>
             </glossdef>
         </glossentry>

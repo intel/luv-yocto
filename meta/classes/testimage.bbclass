@@ -32,16 +32,21 @@ TEST_LOG_DIR ?= "${WORKDIR}/testimage"
 TEST_EXPORT_DIR ?= "${TMPDIR}/testimage/${PN}"
 TEST_EXPORT_ONLY ?= "0"
 
+RPMTESTSUITE = "${@bb.utils.contains('IMAGE_PKGTYPE', 'rpm', 'smart rpm', '', d)}"
+
 DEFAULT_TEST_SUITES = "ping auto"
 DEFAULT_TEST_SUITES_pn-core-image-minimal = "ping"
-DEFAULT_TEST_SUITES_pn-core-image-sato = "ping ssh df connman syslog xorg scp vnc date dmesg parselogs \
-    ${@bb.utils.contains('IMAGE_PKGTYPE', 'rpm', 'python smart rpm', '', d)}"
-DEFAULT_TEST_SUITES_pn-core-image-sato-sdk = "ping ssh df connman syslog xorg scp vnc date perl ldd gcc kernelmodule dmesg python parselogs \
-    ${@bb.utils.contains('IMAGE_PKGTYPE', 'rpm', 'smart rpm', '', d)}"
+DEFAULT_TEST_SUITES_pn-core-image-sato = "ping ssh df connman syslog xorg scp vnc date dmesg parselogs ${RPMTESTSUITE} \
+    ${@bb.utils.contains('IMAGE_PKGTYPE', 'rpm', 'python', '', d)}"
+DEFAULT_TEST_SUITES_pn-core-image-sato-sdk = "ping ssh df connman syslog xorg scp vnc date perl ldd gcc kernelmodule dmesg python parselogs ${RPMTESTSUITE}"
+DEFAULT_TEST_SUITES_pn-core-image-lsb-sdk = "ping buildcvs buildiptables buildsudoku connman date df gcc kernelmodule ldd pam parselogs perl python scp ${RPMTESTSUITE} ssh syslog logrotate"
 DEFAULT_TEST_SUITES_pn-meta-toolchain = "auto"
 
 # aarch64 has no graphics
 DEFAULT_TEST_SUITES_remove_aarch64 = "xorg vnc"
+
+#qemumips is too slow for buildsudoku
+DEFAULT_TEST_SUITES_remove_qemumips = "buildsudoku"
 
 TEST_SUITES ?= "${DEFAULT_TEST_SUITES}"
 
@@ -55,6 +60,33 @@ TESTIMAGEDEPENDS_qemuall = "qemu-native:do_populate_sysroot qemu-helper-native:d
 
 TESTIMAGELOCK = "${TMPDIR}/testimage.lock"
 TESTIMAGELOCK_qemuall = ""
+
+TESTIMAGE_DUMP_DIR ?= "/tmp/oe-saved-tests/"
+
+testimage_dump_target () {
+    top -bn1
+    ps
+    free
+    df
+    # The next command will export the default gateway IP
+    export DEFAULT_GATEWAY=$(ip route | awk '/default/ { print $3}')
+    ping -c3 $DEFAULT_GATEWAY
+    dmesg
+    netstat -an
+    ip address
+    # Next command will dump logs from /var/log/
+    find /var/log/ -type f 2>/dev/null -exec echo "====================" \; -exec echo {} \; -exec echo "====================" \; -exec cat {} \; -exec echo "" \;
+}
+
+testimage_dump_host () {
+    top -bn1
+    ps -ef
+    free
+    df
+    memstat
+    dmesg
+    netstat -an
+}
 
 python do_testimage() {
     testimage_main(d)
@@ -146,9 +178,10 @@ def exportTests(d,tc):
     savedata = {}
     savedata["d"] = {}
     savedata["target"] = {}
+    savedata["host_dumper"] = {}
     for key in tc.__dict__:
         # special cases
-        if key != "d" and key != "target":
+        if key != "d" and key != "target" and key != "host_dumper":
             savedata[key] = getattr(tc, key)
     savedata["target"]["ip"] = tc.target.ip or d.getVar("TEST_TARGET_IP", True)
     savedata["target"]["server_ip"] = tc.target.server_ip or d.getVar("TEST_SERVER_IP", True)
@@ -161,6 +194,9 @@ def exportTests(d,tc):
         except bb.data_smart.ExpansionError:
             # we don't care about those anyway
             pass
+
+    savedata["host_dumper"]["parent_dir"] = tc.host_dumper.parent_dir
+    savedata["host_dumper"]["cmds"] = tc.host_dumper.cmds
 
     with open(os.path.join(exportpath, "testdata.json"), "w") as f:
             json.dump(savedata, f, skipkeys=True, indent=4, sort_keys=True)
@@ -205,8 +241,10 @@ def testimage_main(d):
     import os
     import oeqa.runtime
     import time
+    import signal
     from oeqa.oetest import loadTests, runTests
     from oeqa.targetcontrol import get_target_controller
+    from oeqa.utils.dump import get_host_dumper
 
     pn = d.getVar("PN", True)
     export = oe.utils.conditional("TEST_EXPORT_ONLY", "1", True, False, d)
@@ -221,6 +259,11 @@ def testimage_main(d):
     testslist = get_tests_list(d)
     testsrequired = [t for t in d.getVar("TEST_SUITES", True).split() if t != "auto"]
 
+    tagexp = d.getVar("TEST_SUITES_TAGS", True)
+
+    # we need the host dumper in test context
+    host_dumper = get_host_dumper(d)
+
     # the robot dance
     target = get_target_controller(d)
 
@@ -228,17 +271,27 @@ def testimage_main(d):
         def __init__(self):
             self.d = d
             self.testslist = testslist
+            self.tagexp = tagexp
             self.testsrequired = testsrequired
             self.filesdir = os.path.join(os.path.dirname(os.path.abspath(oeqa.runtime.__file__)),"files")
             self.target = target
+            self.host_dumper = host_dumper
             self.imagefeatures = d.getVar("IMAGE_FEATURES", True).split()
             self.distrofeatures = d.getVar("DISTRO_FEATURES", True).split()
             manifest = os.path.join(d.getVar("DEPLOY_DIR_IMAGE", True), d.getVar("IMAGE_LINK_NAME", True) + ".manifest")
+            self.sigterm = False
+            self.origsigtermhandler = signal.getsignal(signal.SIGTERM)
+            signal.signal(signal.SIGTERM, self.sigterm_exception)
             try:
                 with open(manifest) as f:
                     self.pkgmanifest = f.read()
             except IOError as e:
                 bb.fatal("No package manifest file found. Did you build the image?\n%s" % e)
+
+        def sigterm_exception(self, signum, stackframe):
+            bb.warn("TestImage received SIGTERM, shutting down...")
+            self.sigterm = True
+            self.target.stop()
 
     # test context
     tc = TestContext()
@@ -254,8 +307,8 @@ def testimage_main(d):
 
     target.deploy()
 
-    target.start()
     try:
+        target.start()
         if export:
             exportTests(d,tc)
         else:
@@ -272,6 +325,7 @@ def testimage_main(d):
             else:
                 raise bb.build.FuncFailed("%s - FAILED - check the task log and the ssh log" % pn )
     finally:
+        signal.signal(signal.SIGTERM, tc.origsigtermhandler)
         target.stop()
 
 testimage_main[vardepsexclude] =+ "BB_ORIGENV"
@@ -296,19 +350,9 @@ def testsdk_main(d):
     testslist = get_tests_list(d, "sdk")
     testsrequired = [t for t in (d.getVar("TEST_SUITES_SDK", True) or "auto").split() if t != "auto"]
 
-    sdktestdir = d.expand("${WORKDIR}/testimage-sdk/")
-    bb.utils.remove(sdktestdir, True)
-    bb.utils.mkdirhier(sdktestdir)
-
     tcname = d.expand("${SDK_DEPLOY}/${TOOLCHAIN_OUTPUTNAME}.sh")
     if not os.path.exists(tcname):
-        bb.fatal("The toolchain is not built. Build it before running the tests: 'bitbake meta-toolchain' .")
-    subprocess.call("cd %s; %s <<EOF\n./tc\nY\nEOF" % (sdktestdir, tcname), shell=True)
-
-    targets = glob.glob(d.expand(sdktestdir + "/tc/sysroots/*${TARGET_VENDOR}-linux*"))
-    if len(targets) > 1:
-        bb.fatal("Error, multiple targets within the SDK found and we don't know which to test? %s" % str(targets))
-    sdkenv = sdktestdir + "/tc/environment-setup-" + os.path.basename(targets[0])
+        bb.fatal("The toolchain is not built. Build it before running the tests: 'bitbake <image> -c populate_sdk' .")
 
     class TestContext(object):
         def __init__(self):
@@ -333,33 +377,45 @@ def testsdk_main(d):
             except IOError as e:
                 bb.fatal("No host package manifest file found. Did you build the sdk image?\n%s" % e)
 
-    # test context
-    tc = TestContext()
-
-    # this is a dummy load of tests
-    # we are doing that to find compile errors in the tests themselves
-    # before booting the image
+    sdktestdir = d.expand("${WORKDIR}/testimage-sdk/")
+    bb.utils.remove(sdktestdir, True)
+    bb.utils.mkdirhier(sdktestdir)
     try:
-        loadTests(tc, "sdk")
-    except Exception as e:
-        import traceback
-        bb.fatal("Loading tests failed:\n%s" % traceback.format_exc())
+        subprocess.check_output("cd %s; %s <<EOF\n./tc\nY\nEOF" % (sdktestdir, tcname), shell=True)
+    except subprocess.CalledProcessError as e:
+        bb.fatal("Couldn't install the SDK:\n%s" % e.output)
 
     try:
-        starttime = time.time()
-        result = runTests(tc, "sdk")
-        stoptime = time.time()
-        if result.wasSuccessful():
-            bb.plain("%s - Ran %d test%s in %.3fs" % (pn, result.testsRun, result.testsRun != 1 and "s" or "", stoptime - starttime))
-            msg = "%s - OK - All required tests passed" % pn
-            skipped = len(result.skipped)
-            if skipped:
-                msg += " (skipped=%d)" % skipped
-            bb.plain(msg)
-        else:
-            raise bb.build.FuncFailed("%s - FAILED - check the task log and the commands log" % pn )
+        targets = glob.glob(d.expand(sdktestdir + "/tc/environment-setup-*"))
+        bb.warn(str(targets))
+        for sdkenv in targets:
+            bb.plain("Testing %s" % sdkenv)
+            # test context
+            tc = TestContext()
+
+            # this is a dummy load of tests
+            # we are doing that to find compile errors in the tests themselves
+            # before booting the image
+            try:
+                loadTests(tc, "sdk")
+            except Exception as e:
+                import traceback
+                bb.fatal("Loading tests failed:\n%s" % traceback.format_exc())
+
+    
+            starttime = time.time()
+            result = runTests(tc, "sdk")
+            stoptime = time.time()
+            if result.wasSuccessful():
+                bb.plain("%s SDK(%s):%s - Ran %d test%s in %.3fs" % (pn, os.path.basename(tcname), os.path.basename(sdkenv),result.testsRun, result.testsRun != 1 and "s" or "", stoptime - starttime))
+                msg = "%s - OK - All required tests passed" % pn
+                skipped = len(result.skipped)
+                if skipped:
+                    msg += " (skipped=%d)" % skipped
+                bb.plain(msg)
+            else:
+                raise bb.build.FuncFailed("%s - FAILED - check the task log and the commands log" % pn )
     finally:
-        pass
         bb.utils.remove(sdktestdir, True)
 
 testsdk_main[vardepsexclude] =+ "BB_ORIGENV"

@@ -15,17 +15,28 @@ var libtoaster = (function (){
    *  arg of the item.
    */
   function _makeTypeahead (jQElement, xhrUrl, xhrParams, selectedCB) {
+    if (!xhrUrl || xhrUrl.length === 0)
+      throw("No url to typeahead supplied");
+
+    var xhrReq;
 
     jQElement.typeahead({
         source: function(query, process){
           xhrParams.search = query;
-          $.getJSON(xhrUrl, this.options.xhrParams, function(data){
+
+          /* If we have a request in progress don't fire off another one*/
+          if (xhrReq)
+            xhrReq.abort();
+
+          xhrReq = $.getJSON(xhrUrl, this.options.xhrParams, function(data){
             if (data.error !== "ok") {
               console.log("Error getting data from server "+data.error);
               return;
             }
 
-            return process (data.rows);
+            xhrReq = null;
+
+            return process(data.results);
           });
         },
         updater: function(item) {
@@ -33,16 +44,31 @@ var libtoaster = (function (){
           selectedCB(itemObj);
           return item;
         },
-        matcher: function(item) {  return ~item.name.toLowerCase().indexOf(this.query.toLowerCase()); },
+        matcher: function(item) {
+          if (!item.hasOwnProperty('name')) {
+            console.log("Name property missing in data");
+            return 0;
+          }
+
+          if (this.$element.val().length === 0)
+            return 0;
+
+          return 1;
+        },
         highlighter: function (item) {
-          if (item.hasOwnProperty('detail'))
-            /* Use jquery to escape the value as text into a span */
-            return $('<span></span>').text(item.name+' '+item.detail).get(0);
-          return $('<span></span>').text(item.name).get(0);
+          /* Use jquery to escape the item name and detail */
+          var current = $("<span></span>").text(item.name + ' '+item.detail);
+          current = current.html();
+
+          var query = this.query.replace(/[\-\[\]{}()*+?.,\\\^$|#\s]/g, '\\$&')
+          return current.replace(new RegExp('(' + query + ')', 'ig'), function ($1, match) {
+            return '<strong>' + match + '</strong>'
+          })
         },
         sorter: function (items) { return items; },
         xhrUrl: xhrUrl,
         xhrParams: xhrParams,
+        xhrReq: xhrReq,
     });
 
 
@@ -79,11 +105,12 @@ var libtoaster = (function (){
         data: data,
         headers: { 'X-CSRFToken' : $.cookie('csrftoken')},
         success: function (_data) {
+          /* No proper reponse YOCTO #7995
           if (_data.error !== "ok") {
             console.warn(_data.error);
-          } else {
+          } else { */
             if (onsuccess !== undefined) onsuccess(_data);
-          }
+        //  }
         },
         error: function (_data) {
           console.warn("Call failed");
@@ -180,7 +207,15 @@ var libtoaster = (function (){
           if (onFail !== undefined)
             onFail(data);
         } else {
-          onSuccess(data.layerdeps);
+          var deps = {};
+          /* Filter out layer dep ids which are in the
+           * project already.
+           */
+          deps.list = data.layerdeps.list.filter(function(layerObj){
+            return (data.projectlayers.lastIndexOf(layerObj.id) < 0);
+          });
+
+          onSuccess(deps);
         }
       }, function() {
         console.log("E: Failed to make request");
@@ -225,7 +260,7 @@ var libtoaster = (function (){
   function _addRmLayer(layerObj, add, doneCb){
     if (add === true) {
       /* If adding get the deps for this layer */
-      libtoaster.getLayerDepsForProject(layerObj.url,
+      libtoaster.getLayerDepsForProject(layerObj.layerdetailurl,
         function (layers) {
 
         /* got result for dependencies */
@@ -263,7 +298,7 @@ var libtoaster = (function (){
     var alertMsg;
 
     if (layerDepsList.length > 0 && add === true) {
-      alertMsg = $("<span>You have added <strong>"+(layerDepsList.length+1)+"</strong> layers to <a id=\"project-affected-name\"></a>: <a id=\"layer-affected-name\"></a> and its dependencies </span>");
+      alertMsg = $("<span>You have added <strong>"+(layerDepsList.length+1)+"</strong> layers to your project: <a id=\"layer-affected-name\"></a> and its dependencies </span>");
 
       /* Build the layer deps list */
       layerDepsList.map(function(layer, i){
@@ -279,17 +314,22 @@ var libtoaster = (function (){
         alertMsg.append(link);
       });
     } else if (layerDepsList.length === 0 && add === true) {
-      alertMsg = $("<span>You have added <strong>1</strong> layer to <a id=\"project-affected-name\"></a>: <a id=\"layer-affected-name\"></a></span></span>");
+      alertMsg = $("<span>You have added <strong>1</strong> layer to your project: <a id=\"layer-affected-name\"></a></span></span>");
     } else if (add === false) {
-      alertMsg = $("<span>You have deleted <strong>1</strong> layer from <a id=\"project-affected-name\"></a>: <a id=\"layer-affected-name\"></a></span>");
+      alertMsg = $("<span>You have deleted <strong>1</strong> layer from your project: <a id=\"layer-affected-name\"></a></span>");
     }
 
     alertMsg.children("#layer-affected-name").text(layer.name);
-    alertMsg.children("#layer-affected-name").attr("href", layer.url);
-    alertMsg.children("#project-affected-name").text(libtoaster.ctx.projectName);
-    alertMsg.children("#project-affected-name").attr("href", libtoaster.ctx.projectPageUrl);
+    alertMsg.children("#layer-affected-name").attr("href", layer.layerdetailurl);
 
     return alertMsg.html();
+  }
+
+  function _showChangeNotification(message){
+    var alertMsg = $("#change-notification-msg");
+
+    alertMsg.html(message);
+    $("#change-notification, #change-notification *").fadeIn();
   }
 
 
@@ -306,6 +346,7 @@ var libtoaster = (function (){
     dumpsUrlParams : _dumpsUrlParams,
     addRmLayer : _addRmLayer,
     makeLayerAddRmAlertMsg : _makeLayerAddRmAlertMsg,
+    showChangeNotification : _showChangeNotification,
   };
 })();
 
@@ -504,6 +545,9 @@ $(document).ready(function() {
     });
 
     $(document).ajaxError(function(event, jqxhr, settings, errMsg){
+      if (errMsg === 'abort')
+        return;
+
       console.warn("Problem with xhr call");
       console.warn(errMsg);
       console.warn(jqxhr.responseText);

@@ -32,14 +32,16 @@ answer=""
 relocate=1
 savescripts=0
 verbose=0
-while getopts ":yd:DRS" OPT; do
+while getopts ":yd:nDRS" OPT; do
 	case $OPT in
 	y)
 		answer="Y"
-		[ "$target_sdk_dir" = "" ] && target_sdk_dir=$DEFAULT_INSTALL_DIR
 		;;
 	d)
 		target_sdk_dir=$OPTARG
+		;;
+	n)
+		prepare_buildsystem="no"
 		;;
 	D)
 		verbose=1
@@ -55,6 +57,8 @@ while getopts ":yd:DRS" OPT; do
 		echo "Usage: $(basename $0) [-y] [-d <dir>]"
 		echo "  -y         Automatic yes to all prompts"
 		echo "  -d <dir>   Install the SDK to <dir>"
+		echo "======== Extensible SDK only options ============"
+		echo "  -n         Do not prepare the build system"
 		echo "======== Advanced DEBUGGING ONLY OPTIONS ========"
 		echo "  -S         Save relocation scripts"
 		echo "  -R         Do not relocate executables"
@@ -73,9 +77,18 @@ fi
 
 @SDK_PRE_INSTALL_COMMAND@
 
+# SDK_EXTENSIBLE is exposed from the SDK_PRE_INSTALL_COMMAND above
+if [ "$SDK_EXTENSIBLE" = "1" ]; then
+	DEFAULT_INSTALL_DIR="@SDKEXTPATH@"
+fi
+
 if [ "$target_sdk_dir" = "" ]; then
-	read -e -p "Enter target directory for SDK (default: $DEFAULT_INSTALL_DIR): " target_sdk_dir
-	[ "$target_sdk_dir" = "" ] && target_sdk_dir=$DEFAULT_INSTALL_DIR
+	if [ "$answer" = "Y" ]; then
+		target_sdk_dir="$DEFAULT_INSTALL_DIR"
+	else
+		read -e -p "Enter target directory for SDK (default: $DEFAULT_INSTALL_DIR): " target_sdk_dir
+		[ "$target_sdk_dir" = "" ] && target_sdk_dir=$DEFAULT_INSTALL_DIR
+	fi
 fi
 
 eval target_sdk_dir=$(echo "$target_sdk_dir"|sed 's/ /\\ /g')
@@ -85,18 +98,27 @@ else
 	target_sdk_dir=$(readlink -m "$target_sdk_dir")
 fi
 
-if [ -n "$(echo $target_sdk_dir|grep ' ')" ]; then
-	echo "The target directory path ($target_sdk_dir) contains spaces. Abort!"
-	exit 1
+if [ "$SDK_EXTENSIBLE" = "1" ]; then
+	# We're going to be running the build system, additional restrictions apply
+	if echo "$target_sdk_dir" | grep -q '[+\ @]'; then
+		echo "The target directory path ($target_sdk_dir) contains illegal" \
+		     "characters such as spaces, @ or +. Abort!"
+		exit 1
+	fi
+else
+	if [ -n "$(echo $target_sdk_dir|grep ' ')" ]; then
+		echo "The target directory path ($target_sdk_dir) contains spaces. Abort!"
+		exit 1
+	fi
 fi
 
 if [ -e "$target_sdk_dir/environment-setup-@REAL_MULTIMACH_TARGET_SYS@" ]; then
 	echo "The directory \"$target_sdk_dir\" already contains a SDK for this architecture."
-	printf "If you continue, existing files will be overwritten! Proceed[y/N]?"
+	printf "If you continue, existing files will be overwritten! Proceed[y/N]? "
 
 	default_answer="n"
 else
-	printf "You are about to install the SDK to \"$target_sdk_dir\". Proceed[Y/n]?"
+	printf "You are about to install the SDK to \"$target_sdk_dir\". Proceed[Y/n]? "
 
 	default_answer="y"
 fi
@@ -119,7 +141,8 @@ mkdir -p $target_sdk_dir >/dev/null 2>&1
 # if don't have the right to access dir, gain by sudo 
 if [ ! -x $target_sdk_dir -o ! -w $target_sdk_dir -o ! -r $target_sdk_dir ]; then 
 	if [ "$SDK_EXTENSIBLE" = "1" ]; then
-		echo "Unable to access \"$target_sdk_dir\"."
+		echo "Unable to access \"$target_sdk_dir\", will not attempt to use" \
+		     "sudo as as extensible SDK cannot be used as root."
 		exit 1
 	fi
 
@@ -146,7 +169,7 @@ echo "done"
 printf "Setting it up..."
 # fix environment paths
 for env_setup_script in `ls $target_sdk_dir/environment-setup-*`; do
-	$SUDO_EXEC sed -e "s:$DEFAULT_INSTALL_DIR:$target_sdk_dir:g" -i $env_setup_script
+	$SUDO_EXEC sed -e "s:@SDKPATH@:$target_sdk_dir:g" -i $env_setup_script
 done
 
 @SDK_POST_INSTALL_COMMAND@

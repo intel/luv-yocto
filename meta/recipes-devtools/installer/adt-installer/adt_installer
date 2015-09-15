@@ -156,7 +156,7 @@ validate_config()
 #this installed local opkg
 install_opkg()
 {
-if [ ! -x "$LOCAL_OPKG_LOC/bin/opkg-cl" ]; then
+if [ ! -x "$LOCAL_OPKG_LOC/bin/opkg" ]; then
   echo_info "OPKG is not setup, setting up opkg in local, which is required for installing yocto ADT...\n"
 
   if [ -d $LOCAL_OPKG_LOC ]; then
@@ -182,8 +182,8 @@ if [ ! -x "$LOCAL_OPKG_LOC/bin/opkg-cl" ]; then
   check_result
 
   echo_info "Configure opkg ...\n"
-  autoreconf
-  ./configure --prefix=$parent_folder/$LOCAL_OPKG_LOC --with-opkglibdir=$OPKG_LIBDIR --enable-shared=no --disable-curl --disable-ssl-curl --disable-gpg --disable-shave >> $parent_folder/$YOCTOADT_INSTALL_LOG_FILE
+  autoreconf -i
+  ./configure --prefix=$parent_folder/$LOCAL_OPKG_LOC --enable-shared=no --disable-curl --disable-ssl-curl --disable-gpg >> $parent_folder/$YOCTOADT_INSTALL_LOG_FILE
   check_result
 
   echo_info "Make opkg ...\n"

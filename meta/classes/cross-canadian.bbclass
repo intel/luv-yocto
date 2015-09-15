@@ -1,5 +1,5 @@
 #
-# NOTE - When using this class the user is repsonsible for ensuring that
+# NOTE - When using this class the user is responsible for ensuring that
 # TRANSLATED_TARGET_ARCH is added into PN. This ensures that if the TARGET_ARCH
 # is changed, another nativesdk xxx-canadian-cross can be installed
 #
@@ -15,7 +15,8 @@ STAGING_BINDIR_TOOLCHAIN = "${STAGING_DIR_NATIVE}${bindir_native}/${SDK_ARCH}${S
 # Update BASE_PACKAGE_ARCH and PACKAGE_ARCHS
 #
 PACKAGE_ARCH = "${SDK_ARCH}-${SDKPKGSUFFIX}"
-CANADIANEXTRAOS = ""
+CANADIANEXTRAOS = "linux-uclibc linux-musl"
+CANADIANEXTRAVENDOR = ""
 MODIFYTOS ??= "1"
 python () {
     archs = d.getVar('PACKAGE_ARCHS', True).split()
@@ -27,25 +28,60 @@ python () {
     # Allow the following code segment to be disabled, e.g. meta-environment
     if d.getVar("MODIFYTOS", True) != "1":
         return
-    # PowerPC can build "linux" and "linux-gnuspe"
-    tarch = d.getVar("TARGET_ARCH", True)
-    if tarch == "powerpc":
-        tos = d.getVar("TARGET_OS", True)
-        if (tos != "linux" and tos != "linux-gnuspe"
-            and tos != "linux-uclibc" and tos != "linux-uclibcspe"
-            and tos != "linux-musl" and tos != "linux-muslspe"):
-            bb.fatal("Building cross-candian powerpc for an unknown TARGET_SYS (%s), please update cross-canadian.bbclass" % d.getVar("TARGET_SYS", True))
-        # This is a bit ugly. We need to zero LIBC/ABI extension which will change TARGET_OS
-        # however we need the old value in some variables. We expand those here first.
-        d.setVar("DEPENDS", d.getVar("DEPENDS", True))
-        d.setVar("STAGING_BINDIR_TOOLCHAIN", d.getVar("STAGING_BINDIR_TOOLCHAIN", True))
-        for prefix in ["AR", "AS", "DLLTOOL", "CC", "CXX", "GCC", "LD", "LIPO", "NM", "OBJDUMP", "RANLIB", "STRIP", "WINDRES"]:
-            n = prefix + "_FOR_TARGET"
-            d.setVar(n, d.getVar(n, True))
 
+    if d.getVar("TCLIBC", True) == "baremetal":
+        return
+
+    tos = d.getVar("TARGET_OS", True)
+    whitelist = []
+    for variant in ["", "spe", "x32", "eabi", "n32"]:
+        for libc in ["", "uclibc", "musl"]:
+            entry = "linux"
+            if variant and libc:
+                entry = entry + "-" + libc + variant
+            elif variant:
+                entry = entry + "-gnu" + variant
+            elif libc:
+                entry = entry + "-" + libc
+            whitelist.append(entry)
+    if tos not in whitelist:
+        bb.fatal("Building cross-candian for an unknown TARGET_SYS (%s), please update cross-canadian.bbclass" % d.getVar("TARGET_SYS", True))
+
+    for n in ["PROVIDES", "DEPENDS"]:
+        d.setVar(n, d.getVar(n, True))
+    d.setVar("STAGING_BINDIR_TOOLCHAIN", d.getVar("STAGING_BINDIR_TOOLCHAIN", True))
+    for prefix in ["AR", "AS", "DLLTOOL", "CC", "CXX", "GCC", "LD", "LIPO", "NM", "OBJDUMP", "RANLIB", "STRIP", "WINDRES"]:
+        n = prefix + "_FOR_TARGET"
+        d.setVar(n, d.getVar(n, True))
+    # This is a bit ugly. We need to zero LIBC/ABI extension which will change TARGET_OS
+    # however we need the old value in some variables. We expand those here first.
+    tarch = d.getVar("TARGET_ARCH", True)
+    if tarch == "x86_64":
         d.setVar("LIBCEXTENSION", "")
         d.setVar("ABIEXTENSION", "")
-        d.setVar("CANADIANEXTRAOS", "linux-gnuspe")
+        d.appendVar("CANADIANEXTRAOS", " linux-gnux32 linux-uclibcx32 linux-muslx32")
+    elif tarch == "powerpc":
+        # PowerPC can build "linux" and "linux-gnuspe"
+        d.setVar("LIBCEXTENSION", "")
+        d.setVar("ABIEXTENSION", "")
+        d.appendVar("CANADIANEXTRAOS", " linux-gnuspe linux-uclibcspe linux-muslspe")
+    elif tarch == "mips64":
+        d.appendVar("CANADIANEXTRAOS", " linux-gnun32 linux-uclibcn32 linux-musln32")
+    if tarch == "arm":
+        d.setVar("TARGET_OS", "linux-gnueabi")
+    else:
+        d.setVar("TARGET_OS", "linux")
+
+    # Also need to handle multilib target vendors
+    vendors = d.getVar("CANADIANEXTRAVENDOR", True)
+    if not vendors:
+        vendors = all_multilib_tune_values(d, 'TARGET_VENDOR')
+    origvendor = d.getVar("TARGET_VENDOR_MULTILIB_ORIGINAL", True)
+    if origvendor:
+        d.setVar("TARGET_VENDOR", origvendor)
+        if origvendor not in vendors.split():
+            vendors = origvendor + " " + vendors
+    d.setVar("CANADIANEXTRAVENDOR", vendors)
 }
 MULTIMACH_TARGET_SYS = "${PACKAGE_ARCH}${HOST_VENDOR}-${HOST_OS}"
 
@@ -129,14 +165,21 @@ SHLIBSDIRS = "${PKGDATA_DIR}/nativesdk-shlibs2"
 SHLIBSWORKDIR = "${PKGDATA_DIR}/nativesdk-shlibs2"
 
 cross_canadian_bindirlinks () {
-	for i in ${CANADIANEXTRAOS}
+	for i in linux ${CANADIANEXTRAOS}
 	do
-		d=${D}${bindir}/../${TARGET_ARCH}${TARGET_VENDOR}-$i
-		install -d $d
-		for j in `ls ${D}${bindir}`
+		for v in ${CANADIANEXTRAVENDOR}
 		do
-			p=${TARGET_ARCH}${TARGET_VENDOR}-$i-`echo $j | sed -e s,${TARGET_PREFIX},,`
-			ln -s ../${TARGET_SYS}/$j $d/$p
+			d=${D}${bindir}/../${TARGET_ARCH}$v-$i
+			if [ -d $d ];
+			then
+			    continue
+			fi
+			install -d $d
+			for j in `ls ${D}${bindir}`
+			do
+				p=${TARGET_ARCH}$v-$i-`echo $j | sed -e s,${TARGET_PREFIX},,`
+				ln -s ../${TARGET_SYS}/$j $d/$p
+			done
 		done
        done
 }

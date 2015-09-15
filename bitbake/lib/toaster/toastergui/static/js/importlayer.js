@@ -16,9 +16,7 @@ function importLayerPageInit (ctx) {
   var currentLayerDepSelection;
   var validLayerName = /^(\w|-)+$/;
 
-  $("#new-project-button").hide();
-
-  libtoaster.makeTypeahead(layerDepInput, libtoaster.ctx.projectLayersUrl, { include_added: "true" }, function(item){
+  libtoaster.makeTypeahead(layerDepInput, libtoaster.ctx.layersTypeAheadUrl, { include_added: "true" }, function(item){
     currentLayerDepSelection = item;
 
     layerDepBtn.removeAttr("disabled");
@@ -28,9 +26,11 @@ function importLayerPageInit (ctx) {
   /* We automatically add "openembedded-core" layer for convenience as a
    * dependency as pretty much all layers depend on this one
    */
-  $.getJSON(libtoaster.ctx.projectLayersUrl, { include_added: "true" , search: "openembedded-core" }, function(layer) {
-    if (layer.list.length == 1) {
-      currentLayerDepSelection = layer.list[0];
+  $.getJSON(libtoaster.ctx.layersTypeAheadUrl,
+    { include_added: "true" , search: "openembedded-core" },
+    function(layer) {
+    if (layer.results.length > 0) {
+      currentLayerDepSelection = layer.results[0];
       layerDepBtn.click();
     }
   });
@@ -48,7 +48,7 @@ function importLayerPageInit (ctx) {
     newLayerDep.children("span").tooltip();
 
     var link = newLayerDep.children("a");
-    link.attr("href", currentLayerDepSelection.layerDetailsUrl);
+    link.attr("href", currentLayerDepSelection.layerdetailurl);
     link.text(currentLayerDepSelection.name);
     link.tooltip({title: currentLayerDepSelection.tooltip, placement: "right"});
 
@@ -63,10 +63,10 @@ function importLayerPageInit (ctx) {
 
     $("#layer-deps-list").append(newLayerDep);
 
-    libtoaster.getLayerDepsForProject(currentLayerDepSelection.layerDetailsUrl, function (data){
+    libtoaster.getLayerDepsForProject(currentLayerDepSelection.layerdetailurl, function (data){
         /* These are the dependencies of the layer added as a dependency */
         if (data.list.length > 0) {
-          currentLayerDepSelection.url = currentLayerDepSelection.layerDetailsUrl;
+          currentLayerDepSelection.url = currentLayerDepSelection.layerdetailurl;
           layerDeps[currentLayerDepSelection.id].deps = data.list;
         }
 
@@ -152,7 +152,7 @@ function importLayerPageInit (ctx) {
             } else {
               /* Success layer import now go to the project page */
               $.cookie('layer-imported-alert', JSON.stringify(data), { path: '/'});
-              window.location.replace(libtoaster.ctx.projectPageUrl+'#/layerimported');
+              window.location.replace(libtoaster.ctx.projectPageUrl+'?notify=layer-imported');
             }
           },
           error: function (data) {
@@ -195,8 +195,8 @@ function importLayerPageInit (ctx) {
     var dupLayerInfo = $("#duplicate-layer-info");
     dupLayerInfo.find(".dup-layer-name").text(layer.name);
     dupLayerInfo.find(".dup-layer-link").attr("href", layer.layerdetailurl);
-    dupLayerInfo.find("#dup-layer-vcs-url").text(layer.giturl);
-    dupLayerInfo.find("#dup-layer-revision").text(layer.revision);
+    dupLayerInfo.find("#dup-layer-vcs-url").text(layer.layer__vcs_url);
+    dupLayerInfo.find("#dup-layer-revision").text(layer.revision.commit);
 
     $(".fields-apart-from-layer-name").fadeOut(function(){
 
@@ -211,16 +211,18 @@ function importLayerPageInit (ctx) {
       var name = $(this).val();
 
       /* Check if the layer name exists */
-      $.getJSON(libtoaster.ctx.projectLayersUrl, { include_added: "true" , search: name }, function(layer) {
-      if (layer.list.length > 0) {
-        for (var i in layer.list){
-          if (layer.list[i].name == name) {
-            console.log(layer.list[i])
-            layerExistsError(layer.list[i]);
+      $.getJSON(libtoaster.ctx.layersTypeAheadUrl,
+        { include_added: "true" , search: name, format: "json" },
+        function(layer) {
+          if (layer.rows.length > 0) {
+            for (var i in layer.rows){
+              if (layer.rows[i].name == name) {
+                console.log(layer.rows[i])
+                layerExistsError(layer.rows[i]);
+              }
+            }
           }
-        }
-      }
-    });
+      });
   });
 
   vcsURLInput.on('input', function() {

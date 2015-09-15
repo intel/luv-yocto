@@ -1,38 +1,31 @@
-import unittest
 import os
 import logging
-import re
 import tempfile
+import urlparse
 
-import oeqa.utils.ftools as ftools
-from oeqa.selftest.base import oeSelfTest
 from oeqa.utils.commands import runCmd, bitbake, get_bb_var, create_temp_layer
 from oeqa.utils.decorators import testcase
-from oeqa.selftest.devtool import DevtoolBase
+from oeqa.selftest import devtool
 
 
-templayerdir = ''
+templayerdir = None
+
 
 def setUpModule():
     global templayerdir
     templayerdir = tempfile.mkdtemp(prefix='recipetoolqa')
     create_temp_layer(templayerdir, 'selftestrecipetool')
-    result = runCmd('bitbake-layers add-layer %s' % templayerdir)
-    # Ensure we have the right data in shlibs/pkgdata
-    logger = logging.getLogger("selftest")
-    logger.info('Running bitbake to generate pkgdata')
-    bitbake('base-files coreutils busybox selftest-recipetool-appendfile')
+    runCmd('bitbake-layers add-layer %s' % templayerdir)
+
 
 def tearDownModule():
     runCmd('bitbake-layers remove-layer %s' % templayerdir, ignore_status=True)
     runCmd('rm -rf %s' % templayerdir)
-    # Shouldn't leave any traces of this artificial recipe behind
-    bitbake('-c cleansstate selftest-recipetool-appendfile')
 
 
-class RecipetoolTests(DevtoolBase):
-
+class RecipetoolBase(devtool.DevtoolBase):
     def setUpLocal(self):
+        self.templayerdir = templayerdir
         self.tempdir = tempfile.mkdtemp(prefix='recipetoolqa')
         self.track_for_cleanup(self.tempdir)
         self.testfile = os.path.join(self.tempdir, 'testfile')
@@ -40,31 +33,55 @@ class RecipetoolTests(DevtoolBase):
             f.write('Test file\n')
 
     def tearDownLocal(self):
-        runCmd('rm -rf %s/recipes-*' % templayerdir)
+        runCmd('rm -rf %s/recipes-*' % self.templayerdir)
 
-    def _try_recipetool_appendfile(self, testrecipe, destfile, newfile, options, expectedlines, expectedfiles):
-        result = runCmd('recipetool appendfile %s %s %s %s' % (templayerdir, destfile, newfile, options))
+    def _try_recipetool_appendcmd(self, cmd, testrecipe, expectedfiles, expectedlines=None):
+        result = runCmd(cmd)
         self.assertNotIn('Traceback', result.output)
+
         # Check the bbappend was created and applies properly
         recipefile = get_bb_var('FILE', testrecipe)
-        bbappendfile = self._check_bbappend(testrecipe, recipefile, templayerdir)
+        bbappendfile = self._check_bbappend(testrecipe, recipefile, self.templayerdir)
+
         # Check the bbappend contents
-        with open(bbappendfile, 'r') as f:
-            self.assertEqual(expectedlines, f.readlines(), "Expected lines are not present in %s" % bbappendfile)
+        if expectedlines is not None:
+            with open(bbappendfile, 'r') as f:
+                self.assertEqual(expectedlines, f.readlines(), "Expected lines are not present in %s" % bbappendfile)
+
         # Check file was copied
         filesdir = os.path.join(os.path.dirname(bbappendfile), testrecipe)
         for expectedfile in expectedfiles:
             self.assertTrue(os.path.isfile(os.path.join(filesdir, expectedfile)), 'Expected file %s to be copied next to bbappend, but it wasn\'t' % expectedfile)
+
         # Check no other files created
         createdfiles = []
         for root, _, files in os.walk(filesdir):
             for f in files:
                 createdfiles.append(os.path.relpath(os.path.join(root, f), filesdir))
         self.assertTrue(sorted(createdfiles), sorted(expectedfiles))
+
         return bbappendfile, result.output
 
+
+class RecipetoolTests(RecipetoolBase):
+    @classmethod
+    def setUpClass(cls):
+        # Ensure we have the right data in shlibs/pkgdata
+        logger = logging.getLogger("selftest")
+        logger.info('Running bitbake to generate pkgdata')
+        bitbake('-c packagedata base-files coreutils busybox selftest-recipetool-appendfile')
+
+    @classmethod
+    def tearDownClass(cls):
+        # Shouldn't leave any traces of this artificial recipe behind
+        bitbake('-c cleansstate selftest-recipetool-appendfile')
+
+    def _try_recipetool_appendfile(self, testrecipe, destfile, newfile, options, expectedlines, expectedfiles):
+        cmd = 'recipetool appendfile %s %s %s %s' % (self.templayerdir, destfile, newfile, options)
+        return self._try_recipetool_appendcmd(cmd, testrecipe, expectedfiles, expectedlines)
+
     def _try_recipetool_appendfile_fail(self, destfile, newfile, checkerror):
-        cmd = 'recipetool appendfile %s %s %s' % (templayerdir, destfile, newfile)
+        cmd = 'recipetool appendfile %s %s %s' % (self.templayerdir, destfile, newfile)
         result = runCmd(cmd, ignore_status=True)
         self.assertNotEqual(result.status, 0, 'Command "%s" should have failed but didn\'t' % cmd)
         self.assertNotIn('Traceback', result.output)
@@ -116,7 +133,7 @@ class RecipetoolTests(DevtoolBase):
         # Try appending a binary file
         # /bin/ls can be a symlink to /usr/bin/ls
         ls = os.path.realpath("/bin/ls")
-        result = runCmd('recipetool appendfile %s /bin/ls %s -r coreutils' % (templayerdir, ls))
+        result = runCmd('recipetool appendfile %s /bin/ls %s -r coreutils' % (self.templayerdir, ls))
         self.assertIn('WARNING: ', result.output)
         self.assertIn('is a binary', result.output)
 
@@ -265,7 +282,7 @@ class RecipetoolTests(DevtoolBase):
                 self.assertIn('add-file.patch', line, 'Unexpected warning found in output:\n%s' % line)
                 break
         else:
-            self.assertTrue(False, 'Patch warning not found in output:\n%s' % output)
+            self.fail('Patch warning not found in output:\n%s' % output)
 
     @testcase(1188)
     def test_recipetool_appendfile_script(self):
@@ -325,17 +342,17 @@ class RecipetoolTests(DevtoolBase):
     def test_recipetool_appendfile_wildcard(self):
 
         def try_appendfile_wc(options):
-            result = runCmd('recipetool appendfile %s /etc/profile %s %s' % (templayerdir, self.testfile, options))
+            result = runCmd('recipetool appendfile %s /etc/profile %s %s' % (self.templayerdir, self.testfile, options))
             self.assertNotIn('Traceback', result.output)
             bbappendfile = None
-            for root, _, files in os.walk(templayerdir):
+            for root, _, files in os.walk(self.templayerdir):
                 for f in files:
                     if f.endswith('.bbappend'):
                         bbappendfile = f
                         break
             if not bbappendfile:
-                self.assertTrue(False, 'No bbappend file created')
-            runCmd('rm -rf %s/recipes-*' % templayerdir)
+                self.fail('No bbappend file created')
+            runCmd('rm -rf %s/recipes-*' % self.templayerdir)
             return bbappendfile
 
         # Check without wildcard option
@@ -383,3 +400,155 @@ class RecipetoolTests(DevtoolBase):
         checkvars['DEPENDS'] = 'libpng pango libx11 libxext jpeg'
         inherits = ['autotools', 'pkgconfig']
         self._test_recipe_contents(recipefile, checkvars, inherits)
+
+
+class RecipetoolAppendsrcBase(RecipetoolBase):
+    def _try_recipetool_appendsrcfile(self, testrecipe, newfile, destfile, options, expectedlines, expectedfiles):
+        cmd = 'recipetool appendsrcfile %s %s %s %s %s' % (options, self.templayerdir, testrecipe, newfile, destfile)
+        return self._try_recipetool_appendcmd(cmd, testrecipe, expectedfiles, expectedlines)
+
+    def _try_recipetool_appendsrcfiles(self, testrecipe, newfiles, expectedlines=None, expectedfiles=None, destdir=None, options=''):
+
+        if destdir:
+            options += ' -D %s' % destdir
+
+        if expectedfiles is None:
+            expectedfiles = [os.path.basename(f) for f in newfiles]
+
+        cmd = 'recipetool appendsrcfiles %s %s %s %s' % (options, self.templayerdir, testrecipe, ' '.join(newfiles))
+        return self._try_recipetool_appendcmd(cmd, testrecipe, expectedfiles, expectedlines)
+
+    def _try_recipetool_appendsrcfile_fail(self, testrecipe, newfile, destfile, checkerror):
+        cmd = 'recipetool appendsrcfile %s %s %s %s' % (self.templayerdir, testrecipe, newfile, destfile or '')
+        result = runCmd(cmd, ignore_status=True)
+        self.assertNotEqual(result.status, 0, 'Command "%s" should have failed but didn\'t' % cmd)
+        self.assertNotIn('Traceback', result.output)
+        for errorstr in checkerror:
+            self.assertIn(errorstr, result.output)
+
+    @staticmethod
+    def _get_first_file_uri(recipe):
+        '''Return the first file:// in SRC_URI for the specified recipe.'''
+        src_uri = get_bb_var('SRC_URI', recipe).split()
+        for uri in src_uri:
+            p = urlparse.urlparse(uri)
+            if p.scheme == 'file':
+                return p.netloc + p.path
+
+    def _test_appendsrcfile(self, testrecipe, filename=None, destdir=None, has_src_uri=True, srcdir=None, newfile=None, options=''):
+        if newfile is None:
+            newfile = self.testfile
+
+        if srcdir:
+            if destdir:
+                expected_subdir = os.path.join(srcdir, destdir)
+            else:
+                expected_subdir = srcdir
+        else:
+            options += " -W"
+            expected_subdir = destdir
+
+        if filename:
+            if destdir:
+                destpath = os.path.join(destdir, filename)
+            else:
+                destpath = filename
+        else:
+            filename = os.path.basename(newfile)
+            if destdir:
+                destpath = destdir + os.sep
+            else:
+                destpath = '.' + os.sep
+
+        expectedlines = ['FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"\n',
+                         '\n']
+        if has_src_uri:
+            uri = 'file://%s' % filename
+            if expected_subdir:
+                uri += ';subdir=%s' % expected_subdir
+            expectedlines[0:0] = ['SRC_URI += "%s"\n' % uri,
+                                  '\n']
+
+        return self._try_recipetool_appendsrcfile(testrecipe, newfile, destpath, options, expectedlines, [filename])
+
+    def _test_appendsrcfiles(self, testrecipe, newfiles, expectedfiles=None, destdir=None, options=''):
+        if expectedfiles is None:
+            expectedfiles = [os.path.basename(n) for n in newfiles]
+
+        self._try_recipetool_appendsrcfiles(testrecipe, newfiles, expectedfiles=expectedfiles, destdir=destdir, options=options)
+
+        src_uri = get_bb_var('SRC_URI', testrecipe).split()
+        for f in expectedfiles:
+            if destdir:
+                self.assertIn('file://%s;subdir=%s' % (f, destdir), src_uri)
+            else:
+                self.assertIn('file://%s' % f, src_uri)
+
+        recipefile = get_bb_var('FILE', testrecipe)
+        bbappendfile = self._check_bbappend(testrecipe, recipefile, self.templayerdir)
+        filesdir = os.path.join(os.path.dirname(bbappendfile), testrecipe)
+        filesextrapaths = get_bb_var('FILESEXTRAPATHS', testrecipe).split(':')
+        self.assertIn(filesdir, filesextrapaths)
+
+
+class RecipetoolAppendsrcTests(RecipetoolAppendsrcBase):
+    def test_recipetool_appendsrcfile_basic(self):
+        self._test_appendsrcfile('base-files', 'a-file')
+
+    def test_recipetool_appendsrcfile_basic_wildcard(self):
+        testrecipe = 'base-files'
+        self._test_appendsrcfile(testrecipe, 'a-file', options='-w')
+        recipefile = get_bb_var('FILE', testrecipe)
+        bbappendfile = self._check_bbappend(testrecipe, recipefile, self.templayerdir)
+        self.assertEqual(os.path.basename(bbappendfile), '%s_%%.bbappend' % testrecipe)
+
+    def test_recipetool_appendsrcfile_subdir_basic(self):
+        self._test_appendsrcfile('base-files', 'a-file', 'tmp')
+
+    def test_recipetool_appendsrcfile_subdir_basic_dirdest(self):
+        self._test_appendsrcfile('base-files', destdir='tmp')
+
+    def test_recipetool_appendsrcfile_srcdir_basic(self):
+        testrecipe = 'bash'
+        srcdir = get_bb_var('S', testrecipe)
+        workdir = get_bb_var('WORKDIR', testrecipe)
+        subdir = os.path.relpath(srcdir, workdir)
+        self._test_appendsrcfile(testrecipe, 'a-file', srcdir=subdir)
+
+    def test_recipetool_appendsrcfile_existing_in_src_uri(self):
+        testrecipe = 'base-files'
+        filepath = self._get_first_file_uri(testrecipe)
+        self.assertTrue(filepath, 'Unable to test, no file:// uri found in SRC_URI for %s' % testrecipe)
+        self._test_appendsrcfile(testrecipe, filepath, has_src_uri=False)
+
+    def test_recipetool_appendsrcfile_existing_in_src_uri_diff_params(self):
+        testrecipe = 'base-files'
+        subdir = 'tmp'
+        filepath = self._get_first_file_uri(testrecipe)
+        self.assertTrue(filepath, 'Unable to test, no file:// uri found in SRC_URI for %s' % testrecipe)
+
+        output = self._test_appendsrcfile(testrecipe, filepath, subdir, has_src_uri=False)
+        self.assertTrue(any('with different parameters' in l for l in output))
+
+    def test_recipetool_appendsrcfile_replace_file_srcdir(self):
+        testrecipe = 'bash'
+        filepath = 'Makefile.in'
+        srcdir = get_bb_var('S', testrecipe)
+        workdir = get_bb_var('WORKDIR', testrecipe)
+        subdir = os.path.relpath(srcdir, workdir)
+
+        self._test_appendsrcfile(testrecipe, filepath, srcdir=subdir)
+        bitbake('%s:do_unpack' % testrecipe)
+        self.assertEqual(open(self.testfile, 'r').read(), open(os.path.join(srcdir, filepath), 'r').read())
+
+    def test_recipetool_appendsrcfiles_basic(self, destdir=None):
+        newfiles = [self.testfile]
+        for i in range(1, 5):
+            testfile = os.path.join(self.tempdir, 'testfile%d' % i)
+            with open(testfile, 'w') as f:
+                f.write('Test file %d\n' % i)
+            newfiles.append(testfile)
+        self._test_appendsrcfiles('gcc', newfiles, destdir=destdir, options='-W')
+
+    def test_recipetool_appendsrcfiles_basic_subdir(self):
+        self.test_recipetool_appendsrcfiles_basic(destdir='testdir')

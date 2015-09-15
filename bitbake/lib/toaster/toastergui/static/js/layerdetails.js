@@ -9,10 +9,24 @@ function layerDetailsPageInit (ctx) {
   var addRmLayerBtn = $("#add-remove-layer-btn");
 
   /* setup the dependencies typeahead */
-  libtoaster.makeTypeahead(layerDepInput, libtoaster.ctx.projectLayersUrl, { include_added: "true" }, function(item){
+  libtoaster.makeTypeahead(layerDepInput, libtoaster.ctx.layersTypeAheadUrl, { include_added: "true" }, function(item){
     currentLayerDepSelection = item;
 
     layerDepBtn.removeAttr("disabled");
+  });
+
+  $(".breadcrumb li:first a").click(function(e){
+    e.preventDefault();
+    /* By default this link goes to the project configuration page. However
+     * if we have some builds we go there instead of the default href
+     */
+    libtoaster.getProjectInfo(libtoaster.ctx.projectPageUrl, function(prjInfo){
+      if (prjInfo.builds && prjInfo.builds.length > 0) {
+        window.location.replace(libtoaster.ctx.projectBuildsUrl);
+      } else {
+        window.location.replace(libtoaster.ctx.projectPageUrl);
+      }
+    });
   });
 
   function addRemoveDep(depLayerId, add, doneCb) {
@@ -65,7 +79,7 @@ function layerDetailsPageInit (ctx) {
       newLayerDep.children("span").tooltip();
 
       var link = newLayerDep.children("a");
-      link.attr("href", currentLayerDepSelection.layerDetailsUrl);
+      link.attr("href", currentLayerDepSelection.layerdetailurl);
       link.text(currentLayerDepSelection.name);
       link.tooltip({title: currentLayerDepSelection.tooltip, placement: "right"});
 
@@ -165,14 +179,6 @@ function layerDetailsPageInit (ctx) {
       /* re run the machinesTabShow to update the text */
       targetsTabShow();
     }
-
-    $(".build-target-btn").unbind('click');
-    $(".build-target-btn").click(function(){
-      /* fire a build */
-      var target = $(this).data('target-name');
-      libtoaster.startABuild(ctx.projectBuildsUrl, libtoaster.ctx.projectId, target, null, null);
-      window.location.replace(libtoaster.ctx.projectPageUrl);
-    });
   });
 
   $("#machinestable").on('table-done', function(e, total, tableParams){
@@ -188,6 +194,12 @@ function layerDetailsPageInit (ctx) {
       /* re run the machinesTabShow to update the text */
       machinesTabShow();
     }
+
+    $(".select-machine-btn").click(function(e){
+      if ($(this).attr("disabled") === "disabled")
+        e.preventDefault();
+    });
+
   });
 
   $("#targets-tab").on('show', targetsTabShow);
@@ -371,10 +383,6 @@ function layerDetailsPageInit (ctx) {
     $(this).parents("form").submit();
   });
 
-  $(".select-machine-btn").click(function(e){
-    if ($(this).attr("disabled") === "disabled")
-      e.preventDefault();
-  });
 
   layerDepsList.find(".icon-trash").click(layerDepRemoveClick);
   layerDepsList.find("a").tooltip();

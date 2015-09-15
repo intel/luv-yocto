@@ -108,7 +108,17 @@ class RpmIndexer(Indexer):
         archs = archs.union(set(sdk_pkg_archs))
 
         rpm_createrepo = bb.utils.which(os.getenv('PATH'), "createrepo")
+        if self.d.getVar('PACKAGE_FEED_SIGN', True) == '1':
+            pkgfeed_gpg_name = self.d.getVar('PACKAGE_FEED_GPG_NAME', True)
+            pkgfeed_gpg_pass = self.d.getVar('PACKAGE_FEED_GPG_PASSPHRASE_FILE', True)
+        else:
+            pkgfeed_gpg_name = None
+            pkgfeed_gpg_pass = None
+        gpg_bin = self.d.getVar('GPG_BIN', True) or \
+                  bb.utils.which(os.getenv('PATH'), "gpg")
+
         index_cmds = []
+        repo_sign_cmds = []
         rpm_dirs_found = False
         for arch in archs:
             dbpath = os.path.join(self.d.getVar('WORKDIR', True), 'rpmdb', arch)
@@ -120,6 +130,12 @@ class RpmIndexer(Indexer):
 
             index_cmds.append("%s --dbpath %s --update -q %s" % \
                              (rpm_createrepo, dbpath, arch_dir))
+            if pkgfeed_gpg_name:
+                repomd_file = os.path.join(arch_dir, 'repodata', 'repomd.xml')
+                gpg_cmd = "%s --detach-sign --armor --batch --no-tty --yes " \
+                          "--passphrase-file '%s' -u '%s' %s" % (gpg_bin,
+                          pkgfeed_gpg_pass, pkgfeed_gpg_name, repomd_file)
+                repo_sign_cmds.append(gpg_cmd)
 
             rpm_dirs_found = True
 
@@ -127,9 +143,24 @@ class RpmIndexer(Indexer):
             bb.note("There are no packages in %s" % self.deploy_dir)
             return
 
+        # Create repodata
         result = oe.utils.multiprocess_exec(index_cmds, create_index)
         if result:
             bb.fatal('%s' % ('\n'.join(result)))
+        # Sign repomd
+        result = oe.utils.multiprocess_exec(repo_sign_cmds, create_index)
+        if result:
+            bb.fatal('%s' % ('\n'.join(result)))
+        # Copy pubkey(s) to repo
+        distro_version = self.d.getVar('DISTRO_VERSION', True) or "oe.0"
+        if self.d.getVar('RPM_SIGN_PACKAGES', True) == '1':
+            shutil.copy2(self.d.getVar('RPM_GPG_PUBKEY', True),
+                         os.path.join(self.deploy_dir,
+                                      'RPM-GPG-KEY-%s' % distro_version))
+        if self.d.getVar('PACKAGE_FEED_SIGN', True) == '1':
+            shutil.copy2(self.d.getVar('PACKAGE_FEED_GPG_PUBKEY', True),
+                         os.path.join(self.deploy_dir,
+                                      'REPODATA-GPG-KEY-%s' % distro_version))
 
 
 class OpkgIndexer(Indexer):
@@ -352,6 +383,9 @@ class RpmPkgsList(PkgsList):
             pkg = line.split()[0]
             arch = line.split()[1]
             ver = line.split()[2]
+            # Skip GPG keys
+            if pkg == 'gpg-pubkey':
+                continue
             if self.rpm_version == 4:
                 pkgorigin = "unknown"
             else:
@@ -376,7 +410,7 @@ class OpkgPkgsList(PkgsList):
     def __init__(self, d, rootfs_dir, config_file):
         super(OpkgPkgsList, self).__init__(d, rootfs_dir)
 
-        self.opkg_cmd = bb.utils.which(os.getenv('PATH'), "opkg-cl")
+        self.opkg_cmd = bb.utils.which(os.getenv('PATH'), "opkg")
         self.opkg_args = "-f %s -o %s " % (config_file, rootfs_dir)
         self.opkg_args += self.d.getVar("OPKG_ARGS", True)
 
@@ -488,6 +522,7 @@ class PackageManager(object):
         self.deploy_dir = None
         self.deploy_lock = None
         self.feed_uris = self.d.getVar('PACKAGE_FEED_URIS', True) or ""
+        self.feed_prefix = self.d.getVar('PACKAGE_FEED_PREFIX', True) or ""
 
     """
     Update the package manager package database.
@@ -662,11 +697,14 @@ class RpmPM(PackageManager):
         channel_priority = 10 + 5 * len(self.feed_uris.split()) * len(arch_list)
 
         for uri in self.feed_uris.split():
+            full_uri = uri
+            if self.feed_prefix:
+                full_uri = os.path.join(uri, self.feed_prefix)
             for arch in arch_list:
                 bb.note('Note: adding Smart channel url%d%s (%s)' %
                         (uri_iterator, arch, channel_priority))
-                self._invoke_smart('channel --add url%d-%s type=rpm-md baseurl=%s/rpm/%s -y'
-                                   % (uri_iterator, arch, uri, arch))
+                self._invoke_smart('channel --add url%d-%s type=rpm-md baseurl=%s/%s -y'
+                                   % (uri_iterator, arch, full_uri, arch))
                 self._invoke_smart('channel --set url%d-%s priority=%d' %
                                    (uri_iterator, arch, channel_priority))
                 channel_priority -= 5
@@ -721,6 +759,22 @@ class RpmPM(PackageManager):
                     # First found is best match
                     # bb.note('%s -> %s' % (pkg, pkg + '@' + arch))
                     return pkg + '@' + arch
+
+        # Search provides if not found by pkgname.
+        bb.note('Not found %s by name, searching provides ...' % pkg)
+        cmd = "%s %s query --provides %s --show-format='$name-$version'" % \
+                (self.smart_cmd, self.smart_opt, pkg)
+        cmd += " | sed -ne 's/ *Provides://p'"
+        bb.note('cmd: %s' % cmd)
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        # Found a provider
+        if output:
+            bb.note('Found providers for %s: %s' % (pkg, output))
+            for p in output.split():
+                for arch in feed_archs:
+                    arch = arch.replace('-', '_')
+                    if p.rstrip().endswith('@' + arch):
+                        return p
 
         return ""
 
@@ -864,6 +918,12 @@ class RpmPM(PackageManager):
         except subprocess.CalledProcessError as e:
             bb.fatal("Create rpm database failed. Command '%s' "
                      "returned %d:\n%s" % (cmd, e.returncode, e.output))
+        # Import GPG key to RPM database of the target system
+        if self.d.getVar('RPM_SIGN_PACKAGES', True) == '1':
+            pubkey_path = self.d.getVar('RPM_GPG_PUBKEY', True)
+            cmd = "%s --root %s --dbpath /var/lib/rpm --import %s > /dev/null" % (
+                  self.rpm_cmd, self.target_rootfs, pubkey_path)
+            subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
 
         # Configure smart
         bb.note("configuring Smart settings")
@@ -995,9 +1055,10 @@ class RpmPM(PackageManager):
     '''
     def install(self, pkgs, attempt_only=False):
 
-        bb.note("Installing the following packages: %s" % ' '.join(pkgs))
-        if attempt_only and len(pkgs) == 0:
+        if not pkgs:
+            bb.note("There are no packages to install")
             return
+        bb.note("Installing the following packages: %s" % ' '.join(pkgs))
         pkgs = self._pkg_translate_oe_to_smart(pkgs, attempt_only)
 
         if not attempt_only:
@@ -1228,8 +1289,8 @@ class OpkgPM(PackageManager):
 
         self.deploy_dir = self.d.getVar("DEPLOY_DIR_IPK", True)
         self.deploy_lock_file = os.path.join(self.deploy_dir, "deploy.lock")
-        self.opkg_cmd = bb.utils.which(os.getenv('PATH'), "opkg-cl")
-        self.opkg_args = "-f %s -o %s " % (self.config_file, target_rootfs)
+        self.opkg_cmd = bb.utils.which(os.getenv('PATH'), "opkg")
+        self.opkg_args = "--volatile-cache -f %s -o %s " % (self.config_file, target_rootfs)
         self.opkg_args += self.d.getVar("OPKG_ARGS", True)
 
         opkg_lib_dir = self.d.getVar('OPKGLIBDIR', True)
@@ -1343,17 +1404,18 @@ class OpkgPM(PackageManager):
         with open(rootfs_config, "w+") as config_file:
             uri_iterator = 0
             for uri in self.feed_uris.split():
-                config_file.write("src/gz url-%d %s/ipk\n" %
-                                  (uri_iterator, uri))
+                full_uri = uri
+                if self.feed_prefix:
+                    full_uri = os.path.join(uri, self.feed_prefix)
 
                 for arch in self.pkg_archs.split():
                     if not os.path.exists(os.path.join(self.deploy_dir, arch)):
                         continue
-                    bb.note('Note: adding opkg channel url-%s-%d (%s)' %
-                        (arch, uri_iterator, uri))
+                    bb.note('Note: adding opkg feed url-%s-%d (%s)' %
+                        (arch, uri_iterator, full_uri))
 
-                    config_file.write("src/gz uri-%s-%d %s/ipk/%s\n" %
-                                      (arch, uri_iterator, uri, arch))
+                    config_file.write("src/gz uri-%s-%d %s/%s\n" %
+                                      (arch, uri_iterator, full_uri, arch))
                 uri_iterator += 1
 
     def update(self):
@@ -1706,10 +1768,13 @@ class DpkgPM(PackageManager):
 
         with open(sources_conf, "w+") as sources_file:
             for uri in self.feed_uris.split():
+                full_uri = uri
+                if self.feed_prefix:
+                    full_uri = os.path.join(uri, self.feed_prefix)
                 for arch in arch_list:
                     bb.note('Note: adding dpkg channel at (%s)' % uri)
-                    sources_file.write("deb %s/deb/%s ./\n" %
-                                       (uri, arch))
+                    sources_file.write("deb %s/%s ./\n" %
+                                       (full_uri, arch))
 
     def _create_configs(self, archs, base_archs):
         base_archs = re.sub("_", "-", base_archs)

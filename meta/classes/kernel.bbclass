@@ -68,9 +68,13 @@ base_do_unpack_append () {
     if s != kernsrc:
         bb.utils.mkdirhier(kernsrc)
         bb.utils.remove(kernsrc, recurse=True)
-        import subprocess
-        subprocess.call(d.expand("mv ${S} ${STAGING_KERNEL_DIR}"), shell=True)
-        os.symlink(kernsrc, s)
+        if d.getVar("EXTERNALSRC", True):
+            # With EXTERNALSRC S will not be wiped so we can symlink to it
+            os.symlink(s, kernsrc)
+        else:
+            import shutil
+            shutil.move(s, kernsrc)
+            os.symlink(kernsrc, s)
 }
 
 inherit kernel-arch deploy
@@ -300,8 +304,10 @@ do_shared_workdir () {
 		cp arch/powerpc/lib/crtsavres.o $kerneldir/arch/powerpc/lib/crtsavres.o
 	fi
 
-	mkdir -p $kerneldir/include/generated/
-	cp -fR include/generated/* $kerneldir/include/generated/
+	if [ -d include/generated ]; then
+		mkdir -p $kerneldir/include/generated/
+		cp -fR include/generated/* $kerneldir/include/generated/
+	fi
 
 	if [ -d arch/${ARCH}/include/generated ]; then
 		mkdir -p $kerneldir/arch/${ARCH}/include/generated/
@@ -359,6 +365,7 @@ RDEPENDS_kernel = "kernel-base"
 # not wanted in images as standard
 RDEPENDS_kernel-base ?= "kernel-image"
 PKG_kernel-image = "kernel-image-${@legitimize_package_name('${KERNEL_VERSION}')}"
+RDEPENDS_kernel-image += "${@base_conditional('KERNEL_IMAGETYPE', 'vmlinux', 'kernel-vmlinux', '', d)}"
 PKG_kernel-base = "kernel-${@legitimize_package_name('${KERNEL_VERSION}')}"
 RPROVIDES_kernel-base += "kernel-${KERNEL_VERSION}"
 ALLOW_EMPTY_kernel = "1"

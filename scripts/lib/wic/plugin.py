@@ -48,7 +48,7 @@ class PluginMgr(object):
         self.plugin_dir = scripts_path + PLUGIN_DIR
         self.layers_path = None
 
-    def _build_plugin_dir_list(self, dl, ptype):
+    def _build_plugin_dir_list(self, plugin_dir, ptype):
         if self.layers_path is None:
             self.layers_path = get_bitbake_var("BBLAYERS")
         layer_dirs = []
@@ -58,7 +58,7 @@ class PluginMgr(object):
                 path = os.path.join(layer_path, SCRIPTS_PLUGIN_DIR, ptype)
                 layer_dirs.append(path)
 
-        path = os.path.join(dl, ptype)
+        path = os.path.join(plugin_dir, ptype)
         layer_dirs.append(path)
 
         return layer_dirs
@@ -82,7 +82,8 @@ class PluginMgr(object):
 
     def _load_all(self):
         for (pdir, loaded) in self.plugin_dirs.iteritems():
-            if loaded: continue
+            if loaded:
+                continue
 
             sys.path.insert(0, pdir)
             for mod in [x[:-3] for x in os.listdir(pdir) if x.endswith(".py")]:
@@ -123,12 +124,7 @@ class PluginMgr(object):
 
         self.append_dirs(plugins_dir)
 
-        plugins = []
-
-        for _source_name, klass in self.get_plugins('source').iteritems():
-            plugins.append(_source_name)
-
-        return plugins
+        return self.get_plugins('source')
 
 
     def get_source_plugin_methods(self, source_name, methods):

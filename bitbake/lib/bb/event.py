@@ -69,6 +69,7 @@ _ui_handler_seq = 0
 _event_handler_map = {}
 _catchall_handlers = {}
 _eventfilter = None
+_uiready = False
 
 def execute_handler(name, handler, event, d):
     event.data = d
@@ -113,7 +114,7 @@ def print_ui_queue():
     """If we're exiting before a UI has been spawned, display any queued
     LogRecords to the console."""
     logger = logging.getLogger("BitBake")
-    if not _ui_handlers:
+    if not _uiready:
         from bb.msg import BBLogFormatter
         console = logging.StreamHandler(sys.stdout)
         console.setFormatter(BBLogFormatter("%(levelname)s: %(message)s"))
@@ -135,7 +136,7 @@ def print_ui_queue():
                 logger.handle(event)
 
 def fire_ui_handlers(event, d):
-    if not _ui_handlers:
+    if not _uiready:
         # No UI handlers registered yet, queue up the messages
         ui_queue.append(event)
         return
@@ -176,7 +177,7 @@ def fire_from_worker(event, d):
     fire_ui_handlers(event, d)
 
 noop = lambda _: None
-def register(name, handler, mask=[]):
+def register(name, handler, mask=None):
     """Register an Event handler"""
 
     # already registered
@@ -219,7 +220,10 @@ def set_eventfilter(func):
     global _eventfilter
     _eventfilter = func
 
-def register_UIHhandler(handler):
+def register_UIHhandler(handler, mainui=False):
+    if mainui:
+        global _uiready
+        _uiready = True
     bb.event._ui_handler_seq = bb.event._ui_handler_seq + 1
     _ui_handlers[_ui_handler_seq] = handler
     level, debug_domains = bb.msg.constructLogOptions()
@@ -370,11 +374,12 @@ class BuildStarted(BuildBase, OperationStarted):
 
 class BuildCompleted(BuildBase, OperationCompleted):
     """bbmake build run completed"""
-    def __init__(self, total, n, p, failures = 0):
+    def __init__(self, total, n, p, failures=0, interrupted=0):
         if not failures:
             OperationCompleted.__init__(self, total, "Building Succeeded")
         else:
             OperationCompleted.__init__(self, total, "Building Failed")
+        self._interrupted = interrupted
         BuildBase.__init__(self, n, p, failures)
 
 class DiskFull(Event):
@@ -389,7 +394,7 @@ class DiskFull(Event):
 class NoProvider(Event):
     """No Provider for an Event"""
 
-    def __init__(self, item, runtime=False, dependees=None, reasons=[], close_matches=[]):
+    def __init__(self, item, runtime=False, dependees=None, reasons=None, close_matches=None):
         Event.__init__(self)
         self._item = item
         self._runtime = runtime

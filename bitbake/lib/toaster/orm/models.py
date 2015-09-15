@@ -19,14 +19,20 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-from django.db import models
-from django.db.models import F, Q, Avg
+from django.db import models, IntegrityError
+from django.db.models import F, Q, Avg, Max
 from django.utils import timezone
 
+from django.core.urlresolvers import reverse
 
 from django.core import validators
 from django.conf import settings
 import django.db.models.signals
+
+
+import logging
+logger = logging.getLogger("toaster")
+
 
 class GitURLValidator(validators.URLValidator):
     import re
@@ -75,7 +81,7 @@ class ProjectManager(models.Manager):
 
         for rdl in release.releasedefaultlayer_set.all():
             try:
-                lv =Layer_Version.objects.filter(layer__name = rdl.layer_name, up_branch__name = release.branch_name)[0].get_equivalents_wpriority(prj)[0]
+                lv = Layer_Version.objects.filter(layer__name = rdl.layer_name, up_branch__name = release.branch_name)[0].get_equivalents_wpriority(prj)[0]
                 ProjectLayer.objects.create( project = prj,
                         layercommit = lv,
                         optional = False )
@@ -88,11 +94,15 @@ class ProjectManager(models.Manager):
     def create(self, *args, **kwargs):
         raise Exception("Invalid call to Project.objects.create. Use Project.objects.create_project() to create a project")
 
-    def get_or_create(self, **kwargs):
-        # allow project creation for default data
-        if 'pk' in kwargs and kwargs['pk'] == 0:
-            return super(ProjectManager, self).get_or_create(**kwargs)
-        raise Exception("Invalid call to Project.objects.get_or_create. Use Project.objects.create_project() to create a project")
+    # return single object with is_default = True
+    def get_default_project(self):
+        projects = super(ProjectManager, self).filter(is_default = True)
+        if len(projects) > 1:
+            raise Exception("Inconsistent project data: multiple " +
+                            "default projects (i.e. with is_default=True)")
+        elif len(projects) < 1:
+            raise Exception("Inconsistent project data: no default project found")
+        return projects[0]
 
 class Project(models.Model):
     search_allowed_fields = ['name', 'short_description', 'release__name', 'release__branch_name']
@@ -108,6 +118,10 @@ class Project(models.Model):
     # hard links to possibly missing models
     user_id     = models.IntegerField(null = True)
     objects     = ProjectManager()
+
+    # set to True for the project which is the default container
+    # for builds initiated by the command line etc.
+    is_default  = models.BooleanField(default = False)
 
     def __unicode__(self):
         return "%s (Release %s, BBV %s)" % (self.name, self.release, self.bitbake_version)
@@ -194,6 +208,45 @@ class Project(models.Model):
     def projectlayer_equivalent_set(self):
         return self.compatible_layerversions().filter(layer__name__in = [x.layercommit.layer.name for x in self.projectlayer_set.all()]).select_related("up_branch")
 
+    def get_available_machines(self):
+        """ Returns QuerySet of all Machines which are provided by the
+        Layers currently added to the Project """
+        queryset = Machine.objects.filter(layer_version__in=self.projectlayer_equivalent_set)
+        return queryset
+
+    def get_all_compatible_machines(self):
+        """ Returns QuerySet of all the compatible machines available to the
+        project including ones from Layers not currently added """
+        compatible_layers = self.compatible_layerversions()
+
+        queryset = Machine.objects.filter(layer_version__in=compatible_layers)
+        return queryset
+
+    def get_available_recipes(self):
+        """ Returns QuerySet of all Recipes which are provided by the Layers
+        currently added to the Project """
+        project_layers = self.projectlayer_equivalent_set()
+        queryset = Recipe.objects.filter(layer_version__in = project_layers)
+
+        # Copied from get_all_compatible_recipes
+        search_maxids = map(lambda i: i[0], list(queryset.values('name').distinct().annotate(max_id=Max('id')).values_list('max_id')))
+        queryset = queryset.filter(id__in=search_maxids).select_related('layer_version', 'layer_version__layer', 'layer_version__up_branch', 'layer_source')
+        # End copy
+
+        return queryset
+
+    def get_all_compatible_recipes(self):
+        """ Returns QuerySet of all the compatible Recipes available to the
+        project including ones from Layers not currently added """
+        compatible_layerversions = self.compatible_layerversions()
+        queryset = Recipe.objects.filter(layer_version__in = compatible_layerversions)
+
+        search_maxids = map(lambda i: i[0], list(queryset.values('name').distinct().annotate(max_id=Max('id')).values_list('max_id')))
+
+        queryset = queryset.filter(id__in=search_maxids).select_related('layer_version', 'layer_version__layer', 'layer_version__up_branch', 'layer_source')
+        return queryset
+
+
     def schedule_build(self):
         from bldcontrol.models import BuildRequest, BRTarget, BRLayer, BRVariable, BRBitbake
         br = BuildRequest.objects.create(project = self)
@@ -229,11 +282,10 @@ class Project(models.Model):
             except ProjectVariable.DoesNotExist:
                 pass
             br.save()
-        except Exception as e:
+        except Exception:
+            # revert the build request creation since we're not done cleanly
             br.delete()
-            import sys
-            et, ei, tb = sys.exc_info()
-            raise type(e), e, tb
+            raise
         return br
 
 class Build(models.Model):
@@ -324,7 +376,7 @@ class BuildArtifact(models.Model):
 
 
     def is_available(self):
-        return build.buildrequest.environment.has_artifact(file_path)
+        return self.build.buildrequest.environment.has_artifact(self.file_name)
 
 class ProjectTarget(models.Model):
     project = models.ForeignKey(Project)
@@ -433,20 +485,27 @@ class Task(models.Model):
 
     search_allowed_fields = [ "recipe__name", "recipe__version", "task_name", "logfile" ]
 
+    def __init__(self, *args, **kwargs):
+        super(Task, self).__init__(*args, **kwargs)
+        try:
+            self._helptext = HelpText.objects.get(key=self.task_name, area=HelpText.VARIABLE, build=self.build).text
+        except HelpText.DoesNotExist:
+            self._helptext = None
+
     def get_related_setscene(self):
         return Task.objects.filter(task_executed=True, build = self.build, recipe = self.recipe, task_name=self.task_name+"_setscene")
 
     def get_outcome_text(self):
-        return Task.TASK_OUTCOME[self.outcome + 1][1]
+        return Task.TASK_OUTCOME[int(self.outcome) + 1][1]
 
     def get_outcome_help(self):
-        return Task.TASK_OUTCOME_HELP[self.outcome][1]
+        return Task.TASK_OUTCOME_HELP[int(self.outcome)][1]
 
     def get_sstate_text(self):
         if self.sstate_result==Task.SSTATE_NA:
             return ''
         else:
-            return Task.SSTATE_RESULT[self.sstate_result][1]
+            return Task.SSTATE_RESULT[int(self.sstate_result)][1]
 
     def get_executed_display(self):
         if self.task_executed:
@@ -454,13 +513,6 @@ class Task(models.Model):
         return "Not Executed"
 
     def get_description(self):
-        if '_helptext' in vars(self) and self._helptext != None:
-            return self._helptext
-        try:
-            self._helptext = HelpText.objects.get(key=self.task_name, area=HelpText.VARIABLE, build=self.build).text
-        except HelpText.DoesNotExist:
-            self._helptext = None
-
         return self._helptext
 
     build = models.ForeignKey(Build, related_name='task_build')
@@ -586,6 +638,7 @@ class Recipe(models.Model):
     bugtracker = models.URLField(blank=True)
     file_path = models.FilePathField(max_length=255)
     pathflags = models.CharField(max_length=200, blank=True)
+    is_image = models.BooleanField(default=False)
 
     def get_layersource_view_url(self):
         if self.layer_source is None:
@@ -681,13 +734,8 @@ class LayerSource(models.Model):
     sourcetype = models.IntegerField(choices=SOURCE_TYPE)
     apiurl = models.CharField(max_length=255, null=True, default=None)
 
-    def update(self):
-        """
-            Updates the local database information from the upstream layer source
-        """
-        raise Exception("Abstract, update() must be implemented by all LayerSource-derived classes (object is %s)" % str(vars(self)))
-
-    def save(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
+        super(LayerSource, self).__init__(*args, **kwargs)
         if self.sourcetype == LayerSource.TYPE_LOCAL:
             self.__class__ = LocalLayerSource
         elif self.sourcetype == LayerSource.TYPE_LAYERINDEX:
@@ -696,6 +744,15 @@ class LayerSource(models.Model):
             self.__class__ = ImportedLayerSource
         elif self.sourcetype == None:
             raise Exception("Unknown LayerSource-derived class. If you added a new layer source type, fill out all code stubs.")
+
+
+    def update(self):
+        """
+            Updates the local database information from the upstream layer source
+        """
+        raise Exception("Abstract, update() must be implemented by all LayerSource-derived classes (object is %s)" % str(vars(self)))
+
+    def save(self, *args, **kwargs):
         return super(LayerSource, self).save(*args, **kwargs)
 
     def get_object(self):
@@ -766,45 +823,22 @@ class LayerIndexLayerSource(LayerSource):
             Fetches layer, recipe and machine information from remote repository
         """
         assert self.apiurl is not None
-        from django.db import IntegrityError
         from django.db import transaction, connection
 
-        import httplib, urlparse, json
+        import urllib2, urlparse, json
         import os
         proxy_settings = os.environ.get("http_proxy", None)
 
         def _get_json_response(apiurl = self.apiurl):
-            conn = None
             _parsedurl = urlparse.urlparse(apiurl)
             path = _parsedurl.path
-            query = _parsedurl.query
-            def parse_url(url):
-                parsedurl = urlparse.urlparse(url)
-                try:
-                    (host, port) = parsedurl.netloc.split(":")
-                except ValueError:
-                    host = parsedurl.netloc
-                    port = None
 
-                if port is None:
-                    port = 80
-                else:
-                    port = int(port)
-                return (host, port)
+            try:
+                res = urllib2.urlopen(apiurl)
+            except urllib2.URLError as e:
+                raise Exception("Failed to read %s: %s" % (path, e.reason))
 
-            if proxy_settings is None:
-                host, port = parse_url(apiurl)
-                conn = httplib.HTTPConnection(host, port)
-                conn.request("GET", path + "?" + query)
-            else:
-                host, port = parse_url(proxy_settings)
-                conn = httplib.HTTPConnection(host, port)
-                conn.request("GET", apiurl)
-
-            r = conn.getresponse()
-            if r.status != 200:
-                raise Exception("Failed to read " + path + ": %d %s" % (r.status, r.reason))
-            return json.loads(r.read())
+            return json.loads(res.read())
 
         # verify we can get the basic api
         try:
@@ -812,8 +846,8 @@ class LayerIndexLayerSource(LayerSource):
         except Exception as e:
             import traceback
             if proxy_settings is not None:
-                print "EE: Using proxy ", proxy_settings
-            print "EE: could not connect to %s, skipping update: %s\n%s" % (self.apiurl, e, traceback.format_exc(e))
+                logger.info("EE: Using proxy %s" % proxy_settings)
+            logger.warning("EE: could not connect to %s, skipping update: %s\n%s" % (self.apiurl, e, traceback.format_exc(e)))
             return
 
         # update branches; only those that we already have names listed in the
@@ -822,7 +856,7 @@ class LayerIndexLayerSource(LayerSource):
         if len(whitelist_branch_names) == 0:
             raise Exception("Failed to make list of branches to fetch")
 
-        print "Fetching branches"
+        logger.debug("Fetching branches")
         branches_info = _get_json_response(apilinks['branches']
             + "?filter=name:%s" % "OR".join(whitelist_branch_names))
         for bi in branches_info:
@@ -852,7 +886,7 @@ class LayerIndexLayerSource(LayerSource):
             transaction.set_autocommit(True)
 
         # update layerbranches/layer_versions
-        print "Fetching layer information"
+        logger.debug("Fetching layer information")
         layerbranches_info = _get_json_response(apilinks['layerBranches']
                 + "?filter=branch:%s" % "OR".join(map(lambda x: str(x.up_id), [i for i in Branch.objects.filter(layer_source = self) if i.up_id is not None] ))
             )
@@ -890,7 +924,7 @@ class LayerIndexLayerSource(LayerSource):
             try:
                 dependlist[lv].append(Layer_Version.objects.get(layer_source = self, layer__up_id = ldi['dependency'], up_branch = lv.up_branch))
             except Layer_Version.DoesNotExist:
-                print "Cannot find layer version ", self, ldi['dependency'], lv.up_branch
+                logger.warning("Cannot find layer version (ls:%s), up_id:%s lv:%s" % (self, ldi['dependency'], lv))
 
         for lv in dependlist:
             LayerVersionDependency.objects.filter(layer_version = lv).delete()
@@ -901,7 +935,7 @@ class LayerIndexLayerSource(LayerSource):
 
 
         # update machines
-        print "Fetching machine information"
+        logger.debug("Fetching machine information")
         machines_info = _get_json_response(apilinks['machines']
                 + "?filter=layerbranch:%s" % "OR".join(map(lambda x: str(x.up_id), Layer_Version.objects.filter(layer_source = self)))
             )
@@ -919,7 +953,7 @@ class LayerIndexLayerSource(LayerSource):
             transaction.set_autocommit(True)
 
         # update recipes; paginate by layer version / layer branch
-        print "Fetching target information"
+        logger.debug("Fetching target information")
         recipes_info = _get_json_response(apilinks['recipes']
                 + "?filter=layerbranch:%s" % "OR".join(map(lambda x: str(x.up_id), Layer_Version.objects.filter(layer_source = self)))
             )
@@ -938,13 +972,13 @@ class LayerIndexLayerSource(LayerSource):
                 ro.homepage = ri['homepage']
                 ro.bugtracker = ri['bugtracker']
                 ro.file_path = ri['filepath'] + "/" + ri['filename']
+                if 'inherits' in ri:
+                    ro.is_image = 'image' in ri['inherits'].split()
                 ro.save()
-            except:
-                #print "Duplicate Recipe, ignoring: ", vars(ro)
-                pass
+            except IntegrityError as e:
+                logger.debug("Failed saving recipe, ignoring: %s (%s:%s)" % (e, ro.layer_version, ri['filepath']+"/"+ri['filename']))
         if not connection.features.autocommits_when_autocommit_is_off:
             transaction.set_autocommit(True)
-        pass
 
 class BitbakeVersion(models.Model):
 
@@ -1106,6 +1140,9 @@ class Layer_Version(models.Model):
             return self.up_branch.name
         return ("Cannot determine the vcs_reference for layer version %s" % vars(self))
 
+    def get_detailspage_url(self, project_id):
+        return reverse('layerdetails', args=(project_id, self.pk))
+
     def __unicode__(self):
         return "%d %s (VCS %s, Project %s)" % (self.pk, str(self.layer), self.get_vcs_reference(), self.build.project if self.build is not None else "No project")
 
@@ -1190,8 +1227,7 @@ def invalidate_cache(**kwargs):
     try:
       cache.clear()
     except Exception as e:
-      print "Problem with cache backend: Failed to clear cache"
-      pass
+      logger.warning("Problem with cache backend: Failed to clear cache: %s" % e)
 
 django.db.models.signals.post_save.connect(invalidate_cache)
 django.db.models.signals.post_delete.connect(invalidate_cache)

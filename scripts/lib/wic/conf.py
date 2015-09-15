@@ -67,6 +67,7 @@ class ConfigMgr(object):
     def reset(self):
         self.__ksconf = None
         self.__siteconf = None
+        self.create = {}
 
         # initialize the values with defaults
         for sec, vals in self.DEFAULTS.iteritems():
@@ -86,9 +87,9 @@ class ConfigMgr(object):
         if not ksconf:
             return
 
-        ks = kickstart.read_kickstart(ksconf)
+        ksobj = kickstart.read_kickstart(ksconf)
 
-        self.create['ks'] = ks
+        self.create['ks'] = ksobj
         self.create['name'] = os.path.splitext(os.path.basename(ksconf))[0]
 
         self.create['name'] = misc.build_name(ksconf,

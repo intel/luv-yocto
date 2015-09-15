@@ -204,8 +204,10 @@ def buildcfg_neededvars(d):
         bb.fatal('The following variable(s) were not set: %s\nPlease set them directly, or choose a MACHINE or DISTRO that sets them.' % ', '.join(pesteruser))
 
 addhandler base_eventhandler
-base_eventhandler[eventmask] = "bb.event.ConfigParsed bb.event.BuildStarted bb.event.RecipePreFinalise"
+base_eventhandler[eventmask] = "bb.event.ConfigParsed bb.event.BuildStarted bb.event.RecipePreFinalise bb.runqueue.sceneQueueComplete"
 python base_eventhandler() {
+    import bb.runqueue
+
     if isinstance(e, bb.event.ConfigParsed):
         if not e.data.getVar("NATIVELSBSTRING", False):
             e.data.setVar("NATIVELSBSTRING", lsb_distro_identifier(e.data))
@@ -241,6 +243,17 @@ python base_eventhandler() {
             e.data.delVar("PREFERRED_PROVIDER_virtual/${TARGET_PREFIX}g++")
             e.data.delVar("PREFERRED_PROVIDER_virtual/${TARGET_PREFIX}compilerlibs")
 
+    if isinstance(e, bb.runqueue.sceneQueueComplete):
+        completions = e.data.expand("${STAGING_DIR}/sstatecompletions")
+        if os.path.exists(completions):
+            cmds = set()
+            with open(completions, "r") as f:
+                cmds = set(f)
+            e.data.setVar("completion_function", "\n".join(cmds))
+            e.data.setVarFlag("completion_function", "func", "1")
+            bb.debug(1, "Executing SceneQueue Completion commands: %s" % "\n".join(cmds))
+            bb.build.exec_func("completion_function", e.data)
+            os.remove(completions)
 }
 
 CONFIGURESTAMPFILE = "${WORKDIR}/configure.sstate"
@@ -339,10 +352,6 @@ python () {
     if pkgconfigflags:
         pkgconfig = (d.getVar('PACKAGECONFIG', True) or "").split()
         pn = d.getVar("PN", True)
-
-        for pconfig in pkgconfig:
-            if pconfig not in pkgconfigflags:
-                bb.warn("%s: invalid PACKAGECONFIG: %s" % (pn, pconfig))
 
         mlprefix = d.getVar("MLPREFIX", True)
 
@@ -465,12 +474,30 @@ python () {
             bad_licenses = expand_wildcard_licenses(d, bad_licenses)
 
             whitelist = []
+            incompatwl = []
+            htincompatwl = []
             for lic in bad_licenses:
+                spdx_license = return_spdx(d, lic)
                 for w in ["HOSTTOOLS_WHITELIST_", "LGPLv2_WHITELIST_", "WHITELIST_"]:
                     whitelist.extend((d.getVar(w + lic, True) or "").split())
-                spdx_license = return_spdx(d, lic)
-                if spdx_license:
-                    whitelist.extend((d.getVar('HOSTTOOLS_WHITELIST_%s' % spdx_license, True) or "").split())
+                    if spdx_license:
+                        whitelist.extend((d.getVar(w + spdx_license, True) or "").split())
+                    '''
+                    We need to track what we are whitelisting and why. If pn is 
+                    incompatible and is not HOSTTOOLS_WHITELIST_ we need to be 
+                    able to note that the image that is created may infact 
+                    contain incompatible licenses despite INCOMPATIBLE_LICENSE 
+                    being set.
+                    '''
+                    if "HOSTTOOLS" in w:
+                        htincompatwl.extend((d.getVar(w + lic, True) or "").split())
+                        if spdx_license:
+                            htincompatwl.extend((d.getVar(w + spdx_license, True) or "").split())
+                    else:
+                        incompatwl.extend((d.getVar(w + lic, True) or "").split())
+                        if spdx_license:
+                            incompatwl.extend((d.getVar(w + spdx_license, True) or "").split())
+
             if not pn in whitelist:
                 recipe_license = d.getVar('LICENSE', True)
                 pkgs = d.getVar('PACKAGES', True).split()
@@ -491,6 +518,11 @@ python () {
                 elif all_skipped or incompatible_license(d, bad_licenses):
                     bb.debug(1, "SKIPPING recipe %s because it's %s" % (pn, recipe_license))
                     raise bb.parse.SkipPackage("incompatible with license %s" % recipe_license)
+            elif pn in whitelist:
+                if pn in incompatwl:
+                    bb.note("INCLUDING " + pn + " as buildable despite INCOMPATIBLE_LICENSE because it has been whitelisted")
+                elif pn in htincompatwl:
+                    bb.note("INCLUDING " + pn + " as buildable despite INCOMPATIBLE_LICENSE because it has been whitelisted for HOSTTOOLS")
 
     srcuri = d.getVar('SRC_URI', True)
     # Svn packages should DEPEND on subversion-native

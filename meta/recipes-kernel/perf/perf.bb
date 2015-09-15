@@ -29,7 +29,7 @@ DEPENDS = " \
     ${TUI_DEPENDS} \
     ${SCRIPTING_DEPENDS} \
     ${LIBUNWIND_DEPENDS} \
-    bison flex \
+    bison flex xz \
 "
 
 do_configure[depends] += "virtual/kernel:do_shared_workdir"
@@ -44,6 +44,7 @@ export STAGING_INCDIR
 export STAGING_LIBDIR
 export BUILD_SYS
 export HOST_SYS
+export PYTHON_SITEPACKAGES_DIR
 
 #kernel 3.1+ supports WERROR to disable warnings as errors
 export WERROR = "0"
@@ -111,7 +112,7 @@ do_install() {
 	unset CFLAGS
 	oe_runmake DESTDIR=${D} install
 	# we are checking for this make target to be compatible with older perf versions
-	if [ "${@perf_feature_enabled('perf-scripting', 1, 0, d)}" = "1" -a $(grep install-python_ext ${S}/tools/perf/Makefile) = "0" ]; then
+	if [ "${@perf_feature_enabled('perf-scripting', 1, 0, d)}" = "1" ] && grep -q install-python_ext ${S}/tools/perf/Makefile*; then
 		oe_runmake DESTDIR=${D} install-python_ext
 	fi
 }
@@ -129,6 +130,7 @@ do_configure_prepend () {
     # config/Makefile.
     #
     # Also need to relocate .config-detected to $(OUTPUT)/config-detected
+    # for kernel sources that do not already do this
     # as two builds (e.g. perf and lib32-perf from mutlilib can conflict
     # with each other if its in the shared source directory
     #
@@ -136,15 +138,20 @@ do_configure_prepend () {
         # Match $(prefix)/$(lib) and $(prefix)/lib
         sed -i -e 's,^libdir = \($(prefix)/.*lib\),libdir ?= \1,' \
                -e 's,^perfexecdir = \(.*\),perfexecdir ?= \1,' \
-               -e 's,\.config-detected,$(OUTPUT)/config-detected,g' \
+               -e 's,\ .config-detected, $(OUTPUT)/config-detected,g' \
             ${S}/tools/perf/config/Makefile
     fi
     if [ -e "${S}/tools/perf/Makefile.perf" ]; then
-        sed -i -e 's,\.config-detected,$(OUTPUT)/config-detected,g' \
+        sed -i -e 's,\ .config-detected, $(OUTPUT)/config-detected,g' \
+            ${S}/tools/perf/Makefile.perf
+        sed -i -e "s,prefix='\$(DESTDIR_SQ)/usr'$,prefix='\$(DESTDIR_SQ)/usr' --install-lib='\$(DESTDIR)\$(PYTHON_SITEPACKAGES_DIR)',g" \
             ${S}/tools/perf/Makefile.perf
     fi
+    sed -i -e "s,--root='/\$(DESTDIR_SQ)',--prefix='\$(DESTDIR_SQ)/usr' --install-lib='\$(DESTDIR)\$(PYTHON_SITEPACKAGES_DIR)',g" \
+        ${S}/tools/perf/Makefile
+
     if [ -e "${S}/tools/build/Makefile.build" ]; then
-        sed -i -e 's,\.config-detected,$(OUTPUT)/config-detected,g' \
+        sed -i -e 's,\ .config-detected, $(OUTPUT)/config-detected,g' \
             ${S}/tools/build/Makefile.build
     fi
 

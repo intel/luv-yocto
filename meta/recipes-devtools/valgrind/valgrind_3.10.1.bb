@@ -25,6 +25,7 @@ SRC_URI = "http://www.valgrind.org/downloads/valgrind-${PV}.tar.bz2 \
            file://add-ptest.patch \
            file://pass-maltivec-only-if-it-supported.patch \
            file://run-ptest \
+           file://0001-valgrind-Enable-rt_sigpending-syscall-on-ppc64-linux.patch \
           "
 
 SRC_URI[md5sum] = "60ddae962bc79e7c95cfc4667245707f"
@@ -57,7 +58,7 @@ RRECOMMENDS_${PN} += "${TCLIBC}-dbg"
 RDEPENDS_${PN}-ptest += " sed perl glibc-utils perl-module-file-glob"
 
 do_compile_ptest() {
-    oe_runmake check
+    oe_runmake check CFLAGS="${CFLAGS} -O0" CXXFLAGS="${CXXFLAGS} -O0"
 }
 
 
