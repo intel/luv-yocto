@@ -26,6 +26,19 @@ LUV_STORAGE=/mnt/luv-storage/
 LUV_PARTITION_UUID=05D6-1523
 LUV_DISK_DEVICE=/dev/disk/by-uuid/${LUV_PARTITION_UUID}
 
+## checking if the partiton is matched , else results
+## cannot be saved in the removable media after tests are done
+
+warning="STOP! No partition found to store the results..please report to luv@lists.01.org"
+ls -la /dev/disk/by-uuid | grep ${LUV_PARTITION_UUID}
+if [ $? -eq 1 ] ; then
+    psplash_write " MSG $warning "
+    if [ -e $FIFO ]; then
+        umount -l /mnt/.psplash
+    fi
+    exit
+fi
+
 mkdir -p ${LUV_STORAGE}
 if [ $? -eq 0 ]; then
     mount ${LUV_DISK_DEVICE} ${LUV_STORAGE}
