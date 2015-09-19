@@ -104,7 +104,7 @@ $luv_version
 
 Date and time of the system :$tstamp
 
-System $(cat /proc/cpuinfo | grep 'model name' | uniq)
+System: $(cat /proc/cpuinfo | grep 'model name' | cut -d: -f2 | uniq)
 
 Test results summary:
 
