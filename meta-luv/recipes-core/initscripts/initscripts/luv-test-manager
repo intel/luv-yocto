@@ -30,7 +30,7 @@ LUV_DISK_DEVICE=/dev/disk/by-uuid/${LUV_PARTITION_UUID}
 ## cannot be saved in the removable media after tests are done
 
 warning="STOP! No partition found to store the results..please report to luv@lists.01.org"
-ls -la /dev/disk/by-uuid | grep ${LUV_PARTITION_UUID}
+ls /dev/disk/by-uuid | grep -q ${LUV_PARTITION_UUID}
 if [ $? -eq 1 ] ; then
     psplash_write " MSG $warning "
     if [ -e $FIFO ]; then
