@@ -39,11 +39,17 @@ if [ $? -eq 1 ] ; then
     exit
 fi
 
+tstamp=$(date +"%Y-%m-%d--%H-%M-%S")
 mkdir -p ${LUV_STORAGE}
 if [ $? -eq 0 ]; then
     mount ${LUV_DISK_DEVICE} ${LUV_STORAGE}
     if [ $? -eq 0 ]; then
-        LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}luv-results/
+        n=$(ls ${LUV_STORAGE}/ | grep $tstamp | wc -l)
+        if [ $n -ge 1 ]; then
+            LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}luv-results-$tstamp-$n/
+        else
+            LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}luv-results-$tstamp/
+        fi
 
         mkdir -p ${LUV_SAVE_RESULTS_DIR}raw/
         [ $? -eq 0 ] && LUV_SAVE_RAW_DIR=${LUV_SAVE_RESULTS_DIR}raw/
