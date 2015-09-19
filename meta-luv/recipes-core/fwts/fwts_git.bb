@@ -8,6 +8,7 @@ PV = "15.09.00+git${SRCPV}"
 
 SRCREV = "6843630f98ed9779ff79d638e0dc6952c9ad1501"
 SRC_URI = "git://kernel.ubuntu.com/hwe/fwts.git \
+           file://sb-change-fail-to-warn-when-no-MS-UEFI-CA.patch \
            file://luv-parser-fwts \
           "
 
