@@ -102,9 +102,9 @@ psplash_write "PROGRESS 0"
 cat <<EOF | tee ${LUV_SAVE_RESULTS_DIR}/luv.results > /tmp/luv.results
 $luv_version
 
-Date and time of the system :$tstamp
+Date and time of the system : $tstamp
 
-System: $(cat /proc/cpuinfo | grep 'model name' | cut -d: -f2 | uniq)
+System: $(cat /proc/cpuinfo | grep 'model name' | cut -d: -f2 | uniq) x $(nproc)
 
 Test results summary:
 
