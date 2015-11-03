@@ -1,0 +1,56 @@
+diff --git a/grub-core/kern/i386/efi/callwrap.S b/grub-core/kern/i386/efi/callwrap.S
+index e69de29..173e37c 100644
+--- a/grub-core/kern/i386/efi/callwrap.S
++++ b/grub-core/kern/i386/efi/callwrap.S
+@@ -0,0 +1,51 @@
++/* callwrap.S - wrapper for x86_64 efi calls */
++/*
++ *  GRUB  --  GRand Unified Bootloader
++ *  Copyright (C) 2006,2007,2009  Free Software Foundation, Inc.
++ *
++ *  GRUB is free software: you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License as published by
++ *  the Free Software Foundation, either version 3 of the License, or
++ *  (at your option) any later version.
++ *
++ *  GRUB is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ *  GNU General Public License for more details.
++ *
++ *  You should have received a copy of the GNU General Public License
++ *  along with GRUB.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include <config.h>
++#include <grub/symbol.h>
++
++/*
++ * x86_64 uses registry to pass parameters. Unfortunately, gcc and efi use
++ * different call conversion, so we need to do some conversion.
++ *
++ * gcc:
++ *   %rdi,  %rsi,  %rdx,  %rcx, %r8, %r9, 8(%rsp), 16(%rsp), ...
++ *
++ * efi:
++ *   %rcx,  %rdx,  %r8,  %r9,  32(%rsp), 40(%rsp), 48(%rsp), ...
++ *
++ */
++
++        .file   "callwrap.S"
++        .text
++
++FUNCTION(efi_call_foo)
++	pushl %ebp
++	movl %esp, saved_sp(%ebp)
++	subl $48, %esp
++	movl  %esi, %ecx
++	call *%edi
++
++FUNCTION(efi_shim_exit)
++	movl saved_sp(%ebp), %esp
++	popl %ebp
++	ret
++
++	.data
++saved_sp:	.long   0
