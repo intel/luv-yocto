@@ -31,7 +31,7 @@ efi_populate() {
     install -d ${DEST}${EFIDIR}
 
     # Create bits directory only for x86_64 target.
-    if [ "${TARGET_ARCH}" = "x86_64" ]; then
+    if [ "${TARGET_ARCH}" = "i586" ] || [ "${TARGET_ARCH}" = "x86_64" ]; then
        install -d ${DEST}${EFIDIR}/bits
     fi
 
@@ -66,7 +66,7 @@ efi_populate() {
     fi
 
     # Install BITS only for x86_64 architecture
-    if [ "${TARGET_ARCH}" = "x86_64" ]; then
+    if [ "${TARGET_ARCH}" = "i586" ] || [ "${TARGET_ARCH}" = "x86_64" ]; then
 	    cp -r ${DEPLOY_DIR_IMAGE}/bits/boot ${DEST}
             # TODO: Need condiitional signing based on DISTRO_FEATURES
             mv ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
@@ -102,7 +102,7 @@ efi_iso_populate() {
         echo "grubaa64.efi" > ${EFIIMGDIR}/startup.nsh
         cp $iso_dir/Image ${EFIIMGDIR}
     fi
-    if [ "${TARGET_ARCH}" = "x86_64" ] ; then
+    if [ "${TARGET_ARCH}" = "i586" ] || [ "${TARGET_ARCH}" = "x86_64" ]; then
         echo "${GRUB_IMAGE}" > ${EFIIMGDIR}/startup.nsh
         cp $iso_dir/vmlinuz ${EFIIMGDIR}
     fi
@@ -126,13 +126,13 @@ python build_efi_cfg() {
     except OSError:
         raise bb.build.funcFailed('Unable to open %s' % (cfgfile))
 
-    if "${TARGET_ARCH}" == "x86_64":
+    if "${TARGET_ARCH}" == "x86_64" or "${TARGET_ARCH}" == "i586":
        cfgfile.write('default=bits\n')
        cfgfile.write('timeout=0\n')
        cfgfile.write('fallback=0\n')
 
     cfgfile.write('menuentry \'luv\' {\n')
-    if "${TARGET_ARCH}" == "x86_64":
+    if "${TARGET_ARCH}" == "x86_64" or "${TARGET_ARCH}" == "i586":
        cfgfile.write('linux /vmlinuz')
     if "${TARGET_ARCH}" == "aarch64":
         cfgfile.write('linux /Image')
@@ -150,7 +150,7 @@ python build_efi_cfg() {
     if not loader:
         raise bb.build.FuncFailed('Unable to find EFI_LOADER_IMAGE')
 
-    if "${TARGET_ARCH}" == "x86_64":
+    if "${TARGET_ARCH}" == "x86_64" or "${TARGET_ARCH}" == "i586":
        cfgfile.write('menuentry \'bits\' {\n')
        cfgfile.write('chainloader /EFI/BOOT/bits/%s\n' % loader)
        cfgfile.write('}\n')

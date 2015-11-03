@@ -9,7 +9,8 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=8c16666ae6c159876a0ba63099614381"
 SRC_URI = "git://github.com/chipsec/chipsec.git \
     file://0005-tool-setup.py-Delete-Windows-drivers-from-data_files.patch \
     file://0006-drivers-linux-Don-t-build-userland-app-automatically.patch \
-    file://chipsec file://luv-parser-chipsec"
+    file://chipsec file://luv-parser-chipsec \
+    file://Make.patch"
 
 SRCREV="a080525f36cb353285e9ee72d001aecd6b20290f"
 
@@ -52,7 +53,10 @@ do_compile_append() {
         KERNEL_VERSION=${KERNEL_VERSION}    \
         CC="${KERNEL_CC}" LD="${KERNEL_LD}" \
         AR="${KERNEL_AR}" INC="${INC}" -C ${S}/source/drivers/linux
-
+	if [ "${TARGET_ARCH}" = "i586" ];then
+		ARCH = x86
+	else
+		ARCH = x86_64
     oe_runmake -C ${S}/source/tool/chipsec/helper/linux
 }
 

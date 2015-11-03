@@ -1,0 +1,22 @@
+diff --git a/source/drivers/linux/Makefile b/source/drivers/linux/Makefile
+index c1c40eb..06a4a3e 100644
+--- a/source/drivers/linux/Makefile
++++ b/source/drivers/linux/Makefile
+@@ -6,7 +6,7 @@ VERSION=
+
+ obj-m += chipsec$(VERSION).o
+
+-ifeq ($(shell uname -m),x86_64)
++ifeq ($(ARCH),x86_64)
+	chipsec$(VERSION)-objs := chipsec_km.o amd64/cpu.o
+ else
+	chipsec$(VERSION)-objs := chipsec_km.o i386/cpu.o
+@@ -15,7 +15,7 @@ endif
+
+ all:	clean chipsec$(VERSION)
+
+-ifeq ($(shell uname -m),x86_64)
++ifeq ($(ARCH),x86_64)
+ chipsec$(VERSION) : clean
+	nasm -f elf64 -o amd64/cpu.o amd64/cpu.asm;
+	make -C $(KERNEL_SRC_DIR) SUBDIRS=`pwd` modules
