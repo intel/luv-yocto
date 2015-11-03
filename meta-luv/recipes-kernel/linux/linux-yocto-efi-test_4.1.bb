@@ -60,6 +60,11 @@ require recipes-kernel/linux/linux-yocto.inc
 SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/mfleming/efi.git;protocol=git;branch=${KBRANCH};name=machine"
 SRC_URI += "file://defconfig"
 
+# While building for AArch64 architecture fetch latest Linus' tree
+# and apply default config, which includes ACPI options enabled.
+SRC_URI_aarch64 = "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git;protocol=git;branch=master;name=machine"
+SRC_URI_aarch64 += "file://${MACHINE}/defconfig"
+
 LINUX_VERSION ?= "4.1"
 LINUX_VERSION_EXTENSION ?= "-efitest"
 
@@ -69,9 +74,11 @@ LINUX_VERSION_EXTENSION ?= "-efitest"
 SRCREV_machine_qemux86-64 = "${AUTOREV}"
 SRCREV_machine_qemux86 = "${AUTOREV}"
 
+SRCREV_machine_qemuarm64 = "${AUTOREV}"
+
 PR = "r5"
 PV = "${LINUX_VERSION}+git${SRCPV}"
 
 # Override COMPATIBLE_MACHINE to include your machine in a bbappend
 # file. Leaving it empty here ensures an early explicit build failure.
-COMPATIBLE_MACHINE = "qemux86|qemux86-64"
+COMPATIBLE_MACHINE = "qemux86|qemux86-64|qemuarm64"
