@@ -26,7 +26,17 @@ inherit luv-test
 S = "${WORKDIR}/git"
 
 export INC = "-I${STAGING_INCDIR}/${PYTHON_DIR}"
+def get_target_arch(d):
+ import re
+ target = d.getVar('TARGET_ARCH', True)
+ if target == "x86_64":
+    return 'x86_64'
+ elif re.match('i.86', target):
+    return 'x86'
+ else:
+    raise bb.parse.SkipPackage("TARGET_ARCH %s not supported!" % target)
 
+EXTRA_OEMAKE = "ARCH="${@get_target_arch(d)}""
 fix_mod_path() {
     sed -i -e "s:^INSTALL_MOD_PATH_PREFIX = .*:INSTALL_MOD_PATH_PREFIX = \"${PYTHON_SITEPACKAGES_DIR}\":" ${S}/source/tool/chipsec_main.py
     sed -i -e "s:PYTHONPATH:${PYTHON_SITEPACKAGES_DIR}:" ${WORKDIR}/chipsec
@@ -53,10 +63,7 @@ do_compile_append() {
         KERNEL_VERSION=${KERNEL_VERSION}    \
         CC="${KERNEL_CC}" LD="${KERNEL_LD}" \
         AR="${KERNEL_AR}" INC="${INC}" -C ${S}/source/drivers/linux
-	if [ "${TARGET_ARCH}" = "i586" ];then
-		ARCH = x86
-	else
-		ARCH = x86_64
+
     oe_runmake -C ${S}/source/tool/chipsec/helper/linux
 }
 

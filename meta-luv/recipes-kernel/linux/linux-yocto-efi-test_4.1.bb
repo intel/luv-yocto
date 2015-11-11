@@ -59,7 +59,7 @@ require recipes-kernel/linux/linux-yocto.inc
 SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git;protocol=git;name=machine"
 SRC_URI += "file://defconfig"
 
-LINUX_VERSION ?= "4.1"
+LINUX_VERSION ?= "4.3"
 LINUX_VERSION_EXTENSION ?= "-efitest"
 
 # Override SRCREV to point to a different commit in a bbappend file to
