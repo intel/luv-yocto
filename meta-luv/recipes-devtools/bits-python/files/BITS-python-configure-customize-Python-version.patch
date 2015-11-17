@@ -1,0 +1,56 @@
+From c91489333b68febc6917fb84cdc0d582d9111bb1 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Sat, 14 Nov 2015 12:18:13 -0800
+Subject: [PATCH] BITS: python: configure: customize Python version
+
+BITS is built with a specific version of Python that is shipped along with BITS.
+We could try to build with the nativesdk Python but we might run unto build
+or runtime problems. Hence, it is better to use the BITS Python. I order for the
+nativesdk and BITS' Python to coexist, modify the version in BITS Python.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ deps/python/configure    | 6 +++---
+ deps/python/configure.ac | 2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/deps/python/configure b/deps/python/configure
+index 7127871..359481b 100755
+--- a/deps/python/configure
++++ b/deps/python/configure
+@@ -581,8 +581,8 @@ MAKEFLAGS=
+ # Identity of this package.
+ PACKAGE_NAME='python'
+ PACKAGE_TARNAME='python'
+-PACKAGE_VERSION='2.7'
+-PACKAGE_STRING='python 2.7'
++PACKAGE_VERSION='2.7-BITS'
++PACKAGE_STRING='python 2.7-BITS'
+ PACKAGE_BUGREPORT='http://bugs.python.org/'
+ PACKAGE_URL=''
+ 
+@@ -2920,7 +2920,7 @@ rm confdefs.h
+ mv confdefs.h.new confdefs.h
+ 
+ 
+-VERSION=2.7
++VERSION=2.7-BITS
+ 
+ 
+ SOVERSION=1.0
+diff --git a/deps/python/configure.ac b/deps/python/configure.ac
+index 2c998b1..3b8262c 100644
+--- a/deps/python/configure.ac
++++ b/deps/python/configure.ac
+@@ -3,7 +3,7 @@ dnl * Please run autoreconf to test your changes! *
+ dnl ***********************************************
+ 
+ # Set VERSION so we only need to edit in one place (i.e., here)
+-m4_define(PYTHON_VERSION, 2.7)
++m4_define(PYTHON_VERSION, 2.7-BITS)
+ 
+ AC_PREREQ(2.65)
+ 
+-- 
+1.9.1
+
