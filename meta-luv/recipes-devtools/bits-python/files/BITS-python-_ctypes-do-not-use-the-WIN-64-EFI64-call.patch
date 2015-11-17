@@ -1,0 +1,62 @@
+From 28a5876d98d9222418806bf28537c725d26474e4 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Sat, 14 Nov 2015 12:21:36 -0800
+Subject: [PATCH] BITS: python: _ctypes: do not use the WIN/64/EFI64 calling
+ convention
+
+The commit ID f6b5a91f417ac77d2fe9b0b3eb66293db132e2e in BITS implemented
+support for the WIN64/EFI64. However, this was only implemented in the libffi
+module that GRUB uses, not on the host Python implementation. Thus,
+Python fails to build with the following error:
+
+../build/python-host/Modules/_ctypes/callbacks.c:465:14: In function '_ctypes_alloc_callback':
+error: 'FFI_EFI64' undeclared (first use in this function)
+         cc = FFI_EFI64;
+              ^
+Hence, for now just do not use such calling convention in the host Python. This
+effectively reverts commit 2e41220a584b0d4fcda5c95dc14cf638f9b9a331 in
+the Python submodule of BITS.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ deps/python/Modules/_ctypes/callbacks.c | 2 ++
+ deps/python/Modules/_ctypes/callproc.c  | 2 ++
+ 2 files changed, 4 insertions(+)
+
+diff --git a/deps/python/Modules/_ctypes/callbacks.c b/deps/python/Modules/_ctypes/callbacks.c
+index 5a3b3ec..008cc95 100644
+--- a/deps/python/Modules/_ctypes/callbacks.c
++++ b/deps/python/Modules/_ctypes/callbacks.c
+@@ -460,10 +460,12 @@ CThunkObject *_ctypes_alloc_callback(PyObject *callable,
+ #if defined(MS_WIN32) && !defined(_WIN32_WCE) && !defined(MS_WIN64)
+     if ((flags & FUNCFLAG_CDECL) == 0)
+         cc = FFI_STDCALL;
++#if 0
+ #elif defined(X86_64) && !defined(X86_WIN64)
+     if ((flags & FUNCFLAG_CDECL) == 0)
+         cc = FFI_EFI64;
+ #endif
++#endif
+     result = ffi_prep_cif(&p->cif, cc,
+                           Py_SAFE_DOWNCAST(nArgs, Py_ssize_t, int),
+                           _ctypes_get_ffi_type(restype),
+diff --git a/deps/python/Modules/_ctypes/callproc.c b/deps/python/Modules/_ctypes/callproc.c
+index 8fe0386..43f5c89 100644
+--- a/deps/python/Modules/_ctypes/callproc.c
++++ b/deps/python/Modules/_ctypes/callproc.c
+@@ -799,10 +799,12 @@ static int _call_function_pointer(int flags,
+ #if defined(MS_WIN32) && !defined(MS_WIN64) && !defined(_WIN32_WCE)
+     if ((flags & FUNCFLAG_CDECL) == 0)
+         cc = FFI_STDCALL;
++#if 0
+ #elif defined(X86_64) && !defined(X86_WIN64)
+     if ((flags & FUNCFLAG_CDECL) == 0)
+         cc = FFI_EFI64;
+ #endif
++#endif
+     if (FFI_OK != ffi_prep_cif(&cif,
+                                cc,
+                                argcount,
+-- 
+1.9.1
+
