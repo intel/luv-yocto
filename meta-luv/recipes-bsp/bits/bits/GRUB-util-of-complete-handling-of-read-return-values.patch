@@ -1,0 +1,94 @@
+From f21827c097611769e1014c8c252ded49bd7d25d7 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Mon, 16 Nov 2015 09:40:41 -0800
+Subject: [PATCH] GRUB: util: of: complete handling of read return values
+
+Return values of read are not checked for errors. This can lead to spurious
+reads. Furthermore, it triggers the following compiler warning:
+
+    build/grub/util/ieee1275/ofpath.c: In function 'find_obppath':
+    build/grub/util/ieee1275/ofpath.c:146:11: error: ignoring return value of
+        'read', declared with attribute warn_unused_result [-Werror=unused-result]
+           read(fd, of_path, size);
+               ^
+    build/grub/util/ieee1275/ofpath.c: In function 'check_sas':
+    build/grub/util/ieee1275/ofpath.c:357:8: error: ignoring return value of
+        'read', declared with attribute warn_unused_result [-Werror=unused-result]
+       read (fd, phy, sizeof (phy));
+            ^
+It makes sense to return NULL when reads fail, as the callers of this
+function of find_obppath checks for NULL values when handing errors.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ deps/grub/util/ieee1275/ofpath.c | 29 ++++++++++++++++++++---------
+ 1 file changed, 20 insertions(+), 9 deletions(-)
+
+diff --git a/deps/grub/util/ieee1275/ofpath.c b/deps/grub/util/ieee1275/ofpath.c
+index 9de9ffc..e12046b 100644
+--- a/deps/grub/util/ieee1275/ofpath.c
++++ b/deps/grub/util/ieee1275/ofpath.c
+@@ -109,8 +109,8 @@ find_obppath (const char *sysfs_path_orig)
+ 
+   while (1)
+     {
+-      int fd;
+-      char *of_path;
++      int fd, err;
++      char *of_path, *ret;
+       struct stat st;
+       size_t size;
+ 
+@@ -143,13 +143,22 @@ find_obppath (const char *sysfs_path_orig)
+       size = st.st_size;
+       of_path = xmalloc (size + MAX_DISK_CAT + 1);
+       memset(of_path, 0, size + MAX_DISK_CAT + 1);
+-      read(fd, of_path, size);
++      err = read(fd, of_path, size);
++      if (err < 0)
++        {
++          grub_util_error (_("cannot read `%s': %s"), path, strerror (errno));
++          ret = NULL;
++        }
++      else
++        {
++          trim_newline(of_path);
++          ret = of_path;
++	}
+       close(fd);
+ 
+-      trim_newline(of_path);
+       free (path);
+       free (sysfs_path);
+-      return of_path;
++      return ret;
+     }
+ }
+ 
+@@ -329,7 +338,7 @@ check_sas (char *sysfs_path, int *tgt)
+   char *ed = strstr (sysfs_path, "end_device");
+   char *p, *q, *path;
+   char phy[16];
+-  int fd;
++  int fd, err;
+   size_t path_size;
+ 
+   if (!ed)
+@@ -354,9 +363,11 @@ check_sas (char *sysfs_path, int *tgt)
+     grub_util_error (_("cannot open `%s': %s"), path, strerror (errno));
+ 
+   memset (phy, 0, sizeof (phy));
+-  read (fd, phy, sizeof (phy));
+-
+-  sscanf (phy, "%d", tgt);
++  err = read (fd, phy, sizeof (phy));
++  if (err < 0)
++    grub_util_error (_("cannot read `%s': %s"), path, strerror (errno));
++  else
++    sscanf (phy, "%d", tgt);
+ 
+   free (path);
+   free (p);
+-- 
+1.9.1
+
