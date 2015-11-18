@@ -1,0 +1,25 @@
+From a84f1da3ba5ffa99b09c2fae704477a5f39ea2bf Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Fri, 13 Nov 2015 08:11:31 -0800
+Subject: [PATCH] BITS: bits-cfg.txt: Set batch mode
+
+LUV runs BITS in batch mode. Thus, enable it.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ bits-cfg.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/bits-cfg.txt b/bits-cfg.txt
+index c69e324..3561233 100644
+--- a/bits-cfg.txt
++++ b/bits-cfg.txt
+@@ -13,4 +13,4 @@
+ batch =
+ 
+ # Uncomment the following to run all available batch operations
+-#batch = test acpi smbios
++batch = test acpi smbios
+-- 
+1.9.1
+
