@@ -1,0 +1,29 @@
+From b8628c15cfccf5e4391a3b87c34080a578befd77 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Fri, 13 Nov 2015 08:17:29 -0800
+Subject: [PATCH] BITS: init.cfg: Exit BITS upon completion
+
+BITS is implemented on top of GRUB. LUV has its own bootloader. Thus, in
+order to run BITS. LUV chainloads the BITS GRUB. Hence, when BITS completes
+execution, LUV needs it to exit and return to the LUV bootloader to continue
+with other tests.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ cfg/init.cfg | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/cfg/init.cfg b/cfg/init.cfg
+index c12a269..83d8531 100644
+--- a/cfg/init.cfg
++++ b/cfg/init.cfg
+@@ -39,3 +39,6 @@ if $serial_cmd ; then
+ fi
+ unset serial_cmd
+ py 'init.init(); del init'
++
++# Once BITS finishes, we want it to exit to go back to the LUV bootloader
++exit
+-- 
+1.9.1
+
