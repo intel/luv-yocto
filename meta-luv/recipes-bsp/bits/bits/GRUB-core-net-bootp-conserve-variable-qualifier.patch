@@ -1,0 +1,47 @@
+From f10a7fdd3e05995185066d3852dbe17bf0ae9688 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Mon, 16 Nov 2015 09:53:50 -0800
+Subject: [PATCH] GRUB: core: net: bootp: conserve variable qualifier
+
+The function set_env_limn_ro receives *vend as pointer to a constant. However
+the automatic variables *ptr and *ptr0 drop such qualifier, causing this
+warning:
+
+    build/grub/grub-core/net/bootp.c: In function 'grub_net_configure_by_dhcp_ack':
+    build/grub/grub-core/net/bootp.c:255:30: error: passing argument 2 of
+      'parse_dhcp_vendor' discards 'const' qualifier from pointer target type
+       [-Werror=discarded-array-qualifiers]
+          parse_dhcp_vendor (name, &bp->vendor, size - OFFSET_OF (vendor, bp), &mask);
+                                  ^
+    build/grub/grub-core/net/bootp.c:55:1: note: expected 'void *' but argument is
+      of type 'const grub_uint8_t (*)[] {aka const unsigned char (*)[]}'
+           parse_dhcp_vendor (const char *name, void *vend, int limit, int *mask)
+           ^
+
+These variables do not change the contents of *vend. Thus, we simply add
+the const qualifier.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ deps/grub/grub-core/net/bootp.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/deps/grub/grub-core/net/bootp.c b/deps/grub/grub-core/net/bootp.c
+index bc07d53..44131ed 100644
+--- a/deps/grub/grub-core/net/bootp.c
++++ b/deps/grub/grub-core/net/bootp.c
+@@ -52,9 +52,9 @@ set_env_limn_ro (const char *intername, const char *suffix,
+ }
+ 
+ static void
+-parse_dhcp_vendor (const char *name, void *vend, int limit, int *mask)
++parse_dhcp_vendor (const char *name, const void *vend, int limit, int *mask)
+ {
+-  grub_uint8_t *ptr, *ptr0;
++  const grub_uint8_t *ptr, *ptr0;
+ 
+   ptr = ptr0 = vend;
+ 
+-- 
+1.9.1
+
