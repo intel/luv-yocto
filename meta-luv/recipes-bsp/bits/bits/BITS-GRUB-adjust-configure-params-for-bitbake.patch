@@ -1,0 +1,37 @@
+From 22318310c8224a5c6a509303db461394370d071f Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Mon, 16 Nov 2015 09:50:36 -0800
+Subject: [PATCH] BITS: GRUB: adjust configure params for bitbake
+
+GRUB is built both natively and for target. In order to accommodate builds
+via bitbake sysroot, the --target --build and --host parameters passed to
+configure need to be adjusted at build time for either native or target builds.
+Under bitbake, this is usually done by the autotools recipe via the do_configure
+task. However, the construction of the BITS makefile makes it difficult to use
+the autotools recipe. Thus, we make the adjustment manually.
+
+Please note that the parameters --target, --build and --host are set as
+TARGET_SYS, BUILD_SYS and HOST_SYS. These names are adjusted by the BITS
+bitbake recipe using stream edition at build time.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index c5f94d4..b691a03 100644
+--- a/Makefile
++++ b/Makefile
+@@ -107,7 +107,7 @@ common-modules:=fat part_msdos part_gpt iso9660
+ 
+ build-grub-%: autogen-grub
+ 	$(Q)mkdir '$(workdir)/grub-build-$*'
+-	$(Q)cd '$(workdir)/grub-build-$*' && '$(grub-src)/configure' --prefix='$(grub-prefix)' --libdir='$(grub-libdir)' --program-prefix= --target=$(firstword $(subst -, ,$*)) --with-platform=$(lastword $(subst -, ,$*)) --disable-nls --disable-efiemu --disable-grub-emu-usb --disable-grub-emu-sdl --disable-grub-mkfont --disable-grub-mount --disable-device-mapper --disable-libzfs MAKEINFO=/bin/true
++	$(Q)cd '$(workdir)/grub-build-$*' && '$(grub-src)/configure' --prefix='$(grub-prefix)' --libdir='$(grub-libdir)' --program-prefix= --target=TARGET_SYS --build=BUILD_SYS --host=HOST_SYS --with-platform=$(lastword $(subst -, ,$*)) --disable-nls --disable-efiemu --disable-grub-emu-usb --disable-grub-emu-sdl --disable-grub-mkfont --disable-grub-mount --disable-device-mapper --disable-libzfs MAKEINFO=/bin/true
+ 	$(Q)cd '$(workdir)/grub-build-$*' && $(MAKE) install
+ 	$(Q)mkdir -p '$(target)/boot/grub/$*'
+ 	$(Q)for suffix in img lst mod ; do \
+-- 
+1.9.1
+
