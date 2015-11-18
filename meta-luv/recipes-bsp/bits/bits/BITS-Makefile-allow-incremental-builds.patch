@@ -1,0 +1,207 @@
+From 22e058ae3ab66103a2b2ed4963107931451e5f4a Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Sat, 21 Nov 2015 07:04:48 -0800
+Subject: [PATCH] BITS: Makefile: allow incremental builds
+
+BITS makefile utilizes target names not as filenames but as task names. For
+instance, setup does not actually create a target file named setup. Furthermore,
+for a given target (a task, actually) the dependencies are other tasks, not
+files. Thus, make will not find such files and and therefore determine that all
+the targets need to be rebuilt every time, even when present. This is form of
+utilizing make is problematic when, for instance, we want build BITS in separate
+stages (e.g., build GRUB components and create the GRUB image separately).
+
+Furthermore, at each invocation of make, the makefile instructs to delete all
+the build directories. 
+
+In order to allow incremental builds, a fake target file is created along with 
+each individual target (a task, actually) . Thus, in subsequent builds, a task 
+will only be executed if the fake target file is missing. This fake target
+file simply echoes to the target file the name of the task executed.
+
+This mechanism can only work if we don't remove the build directories when
+make is called. Such deletion is removed from the setup task. They will be
+deleted in the clean target.
+
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ Makefile | 35 +++++++++++++++++++++++++++++++++--
+ 1 file changed, 33 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index bae271b..7ad3694 100644
+--- a/Makefile
++++ b/Makefile
+@@ -63,7 +63,12 @@ srcdir:=$(target)/boot/src
+ 
+ setup-dirs:='$(workdir)' '$(target)' '$(target)/boot' '$(target)/boot/grub' '$(target)/boot/mcu' '$(target)/boot/mcu.first' '$(target)/boot/python' '$(srcdir)' '$(target)/efi/boot' '$(contrib-deps)' '$(python-host-src)'
+ 
+-cleanfiles='$(BITS)/bits-$(buildnum).iso' '$(BITS)/bits-$(buildnum).zip' '$(BITS)/bits-latest.iso' '$(BITS)/bits-latest.zip'
++# clean build files as well as fake targets
++cleanfiles='$(BITS)/bits-$(buildnum).iso' '$(BITS)/bits-$(buildnum).zip' '$(BITS)/bits-latest.iso' '$(BITS)/bits-latest.zip' '$(BITS)/setup' '$(BITS)/copy-*' '$(BITS)/copygrub' '$(BITS)/copydeps' '$(BITS)/fixup-libffi' '$(BITS)/autogen-grub' '$(BITS)/build-grub-*' '$(BITS)/mkimage-grub-*' '$(BITS)/fixup-grub-i386-pc' '$(BITS)/install-syslinux' '$(BITS)/install-doc' '$(BITS)/install-grub-cfg' '$(BITS)/install-log' '$(BITS)/install-bitsversion' '$(BITS)/install-bitsconfigdefaults' '$(BITS)/install-toplevel-cfg' '$(BITS)/install-bits-cfg' '$(BITS)/install-readme' '$(BITS)/install-news' '$(BITS)/install-src-bits' '$(BITS)/build-python-host' '$(BITS)/install-pylib' '$(BITS)/bytecompile-pylib' '$(BITS)/install-bits-python' '$(BITS)/bytecompile-bits-python' '$(BITS)/install-install' '$(BITS)/install-copying'
++
++define mk_faketarget
++@echo done target '$@' > ./$@
++endef
+ 
+ all: dist
+ 
+@@ -76,17 +81,20 @@ setup:
+ ifneq ($(LOCAL),)
+ 	@echo 'Including local-files in the build; DO NOT DISTRIBUTE THIS BUILD.'
+ endif
+-	$(Q)rm -rf '$(workdir)'
+ 	$(Q)mkdir -p $(setup-dirs)
++	$(call mk_faketarget)
+ 
+ copy-%: setup
+ 	$(Q)cp -a '$($*-src-orig)/.' '$($*-src)'
++	$(call mk_faketarget)
+ 
+ copygrub: setup
+ 	$(Q)tar -cf - --exclude=.git -C $(BITS)/deps/grub . | tar -xf - -C $(grub-src)
++	$(call mk_faketarget)
+ 
+ copydeps: setup
+ 	$(Q)tar -cf - --exclude=.git --exclude=./grub -C $(BITS)/deps . | tar -xf - -C $(contrib-deps)
++	$(call mk_faketarget)
+ 
+ fixup-libffi: copydeps
+ 	$(Q)sed -e 's/#ifndef @TARGET@/#ifdef GRUB_TARGET_CPU_I386/' \
+@@ -95,9 +103,11 @@ fixup-libffi: copydeps
+ 	        -e 's/@HAVE_LONG_DOUBLE_VARIANT@/0/' \
+ 	        -e 's/@FFI_EXEC_TRAMPOLINE_TABLE@/0/' \
+ 	        '$(contrib-deps)/libffi/include/ffi.h.in' > '$(contrib-deps)/libffi/include/ffi.h'
++	$(call mk_faketarget)
+ 
+ autogen-grub: copygrub copy-grub-contrib fixup-libffi copydeps
+ 	$(Q)cd '$(grub-src)' && ./autogen.sh
++	$(call mk_faketarget)
+ 
+ i386-pc-img:=boot/grub/core.img
+ i386-efi-img:=efi/boot/bootia32.efi
+@@ -113,37 +123,45 @@ build-grub-%: autogen-grub
+ 	$(Q)for suffix in img lst mod ; do \
+ 	    cp '$(grub-libdir)/grub/$*/'*.$$suffix '$(target)/boot/grub/$*/' ;\
+ 	done
++	$(call mk_faketarget)
+ 
+ mkimage-grub-%: build-grub-%
+ 	$(Q)bits-grub-mkimage -O $* --output='$(target)/$($*-img)' --prefix=/boot/grub $($*-extra-modules) $(common-modules)
++	$(call mk_faketarget)
+ 
+ # Workaround for syslinux 5 bug booting lnxboot.img
+ fixup-grub-i386-pc: build-grub-i386-pc
+ 	$(Q)cat '$(target)/boot/grub/i386-pc/lnxboot.img' '$(target)/boot/grub/core.img' > '$(target)/boot/grub/lnxcore.img'
+ 	$(Q)rm '$(target)/boot/grub/core.img'
++	$(call mk_faketarget)
+ 
+ dist: fixup-grub-i386-pc build-grub-i386-efi build-grub-x86_64-efi
+ 
+ install-syslinux: setup
+ 	$(Q)cp -a '$(BITS)/syslinux' '$(target)/boot/'
++	$(call mk_faketarget)
+ dist: install-syslinux
+ 
+ install-doc: setup
+ 	$(Q)cp -a '$(BITS)/Documentation' '$(target)/boot/'
++	$(call mk_faketarget)
+ dist: install-doc
+ 
+ install-grub-cfg: setup
+ 	$(Q)cp -a '$(BITS)/cfg' '$(target)/boot/'
++	$(call mk_faketarget)
+ dist: install-grub-cfg
+ 
+ # Add a 512k preallocated file, full of newlines, to hold BITS logs.
+ install-log: setup
+ 	$(Q)yes '' | head -c 524288 > '$(target)/boot/bits-log.txt'
++	$(call mk_faketarget)
+ dist: install-log
+ 
+ install-bitsversion: setup
+ 	$(Q)echo 'buildid = "$(buildid)"' >'$(target)/boot/python/bitsversion.py'
+ 	$(Q)echo 'buildnum = "$(buildnum)"' >>'$(target)/boot/python/bitsversion.py'
++	$(call mk_faketarget)
+ dist: install-bitsversion
+ 
+ install-bitsconfigdefaults: setup
+@@ -152,32 +170,39 @@ install-bitsconfigdefaults: setup
+ 	$(Q)echo 'defaults = """' >>'$(target)/boot/python/bitsconfigdefaults.py'
+ 	$(Q)cat '$(BITS)/bits-cfg.txt' >>'$(target)/boot/python/bitsconfigdefaults.py'
+ 	$(Q)echo '"""' >>'$(target)/boot/python/bitsconfigdefaults.py'
++	$(call mk_faketarget)
+ dist: install-bitsconfigdefaults
+ 
+ install-toplevel-cfg: setup
+ 	$(Q)echo 'source /boot/cfg/toplevel.cfg' >'$(target)/boot/grub/grub.cfg'
++	$(call mk_faketarget)
+ dist: install-toplevel-cfg
+ 
+ install-bits-cfg: setup
+ 	$(Q)cp '$(BITS)/bits-cfg.txt' '$(target)/boot/'
++	$(call mk_faketarget)
+ dist: install-bits-cfg
+ 
+ install-readme: setup
+ 	$(Q)sed 's/@@BUILDID@@/$(buildid)/g; s/@@BUILDNUM@@/$(buildnum)/g' '$(BITS)/README.txt' > '$(target)/boot/README.txt'
++	$(call mk_faketarget)
+ dist: install-readme
+ 
+ install-news: setup
+ 	$(Q)cp '$(BITS)/NEWS.txt' '$(target)/boot/NEWS.txt'
++	$(call mk_faketarget)
+ dist: install-news
+ 
+ install-src-bits: setup
+ 	$(Q)tar -czf '$(srcdir)/$(notdir $(bits-src-orig))-$(buildnum).tar.gz' --exclude=.git --exclude-from='$(BITS)/.gitignore' -C '$(bits-src-orig)/..' '$(notdir $(bits-src-orig))'
++	$(call mk_faketarget)
+ dist: install-src-bits
+ 
+ build-python-host: setup
+ 	$(Q)tar -cf - --exclude=.git -C $(BITS)/deps/python . | tar -xf - -C $(python-host-src)
+ 	$(Q)cd '$(python-host-src)' && ./configure
+ 	$(Q)cd '$(python-host-src)' && $(MAKE)
++	$(call mk_faketarget)
+ 
+ pylibtmp:=$(workdir)/python-lib
+ pylibs:=\
+@@ -254,6 +279,7 @@ install-pylib: setup
+ 	$(Q)mkdir -p '$(pylibtmp)'
+ 	$(Q)cd '$(pylibtmp)' && mkdir -p $(filter-out ./,$(dir $(pylibs)))
+ 	$(Q)cd '$(BITS)/deps/python/Lib' && cp --parents -a $(pylibs) '$(pylibtmp)'
++	$(call mk_faketarget)
+ 
+ # The dd invocation sets the mtime to zero in all bytecode files, since GRUB2
+ # (and thus our implementation of fstat) doesn't support mtime.
+@@ -265,21 +291,26 @@ endef
+ bytecompile-pylib: install-pylib
+ 	$(call bytecompile,$(pylibtmp))
+ 	$(Q)cd '$(pylibtmp)' && zip -qr '$(target)/boot/python/lib.zip' . -i '*.pyc'
++	$(call mk_faketarget)
+ dist: bytecompile-pylib
+ 
+ install-bits-python: setup
+ 	$(Q)cp -a '$(BITS)/python/.' '$(target)/boot/python/'
++	$(call mk_faketarget)
+ 
+ bytecompile-bits-python: install-bits-python
+ 	$(call bytecompile,$(target)/boot/python)
++	$(call mk_faketarget)
+ dist: bytecompile-bits-python
+ 
+ install-install: setup
+ 	$(Q)cp '$(BITS)/INSTALL.txt' '$(target)/'
++	$(call mk_faketarget)
+ dist: install-install
+ 
+ install-copying: setup
+ 	$(Q)cp '$(BITS)/COPYING' '$(target)/boot/'
++	$(call mk_faketarget)
+ dist: install-copying
+ 
+ dist:
+-- 
+1.9.1
+
