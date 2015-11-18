@@ -1,0 +1,72 @@
+From a8bf8534c63b52907c90fb76e86962965f3fb6bb Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Mon, 16 Nov 2015 09:30:45 -0800
+Subject: [PATCH] GRUB: core: lib: crypto: complete handling fgets return
+ values
+
+Handle return values of fgets when reading the password string. While we can
+obtain the length of the captured string by using strlen (buf), we still get
+build warnings if the return values of fgets are not handled. Also, it is more
+clear to handle the fgets value separately. This is the warning issued by the
+compiler:
+
+    build/grub/grub-core/lib/crypto.c: In function 'grub_password_get':
+    build/grub/grub-core/lib/crypto.c:431:9: error: ignoring return value of 'fgets',
+       declared with attribute warn_unused_result [-Werror=unused-result]
+           fgets (buf, buf_size, stdin);
+                 ^
+
+fgets returns the number of characters read, or NULL when an error occurred or
+no characters were read. Thus, we can return 0 in such a case. Furthermore,
+the callers of this function check on zero values for errors.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ deps/grub/grub-core/lib/crypto.c | 17 +++++++++++------
+ 1 file changed, 11 insertions(+), 6 deletions(-)
+
+diff --git a/deps/grub/grub-core/lib/crypto.c b/deps/grub/grub-core/lib/crypto.c
+index f4b13ed..9ca8fb7 100644
+--- a/deps/grub/grub-core/lib/crypto.c
++++ b/deps/grub/grub-core/lib/crypto.c
+@@ -410,7 +410,7 @@ grub_password_get (char buf[], unsigned buf_size)
+ #ifdef GRUB_UTIL
+   FILE *in;
+   struct termios s, t;
+-  int tty_changed = 0;
++  int tty_changed = 0, ret = 0;
+   char *ptr;
+ 
+   /* Disable echoing. Based on glibc.  */
+@@ -428,10 +428,15 @@ grub_password_get (char buf[], unsigned buf_size)
+     }
+   else
+     tty_changed = 0;
+-  fgets (buf, buf_size, stdin);
+-  ptr = buf + strlen (buf) - 1;
+-  while (buf <= ptr && (*ptr == '\n' || *ptr == '\r'))
+-    *ptr-- = 0;
++  if (fgets (buf, buf_size, stdin))
++    {
++      ptr = buf + strlen (buf) - 1;
++      while (buf <= ptr && (*ptr == '\n' || *ptr == '\r'))
++        *ptr-- = 0;
++      ret = 1;
++    }
++  else
++    ret = 0;
+   /* Restore the original setting.  */
+   if (tty_changed)
+     (void) tcsetattr (fileno (in), TCSAFLUSH, &s);
+@@ -439,7 +444,7 @@ grub_password_get (char buf[], unsigned buf_size)
+   grub_xputs ("\n");
+   grub_refresh ();
+ 
+-  return 1;
++  return ret;
+ #else
+   unsigned cur_len = 0;
+   int key;
+-- 
+1.9.1
+
