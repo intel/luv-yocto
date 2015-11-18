@@ -1,0 +1,51 @@
+From 12162aebec6413db83c39f60c29984f8500d39b0 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Mon, 16 Nov 2015 10:08:57 -0800
+Subject: [PATCH] BITS: Makefile: do not depend bytecompile-% on
+ build-python-host
+
+As part of the build process of BITS within bitbake, the Python version
+that BITS needs is built separately and is available at the time BITS is built
+for a target. Thus, we can drop this dependency. The dependency will be spelled
+out on the bitbake recipe used to build BITS for a target as:
+
+    DEPENDS = "... bits-python-native"
+
+Also, such BITS-specific version of Python is available by invoking bitspython.
+The definition of bytecompile is updated accordingly to reflect this fact.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ Makefile | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index d50804e..b77a28b 100644
+--- a/Makefile
++++ b/Makefile
+@@ -267,11 +267,11 @@ install-pylib: setup
+ # The dd invocation sets the mtime to zero in all bytecode files, since GRUB2
+ # (and thus our implementation of fstat) doesn't support mtime.
+ define bytecompile
+-$(Q)'$(python-host-src)/python' -m compileall -d '' '$(1)'
++$(Q)bitspython -m compileall -d '' '$(1)'
+ $(Q)find '$(1)' -name '*.pyc' -exec dd if=/dev/zero of={} bs=4 count=1 seek=1 conv=notrunc status=none \;
+ endef
+ 
+-bytecompile-pylib: install-pylib build-python-host
++bytecompile-pylib: install-pylib
+ 	$(call bytecompile,$(pylibtmp))
+ 	$(Q)cd '$(pylibtmp)' && zip -qr '$(target)/boot/python/lib.zip' . -i '*.pyc'
+ dist: bytecompile-pylib
+@@ -279,7 +279,7 @@ dist: bytecompile-pylib
+ install-bits-python: setup
+ 	$(Q)cp -a '$(BITS)/python/.' '$(target)/boot/python/'
+ 
+-bytecompile-bits-python: install-bits-python build-python-host
++bytecompile-bits-python: install-bits-python
+ 	$(call bytecompile,$(target)/boot/python)
+ dist: bytecompile-bits-python
+ 
+-- 
+1.9.1
+
