@@ -1,0 +1,38 @@
+From fbe243e9f23b4ae7c57680e76f2804c8271c6ec2 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Mon, 16 Nov 2015 10:06:02 -0800
+Subject: [PATCH] BITS: Makefile: split grub build from image generation
+
+Generate the grub image using a separate make target. This eases the creation
+of grub images when BITS is built within automated build infrastructures, such
+as bitbake.
+
+Also, as part of the build process of BITS for a target, a native build of BITS
+will be created. This will create a native grub-mkimage that can be used to 
+generate grub images when building for a particular target. Such native
+grub-mkimage can be invoked with bits-grub-mkimage. This avoid conflicts with 
+the existing grub-mkimage provided by the grub-efi recipe.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ Makefile | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index b691a03..d50804e 100644
+--- a/Makefile
++++ b/Makefile
+@@ -113,7 +113,9 @@ build-grub-%: autogen-grub
+ 	$(Q)for suffix in img lst mod ; do \
+ 	    cp '$(grub-libdir)/grub/$*/'*.$$suffix '$(target)/boot/grub/$*/' ;\
+ 	done
+-	$(Q)'$(grub-prefix)/bin/grub-mkimage' -O $* --output='$(target)/$($*-img)' --prefix=/boot/grub $($*-extra-modules) $(common-modules)
++
++mkimage-grub-%: build-grub-%
++	$(Q)bits-grub-mkimage -O $* --output='$(target)/$($*-img)' --prefix=/boot/grub $($*-extra-modules) $(common-modules)
+ 
+ # Workaround for syslinux 5 bug booting lnxboot.img
+ fixup-grub-i386-pc: build-grub-i386-pc
+-- 
+1.9.1
+
