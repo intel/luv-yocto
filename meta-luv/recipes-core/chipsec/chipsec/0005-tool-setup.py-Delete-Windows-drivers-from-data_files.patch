@@ -14,16 +14,16 @@ Signed-off-by: Matt Fleming <matt.fleming@intel.com>
  1 file changed, 1 deletion(-)
 
 diff --git a/source/tool/setup.py b/source/tool/setup.py
-index 674e1f3..e88a454 100644
+index b71f219..453f1fe 100644
 --- a/source/tool/setup.py
 +++ b/source/tool/setup.py
-@@ -74,7 +74,6 @@ setup(
+@@ -84,7 +84,6 @@ setup(
          author_email    = '',
          url             = 'https://github.com/chipsec/chipsec',
  
 -        data_files      = data_files,
-         packages        = mypackages
- 
+         packages        = mypackages,
+         ext_modules     = extensions
  )
 -- 
 2.1.0
