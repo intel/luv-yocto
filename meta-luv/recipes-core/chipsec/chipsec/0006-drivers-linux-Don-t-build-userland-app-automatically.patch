@@ -15,24 +15,23 @@ Signed-off-by: Matt Fleming <matt.fleming@intel.com>
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/source/drivers/linux/Makefile b/source/drivers/linux/Makefile
-index d6fd015..c1c40eb 100644
+index 4342977..e2fe2be 100644
 --- a/source/drivers/linux/Makefile
 +++ b/source/drivers/linux/Makefile
-@@ -19,12 +19,12 @@ ifeq ($(shell uname -m),x86_64)
- chipsec$(VERSION) : clean
+@@ -24,11 +24,11 @@ chipsec64 : clean
+ 	echo $(chipsec-objs)
  	nasm -f elf64 -o amd64/cpu.o amd64/cpu.asm;
  	make -C $(KERNEL_SRC_DIR) SUBDIRS=`pwd` modules
 -	cd ../../tool/chipsec/helper/linux; make
 +#	cd ../../tool/chipsec/helper/linux; make
- else
- chipsec$(VERSION) : clean
+ chipsec32 : clean
  	nasm -f elf32 -o i386/cpu.o i386/cpu.asm;
  	make -C $(KERNEL_SRC_DIR) SUBDIRS=`pwd` modules
 -	cd ../../tool/chipsec/helper/linux; make
 +#	cd ../../tool/chipsec/helper/linux; make
- endif
  
  install:
+ 	./run.sh
 -- 
-2.1.0
+1.9.1
 

@@ -11,7 +11,8 @@ SRC_URI = "git://github.com/chipsec/chipsec.git \
     file://0006-drivers-linux-Don-t-build-userland-app-automatically.patch \
     file://chipsec file://luv-parser-chipsec"
 
-SRCREV="a080525f36cb353285e9ee72d001aecd6b20290f"
+SRCREV="20cc5a30675548a764dadfe0dc677a283816906c"
+PV="1.2.2"
 
 DEPENDS = "virtual/kernel python-core nasm-native"
 RDEPENDS_${PN} = "python python-shell python-stringold python-xml \
