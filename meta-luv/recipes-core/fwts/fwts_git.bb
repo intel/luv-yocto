@@ -4,11 +4,10 @@ HOMEPAGE = "https://wiki.ubuntu.com/Kernel/Reference/fwts"
 LICENSE = "GPLv2+"
 LIC_FILES_CHKSUM = "file://src/main.c;beginline=1;endline=16;md5=9bd929284041f05a42b0b6a7b1864a31"
 
-PV = "15.09.00+git${SRCPV}"
+PV = "V15.11.00+git${SRCPV}"
 
-SRCREV = "6843630f98ed9779ff79d638e0dc6952c9ad1501"
+SRCREV = "00b6d875e82c8cef6fcc95ae71befb126ed118c0"
 SRC_URI = "git://kernel.ubuntu.com/hwe/fwts.git \
-           file://sb-change-fail-to-warn-when-no-MS-UEFI-CA.patch \
            file://luv-parser-fwts \
           "
 
