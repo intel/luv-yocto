@@ -27,8 +27,30 @@ Patches
 Please submit any patches against the meta-luv layer to the luv mailing
 list (luv@lists.01.org) and cc: the maintainer:
 
-Maintainer: Matt Fleming <matt.fleming@intel.com>
+Maintainers:
+===========
 
+The intention of this section is to provide a set of names that we can rely on
+for helping in patch reviews and questions.
+These names are additional recipients for emails sent to luv@lists.01.org
+
+NOTE: Please avoid private emails.
+
+Descriptions of section entries:
+
+	M: Maintainer's Full Name <address@domain>
+	T: Git tree location.
+
+General Project Administration
+------------------------------
+M: Ricardo Neri <ricardo.neri@intel.com>
+T: https://github.com/01org/luv-yocto.git
+
+x86
+M: Ricardo Neri <ricardo.neri@intel.com>
+
+AArch64
+M: Naresh Bhat <naresh.bhat@linaro.org>
 
 Table of Contents
 =================
