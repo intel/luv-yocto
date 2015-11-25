@@ -1,0 +1,53 @@
+#! /bin/sh
+
+###
+#Netconsole script
+##
+#Get the port number given by the user
+#from the kernel command line using grep
+
+NETCONSOLE_PORT=$(cat /proc/cmdline | grep -Eo "[0.0-9.0]+" | tail -2 | head -1)
+
+#Get the ipaddress provided by the user
+#from the kernel command line using grep
+
+REC_IP=$(cat /proc/cmdline | grep -Eo "[0.0-9.0]+" | tail -1)
+
+#Refresh the arp buffer
+
+$(cat /proc/net/arp > /dev/null)
+
+#If reciever is in the same subnet then
+#Get the reciever HW MAC Address
+#using the reciever's ip address
+
+$(ping -rc 1 $REC_IP > /dev/null)
+if [ $? -eq 0 ] ; then
+    REC_MAC_EX=$(arp -n $REC_IP | awk '{ print $3 }')
+    REC_MAC=$(echo $REC_MAC_EX | awk '{ print $2 }')
+else
+
+#determine the default gateway and then
+#Get the reciever HW MAC Address
+#using the reciever's ip address
+
+    DEF_GATE=$(netstat -rn | grep ^0.0.0.0 | awk '{print $2}')
+    $(ping -c 1 $DEF_GATE > /dev/null)
+    REC_MAC_EX=$(arp -n $DEF_GATE | awk '{ print $3 }')
+    REC_MAC=$(echo $REC_MAC_EX | awk '{ print $2 }')
+fi
+
+# Get local IP and Interface
+
+SEND_IF=$(ip -o -4 r s to default | grep ^default | awk '{print $5}')
+SEND_IP=$(ifconfig  | grep eth -A1 | grep inet | awk -F: '{print $2}' | awk '{print $1}')
+
+#Disable helper by default
+
+echo 0 > /proc/sys/net/netfilter/nf_conntrack_helper
+
+# Install netconsole
+
+modprobe -r  netconsole
+modprobe netconsole netconsole=$NETCONSOLE_PORT@$SEND_IP/$SEND_IF,$NETCONSOLE_PORT@$REC_IP/$REC_MAC          
+
