@@ -80,3 +80,21 @@ Then it is necessary to specify the luv distribution in local.conf.
 e.g.:
 
   DISTRO = "luv"
+
+
+Usage of Netconsole within LUV
+===============================
+
+In order to make use of the netconsole feature that is added in LUV
+user must aware of its usage. Assuming users know how to get ip address and
+port number (typically from 6000 ports are not assigned to specific tasks so 
+they can be used) , instructions are given below to follow
+
+Choose the ip address and port number where you  want all messages to sent to. 
+once decided , you can replace the dummy ip address and port number given
+in grub.cfg as netconsole=@,64001@10.11.12.13/ with the port number and ipaddress
+respectively.
+
+The grub.cfg file is located in boot partition. The location is
+EFI/BOOT/grub.cfg. Edit the file to replace the numbers and notation should be 
+preserved for identifying the difference between ipaddress and port number. 
