@@ -4,8 +4,8 @@ EFI tests."
 
 IMAGE_INSTALL = "\
     base-files base-passwd netbase udev sysvinit initscripts keymaps \
-    kernel-image fwts bash coreutils gawk grep util-linux-agetty \
-    util-linux-mount util-linux-umount kmod sed tar net-tools \
+    kernel-image kernel-modules fwts bash coreutils gawk grep util-linux-agetty \
+    util-linux-mount iputils iproute2 util-linux-umount kmod sed tar net-tools \
     shadow util-linux procps efivarfs-test \
     psplash kernel-efi-warnings \
     "
