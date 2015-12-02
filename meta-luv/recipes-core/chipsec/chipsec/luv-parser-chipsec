@@ -16,7 +16,7 @@ awk ' /\[\+\] imported/ {
 	}
 }
 
-/^ERROR/ {
+/ERROR/ {
 	"date +%H:%M:%S:%N" | getline current_time;
 	close ("date +%H:%M:%S:%N")
 	if (test_strs[$2] && !error_strs[$2]) {
