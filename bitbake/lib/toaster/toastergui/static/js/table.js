@@ -33,14 +33,6 @@ function tableInit(ctx){
 
   loadData(tableParams);
 
-  window.onpopstate = function(event){
-    if (event.state){
-      tableParams = event.state.tableParams;
-      /* We skip loadData and just update the table */
-      updateTable(event.state.tableData);
-    }
-  };
-
   function loadData(tableParams){
     $.ajax({
         type: "GET",
@@ -49,10 +41,8 @@ function tableInit(ctx){
         headers: { 'X-CSRFToken' : $.cookie('csrftoken')},
         success: function(tableData) {
           updateTable(tableData);
-          window.history.pushState({
-              tableData: tableData,
-              tableParams: tableParams
-          }, null, libtoaster.dumpsUrlParams(tableParams));
+          window.history.replaceState(null, null,
+            libtoaster.dumpsUrlParams(tableParams));
         }
     });
   }
@@ -140,7 +130,7 @@ function tableInit(ctx){
       tableBody.append(row);
 
       /* If we have layerbtns then initialise them */
-      layerBtnsInit(ctx);
+      layerBtnsInit();
 
       /* If we have popovers initialise them now */
       $('td > a.btn').popover({
@@ -350,7 +340,8 @@ function tableInit(ctx){
     }
   }
 
-  function sortColumnClicked(){
+  function sortColumnClicked(e){
+    e.preventDefault();
 
     /* We only have one sort at a time so remove any existing sort indicators */
     $("#"+ctx.tableName+" th .icon-caret-down").hide();
@@ -486,6 +477,7 @@ function tableInit(ctx){
   });
 
   $("#search-submit-"+ctx.tableName).click(function(e){
+    e.preventDefault();
     var searchTerm = $("#search-input-"+ctx.tableName).val();
 
     tableParams.page = 1;
@@ -499,8 +491,6 @@ function tableInit(ctx){
     }
 
     loadData(tableParams);
-
-    e.preventDefault();
   });
 
   $('.remove-search-btn-'+ctx.tableName).click(function(e){
@@ -524,7 +514,9 @@ function tableInit(ctx){
     e.preventDefault();
   });
 
-  $("#clear-filter-btn-"+ctx.tableName).click(function(){
+  $("#clear-filter-btn-"+ctx.tableName).click(function(e){
+    e.preventDefault();
+
     var filterBtn = $("#" + tableParams.filter.split(":")[0]);
     filterBtnActive(filterBtn, false);
 

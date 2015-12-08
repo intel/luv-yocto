@@ -10,14 +10,20 @@ SRC_URI = "ftp://ftp.info-zip.org/pub/infozip/src/unzip60.tgz \
 	file://avoid-strip.patch \
 	file://define-ldflags.patch \
 	file://06-unzip60-alt-iconv-utf8_CVE-2015-1315.patch \
-	file://unzip-6.0_overflow3.diff \
+	file://cve-2014-9636.patch \
 	file://09-cve-2014-8139-crc-overflow.patch \
 	file://10-cve-2014-8140-test-compr-eb.patch \
 	file://11-cve-2014-8141-getzip64data.patch \
+	file://CVE-2015-7696.patch \
+	file://CVE-2015-7697.patch \
 "
 
 SRC_URI[md5sum] = "62b490407489521db863b523a7f86375"
 SRC_URI[sha256sum] = "036d96991646d0449ed0aa952e4fbe21b476ce994abc276e49d30e686708bd37"
+
+# exclude version 5.5.2 which triggers a false positive
+UPSTREAM_CHECK_REGEX = "unzip(?P<pver>(?!552).+)\.tgz"
+
 S = "${WORKDIR}/unzip60"
 
 # Makefile uses CF_NOOPT instead of CFLAGS.  We lifted the values from

@@ -2,7 +2,7 @@
 {% load projecttags %}
 {% load humanize %}
 
-
+{% block title %} BitBake variables - {{project.name}} - Toaster {% endblock %}
 {% block projectinfomain %}
 
 <h2>Bitbake variables</h2>
@@ -43,6 +43,7 @@
                     <input id="filter-image_fstypes" type="text" placeholder="Search image types" class="span4">
                     <div id="all-image_fstypes" class="scrolling">
                     </div>
+                    <span class="help-block" id="fstypes-error-message">You must select at least one image type</span>
                     <button id="apply-change-image_fstypes" type="button" class="btn">Save</button>
                     <button id="cancel-change-image_fstypes" type="button" class="btn btn-link">Cancel</button>
                 </form>
@@ -106,32 +107,6 @@
                 </form>
             </dd>
             {% endif %}
-
-            {% if sdk_machine_defined %}
-            <dt>
-                <span class="js-config-var-name js-config-var-managed-name">SDKMACHINE</span>
-                <i class="icon-question-sign get-help" title="Specifies the architecture (i.e. i686 or x86_64) for which to build SDK and ADT items <br /><a href='http://www.yoctoproject.org/docs/1.6.1/ref-manual/ref-manual.html#var-SDKMACHINE' target='_blank'>Read more in the manual</a>"></i>
-            </dt>
-            <dd class="lead">
-                <span id="sdkmachine">{{sdk_machine}}</span>
-                <i id="change-sdkmachine-icon" class="icon-pencil"></i>
-                <form id="change-sdkmachine-form" style="display:none;">
-                    <label class="radio">
-                        <input type="radio" name="sdkmachine" value="i686">
-                        i686
-                    </label>
-                    <label class="radio">
-                        <input type="radio" name="sdkmachine" value="x86_64">
-                        x86_64
-                    </label>
-                    <div style="padding-top:10px;">
-                        <button id="apply-change-sdkmachine" type="button" class="btn">Save</button>
-                        <button id="cancel-change-sdkmachine" type="button" class="btn btn-link">Cancel</button>
-                    </div>
-                </form>
-            </dd>
-            {% endif %}
-
         </dl>
 
         <!-- <ul class="unstyled configuration-list" id="configvar-list"> -->
@@ -312,9 +287,11 @@
             });
             if ( 0 == any_checked ) {
                 $("#apply-change-image_fstypes").attr("disabled","disabled");
+                $('#fstypes-error-message').show();
             }
             else {
                 $("#apply-change-image_fstypes").removeAttr("disabled");
+                $('#fstypes-error-message').hide();
             }
         }
 
@@ -546,10 +523,14 @@
                 // Add the un-checked boxes second
                 for (var i = 0, length = fstypes_list.length; i < length; i++) {
                     if (0  > fstypes.indexOf(" "+fstypes_list[i].value+" ")) {
-                            html += '<label class="checkbox"><input type="checkbox" class="fs-checkbox-fstypes" value="'+fstypes_list[i].value+'">'+fstypes_list[i].value+'</label>\n';
+                        html += '<label class="checkbox"><input type="checkbox" class="fs-checkbox-fstypes" value="'+fstypes_list[i].value+'">'+fstypes_list[i].value+'</label>\n';
                     }
                 }
+                // Add the 'no search matches' line last
+                html += '<label id="no-match-fstypes">No image types found</label>\n';
+                // Display the list
                 document.getElementById("all-image_fstypes").innerHTML = html;
+                $('#no-match-fstypes').hide();
 
                 // Watch elements to disable Save when none are checked
                 $(".fs-checkbox-fstypes").each(function(){
@@ -558,8 +539,9 @@
                     });
                 });
 
-                // clear the previous filter values
+                // clear the previous filter values and warning messages
                 $("input#filter-image_fstypes").val("");
+                $('#fstypes-error-message').hide();
             });
 
             $('#cancel-change-image_fstypes').click(function(){
@@ -569,17 +551,24 @@
             });
 
             $('#filter-image_fstypes').on('input', function(){
-                   var valThis = $(this).val().toLowerCase();
+                var valThis = $(this).val().toLowerCase();
+                var matchCount=0;
                 $('#all-image_fstypes label').each(function(){
                     var text = $(this).text().toLowerCase();
                     var match = text.indexOf(valThis);
                     if (match >= 0) {
                         $(this).show();
+                        matchCount += 1;
                     }
                     else {
                         $(this).hide();
                     }
                 });
+                if (matchCount === 0) {
+                   $('#no-match-fstypes').show();
+                } else {
+                   $('#no-match-fstypes').hide();
+                }
             });
 
             $('#apply-change-image_fstypes').click(function(){
@@ -759,48 +748,6 @@
             });
             {% endif %}
 
-
-            {% if sdk_machine_defined %}
-            // change SDKMACHINE variable
-            $('#change-sdkmachine-icon').click(function() {
-                var current_value = document.getElementById("sdkmachine").innerHTML;
-                var radios = document.getElementsByName('sdkmachine');
-                for (var i = 0, length = radios.length; i < length; i++) {
-                    radios[i].checked = false;
-                    if (radios[i].value == current_value) {
-                        radios[i].checked = true;
-                    }
-                }
-                $('#change-sdkmachine-icon, #sdkmachine').hide();
-                $("#change-sdkmachine-form").slideDown();
-            });
-
-            $('#cancel-change-sdkmachine').click(function(){
-                $("#change-sdkmachine-form").slideUp(function() {
-                    $('#sdkmachine, #change-sdkmachine-icon').show();
-                });
-            });
-
-            $('#apply-change-sdkmachine').click(function(){
-                var value="";
-                var radios = document.getElementsByName('sdkmachine');
-                for (var i = 0, length = radios.length; i < length; i++) {
-                    if (radios[i].checked) {
-                        // do whatever you want with the checked radio
-                        value=radios[i].value;
-                        break;
-                    }
-                }
-                postEditAjaxRequest({"configvarChange" : 'SDKMACHINE:'+value});
-                $('#sdkmachine').text(value);
-                $("#change-sdkmachine-form").slideUp(function() {
-                    $('#sdkmachine, #change-sdkmachine-icon').show();
-                });
-
-            });
-            {% endif %}
-
-
             // add new variable
             $("button#add-configvar-button").click( function (evt) {
                 var variable = $("input#variable").val();
@@ -815,7 +762,7 @@
                 $(".save").attr("disabled","disabled");
 
                 // Reload page if admin-removed core managed value is manually added back in
-                if (0 <= " DISTRO IMAGE_FSTYPES IMAGE_INSTALL_append PACKAGE_CLASSES SDKMACHINE ".indexOf( " "+variable+" " )) {
+                if (0 <= " DISTRO IMAGE_FSTYPES IMAGE_INSTALL_append PACKAGE_CLASSES ".indexOf( " "+variable+" " )) {
                     // delayed reload to avoid race condition with postEditAjaxRequest
                     do_reload=true;
                 }

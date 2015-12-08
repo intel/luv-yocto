@@ -82,8 +82,14 @@ def exec_cmd(cmd_and_args, as_shell=False, catch=3):
 
     return out
 
+def cmd_in_path(cmd, path):
+    import scriptpath
 
-def exec_native_cmd(cmd_and_args, native_sysroot, catch=3):
+    scriptpath.add_bitbake_lib_path()
+
+    return bb.utils.which(path, cmd) != "" or False
+
+def exec_native_cmd(cmd_and_args, native_sysroot, catch=3, pseudo=""):
     """
     Execute native command, catching stderr, stdout
 
@@ -91,19 +97,29 @@ def exec_native_cmd(cmd_and_args, native_sysroot, catch=3):
 
     Always need to execute native commands as_shell
     """
-    native_paths = \
-        "export PATH=%s/sbin:%s/usr/sbin:%s/usr/bin" % \
-        (native_sysroot, native_sysroot, native_sysroot)
-    native_cmd_and_args = "%s;%s" % (native_paths, cmd_and_args)
-    msger.debug("exec_native_cmd: %s" % cmd_and_args)
-
-    args = cmd_and_args.split()
+    # The reason -1 is used is because there may be "export" commands.
+    args = cmd_and_args.split(';')[-1].split()
     msger.debug(args)
 
-    ret, out = _exec_cmd(native_cmd_and_args, True, catch)
+    if pseudo:
+        cmd_and_args = pseudo + cmd_and_args
+    native_paths = \
+        "%s/sbin:%s/usr/sbin:%s/usr/bin" % \
+        (native_sysroot, native_sysroot, native_sysroot)
+    native_cmd_and_args = "export PATH=%s:$PATH;%s" % \
+                           (native_paths, cmd_and_args)
+    msger.debug("exec_native_cmd: %s" % cmd_and_args)
 
-    if ret == 127: # shell command-not-found
-        prog = args[0]
+    # If the command isn't in the native sysroot say we failed.
+    if cmd_in_path(args[0], native_paths):
+        ret, out = _exec_cmd(native_cmd_and_args, True, catch)
+    else:
+        ret = 127
+
+    prog = args[0]
+    # shell command-not-found
+    if ret == 127 \
+       or (pseudo and ret == 1 and out == "Can't find '%s' in $PATH." % prog):
         msg = "A native program %s required to build the image "\
               "was not found (see details above).\n\n" % prog
         recipe = NATIVE_RECIPES.get(prog)

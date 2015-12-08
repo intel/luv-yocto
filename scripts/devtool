@@ -220,9 +220,7 @@ def main():
     config = ConfigHandler(os.path.join(basepath, 'conf', 'devtool.conf'))
     if not config.read():
         return -1
-
-    # We need to be in this directory or we won't be able to initialise tinfoil
-    os.chdir(basepath)
+    context.config = config
 
     bitbake_subdir = config.get('General', 'bitbake_subdir', '')
     if bitbake_subdir:
@@ -244,7 +242,7 @@ def main():
     scriptutils.logger_setup_color(logger, global_args.color)
 
     if global_args.bbpath is None:
-        tinfoil = setup_tinfoil(config_only=True)
+        tinfoil = setup_tinfoil(config_only=True, basepath=basepath)
         global_args.bbpath = tinfoil.config_data.getVar('BBPATH', True)
     else:
         tinfoil = None
@@ -260,11 +258,11 @@ def main():
 
     if not context.fixed_setup:
         parser_create_workspace = subparsers.add_parser('create-workspace',
-                                                        help='Set up a workspace',
+                                                        help='Set up workspace in an alternative location',
                                                         description='Sets up a new workspace. NOTE: other devtool subcommands will create a workspace automatically as needed, so you only need to use %(prog)s if you want to specify where the workspace should be located.')
         parser_create_workspace.add_argument('layerpath', nargs='?', help='Path in which the workspace layer should be created')
         parser_create_workspace.add_argument('--create-only', action="store_true", help='Only create the workspace layer, do not alter configuration')
-        parser_create_workspace.set_defaults(func=create_workspace)
+        parser_create_workspace.set_defaults(func=create_workspace, no_workspace=True)
 
     for plugin in plugins:
         if hasattr(plugin, 'register_commands'):
@@ -272,7 +270,7 @@ def main():
 
     args = parser.parse_args(unparsed_args, namespace=global_args)
 
-    if args.subparser_name != 'create-workspace':
+    if not getattr(args, 'no_workspace', False):
         read_workspace()
 
     try:

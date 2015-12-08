@@ -9,8 +9,8 @@ LSB_CORE_x86 = "lsb-core-ia32"
 LSB_CORE_x86-64 = "lsb-core-amd64"
 RPROVIDES_${PN} += "${LSB_CORE}"
 
-# lsb_release needs getopt
-RDEPENDS_${PN} += "${VIRTUAL-RUNTIME_getopt}"
+# lsb_release needs getopt, lsbinitscripts
+RDEPENDS_${PN} += "${VIRTUAL-RUNTIME_getopt} lsbinitscripts"
 
 LIC_FILES_CHKSUM = "file://README;md5=12da544b1a3a5a1795a21160b49471cf"
 
@@ -24,6 +24,10 @@ SRC_URI = "${SOURCEFORGE_MIRROR}/project/lsb/lsb_release/1.4/lsb-release-1.4.tar
 
 SRC_URI[md5sum] = "30537ef5a01e0ca94b7b8eb6a36bb1e4"
 SRC_URI[sha256sum] = "99321288f8d62e7a1d485b7c6bdccf06766fb8ca603c6195806e4457fdf17172"
+
+UPSTREAM_CHECK_URI = "http://sourceforge.net/projects/lsb/files/lsb_release/"
+UPSTREAM_CHECK_REGEX = "/lsb_release/(?P<pver>(\d+[\.\-_]*)+)/"
+
 S = "${WORKDIR}/lsb-release-1.4"
 
 CLEANBROKEN = "1"
@@ -121,6 +125,7 @@ do_install_append(){
        fi
 }
 FILES_${PN} += "/lib64 \
+                ${base_libdir} \
                 /usr/lib/lsb \
                 ${base_libdir}/lsb/* \
                 /lib/lsb/* \

@@ -1,3 +1,4 @@
+SUMMARY = "Extends Python unittest to make testing easier"
 DESCRIPTION = "nose extends the test loading and running features of unittest, \
 making it easier to write, find and run tests."
 SECTION = "devel/python"
@@ -8,6 +9,9 @@ SRC_URI = "http://pypi.python.org/packages/source/n/nose/nose-${PV}.tar.gz"
 
 SRC_URI[md5sum] = "0ca546d81ca8309080fc80cb389e7a16"
 SRC_URI[sha256sum] = "f61e0909a743eed37b1207e38a8e7b4a2fe0a82185e36f2be252ef1b3f901758"
+
+UPSTREAM_CHECK_URI = "https://pypi.python.org/pypi/nose/"
+UPSTREAM_CHECK_REGEX = "/nose/(?P<pver>(\d+[\.\-_]*)+)"
 
 S = "${WORKDIR}/nose-${PV}"
 

@@ -39,12 +39,12 @@ do_install_ptest() {
 do_install_ptest_base() {
     if [ -f ${WORKDIR}/run-ptest ]; then
         install -D ${WORKDIR}/run-ptest ${D}${PTEST_PATH}/run-ptest
-        if grep -q install-ptest: Makefile; then
-            oe_runmake DESTDIR=${D}${PTEST_PATH} install-ptest
-        fi
-        do_install_ptest
-        chown -R root:root ${D}${PTEST_PATH}
     fi
+    if grep -q install-ptest: Makefile; then
+        oe_runmake DESTDIR=${D}${PTEST_PATH} install-ptest
+    fi
+    do_install_ptest
+    chown -R root:root ${D}${PTEST_PATH}
 }
 
 do_configure_ptest_base[dirs] = "${B}"
@@ -58,7 +58,7 @@ addtask install_ptest_base   after do_install   before do_package do_populate_sy
 
 python () {
     if not bb.data.inherits_class('native', d) and not bb.data.inherits_class('cross', d):
-        d.setVarFlag('do_install_ptest_base', 'fakeroot', 1)
+        d.setVarFlag('do_install_ptest_base', 'fakeroot', '1')
 
     # Remove all '*ptest_base' tasks when ptest is not enabled
     if not(d.getVar('PTEST_ENABLED', True) == "1"):

@@ -39,7 +39,6 @@
 #    packaging steps
 
 inherit packagedata
-inherit prserv
 inherit chrpath
 
 # Need the package_qa_handle_error() in insane.bbclass
@@ -1146,7 +1145,8 @@ python populate_packages () {
         else:
             for f in unshipped:
                 msg = msg + "\n  " + f
-            msg = msg + "\nPlease set FILES such that these items are packaged. Alternatively if they are unneeded, avoid installing them or delete them within do_install."
+            msg = msg + "\nPlease set FILES such that these items are packaged. Alternatively if they are unneeded, avoid installing them or delete them within do_install.\n"
+            msg = msg + "%s: %d installed and not shipped files." % (pn, len(unshipped))
             package_qa_handle_error("installed-vs-shipped", msg, d)
 }
 populate_packages[dirs] = "${D}"
@@ -1513,7 +1513,7 @@ python package_do_shlibs() {
             rpath = []
             p = sub.Popen([d.expand("${HOST_PREFIX}otool"), '-l', file],stdout=sub.PIPE,stderr=sub.PIPE)
             err, out = p.communicate()
-            # If returned succesfully, process stderr for results
+            # If returned successfully, process stderr for results
             if p.returncode == 0:
                 for l in err.split("\n"):
                     l = l.strip()
@@ -1522,7 +1522,7 @@ python package_do_shlibs() {
 
         p = sub.Popen([d.expand("${HOST_PREFIX}otool"), '-L', file],stdout=sub.PIPE,stderr=sub.PIPE)
         err, out = p.communicate()
-        # If returned succesfully, process stderr for results
+        # If returned successfully, process stderr for results
         if p.returncode == 0:
             for l in err.split("\n"):
                 l = l.strip()

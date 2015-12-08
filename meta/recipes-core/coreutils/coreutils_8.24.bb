@@ -62,7 +62,7 @@ do_compile_prepend () {
 	mkdir -p ${B}/src
 }
 
-do_install_append() {
+do_install_append_class-target() {
 	for i in df mktemp base64; do mv ${D}${bindir}/$i ${D}${bindir}/$i.${BPN}; done
 
 	install -d ${D}${base_bindir}
@@ -91,7 +91,7 @@ do_install_append_class-native(){
 
 inherit update-alternatives
 
-ALTERNATIVE_PRIORITY = "100"
+ALTERNATIVE_PRIORITY = "30"
 ALTERNATIVE_${PN} = "lbracket ${bindir_progs} ${base_bindir_progs} ${sbindir_progs} base64 mktemp df"
 ALTERNATIVE_${PN}-doc = "base64.1 mktemp.1 df.1 lbracket.1 groups.1 kill.1 uptime.1 stat.1"
 

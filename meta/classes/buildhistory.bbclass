@@ -23,8 +23,18 @@ sstate_install[vardepsexclude] += "buildhistory_emit_pkghistory"
 # then the value added to SSTATEPOSTINSTFUNCS:
 SSTATEPOSTINSTFUNCS[vardepvalueexclude] .= "| buildhistory_emit_pkghistory"
 
+# All items excepts those listed here will be removed from a recipe's
+# build history directory by buildhistory_emit_pkghistory(). This is
+# necessary because some of these items (package directories, files that
+# we no longer emit) might be obsolete.
 #
-# Write out metadata about this package for comparision when writing future packages
+# When extending build history, derive your class from buildhistory.bbclass
+# and extend this list here with the additional files created by the derived
+# class.
+BUILDHISTORY_PRESERVE = "latest latest_srcrev"
+
+#
+# Write out metadata about this package for comparison when writing future packages
 #
 python buildhistory_emit_pkghistory() {
     if not d.getVar('BB_CURRENTTASK', True) in ['packagedata', 'packagedata_setscene']:
@@ -80,7 +90,7 @@ python buildhistory_emit_pkghistory() {
         pkginfo = PackageInfo(pkg)
         with open(histfile, "r") as f:
             for line in f:
-                lns = line.split('=')
+                lns = line.split('=', 1)
                 name = lns[0].strip()
                 value = lns[1].strip(" \t\r\n").strip('"')
                 if name == "PE":
@@ -165,12 +175,13 @@ python buildhistory_emit_pkghistory() {
             raise
 
     packagelist = packages.split()
+    preserve = d.getVar('BUILDHISTORY_PRESERVE', True).split()
     if not os.path.exists(pkghistdir):
         bb.utils.mkdirhier(pkghistdir)
     else:
         # Remove files for packages that no longer exist
         for item in os.listdir(pkghistdir):
-            if item != "latest" and item != "latest_srcrev":
+            if item not in preserve:
                 if item not in packagelist:
                     itempath = os.path.join(pkghistdir, item)
                     if os.path.isdir(itempath):

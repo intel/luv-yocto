@@ -52,6 +52,9 @@ class BitbakeController(object):
     def setVariable(self, name, value):
         return self._runCommand(["setVariable", name, value])
 
+    def getVariable(self, name):
+        return self._runCommand(["getVariable", name])
+
     def build(self, targets, task = None):
         if task is None:
             task = "build"
@@ -127,12 +130,6 @@ class BuildEnvironmentController(object):
         bblayerconffile.write("# line added by toaster build control\nBBLAYERS = \"" + " ".join(layerlist) + "\"")
         bblayerconffile.close()
 
-
-    def writeConfFile(self, variable_list = None, raw = None):
-        """ Writes a configuration file in the build directory. Override with buildenv-specific implementation. """
-        raise Exception("FIXME: Must override to actually write a configuration file")
-
-
     def startBBServer(self):
         """ Starts a  BB server with Toaster toasterui set up to record the builds, an no controlling UI.
             After this method executes, self.be bbaddress/bbport MUST point to a running and free server,
@@ -140,12 +137,6 @@ class BuildEnvironmentController(object):
         """
         raise Exception("FIXME: Must override in order to actually start the BB server")
 
-    def stopBBServer(self):
-        """ Stops the currently running BB server.
-            The bbstate MUST be updated to "stopped".
-            self.connection must be none.
-        """
-        raise Exception("FIXME: Must override stoBBServer")
 
     def setLayers(self, bbs, ls):
         """ Checks-out bitbake executor and layers from git repositories.

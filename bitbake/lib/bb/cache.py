@@ -85,8 +85,8 @@ class RecipeInfoCommon(object):
             return out_dict
 
     @classmethod
-    def getvar(cls, var, metadata):
-        return metadata.getVar(var, True) or ''
+    def getvar(cls, var, metadata, expand = True):
+        return metadata.getVar(var, expand) or ''
 
 
 class CoreRecipeInfo(RecipeInfoCommon):
@@ -142,7 +142,7 @@ class CoreRecipeInfo(RecipeInfoCommon):
         self.rprovides_pkg    = self.pkgvar('RPROVIDES', self.packages, metadata)
         self.rdepends_pkg     = self.pkgvar('RDEPENDS', self.packages, metadata)
         self.rrecommends_pkg  = self.pkgvar('RRECOMMENDS', self.packages, metadata)
-        self.inherits         = self.getvar('__inherit_cache', metadata)
+        self.inherits         = self.getvar('__inherit_cache', metadata, expand=False)
         self.fakerootenv      = self.getvar('FAKEROOTENV', metadata)
         self.fakerootdirs     = self.getvar('FAKEROOTDIRS', metadata)
         self.fakerootnoenv    = self.getvar('FAKEROOTNOENV', metadata)
@@ -528,7 +528,20 @@ class Cache(object):
 
         if hasattr(info_array[0], 'file_checksums'):
             for _, fl in info_array[0].file_checksums.items():
-                for f in fl.split():
+                fl = fl.strip()
+                while fl:
+                    # A .split() would be simpler but means spaces or colons in filenames would break
+                    a = fl.find(":True")
+                    b = fl.find(":False")
+                    if ((a < 0) and b) or ((b > 0) and (b < a)):
+                       f = fl[:b+6]
+                       fl = fl[b+7:]
+                    elif ((b < 0) and a) or ((a > 0) and (a < b)):
+                       f = fl[:a+5]
+                       fl = fl[a+6:]
+                    else:
+                       break
+                    fl = fl.strip()
                     if "*" in f:
                         continue
                     f, exist = f.split(":")

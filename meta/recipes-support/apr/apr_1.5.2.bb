@@ -16,6 +16,7 @@ SRC_URI = "${APACHE_MIRROR}/apr/${BPN}-${PV}.tar.bz2 \
            file://run-ptest \
            file://upgrade-and-fix-1.5.1.patch \
            file://Fix-packet-discards-HTTP-redirect.patch \
+           file://configure.in-fix-LTFLAGS-to-make-it-work-with-ccache.patch \
 "
 
 SRC_URI[md5sum] = "4e9769f3349fe11fc0a5e1b224c236aa"
@@ -31,6 +32,11 @@ CACHED_CONFIGUREVARS += "apr_cv_mutex_recursive=yes"
 # Also suppress trying to use sctp.
 #
 CACHED_CONFIGUREVARS += "ac_cv_header_netinet_sctp_h=no ac_cv_header_netinet_sctp_uio_h=no"
+
+# Otherwise libtool fails to compile apr-utils
+# x86_64-linux-libtool: compile: unable to infer tagged configuration
+# x86_64-linux-libtool:   error: specify a tag with '--tag'
+CCACHE = ""
 
 do_configure_prepend() {
 	# Avoid absolute paths for grep since it causes failures
@@ -55,7 +61,13 @@ do_configure_append() {
 do_install_append() {
 	oe_multilib_header apr.h
 	install -d ${D}${datadir}/apr
-	cp ${S}/${HOST_SYS}-libtool ${D}${datadir}/build-1/libtool
+}
+
+do_install_append_class-target() {
+	sed -i -e 's,${STAGING_DIR_HOST},,g' ${D}${datadir}/build-1/apr_rules.mk
+	sed -i -e 's,${STAGING_DIR_HOST},,g' \
+	       -e 's,APR_SOURCE_DIR=.*,APR_SOURCE_DIR=,g' \
+	       -e 's,APR_BUILD_DIR=.*,APR_BUILD_DIR=,g' ${D}${bindir}/apr-1-config
 }
 
 SSTATE_SCAN_FILES += "apr_rules.mk libtool"
@@ -73,6 +85,7 @@ apr_sysroot_preprocess () {
 	cp ${S}/build/mkdir.sh $d/
 	cp ${S}/build/make_exports.awk $d/
 	cp ${S}/build/make_var_export.awk $d/
+	cp ${S}/${HOST_SYS}-libtool ${SYSROOT_DESTDIR}${datadir}/build-1/libtool
 }
 
 do_compile_ptest() {

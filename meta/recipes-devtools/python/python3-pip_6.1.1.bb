@@ -13,6 +13,8 @@ SRC_URI = " \
 SRC_URI[md5sum] = "6b19e0a934d982a5a4b798e957cb6d45"
 SRC_URI[sha256sum] = "89f3b626d225e08e7f20d85044afa40f612eb3284484169813dc2d0631f2a556"
 
+UPSTREAM_CHECK_URI = "https://pypi.python.org/pypi/pip"
+
 S = "${WORKDIR}/${SRCNAME}-${PV}"
 
 inherit distutils3
@@ -26,7 +28,13 @@ do_install_prepend() {
 # Use setuptools site.py instead, avoid shared state issue
 do_install_append() {
     rm ${D}/${libdir}/${PYTHON_DIR}/site-packages/site.py
-    rm ${D}/${libdir}/${PYTHON_DIR}/site-packages/__pycache__/site.cpython-34.pyc
+    rm ${D}/${libdir}/${PYTHON_DIR}/site-packages/__pycache__/site.cpython-*.pyc
+
+    # Install as pip3 and leave pip2 as default
+    rm ${D}/${bindir}/pip
+
+    # Installed eggs need to be passed directly to the interpreter via a pth file
+    echo "./${SRCNAME}-${PV}-py${PYTHON_BASEVERSION}.egg" > ${D}${PYTHON_SITEPACKAGES_DIR}/${SRCNAME}-${PV}.pth
 }
 
 RDEPENDS_${PN} = "\

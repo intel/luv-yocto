@@ -9,6 +9,9 @@ LIC_FILES_CHKSUM = "file://COPYRIGHT;md5=8ad8615198542444f84d28a6cf226dd8"
 DEPENDS = ""
 PR = "r2"
 
+# Blacklist a bogus tag in upstream check
+UPSTREAM_CHECK_GITTAGREGEX = "xinetd-(?P<pver>(?!20030122).+)"
+
 SRC_URI = "git://github.com/xinetd-org/xinetd.git;protocol=https \
       file://xinetd.init \
       file://xinetd.conf \
@@ -56,6 +59,7 @@ do_install() {
 	install -m 644 "${WORKDIR}/xinetd.default" "${D}${sysconfdir}/default/xinetd"
 	install -m 755 "${B}/xinetd/xinetd" "${D}${sbindir}"
 	install -m 755 "${B}/xinetd/itox" "${D}${sbindir}"
+	install -m 664 ${S}/contrib/xinetd.d/* ${D}${sysconfdir}/xinetd.d
 
 	# Install systemd unit files
 	install -d ${D}${systemd_unitdir}/system

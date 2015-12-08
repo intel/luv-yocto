@@ -20,28 +20,25 @@ import os
 import subprocess
 import logging
 from bb.process import ExecutionError
-from devtool import exec_build_env_command, setup_tinfoil, DevtoolError
+from devtool import exec_build_env_command, setup_tinfoil, check_workspace_recipe, DevtoolError
 
 logger = logging.getLogger('devtool')
 
-def plugin_init(pluginlist):
-    """Plugin initialization"""
-    pass
-
 def package(args, config, basepath, workspace):
     """Entry point for the devtool 'package' subcommand"""
-    if not args.recipename in workspace:
-        raise DevtoolError("no recipe named %s in your workspace" %
-                           args.recipename)
+    check_workspace_recipe(workspace, args.recipename)
 
-    image_pkgtype = config.get('Package', 'image_pkgtype', '')
-    if not image_pkgtype:
-        tinfoil = setup_tinfoil()
-        try:
-            tinfoil.prepare(config_only=True)
+    tinfoil = setup_tinfoil(basepath=basepath)
+    try:
+        tinfoil.prepare(config_only=True)
+
+        image_pkgtype = config.get('Package', 'image_pkgtype', '')
+        if not image_pkgtype:
             image_pkgtype = tinfoil.config_data.getVar('IMAGE_PKGTYPE', True)
-        finally:
-            tinfoil.shutdown()
+
+        deploy_dir_pkg = tinfoil.config_data.getVar('DEPLOY_DIR_%s' % image_pkgtype.upper(), True)
+    finally:
+        tinfoil.shutdown()
 
     package_task = config.get('Package', 'package_task', 'package_write_%s' % image_pkgtype)
     try:
@@ -49,7 +46,8 @@ def package(args, config, basepath, workspace):
     except bb.process.ExecutionError as e:
         # We've already seen the output since watch=True, so just ensure we return something to the user
         return e.exitcode
-    logger.info('Your packages are in %s/tmp/deploy/%s' % (basepath, image_pkgtype))
+
+    logger.info('Your packages are in %s' % deploy_dir_pkg)
 
     return 0
 

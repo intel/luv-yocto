@@ -33,6 +33,10 @@ class getResults(object):
                     ret.append(s.replace("setUpModule (", "").replace(")",""))
                 else:
                     ret.append(s)
+                # Append also the test without the full path
+                testname = s.split('.')[-1]
+                if testname:
+                    ret.append(testname)
             return ret
         self.faillist = handleList(upperf.f_locals['result'].failures)
         self.errorlist = handleList(upperf.f_locals['result'].errors)
@@ -53,11 +57,11 @@ class skipIfFailure(object):
         self.testcase = testcase
 
     def __call__(self,f):
-        def wrapped_f(*args):
+        def wrapped_f(*args, **kwargs):
             res = getResults()
             if self.testcase in (res.getFailList() or res.getErrorList()):
                 raise unittest.SkipTest("Testcase dependency not met: %s" % self.testcase)
-            return f(*args)
+            return f(*args, **kwargs)
         wrapped_f.__name__ = f.__name__
         return wrapped_f
 
@@ -67,11 +71,11 @@ class skipIfSkipped(object):
         self.testcase = testcase
 
     def __call__(self,f):
-        def wrapped_f(*args):
+        def wrapped_f(*args, **kwargs):
             res = getResults()
             if self.testcase in res.getSkipList():
                 raise unittest.SkipTest("Testcase dependency not met: %s" % self.testcase)
-            return f(*args)
+            return f(*args, **kwargs)
         wrapped_f.__name__ = f.__name__
         return wrapped_f
 
@@ -81,13 +85,13 @@ class skipUnlessPassed(object):
         self.testcase = testcase
 
     def __call__(self,f):
-        def wrapped_f(*args):
+        def wrapped_f(*args, **kwargs):
             res = getResults()
             if self.testcase in res.getSkipList() or \
                     self.testcase in res.getFailList() or \
                     self.testcase in res.getErrorList():
                 raise unittest.SkipTest("Testcase dependency not met: %s" % self.testcase)
-            return f(*args)
+            return f(*args, **kwargs)
         wrapped_f.__name__ = f.__name__
         wrapped_f._depends_on = self.testcase
         return wrapped_f
@@ -98,8 +102,8 @@ class testcase(object):
         self.test_case = test_case
 
     def __call__(self, func):
-        def wrapped_f(*args):
-            return func(*args)
+        def wrapped_f(*args, **kwargs):
+            return func(*args, **kwargs)
         wrapped_f.test_case = self.test_case
         wrapped_f.__name__ = func.__name__
         return wrapped_f
@@ -110,6 +114,12 @@ class NoParsingFilter(logging.Filter):
 
 def LogResults(original_class):
     orig_method = original_class.run
+
+    from time import strftime, gmtime
+    caller = os.path.basename(sys.argv[0])
+    timestamp = strftime('%Y%m%d%H%M%S',gmtime())
+    logfile = os.path.join(os.getcwd(),'results-'+caller+'.'+timestamp+'.log')
+    linkfile = os.path.join(os.getcwd(),'results-'+caller+'.log')
 
     #rewrite the run method of unittest.TestCase to add testcase logging
     def run(self, result, *args, **kws):
@@ -127,14 +137,13 @@ def LogResults(original_class):
         #create custom logging level for filtering.
         custom_log_level = 100
         logging.addLevelName(custom_log_level, 'RESULTS')
-        caller = os.path.basename(sys.argv[0])
 
         def results(self, message, *args, **kws):
             if self.isEnabledFor(custom_log_level):
                 self.log(custom_log_level, message, *args, **kws)
         logging.Logger.results = results
 
-        logging.basicConfig(filename=os.path.join(os.getcwd(),'results-'+caller+'.log'),
+        logging.basicConfig(filename=logfile,
                             filemode='w',
                             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                             datefmt='%H:%M:%S',
@@ -162,7 +171,13 @@ def LogResults(original_class):
         if passed:
             local_log.results("Testcase "+str(test_case)+": PASSED")
 
+        # Create symlink to the current log
+        if os.path.exists(linkfile):
+            os.remove(linkfile)
+        os.symlink(logfile, linkfile)
+
     original_class.run = run
+
     return original_class
 
 class TimeOut(BaseException):
@@ -220,3 +235,28 @@ def getAllTags(obj):
     ret = __gettags(obj)
     ret.update(__gettags(tc_method))
     return ret
+
+def timeout_handler(seconds):
+    def decorator(fn):
+        if hasattr(signal, 'alarm'):
+            @wraps(fn)
+            def wrapped_f(self, *args, **kw):
+                current_frame = sys._getframe()
+                def raiseTimeOut(signal, frame):
+                    if frame is not current_frame:
+                        try:
+                            self.target.restart()
+                            raise TimeOut('%s seconds' % seconds)
+                        except:
+                            raise TimeOut('%s seconds' % seconds)
+                prev_handler = signal.signal(signal.SIGALRM, raiseTimeOut)
+                try:
+                    signal.alarm(seconds)
+                    return fn(self, *args, **kw)
+                finally:
+                    signal.alarm(0)
+                    signal.signal(signal.SIGALRM, prev_handler)
+            return wrapped_f
+        else:
+            return fn
+    return decorator

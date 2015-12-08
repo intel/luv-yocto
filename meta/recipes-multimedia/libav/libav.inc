@@ -34,9 +34,13 @@ BUILD_OPTIMIZATION = "${FULL_OPTIMIZATION}"
 EXTRA_FFCONF_armv7a = "--cpu=cortex-a8"
 EXTRA_FFCONF ?= ""
 
-PACKAGECONFIG ??= "bzip2 x264 theora ${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'x11', '', d)}"
+PACKAGECONFIG ??= "avdevice avfilter avplay bzip2 gpl theora x264 ${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'x11', '', d)}"
+PACKAGECONFIG[avdevice] = "--enable-avdevice,--disable-avdevice"
+PACKAGECONFIG[avfilter] = "--enable-avfilter,--disable-avfilter"
+PACKAGECONFIG[avplay] = "--enable-avplay,--disable-avplay"
 PACKAGECONFIG[bzip2] = "--enable-bzlib,--disable-bzlib,bzip2"
 PACKAGECONFIG[faac] = "--enable-libfaac,--disable-libfaac,faac"
+PACKAGECONFIG[gpl] = "--enable-gpl,--disable-gpl"
 PACKAGECONFIG[gsm] = "--enable-libgsm,--disable-libgsm,libgsm"
 PACKAGECONFIG[jack] = "--enable-indev=jack,--disable-indev=jack,jack"
 PACKAGECONFIG[libvorbis] = "--enable-libvorbis,--disable-libvorbis,libvorbis"
@@ -53,18 +57,18 @@ PACKAGECONFIG[x264] = "--enable-libx264,--disable-libx264,x264"
 # Check codecs that require --enable-nonfree
 USE_NONFREE = "${@bb.utils.contains_any('PACKAGECONFIG', [ 'faac', 'openssl' ], 'yes', '', d)}"
 
+# libav will install in /usr/local if prefix is empty. Luckily,
+# passing just "/" instead does the right thing.
+nonempty_prefix = "${@bb.data.getVar('prefix', d, True) or '/'}"
+
 EXTRA_OECONF = " \
     --enable-shared \
     --enable-pthreads \
-    --enable-gpl \
     ${@bb.utils.contains('USE_NONFREE', 'yes', '--enable-nonfree', '', d)} \
-    --enable-avfilter \
     \
     --cross-prefix=${TARGET_PREFIX} \
-    --prefix=${prefix} \
+    --prefix=${nonempty_prefix} \
     \
-    --enable-avserver \
-    --enable-avplay \
     --ld="${CCLD}" \
     --arch=${TARGET_ARCH} \
     --target-os="linux" \
@@ -88,7 +92,9 @@ do_configure() {
 }
 
 do_install_append() {
-    install -m 0644 ${S}/libavfilter/*.h ${D}${includedir}/libavfilter/
+    if [ -n "${@bb.utils.contains('PACKAGECONFIG', 'avfilter', 'yes', '', d)}" ]; then
+        install -m 0644 ${S}/libavfilter/*.h ${D}${includedir}/libavfilter/
+    fi
 }
 
 PACKAGES += "${PN}-vhook-dbg ${PN}-vhook ffmpeg-x264-presets"

@@ -99,27 +99,6 @@ python () {
                 d.appendVarFlag('do_package_write_rpm', 'depends', ' %s:do_ar_patched' % pn)
             elif ar_src == "configured":
                 d.appendVarFlag('do_package_write_rpm', 'depends', ' %s:do_ar_configured' % pn)
-
-    # The gcc staff uses shared source
-    flag = d.getVarFlag("do_unpack", "stamp-base", True)
-    if flag:
-        if ar_src in [ 'original', 'patched' ]:
-            ar_outdir = os.path.join(d.getVar('ARCHIVER_TOPDIR', True), 'work-shared')
-            d.setVar('ARCHIVER_OUTDIR', ar_outdir)
-        d.setVarFlag('do_ar_original', 'stamp-base', flag)
-        d.setVarFlag('do_ar_patched', 'stamp-base', flag)
-        d.setVarFlag('do_unpack_and_patch', 'stamp-base', flag)
-        d.setVarFlag('do_ar_original', 'vardepsexclude', 'PN PF ARCHIVER_OUTDIR WORKDIR')
-        d.setVarFlag('do_unpack_and_patch', 'vardepsexclude', 'PN PF ARCHIVER_OUTDIR WORKDIR')
-        d.setVarFlag('do_ar_patched', 'vardepsexclude', 'PN PF ARCHIVER_OUTDIR WORKDIR')
-        d.setVarFlag('create_diff_gz', 'vardepsexclude', 'PF')
-        d.setVarFlag('create_tarball', 'vardepsexclude', 'PF')
-
-        flag_clean = d.getVarFlag('do_unpack', 'stamp-base-clean', True)
-        if flag_clean:
-            d.setVarFlag('do_ar_original', 'stamp-base-clean', flag_clean)
-            d.setVarFlag('do_ar_patched', 'stamp-base-clean', flag_clean)
-            d.setVarFlag('do_unpack_and_patch', 'stamp-base-clean', flag_clean)
 }
 
 # Take all the sources for a recipe and puts them in WORKDIR/archiver-work/.
@@ -178,13 +157,8 @@ python do_ar_patched() {
     # Get the ARCHIVER_OUTDIR before we reset the WORKDIR
     ar_outdir = d.getVar('ARCHIVER_OUTDIR', True)
     bb.note('Archiving the patched source...')
-    d.setVar('WORKDIR', d.getVar('ARCHIVER_WORKDIR', True))
-    # The gcc staff uses shared source
-    flag = d.getVarFlag('do_unpack', 'stamp-base', True)
-    if flag:
-        create_tarball(d, d.getVar('S', True), 'patched', ar_outdir, 'gcc')
-    else:
-        create_tarball(d, d.getVar('S', True), 'patched', ar_outdir)
+    d.setVar('WORKDIR', ar_outdir)
+    create_tarball(d, d.getVar('S', True), 'patched', ar_outdir)
 }
 
 python do_ar_configured() {
@@ -222,17 +196,18 @@ python do_ar_configured() {
         create_tarball(d, srcdir, 'configured', ar_outdir)
 }
 
-def create_tarball(d, srcdir, suffix, ar_outdir, pf=None):
+def create_tarball(d, srcdir, suffix, ar_outdir):
     """
     create the tarball from srcdir
     """
     import tarfile
 
+    # Make sure we are only creating a single tarball for gcc sources
+    if (d.getVar('SRC_URI', True) == ""):
+        return
+
     bb.utils.mkdirhier(ar_outdir)
-    if pf:
-        tarname = os.path.join(ar_outdir, '%s-%s.tar.gz' % (pf, suffix))
-    else:
-        tarname = os.path.join(ar_outdir, '%s-%s.tar.gz' % \
+    tarname = os.path.join(ar_outdir, '%s-%s.tar.gz' % \
             (d.getVar('PF', True), suffix))
 
     srcdir = srcdir.rstrip('/')
@@ -275,31 +250,32 @@ python do_unpack_and_patch() {
             [ 'patched', 'configured'] and \
             d.getVarFlag('ARCHIVER_MODE', 'diff', True) != '1':
         return
-
-    ar_outdir = d.getVar('ARCHIVER_OUTDIR', True)
-
     # Change the WORKDIR to make do_unpack do_patch run in another dir.
-    d.setVar('WORKDIR', d.getVar('ARCHIVER_WORKDIR', True))
+    ar_outdir = d.getVar('ARCHIVER_OUTDIR', True)
+    d.setVar('WORKDIR', ar_outdir)
 
-    # The changed 'WORKDIR' also casued 'B' changed, create dir 'B' for the
+    # The changed 'WORKDIR' also caused 'B' changed, create dir 'B' for the
     # possibly requiring of the following tasks (such as some recipes's
     # do_patch required 'B' existed).
     bb.utils.mkdirhier(d.getVar('B', True))
 
-    # The kernel source is ready after do_validate_branches
-    if bb.data.inherits_class('kernel-yocto', d):
+    # The kernel class functions require it to be on work-shared, so we dont change WORKDIR
+    if not bb.data.inherits_class('kernel-yocto', d):
+        ar_outdir = d.getVar('ARCHIVER_OUTDIR', True)
+        d.setVar('WORKDIR', ar_outdir)
         bb.build.exec_func('do_unpack', d)
-        bb.build.exec_func('do_kernel_checkout', d)
-        bb.build.exec_func('do_validate_branches', d)
-    else:
-        bb.build.exec_func('do_unpack', d)
+
 
     # Save the original source for creating the patches
     if d.getVarFlag('ARCHIVER_MODE', 'diff', True) == '1':
         src = d.getVar('S', True).rstrip('/')
         src_orig = '%s.orig' % src
         oe.path.copytree(src, src_orig)
-    bb.build.exec_func('do_patch', d)
+
+    # Make sure gcc and kernel sources are patched only once
+    if not ((d.getVar('SRC_URI', True) == "" or bb.data.inherits_class('kernel-yocto', d))):
+        bb.build.exec_func('do_patch', d)
+
     # Create the patches
     if d.getVarFlag('ARCHIVER_MODE', 'diff', True) == '1':
         bb.note('Creating diff gz...')
@@ -321,6 +297,16 @@ python do_ar_recipe () {
             '%s-recipe' % d.getVar('PF', True))
     bb.utils.mkdirhier(outdir)
     shutil.copy(bbfile, outdir)
+
+    pn = d.getVar('PN', True)
+    bbappend_files = d.getVar('BBINCLUDED', True).split()
+    # If recipe name is aa, we need to match files like aa.bbappend and aa_1.1.bbappend
+    # Files like aa1.bbappend or aa1_1.1.bbappend must be excluded.
+    bbappend_re = re.compile( r".*/%s_[^/]*\.bbappend$" %pn)
+    bbappend_re1 = re.compile( r".*/%s\.bbappend$" %pn)
+    for file in bbappend_files:
+        if bbappend_re.match(file) or bbappend_re1.match(file):
+            shutil.copy(file, outdir)
 
     dirname = os.path.dirname(bbfile)
     bbpath = '%s:%s' % (dirname, d.getVar('BBPATH', True))
@@ -382,4 +368,10 @@ do_deploy_all_archives[recrdeptask] = "do_deploy_archives"
 do_deploy_all_archives[recideptask] = "do_${BB_DEFAULT_TASK}"
 do_deploy_all_archives() {
         :
+}
+
+python () {
+    # Add tasks in the correct order, specifically for linux-yocto to avoid race condition
+    if bb.data.inherits_class('kernel-yocto', d):
+        bb.build.addtask('do_kernel_configme', 'do_configure', 'do_unpack_and_patch', d)
 }

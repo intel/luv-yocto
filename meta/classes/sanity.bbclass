@@ -3,7 +3,7 @@
 #
 
 SANITY_REQUIRED_UTILITIES ?= "patch diffstat makeinfo git bzip2 tar \
-    gzip gawk chrpath wget cpio perl"
+    gzip gawk chrpath wget cpio perl file"
 
 def bblayers_conf_file(d):
     return os.path.join(d.getVar('TOPDIR', True), 'conf/bblayers.conf')
@@ -749,14 +749,6 @@ def check_sanity_everybuild(status, d):
 
     check_supported_distro(d)
 
-    # Check if DISPLAY is set if TEST_IMAGE is set
-    if d.getVar('TEST_IMAGE', True) == '1' or d.getVar('DEFAULT_TEST_SUITES', True):
-        testtarget = d.getVar('TEST_TARGET', True)
-        if testtarget == 'qemu' or testtarget == 'QemuTarget':
-            display = d.getVar("BB_ORIGENV", False).getVar("DISPLAY", True)
-            if not display:
-                status.addresult('testimage needs an X desktop to start qemu, please set DISPLAY correctly (e.g. DISPLAY=:1.0)\n')
-
     omask = os.umask(022)
     if omask & 0755:
         status.addresult("Please use a umask which allows a+rx and u+rwx\n")
@@ -839,9 +831,12 @@ def check_sanity_everybuild(status, d):
     else:
         bb.utils.mkdirhier(tmpdir)
         # Remove setuid, setgid and sticky bits from TMPDIR
-        os.chmod(tmpdir, os.stat(tmpdir).st_mode & ~ stat.S_ISUID)
-        os.chmod(tmpdir, os.stat(tmpdir).st_mode & ~ stat.S_ISGID)
-        os.chmod(tmpdir, os.stat(tmpdir).st_mode & ~ stat.S_ISVTX)
+        try:
+            os.chmod(tmpdir, os.stat(tmpdir).st_mode & ~ stat.S_ISUID)
+            os.chmod(tmpdir, os.stat(tmpdir).st_mode & ~ stat.S_ISGID)
+            os.chmod(tmpdir, os.stat(tmpdir).st_mode & ~ stat.S_ISVTX)
+        except OSError as exc:
+            bb.warn("Unable to chmod TMPDIR: %s" % exc)
         with open(checkfile, "w") as f:
             f.write(tmpdir)
 
