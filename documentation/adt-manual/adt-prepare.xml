@@ -480,8 +480,8 @@
             and are ideal for experimentation using Yocto Project.
             For information on the image types you can build using the OpenEmbedded build system,
             see the
-            "<ulink url='&YOCTO_DOCS_REF_URL;#ref-images'>Images</ulink>" chapter in
-            the Yocto Project Reference Manual.
+            "<ulink url='&YOCTO_DOCS_REF_URL;#ref-images'>Images</ulink>"
+            chapter in the Yocto Project Reference Manual.
         </para>
 
         <para>
@@ -492,62 +492,28 @@
         </para>
 
         <para>
-            Furthermore, if you plan on remotely deploying and debugging your
-            application from within the
-            Eclipse IDE, you must have an image that contains the Yocto Target Communication
-            Framework (TCF) agent (<filename>tcf-agent</filename>).
-            By default, the Yocto Project provides only one type of pre-built
-            image that contains the <filename>tcf-agent</filename>.
-            And, those images are SDK (e.g.<filename>core-image-sato-sdk</filename>).
-        </para>
-
-        <para>
-            If you want to use a different image type that contains the <filename>tcf-agent</filename>,
-            you can do so one of two ways:
-            <itemizedlist>
-                <listitem><para>Modify the <filename>conf/local.conf</filename> configuration in
-                    the <ulink url='&YOCTO_DOCS_DEV_URL;#build-directory'>Build Directory</ulink>
-                    and then rebuild the image.
-                    With this method, you need to modify the
-                    <ulink url='&YOCTO_DOCS_REF_URL;#var-EXTRA_IMAGE_FEATURES'><filename>EXTRA_IMAGE_FEATURES</filename></ulink>
-                    variable to have the value of "tools-debug" before rebuilding the image.
-                    Once the image is rebuilt, the <filename>tcf-agent</filename> will be included
-                    in the image and is launched automatically after the boot.</para></listitem>
-                <listitem><para>Manually build the <filename>tcf-agent</filename>.
-                    To build the agent, follow these steps:
-                    <orderedlist>
-                        <listitem><para>Be sure the ADT is installed as described in the
-                            "<link linkend='installing-the-adt'>Installing the ADT and Toolchains</link>" section.
-                            </para></listitem>
-                        <listitem><para>Set up the cross-development environment as described in the
-                            "<link linkend='setting-up-the-cross-development-environment'>Setting
-                            Up the Cross-Development Environment</link>" section.</para></listitem>
-                        <listitem><para>Get the <filename>tcf-agent</filename> source code using
-                            the following commands:
-                            <literallayout class='monospaced'>
-     $ git clone http://git.eclipse.org/gitroot/tcf/org.eclipse.tcf.agent.git
-     $ cd org.eclipse.tcf.agent/agent
-                            </literallayout></para></listitem>
-                        <listitem><para>Locate the
-                            <filename>Makefile.inc</filename> file inside the
-                            <filename>agent</filename> folder and modify it
-                            for the cross-compilation environment by setting the
-                            <filename>OPSYS</filename> and
-                            <ulink url='&YOCTO_DOCS_REF_URL;#var-MACHINE'><filename>MACHINE</filename></ulink>
-                            variables according to your target.
-                            </para></listitem>
-                        <listitem><para>Use the cross-development tools to build the
-                            <filename>tcf-agent</filename>.
-                            Before you "Make" the file, be sure your cross-tools are set up first.
-                            See the "<link linkend='makefile-based-projects'>Makefile-Based Projects</link>"
-                            section for information on how to make sure the cross-tools are set up
-                            correctly.</para>
-                            <para>If the build is successful, the <filename>tcf-agent</filename> output will
-                            be <filename>obj/$(OPSYS)/$(MACHINE)/Debug/agent</filename>.</para></listitem>
-                        <listitem><para>Deploy the agent into the image's root filesystem.</para></listitem>
-                    </orderedlist>
-                </para></listitem>
-            </itemizedlist>
+            If you plan on remotely deploying and debugging your
+            application from within the Eclipse IDE, you must have an image
+            that contains the Yocto Target Communication Framework (TCF) agent
+            (<filename>tcf-agent</filename>).
+            You can do this by including the <filename>eclipse-debug</filename>
+            image feature.
+            <note>
+                See the
+                "<ulink url='&YOCTO_DOCS_REF_URL;#ref-features-image'>Image Features</ulink>"
+                section in the Yocto Project Reference Manual for information on
+                image features.
+            </note>
+            To include the <filename>eclipse-debug</filename> image feature,
+            modify your <filename>local.conf</filename> file in the
+            <ulink url='&YOCTO_DOCS_DEV_URL;#build-directory'>Build Directory</ulink>
+            so that the
+            <ulink url='&YOCTO_DOCS_REF_URL;#var-EXTRA_IMAGE_FEATURES'><filename>EXTRA_IMAGE_FEATURES</filename></ulink>
+            variable includes the "eclipse-debug" feature.
+            After modifying the configuration file, you can rebuild the image.
+            Once the image is rebuilt, the <filename>tcf-agent</filename>
+            will be included in the image and is launched automatically after
+            the boot.
         </para>
     </section>
 
@@ -622,50 +588,56 @@
 
     <para>
         As an alternative to locating and downloading a toolchain installer,
-        you can build the toolchain installer one of two ways if you have a
-        <ulink url='&YOCTO_DOCS_DEV_URL;#build-directory'>Build Directory</ulink>:
-        <itemizedlist>
-            <listitem><para>
-                Use <filename>bitbake meta-toolchain</filename>.
-                This method requires you to still install the target
-                sysroot by installing and extracting it separately.
-                For information on how to install the sysroot, see the
-                "<link linkend='extracting-the-root-filesystem'>Extracting the Root Filesystem</link>"
-                section.
-                </para></listitem>
-            <listitem><para>
-                Use <filename>bitbake</filename> <replaceable>image</replaceable> <filename>-c populate_sdk</filename>.
-                This method has significant advantages over the previous method
-                because it results in a toolchain installer that contains the
-                sysroot that matches your target root filesystem.
-                </para>
+        you can build the toolchain installer if you have a
+        <ulink url='&YOCTO_DOCS_DEV_URL;#build-directory'>Build Directory</ulink>.
+        <note>
+            Although not the preferred method, it is also possible to use
+            <filename>bitbake meta-toolchain</filename> to build the toolchain
+            installer.
+            If you do use this method, you must separately install and extract
+            the target sysroot.
+            For information on how to install the sysroot, see the
+            "<link linkend='extracting-the-root-filesystem'>Extracting the Root Filesystem</link>"
+            section.
+        </note>
+    </para>
 
-                <para>Another powerful feature is that the toolchain is
-                completely self-contained.
-                The binaries are linked against their own copy of
-                <filename>libc</filename>, which results in no dependencies
-                on the target system.
-                To achieve this, the pointer to the dynamic loader is
-                configured at install time since that path cannot be dynamically
-                altered.
-                This is the reason for a wrapper around the
-                <filename>populate_sdk</filename> archive.</para>
+    <para>
+        To build the toolchain installer and populate the SDK image, use the
+        following command:
+        <literallayout class='monospaced'>
+     $ bitbake <replaceable>image</replaceable> -c populate_sdk
+        </literallayout>
+        The command results in a toolchain installer that contains the sysroot
+        that matches your target root filesystem.
+    </para>
 
-                <para>Another feature is that only one set of cross-canadian
-                toolchain binaries are produced per architecture.
-                This feature takes advantage of the fact that the target
-                hardware can be passed to <filename>gcc</filename> as a set of
-                compiler options.
-                Those options are set up by the environment script and
-                contained in variables such as
-                <ulink url='&YOCTO_DOCS_REF_URL;#var-CC'><filename>CC</filename></ulink>
-                and
-                <ulink url='&YOCTO_DOCS_REF_URL;#var-LD'><filename>LD</filename></ulink>.
-                This reduces the space needed for the tools.
-                Understand, however, that a sysroot is still needed for every
-                target since those binaries are target-specific.
-                </para></listitem>
-        </itemizedlist>
+    <para>
+        Another powerful feature is that the toolchain is completely
+        self-contained.
+        The binaries are linked against their own copy of
+        <filename>libc</filename>, which results in no dependencies
+        on the target system.
+        To achieve this, the pointer to the dynamic loader is
+        configured at install time since that path cannot be dynamically
+        altered.
+        This is the reason for a wrapper around the
+        <filename>populate_sdk</filename> archive.
+    </para>
+
+    <para>
+        Another feature is that only one set of cross-canadian toolchain
+        binaries are produced per architecture.
+        This feature takes advantage of the fact that the target hardware can
+        be passed to <filename>gcc</filename> as a set of compiler options.
+        Those options are set up by the environment script and contained in
+        variables such as
+        <ulink url='&YOCTO_DOCS_REF_URL;#var-CC'><filename>CC</filename></ulink>
+        and
+        <ulink url='&YOCTO_DOCS_REF_URL;#var-LD'><filename>LD</filename></ulink>.
+        This reduces the space needed for the tools.
+        Understand, however, that a sysroot is still needed for every target
+        since those binaries are target-specific.
     </para>
 
     <para>
