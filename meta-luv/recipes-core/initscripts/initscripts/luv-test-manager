@@ -5,6 +5,8 @@
 # ### Messages strings
 # warn the user when no partition is found
 alert_missing_partition="STOP! No partition found to store the results..please report to luv@lists.01.org"
+# warn the user when the disk is nearly full
+alert_disk_is_full="Removable disk space is running low , please backup and empty the disk to try again !!"
 
 grep -q noluv /proc/cmdline
 if [ $? -ne 1 ]; then
@@ -21,14 +23,16 @@ psplash_write() {
 # Save test results to a disk. In order to reliable identify the
 # correct partition, mount using the disk's UUID. If the partition
 # cannot be mounted, test results are not saved.
+# Also, if the space left on disk is less than 2MB, abort.
 
 LUV_SAVE_RAW_DIR=/dev/null
 LUV_SAVE_PARSED_DIR=/dev/null
 LUV_SAVE_RESULTS_DIR=/dev/null
 
-LUV_STORAGE=/mnt/luv-storage/
+LUV_STORAGE=/mnt/luv-storage
 LUV_PARTITION_UUID=05D6-1523
 LUV_DISK_DEVICE=/dev/disk/by-uuid/${LUV_PARTITION_UUID}
+LUV_STORAGE_MIN_AVAIL=2000
 
 ## checking if the partiton is matched , else results
 ## cannot be saved in the removable media after tests are done
@@ -47,11 +51,22 @@ mkdir -p ${LUV_STORAGE}
 if [ $? -eq 0 ]; then
     mount ${LUV_DISK_DEVICE} ${LUV_STORAGE}
     if [ $? -eq 0 ]; then
+
+        # check if there is enough space on disk
+        m=$(df | grep ${LUV_STORAGE} | awk '{print $4}')
+        if [ $m -le ${LUV_STORAGE_MIN_AVAIL} ] ; then
+            psplash_write " MSG $alert_disk_is_full "
+            if [ -e $FIFO ]; then
+                umount -l /mnt/.psplash
+            fi
+            exit
+        fi
+
         n=$(ls ${LUV_STORAGE}/ | grep $tstamp | wc -l)
         if [ $n -ge 1 ]; then
-            LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}luv-results-$tstamp-$n/
+            LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}/luv-results-$tstamp-$n/
         else
-            LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}luv-results-$tstamp/
+            LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}/luv-results-$tstamp/
         fi
 
         mkdir -p ${LUV_SAVE_RESULTS_DIR}raw/
