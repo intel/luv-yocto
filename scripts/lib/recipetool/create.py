@@ -23,6 +23,7 @@ import fnmatch
 import re
 import logging
 import scriptutils
+import urlparse
 
 logger = logging.getLogger('recipetool')
 
@@ -46,10 +47,26 @@ class RecipeHandler():
             results.extend(glob.glob(os.path.join(path, spec)))
         return results
 
-    def genfunction(self, outlines, funcname, content):
-        outlines.append('%s () {' % funcname)
+    def genfunction(self, outlines, funcname, content, python=False, forcespace=False):
+        if python:
+            prefix = 'python '
+        else:
+            prefix = ''
+        outlines.append('%s%s () {' % (prefix, funcname))
+        if python or forcespace:
+            indent = '    '
+        else:
+            indent = '\t'
+        addnoop = not python
         for line in content:
-            outlines.append('\t%s' % line)
+            outlines.append('%s%s' % (indent, line))
+            if addnoop:
+                strippedline = line.lstrip()
+                if strippedline and not strippedline.startswith('#'):
+                    addnoop = False
+        if addnoop:
+            # Without this there'll be a syntax error
+            outlines.append('%s:' % indent)
         outlines.append('}')
         outlines.append('')
 
@@ -86,7 +103,12 @@ def create_recipe(args):
     srcrev = '${AUTOREV}'
     if '://' in args.source:
         # Fetch a URL
-        srcuri = args.source
+        fetchuri = urlparse.urldefrag(args.source)[0]
+        if args.binary:
+            # Assume the archive contains the directory structure verbatim
+            # so we need to extract to a subdirectory
+            fetchuri += ';subdir=%s' % os.path.splitext(os.path.basename(urlparse.urlsplit(fetchuri).path))[0]
+        srcuri = fetchuri
         rev_re = re.compile(';rev=([^;]+)')
         res = rev_re.search(srcuri)
         if res:
@@ -95,7 +117,7 @@ def create_recipe(args):
         tempsrc = tempfile.mkdtemp(prefix='recipetool-')
         srctree = tempsrc
         logger.info('Fetching %s...' % srcuri)
-        checksums = scriptutils.fetch_uri(tinfoil.config_data, args.source, srctree, srcrev)
+        checksums = scriptutils.fetch_uri(tinfoil.config_data, fetchuri, srctree, srcrev)
         dirlist = os.listdir(srctree)
         if 'git.indirectionsymlink' in dirlist:
             dirlist.remove('git.indirectionsymlink')
@@ -208,6 +230,10 @@ def create_recipe(args):
         lines_after.append('PACKAGE_ARCH = "%s"' % pkgarch)
         lines_after.append('')
 
+    if args.binary:
+        lines_after.append('INSANE_SKIP_${PN} += "already-stripped"')
+        lines_after.append('')
+
     # Find all plugins that want to register handlers
     handlers = []
     for plugin in plugins:
@@ -217,6 +243,11 @@ def create_recipe(args):
     # Apply the handlers
     classes = []
     handled = []
+
+    if args.binary:
+        classes.append('bin_package')
+        handled.append('buildsystem')
+
     for handler in handlers:
         handler.process(srctree, classes, lines_before, lines_after, handled)
 
@@ -229,6 +260,12 @@ def create_recipe(args):
 
     if args.extract_to:
         scriptutils.git_convert_standalone_clone(srctree)
+        if os.path.isdir(args.extract_to):
+            # If the directory exists we'll move the temp dir into it instead of
+            # its contents - of course, we could try to always move its contents
+            # but that is a pain if there are symlinks; the simplest solution is
+            # to just remove it first
+            os.rmdir(args.extract_to)
         shutil.move(srctree, args.extract_to)
         logger.info('Source extracted to %s' % args.extract_to)
 
@@ -408,5 +445,6 @@ def register_command(subparsers):
     parser_create.add_argument('-m', '--machine', help='Make recipe machine-specific as opposed to architecture-specific', action='store_true')
     parser_create.add_argument('-x', '--extract-to', metavar='EXTRACTPATH', help='Assuming source is a URL, fetch it and extract it to the directory specified as %(metavar)s')
     parser_create.add_argument('-V', '--version', help='Version to use within recipe (PV)')
+    parser_create.add_argument('-b', '--binary', help='Treat the source tree as something that should be installed verbatim (no compilation, same directory structure)', action='store_true')
     parser_create.set_defaults(func=create_recipe)
 

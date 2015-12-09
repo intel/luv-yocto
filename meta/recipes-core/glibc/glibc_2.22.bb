@@ -9,11 +9,11 @@ DEPENDS += "gperf-native kconfig-frontends-native"
 
 SRCREV ?= "a34d1c6afc86521d6ad17662a3b5362d8481514c"
 
-BRANCH ?= "release/${PV}/master"
+SRCBRANCH ?= "release/${PV}/master"
 
 GLIBC_GIT_URI ?= "git://sourceware.org/git/glibc.git"
 
-SRC_URI = "${GLIBC_GIT_URI};branch=${BRANCH};name=glibc \
+SRC_URI = "${GLIBC_GIT_URI};branch=${SRCBRANCH};name=glibc \
            file://0004-Backport-https-sourceware.org-ml-libc-ports-2007-12-.patch \
            file://0005-fsl-e500-e5500-e6500-603e-fsqrt-implementation.patch \
            file://0006-readlib-Add-OECORE_KNOWN_INTERPRETER_NAMES-to-known-.patch \
@@ -38,6 +38,7 @@ SRC_URI = "${GLIBC_GIT_URI};branch=${BRANCH};name=glibc \
            file://0025-eglibc-Install-PIC-archives.patch \
            file://0026-eglibc-dl_debug_mask-is-controlled-by-__OPTION_EGLIB.patch \
            file://0027-eglibc-use-option-groups-Conditionally-exclude-c-tes.patch \
+           file://nscd-no-bash.patch \
 "
 
 SRC_URI += "\
@@ -49,6 +50,7 @@ SRC_URI_append_class-nativesdk = "\
            file://0001-nativesdk-glibc-Look-for-host-system-ld.so.cache-as-.patch \
            file://0002-nativesdk-glibc-Fix-buffer-overrun-with-a-relocated-.patch \
            file://0003-nativesdk-glibc-Raise-the-size-of-arrays-containing-.patch \
+           file://use_64bit_atomics.patch \
 "
 
 S = "${WORKDIR}/git"

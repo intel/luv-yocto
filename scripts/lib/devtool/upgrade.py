@@ -29,7 +29,7 @@ import errno
 import bb
 import oe.recipeutils
 from devtool import standard
-from devtool import exec_build_env_command, setup_tinfoil, DevtoolError, parse_recipe
+from devtool import exec_build_env_command, setup_tinfoil, DevtoolError, parse_recipe, use_external_build
 
 logger = logging.getLogger('devtool')
 
@@ -53,7 +53,7 @@ def _copy_source_code(orig, dest):
         dest_dir = os.path.join(dest, os.path.dirname(path))
         bb.utils.mkdirhier(dest_dir)
         dest_path = os.path.join(dest, path)
-        os.rename(os.path.join(orig, path), dest_path)
+        shutil.move(os.path.join(orig, path), dest_path)
 
 def _get_checksums(rf):
     import re
@@ -126,21 +126,6 @@ def _rename_recipe_files(bpn, oldpv, newpv, path):
     _rename_recipe_dirs(oldpv, newpv, path)
     return _rename_recipe_file(bpn, oldpv, newpv, path)
 
-def _use_external_build(same_dir, no_same_dir, d):
-    b_is_s = True
-    if no_same_dir:
-        logger.info('using separate build directory since --no-same-dir specified')
-        b_is_s = False
-    elif same_dir:
-        logger.info('using source tree as build directory since --same-dir specified')
-    elif bb.data.inherits_class('autotools-brokensep', d):
-        logger.info('using source tree as build directory since original recipe inherits autotools-brokensep')
-    elif d.getVar('B', True) == os.path.abspath(d.getVar('S', True)):
-        logger.info('using source tree as build directory since that is the default for this recipe')
-    else:
-        b_is_s = False
-    return b_is_s
-
 def _write_append(rc, srctree, same_dir, no_same_dir, rev, workspace, d):
     """Writes an append file"""
     if not os.path.exists(rc):
@@ -161,7 +146,8 @@ def _write_append(rc, srctree, same_dir, no_same_dir, rev, workspace, d):
         f.write(('# NOTE: We use pn- overrides here to avoid affecting'
                  'multiple variants in the case where the recipe uses BBCLASSEXTEND\n'))
         f.write('EXTERNALSRC_pn-%s = "%s"\n' % (pn, srctree))
-        if _use_external_build(same_dir, no_same_dir, d):
+        b_is_s = use_external_build(same_dir, no_same_dir, d)
+        if b_is_s:
             f.write('EXTERNALSRC_BUILD_pn-%s = "%s"\n' % (pn, srctree))
         if rev:
             f.write('\n# initial_rev: %s\n' % rev)
@@ -308,13 +294,19 @@ def upgrade(args, config, basepath, workspace):
     if reason:
         raise DevtoolError(reason)
 
-    tinfoil = setup_tinfoil()
+    tinfoil = setup_tinfoil(basepath=basepath)
 
     rd = parse_recipe(config, tinfoil, args.recipename, True)
     if not rd:
         return 1
 
-    standard._check_compatible_recipe(args.recipename, rd)
+    pn = rd.getVar('PN', True)
+    if pn != args.recipename:
+        logger.info('Mapping %s to %s' % (args.recipename, pn))
+    if pn in workspace:
+        raise DevtoolError("recipe %s is already in your workspace" % pn)
+
+    standard._check_compatible_recipe(pn, rd)
     if rd.getVar('PV', True) == args.version and rd.getVar('SRCREV', True) == args.srcrev:
         raise DevtoolError("Current and upgrade versions are the same version" % version)
 
@@ -329,11 +321,11 @@ def upgrade(args, config, basepath, workspace):
         _upgrade_error(e, rf, args.srctree)
     except DevtoolError as e:
         _upgrade_error(e, rf, args.srctree)
-    standard._add_md5(config, args.recipename, os.path.dirname(rf))
+    standard._add_md5(config, pn, os.path.dirname(rf))
 
     af = _write_append(rf, args.srctree, args.same_dir, args.no_same_dir, rev2,
                        config.workspace_path, rd)
-    standard._add_md5(config, args.recipename, af)
+    standard._add_md5(config, pn, af)
     logger.info('Upgraded source extracted to %s' % args.srctree)
     return 0
 

@@ -105,7 +105,7 @@ autotools_preconfigure() {
 			if [ "${S}" != "${B}" ]; then
 				echo "Previously configured separate build directory detected, cleaning ${B}"
 				rm -rf ${B}
-				mkdir ${B}
+				mkdir -p ${B}
 			else
 				# At least remove the .la files since automake won't automatically
 				# regenerate them even if CFLAGS/LDFLAGS are different
@@ -168,9 +168,9 @@ python autotools_copy_aclocals () {
             for datadep in data[3]:
                 if datadep in done:
                     continue
-                done.append(datadep)
                 if (not data[0].endswith("-native")) and taskdepdata[datadep][0].endswith("-native") and dep != start:
                     continue
+                done.append(datadep)
                 new.append(datadep)
                 if taskdepdata[datadep][1] == "do_configure":
                     configuredeps.append(taskdepdata[datadep][0])
