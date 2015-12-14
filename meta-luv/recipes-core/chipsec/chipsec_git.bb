@@ -7,9 +7,10 @@ LICENSE = "GPLv2"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=8c16666ae6c159876a0ba63099614381"
 
 SRC_URI = "git://github.com/chipsec/chipsec.git \
-    file://0005-tool-setup.py-Delete-Windows-drivers-from-data_files.patch \
     file://0006-drivers-linux-Don-t-build-userland-app-automatically.patch \
-    file://chipsec file://luv-parser-chipsec"
+    file://chipsec file://luv-parser-chipsec \
+    file://fix-setup.py-for-Linux.patch \
+    "
 
 SRCREV="20cc5a30675548a764dadfe0dc677a283816906c"
 PV="1.2.2"
