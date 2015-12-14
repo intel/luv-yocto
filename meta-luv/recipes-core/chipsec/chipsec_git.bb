@@ -10,6 +10,7 @@ SRC_URI = "git://github.com/chipsec/chipsec.git \
     file://0006-drivers-linux-Don-t-build-userland-app-automatically.patch \
     file://chipsec file://luv-parser-chipsec \
     file://fix-setup.py-for-Linux.patch \
+    file://chipsec-setup-install-cores-library-under-helper-lin.patch \
     "
 
 SRCREV="20cc5a30675548a764dadfe0dc677a283816906c"
@@ -80,3 +81,4 @@ do_install_append() {
 LUV_TEST_LOG_PARSER="luv-parser-chipsec"
 
 FILES_${PN} += "/lib/modules/${KERNEL_VERSION}/extra/chipsec.ko"
+FILES_${PN}-dbg +="${libdir}/${PYTHON_DIR}/site-packages/${PN}/helper/linux/.debug"
