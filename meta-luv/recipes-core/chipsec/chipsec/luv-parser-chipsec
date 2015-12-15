@@ -3,6 +3,8 @@
 # Parse the output of chipsec and write a luv-test-manager compatible
 # log to stdout.
 
+sed 's/\x1B\[[0-9][0-9]*m//g' |
+
 awk ' /\[\+\] imported/ {
 	test_strs[$3] = 1;
 }
