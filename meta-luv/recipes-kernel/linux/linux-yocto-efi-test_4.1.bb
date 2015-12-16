@@ -59,6 +59,7 @@ require recipes-kernel/linux/linux-yocto.inc
 # tree if you do not want to build from Linus' tree.
 SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/mfleming/efi.git;protocol=git;branch=${KBRANCH};name=machine"
 SRC_URI += "file://defconfig"
+SRC_URI += "file://x86-efi-Fix-boot-crash-by-mapping-EFI-memmap-entries.patch"
 
 # While building for AArch64 architecture fetch latest Linus' tree
 # and apply default config, which includes ACPI options enabled.

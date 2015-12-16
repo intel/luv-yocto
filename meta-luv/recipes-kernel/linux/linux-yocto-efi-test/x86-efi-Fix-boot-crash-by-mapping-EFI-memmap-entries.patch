@@ -1,0 +1,174 @@
+From a5caa209ba9c29c6421292e7879d2387a2ef39c9 Mon Sep 17 00:00:00 2001
+From: Matt Fleming <matt.fleming@intel.com>
+Date: Fri, 25 Sep 2015 23:02:18 +0100
+Subject: [PATCH] x86/efi: Fix boot crash by mapping EFI memmap entries
+ bottom-up at runtime, instead of top-down
+
+Beginning with UEFI v2.5 EFI_PROPERTIES_TABLE was introduced
+that signals that the firmware PE/COFF loader supports splitting
+code and data sections of PE/COFF images into separate EFI
+memory map entries. This allows the kernel to map those regions
+with strict memory protections, e.g. EFI_MEMORY_RO for code,
+EFI_MEMORY_XP for data, etc.
+
+Unfortunately, an unwritten requirement of this new feature is
+that the regions need to be mapped with the same offsets
+relative to each other as observed in the EFI memory map. If
+this is not done crashes like this may occur,
+
+  BUG: unable to handle kernel paging request at fffffffefe6086dd
+  IP: [<fffffffefe6086dd>] 0xfffffffefe6086dd
+  Call Trace:
+   [<ffffffff8104c90e>] efi_call+0x7e/0x100
+   [<ffffffff81602091>] ? virt_efi_set_variable+0x61/0x90
+   [<ffffffff8104c583>] efi_delete_dummy_variable+0x63/0x70
+   [<ffffffff81f4e4aa>] efi_enter_virtual_mode+0x383/0x392
+   [<ffffffff81f37e1b>] start_kernel+0x38a/0x417
+   [<ffffffff81f37495>] x86_64_start_reservations+0x2a/0x2c
+   [<ffffffff81f37582>] x86_64_start_kernel+0xeb/0xef
+
+Here 0xfffffffefe6086dd refers to an address the firmware
+expects to be mapped but which the OS never claimed was mapped.
+The issue is that included in these regions are relative
+addresses to other regions which were emitted by the firmware
+toolchain before the "splitting" of sections occurred at
+runtime.
+
+Needless to say, we don't satisfy this unwritten requirement on
+x86_64 and instead map the EFI memory map entries in reverse
+order. The above crash is almost certainly triggerable with any
+kernel newer than v3.13 because that's when we rewrote the EFI
+runtime region mapping code, in commit d2f7cbe7b26a ("x86/efi:
+Runtime services virtual mapping"). For kernel versions before
+v3.13 things may work by pure luck depending on the
+fragmentation of the kernel virtual address space at the time we
+map the EFI regions.
+
+Instead of mapping the EFI memory map entries in reverse order,
+where entry N has a higher virtual address than entry N+1, map
+them in the same order as they appear in the EFI memory map to
+preserve this relative offset between regions.
+
+This patch has been kept as small as possible with the intention
+that it should be applied aggressively to stable and
+distribution kernels. It is very much a bugfix rather than
+support for a new feature, since when EFI_PROPERTIES_TABLE is
+enabled we must map things as outlined above to even boot - we
+have no way of asking the firmware not to split the code/data
+regions.
+
+In fact, this patch doesn't even make use of the more strict
+memory protections available in UEFI v2.5. That will come later.
+
+Suggested-by: Ard Biesheuvel <ard.biesheuvel@linaro.org>
+Reported-by: Ard Biesheuvel <ard.biesheuvel@linaro.org>
+Signed-off-by: Matt Fleming <matt.fleming@intel.com>
+Cc: <stable@vger.kernel.org>
+Cc: Borislav Petkov <bp@suse.de>
+Cc: Chun-Yi <jlee@suse.com>
+Cc: Dave Young <dyoung@redhat.com>
+Cc: H. Peter Anvin <hpa@zytor.com>
+Cc: James Bottomley <JBottomley@Odin.com>
+Cc: Lee, Chun-Yi <jlee@suse.com>
+Cc: Leif Lindholm <leif.lindholm@linaro.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Matthew Garrett <mjg59@srcf.ucam.org>
+Cc: Mike Galbraith <efault@gmx.de>
+Cc: Peter Jones <pjones@redhat.com>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: linux-kernel@vger.kernel.org
+Link: http://lkml.kernel.org/r/1443218539-7610-2-git-send-email-matt@codeblueprint.co.uk
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+---
+ arch/x86/platform/efi/efi.c | 67 ++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 66 insertions(+), 1 deletion(-)
+
+diff --git a/arch/x86/platform/efi/efi.c b/arch/x86/platform/efi/efi.c
+index 1db84c0..6a28ded 100644
+--- a/arch/x86/platform/efi/efi.c
++++ b/arch/x86/platform/efi/efi.c
+@@ -705,6 +705,70 @@ out:
+ }
+ 
+ /*
++ * Iterate the EFI memory map in reverse order because the regions
++ * will be mapped top-down. The end result is the same as if we had
++ * mapped things forward, but doesn't require us to change the
++ * existing implementation of efi_map_region().
++ */
++static inline void *efi_map_next_entry_reverse(void *entry)
++{
++	/* Initial call */
++	if (!entry)
++		return memmap.map_end - memmap.desc_size;
++
++	entry -= memmap.desc_size;
++	if (entry < memmap.map)
++		return NULL;
++
++	return entry;
++}
++
++/*
++ * efi_map_next_entry - Return the next EFI memory map descriptor
++ * @entry: Previous EFI memory map descriptor
++ *
++ * This is a helper function to iterate over the EFI memory map, which
++ * we do in different orders depending on the current configuration.
++ *
++ * To begin traversing the memory map @entry must be %NULL.
++ *
++ * Returns %NULL when we reach the end of the memory map.
++ */
++static void *efi_map_next_entry(void *entry)
++{
++	if (!efi_enabled(EFI_OLD_MEMMAP) && efi_enabled(EFI_64BIT)) {
++		/*
++		 * Starting in UEFI v2.5 the EFI_PROPERTIES_TABLE
++		 * config table feature requires us to map all entries
++		 * in the same order as they appear in the EFI memory
++		 * map. That is to say, entry N must have a lower
++		 * virtual address than entry N+1. This is because the
++		 * firmware toolchain leaves relative references in
++		 * the code/data sections, which are split and become
++		 * separate EFI memory regions. Mapping things
++		 * out-of-order leads to the firmware accessing
++		 * unmapped addresses.
++		 *
++		 * Since we need to map things this way whether or not
++		 * the kernel actually makes use of
++		 * EFI_PROPERTIES_TABLE, let's just switch to this
++		 * scheme by default for 64-bit.
++		 */
++		return efi_map_next_entry_reverse(entry);
++	}
++
++	/* Initial call */
++	if (!entry)
++		return memmap.map;
++
++	entry += memmap.desc_size;
++	if (entry >= memmap.map_end)
++		return NULL;
++
++	return entry;
++}
++
++/*
+  * Map the efi memory ranges of the runtime services and update new_mmap with
+  * virtual addresses.
+  */
+@@ -714,7 +778,8 @@ static void * __init efi_map_regions(int *count, int *pg_shift)
+ 	unsigned long left = 0;
+ 	efi_memory_desc_t *md;
+ 
+-	for (p = memmap.map; p < memmap.map_end; p += memmap.desc_size) {
++	p = NULL;
++	while ((p = efi_map_next_entry(p))) {
+ 		md = p;
+ 		if (!(md->attribute & EFI_MEMORY_RUNTIME)) {
+ #ifdef CONFIG_X86_64
+-- 
+1.9.1
+
