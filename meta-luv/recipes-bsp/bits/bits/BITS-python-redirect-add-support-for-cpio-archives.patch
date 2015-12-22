@@ -1,0 +1,225 @@
+From 8551dbed7f5041628fea7ce8777bd94855b9917c Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Wed, 23 Dec 2015 15:30:12 -0800
+Subject: [PATCH] python: redirect: add support for cpio archives
+
+The cpio archive format allows to save files sequentially in a fairly simple
+manner. Furthemore, using a cpio archive is a convenient way of passing
+filesystems to Linux. The purpose of adding support for cpio is to write the
+log results into a file that can be passed as a ramdisk to Linux. The log file
+can be examined from Linux by simply opening the file in a predetermined
+location; no disk mountings involved. This especially useful with netboot;
+in which there are no disk to save logs.
+
+The support provided by this implementation is rather primitive. Given a cpio
+archive, functions are provided to determine if a given file is present in the
+archive. If found, the beginning of the file is given as an offset from the
+beginning of the archive. The size of the file is also given to make sure that
+no writes are done beyond the boundaries of the file. This cpio support is added
+to the redirect module via a new write_logfile_cpio that takes as arguments
+the name of the cpio archive as well as the file within the archive to which
+logs will be written to.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ bits/python/cpio.py     | 134 ++++++++++++++++++++++++++++++++++++++++++++++++
+ bits/python/redirect.py |  35 +++++++++++++
+ 2 files changed, 169 insertions(+)
+ create mode 100644 bits/python/cpio.py
+
+diff --git a/python/cpio.py b/python/cpio.py
+new file mode 100644
+index 0000000..b6c9437
+--- /dev/null
++++ b/python/cpio.py
+@@ -0,0 +1,134 @@
++# Copyright (c) 2015, Intel Corporation
++# All rights reserved.
++#
++# Redistribution and use in source and binary forms, with or without
++# modification, are permitted provided that the following conditions are met:
++#
++#     * Redistributions of source code must retain the above copyright notice,
++#       this list of conditions and the following disclaimer.
++#     * Redistributions in binary form must reproduce the above copyright notice,
++#       this list of conditions and the following disclaimer in the documentation
++#       and/or other materials provided with the distribution.
++#     * Neither the name of Intel Corporation nor the names of its contributors
++#       may be used to endorse or promote products derived from this software
++#       without specific prior written permission.
++#
++# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
++# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
++# ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
++# ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++
++"""cpio module."""
++
++"""CPIO starting sequences"""
++CPIO_NEWC_MAGIC = '070701'
++CPIO_NEWC_MAGIC2 = '070702'
++
++"""Offsets in bytes from the beginning of the header"""
++CPIO_NEWC_HDR_OFF_MAGIC    = 0
++CPIO_NEWC_HDR_OFF_INO      = 6
++CPIO_NEWC_HDR_OFF_MODE     = 14
++CPIO_NEWC_HDR_OFF_UID      = 22
++CPIO_NEWC_HDR_OFF_GID      = 30
++CPIO_NEWC_HDR_OFF_NLINK    = 38
++CPIO_NEWC_HDR_OFF_MTIME    = 46
++CPIO_NEWC_HDR_OFF_FILESIZE = 54
++CPIO_NEWC_HDR_OFF_MAJ      = 62
++CPIO_NEWC_HDR_OFF_MIN      = 70
++CPIO_NEWC_HDR_OFF_RMAJ     = 78
++CPIO_NEWC_HDR_OFF_RMIN     = 86
++CPIO_NEWC_HDR_OFF_NAMELEN  = 94
++CPIO_NEWC_HDR_OFF_CHKSUM   = 102
++CPIO_NEWC_HDR_OFF_END      = 110
++
++def align_up (x):
++    """Given x, align to the next greater 4 boundary"""
++    mod = x % 4
++    align = 0
++    if (mod != 0):
++        align = 4 - mod
++    return x + align
++
++def check_header(data):
++    """Minimum check to verify that the header has the expected size
++    and has any of the magic numbers"""
++    if ((len(data) < CPIO_NEWC_HDR_OFF_END) \
++        | ((data[:6] != CPIO_NEWC_MAGIC)  & (data[:6] != CPIO_NEWC_MAGIC2))):
++        raise ValueError ("invalid header! size: %r magic%r" % (len(data), data[:6]))
++
++def get_filename (data):
++    """Given a valid CPIO archive, return the filename found after the
++    first header. if any. data should start with a valid CPIO header"""
++    check_header(data)
++    namelen = 0
++    for j, k  in enumerate(range (CPIO_NEWC_HDR_OFF_NAMELEN, \
++                                  CPIO_NEWC_HDR_OFF_CHKSUM)):
++        try:
++            namelen |= int(data[k], 16)<< 4*(7-j)
++        except ValueError:
++            raise ValueError ("Invalid file name length in header!")
++    if (len(data) < CPIO_NEWC_HDR_OFF_END + namelen):
++        raise BufferError ("No spaces in file for filename")
++
++    return data[CPIO_NEWC_HDR_OFF_END:CPIO_NEWC_HDR_OFF_END+namelen]
++
++def get_filesize(data):
++    """Given a valid CPIO archive, return the file size give in data. data
++    should start with a valid CPIO header"""
++    check_header(data)
++    filesize = 0
++    for j, k  in enumerate(range (CPIO_NEWC_HDR_OFF_FILESIZE, \
++                                  CPIO_NEWC_HDR_OFF_MAJ)):
++        try:
++            filesize |= int(data[k], 16)<< 4*(7-j)
++        except ValueError:
++	    raise ValueError ("Invalid file size in header!")
++
++    return filesize
++
++def get_next_header_pos(data):
++    """If data starts with a valid CPIO header, find the position within
++    data of the next valid CPIO header"""
++    check_header(data)
++    nex = CPIO_NEWC_HDR_OFF_END
++    nex += len(get_filename(data))
++    nex = align_up(nex)
++    nex += get_filesize(data)
++    return align_up(nex)
++
++def get_file_start(data):
++    """If data starts with a valid CPIO header, find the start position within
++    data of the file described by the header"""
++    check_header(data)
++    nex = CPIO_NEWC_HDR_OFF_END
++    nex += len(get_filename(data))
++    return align_up(nex)
++
++def find_file_pos_size (data, fname):
++    """If data is a valid CPIO archive, find a file with name fname within
++    the archive. Return the file's start position and size within the data
++    archive"""
++    name =''
++    data_idx = 0
++    while (data_idx < len(data)):
++        name = get_filename(data[data_idx:])
++        name = name[:-1]
++        nex  = get_next_header_pos(data[data_idx:])
++        if ((name == 'TRAILER!!!') | (name == fname)):
++            break
++        data_idx += nex
++
++    # found the requested file
++    if (name == fname):
++        fsize = get_filesize(data[data_idx:])
++        fstart = data_idx
++        fstart += get_file_start(data[data_idx:])
++        return (fstart, fsize)
++    else:
++        return (-1, 0)
+diff --git a/python/redirect.py b/python/redirect.py
+index b4ad50e..4bb460a 100644
+--- a/python/redirect.py
++++ b/python/redirect.py
+@@ -32,6 +32,7 @@ import struct as _struct
+ import sys as _sys
+ import bitsversion
+ import contextlib
++import cpio
+ 
+ __all__ = ["redirect", "write_logfile", "clear", "log", "logonly", "nolog"]
+ 
+@@ -65,6 +66,40 @@ def write_logfile(filename):
+             _bits.disk_write(f, sector, offset, logdata[bytes_written:bytes_written+length])
+         bytes_written += length
+ 
++def write_logfile_cpio(cpio_archive, filename):
++    f = file(cpio_archive)
++    data, blocks = _bits.file_data_and_disk_blocks(f)
++
++    f_start, f_size = cpio.find_file_pos_size(data, filename)
++
++    if (f_start == -1):
++        print >>_log, "bits-log.txt not found in archive! Cannot write log."
++        return
++
++    if (f_size == 0):
++        print >>_log, "bits-log.txt size in archive is zero! Cannot write log."
++        return
++
++    '''
++    data contains the full archive and the archive is rewritten in full. Thus
++    the contents that go before and after the f_start and f_start+f_size need
++    to also be included in logdata.
++    '''
++    logdata = data[:f_start]
++    logdata += _log.getvalue()[:f_size].ljust(f_size, "\n")
++    logdata += data[f_start+f_size:]
++    bytes_written = 0
++    for sector, offset, length in blocks:
++        chunk = logdata[bytes_written:bytes_written+length]
++        if chunk != data[bytes_written:bytes_written+length]:
++            _bits.disk_write(f, sector, offset, logdata[bytes_written:bytes_written+length])
++        bytes_written += length
++
++    # check that the archive is valid after writing log
++    f_start, f_size = cpio.find_file_pos_size(data, "TRAILER!!!")
++    if (f_start == -1):
++        print 'CPIO archive is corrupted!'
++
+ def _log_header():
+     print >>_log, "BIOS Implementation Test Suite (BITS)"
+     print >>_log, "bits-{}, build ID {}".format(bitsversion.buildnum, bitsversion.buildid)
+-- 
+1.9.1
+
