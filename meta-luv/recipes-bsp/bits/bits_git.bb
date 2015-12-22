@@ -36,6 +36,7 @@ SRC_URI = "gitsm://github.com/biosbits/bits.git;protocol=http  \
            file://BITS-bits-cfg.txt-Set-batch-mode.patch \
            file://BITS-init.cfg-Exit-BITS-upon-completion.patch \
            file://BITS-use-multiple-parallel-jobs-when-building.patch \
+           file://BITS-python-redirect-add-support-for-cpio-archives.patch \
            file://luv-test-bits \
            file://luv-parser-bits \
            file://0001-only-output-to-log.patch;apply=no \
