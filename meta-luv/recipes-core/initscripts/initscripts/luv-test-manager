@@ -24,6 +24,12 @@ if [ $? -ne 1 ]; then
     exit 0
 fi
 
+grep -q luv\.netboot /proc/cmdline
+if [ $? -eq 0 ]; then
+    echo "LUV booted from network..."
+    LUVNETBOOT="1"
+fi
+
 FIFO="/mnt/.psplash/psplash_fifo"
 psplash_write() {
     if [ -e $FIFO ]; then
@@ -66,35 +72,50 @@ write_html_file()
     echo "</html>" >> $html
 }
 
-# Save test results to a disk. In order to reliable identify the
+# Test can be saved either to a disk or, when booting from the network,
+# to a temporary location to be subsequently sent to a remote
+# system for inspection.
+# When saving to disk, in order to reliably identify the
 # correct partition, mount using the disk's UUID. If the partition
 # cannot be mounted, test execution is aborted.
 # Also, if the space left on disk is less than 2MB, abort.
 
-ls /dev/disk/by-uuid | grep -q ${LUV_STORAGE_UUID}
-if [ $? -eq 1 ] ; then
-    psplash_write " MSG $alert_missing_partition "
-    if [ -e $FIFO ]; then
-        umount -l /mnt/.psplash
+# booted from disk
+if [ -z ${LUVNETBOOT} ]; then
+    ls /dev/disk/by-uuid | grep -q ${LUV_STORAGE_UUID}
+    if [ $? -eq 1 ] ; then
+        psplash_write " MSG $alert_missing_partition "
+        if [ -e $FIFO ]; then
+            umount -l /mnt/.psplash
+        fi
+        exit
     fi
-    exit
-fi
 
-mkdir -p ${LUV_STORAGE}
-if [ $? -eq 0 ]; then
-    mount /dev/disk/by-uuid/${LUV_STORAGE_UUID} ${LUV_STORAGE}
+    mkdir -p ${LUV_STORAGE}
     if [ $? -eq 0 ]; then
+        mount /dev/disk/by-uuid/${LUV_STORAGE_UUID} ${LUV_STORAGE}
+        if [ $? -eq 0 ]; then
 
-        # check if there is enough space on disk
-        m=$(df | grep ${LUV_STORAGE} | awk '{print $4}')
-        if [ $m -le ${LUV_STORAGE_MIN_AVAIL} ] ; then
-            psplash_write " MSG $alert_disk_is_full "
-            if [ -e $FIFO ]; then
-                umount -l /mnt/.psplash
+            # check if there is enough space on disk
+            m=$(df | grep ${LUV_STORAGE} | awk '{print $4}')
+            if [ $m -le ${LUV_STORAGE_MIN_AVAIL} ] ; then
+                psplash_write " MSG $alert_disk_is_full "
+                if [ -e $FIFO ]; then
+                    umount -l /mnt/.psplash
+                fi
+                exit
             fi
-            exit
         fi
     fi
+
+    mkdir -p ${LUV_EFI}
+    if [ $? -eq 0 ]; then
+        mount /dev/disk/by-uuid/${LUV_EFI_UUID} ${LUV_EFI}
+    fi
+# booted from network
+else
+    LUV_STORAGE=/tmp/luv-storage
+    mkdir -p ${LUV_STORAGE}
 fi
 
 tstamp=$(date +"%Y-%m-%d--%H-%M-%S")
@@ -110,11 +131,6 @@ mkdir -p ${LUV_SAVE_RESULTS_DIR}raw/
 
 mkdir -p ${LUV_SAVE_RESULTS_DIR}parsed/
 [ $? -eq 0 ] && LUV_SAVE_PARSED_DIR=${LUV_SAVE_RESULTS_DIR}parsed
-
-mkdir -p ${LUV_EFI}
-if [ $? -eq 0 ]; then
-    mount /dev/disk/by-uuid/${LUV_EFI_UUID} ${LUV_EFI}
-fi
 
 psplash_write "MSG Running tests..."
 
