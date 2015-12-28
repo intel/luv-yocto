@@ -12,4 +12,6 @@ if [ ! -e $bits_log ]; then
 fi
 
 cat $bits_log
-#rm $bits_log
+
+# create a new emtpy log file to use when rebooting
+yes '' | head -c 524288 > ${EFI_PATH}/boot/bits-log.txt
