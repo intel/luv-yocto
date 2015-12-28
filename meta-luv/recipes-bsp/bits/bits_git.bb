@@ -45,6 +45,7 @@ S = "${WORKDIR}/git"
 
 DEPENDS = "virtual/gettext autogen-native gettext-native sqlite3-native zip-native \
            xorriso-native bits-native bits-python-native"
+RDEPENDS_${PN}_class-target = "coreutils"
 
 COMPATIBLE_HOST = '(x86_64.*|i.86.*)-(linux|freebsd.*)'
 
