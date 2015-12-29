@@ -1,0 +1,174 @@
+From 3ccfd71eada97255315e373fe2e0a12ea776a1e3 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Mon, 30 Nov 2015 04:02:05 -0800
+Subject: [PATCH] grub: core: handle EFI loaded options
+
+The EFI Loaded Image protocol interface structure described in the UEFI
+specification contains a LoadOptions member that can be used to obtain
+data that is relevant to the loaded image. This LoadOptions is used by
+the grub EFI chainloader to pass command line arguments to the loaded
+image. This functionality can be extended to contain not only a string
+of command line arguments but also other binary data that could be
+used by the chainloaded grub.
+
+A new grub_loader_options is included that contains both the command line
+string and a grub_disk_dev. Adding a grub_disk_dev can be useful if,
+for instance, the chainloaded grub needs to access a memory disk owned
+by the chainloader.
+
+Even though the grub EFI chainloader passes LoadOptions to the loaded
+image, the chainloaded grub does not handle such options. This is now
+done as soon after grub_efi_init is called (from grub_machine_init).
+
+At the moment this grub implementation only needs the grub_disk_dev and
+this is the only option handled. The command line arguments are not parsed.
+
+Of course, the grub used to chainload this grub needs to be updated
+to support the grub_loader_options.
+
+In order to not break BIOS builds, a dummy grub_get_cmmdline is defined.
+
+TODO: grub_get_cmdline is a silly name as we never parse the commandline.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ deps/grub/grub-core/kern/efi/init.c      | 22 ++++++++++++++++++++++
+ deps/grub/grub-core/kern/i386/efi/init.c |  6 ++++++
+ deps/grub/grub-core/kern/i386/pc/init.c  |  6 ++++++
+ deps/grub/grub-core/kern/main.c          |  3 +++
+ deps/grub/include/grub/efi/efi.h         |  1 +
+ deps/grub/include/grub/kernel.h          |  3 +++
+ deps/grub/include/grub/loader.h          |  9 +++++++++
+ 7 files changed, 50 insertions(+)
+
+diff --git a/deps/grub/grub-core/kern/efi/init.c b/deps/grub/grub-core/kern/efi/init.c
+index 942ab02..d81e64f 100644
+--- a/deps/grub/grub-core/kern/efi/init.c
++++ b/deps/grub/grub-core/kern/efi/init.c
+@@ -25,6 +25,7 @@
+ #include <grub/env.h>
+ #include <grub/mm.h>
+ #include <grub/kernel.h>
++#include <grub/loader.h>
+ 
+ grub_addr_t grub_modbase;
+ 
+@@ -75,3 +76,24 @@ grub_efi_fini (void)
+   grub_efidisk_fini ();
+   grub_console_fini ();
+ }
++
++void
++grub_efi_get_loaded_image_options (void)
++{
++  grub_efi_loaded_image_t *loaded_image;
++  grub_loader_options_t *loader_options;
++
++  loaded_image = grub_efi_get_loaded_image (grub_efi_image_handle);
++  if (! loaded_image)
++    {
++      grub_printf ("Unable to obtain loaded image handle!");
++      return;
++    }
++
++  loader_options = loaded_image->load_options;
++  if (! loader_options)
++    return;
++
++  if (loader_options->disk_dev)
++    grub_disk_dev_register (loader_options->disk_dev);
++}
+diff --git a/deps/grub/grub-core/kern/i386/efi/init.c b/deps/grub/grub-core/kern/i386/efi/init.c
+index 6bd8f3e..f8cf4b9 100644
+--- a/deps/grub/grub-core/kern/i386/efi/init.c
++++ b/deps/grub/grub-core/kern/i386/efi/init.c
+@@ -39,3 +39,9 @@ grub_machine_fini (void)
+ {
+   grub_efi_fini ();
+ }
++
++void
++grub_get_cmdline(void)
++{
++  grub_efi_get_loaded_image_options();
++}
+diff --git a/deps/grub/grub-core/kern/i386/pc/init.c b/deps/grub/grub-core/kern/i386/pc/init.c
+index 0841d8b..eeb76a4 100644
+--- a/deps/grub/grub-core/kern/i386/pc/init.c
++++ b/deps/grub/grub-core/kern/i386/pc/init.c
+@@ -228,6 +228,12 @@ grub_machine_init (void)
+ }
+ 
+ void
++grub_get_cmdline (void)
++{
++   grub_printf("Command line arguments are not supported!\n");
++}
++
++void
+ grub_machine_fini (void)
+ {
+   grub_console_fini ();
+diff --git a/deps/grub/grub-core/kern/main.c b/deps/grub/grub-core/kern/main.c
+index 3262444..f4dcf9f 100644
+--- a/deps/grub/grub-core/kern/main.c
++++ b/deps/grub/grub-core/kern/main.c
+@@ -210,6 +210,9 @@ grub_main (void)
+   /* First of all, initialize the machine.  */
+   grub_machine_init ();
+ 
++  /* Parse command line arguments if any */
++  grub_get_cmdline ();
++
+   /* Hello.  */
+   grub_setcolorstate (GRUB_TERM_COLOR_HIGHLIGHT);
+   grub_printf ("Welcome to GRUB!\n\n");
+diff --git a/deps/grub/include/grub/efi/efi.h b/deps/grub/include/grub/efi/efi.h
+index e67d92b..fa174a6 100644
+--- a/deps/grub/include/grub/efi/efi.h
++++ b/deps/grub/include/grub/efi/efi.h
+@@ -79,6 +79,7 @@ void grub_efi_mm_fini (void);
+ void grub_efi_init (void);
+ void grub_efi_fini (void);
+ void grub_efi_set_prefix (void);
++void grub_efi_get_loaded_image_options (void);
+ 
+ /* Variables.  */
+ extern grub_efi_system_table_t *EXPORT_VAR(grub_efi_system_table);
+diff --git a/deps/grub/include/grub/kernel.h b/deps/grub/include/grub/kernel.h
+index eef4c3f..e934a63 100644
+--- a/deps/grub/include/grub/kernel.h
++++ b/deps/grub/include/grub/kernel.h
+@@ -87,6 +87,9 @@ void grub_main (void) __attribute__ ((noreturn));
+ /* The machine-specific initialization. This must initialize memory.  */
+ void grub_machine_init (void);
+ 
++/* Parse command line options if they have been passed */
++void grub_get_cmdline (void);
++
+ /* The machine-specific finalization.  */
+ void EXPORT_FUNC(grub_machine_fini) (void);
+ 
+diff --git a/deps/grub/include/grub/loader.h b/deps/grub/include/grub/loader.h
+index 7f82a49..7b52c18 100644
+--- a/deps/grub/include/grub/loader.h
++++ b/deps/grub/include/grub/loader.h
+@@ -35,6 +35,15 @@ enum
+   GRUB_LOADER_FLAG_PXE_NOT_UNLOAD = 2,
+ };
+ 
++struct grub_loader_options
++{
++  struct grub_disk_dev *disk_dev;
++  grub_uint16_t *cmdline;
++  grub_uint64_t cmdline_size;
++};
++
++typedef struct grub_loader_options grub_loader_options_t;
++
+ void EXPORT_FUNC (grub_loader_set) (grub_err_t (*boot) (void),
+ 				    grub_err_t (*unload) (void),
+ 				    int flags);
+-- 
+1.9.1
+
