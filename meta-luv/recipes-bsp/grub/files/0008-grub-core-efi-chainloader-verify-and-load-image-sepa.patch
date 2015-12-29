@@ -1,0 +1,68 @@
+From bc3a8574fb400422f0e8eab1a3c21fb3a547d7eb Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Fri, 27 Nov 2015 06:02:55 -0800
+Subject: [PATCH 08/11] grub: core: efi: chainloader: verify and load image separetely
+
+grub_shim_load_image can be used used to load an UEFI application when the UEFI
+LoadImage boot services is not adequate for certain reasons: when image validity
+is not verified via UEFI Secure Boot but a different method (e.g, the
+verification protcol provided by the shim boot loader). Another good use of 
+grub_shim_load_image is to load images from a memdisk. In this case UEFI
+LoadImage cannot be used as it requires a DevicePath that maps to a physical
+disk. In such a case, the shim verification bootloader may not be present. Thus,
+the verification and the actual load of the image need to be done separately.
+
+If UEFI LoadImage returns with GRUB_EFI_SECURITY_VIOLATION, try to verify
+with grub_shim_verify. If successfull, load the image.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ grub-core/loader/efi/chainloader.c | 25 ++++++++++++-------------
+ 1 file changed, 12 insertions(+), 13 deletions(-)
+
+diff --git a/grub-core/loader/efi/chainloader.c b/grub-core/loader/efi/chainloader.c
+index d0ceb6e..b0028aa 100644
+--- a/grub-core/loader/efi/chainloader.c
++++ b/grub-core/loader/efi/chainloader.c
+@@ -466,13 +466,6 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
+   shim_used = 0;
+   shim_buffer = 0;
+ 
+-  status = grub_shim_verify (addr, size);
+-  if (status != GRUB_ERR_NONE)
+-    {
+-      grub_error (GRUB_ERR_BAD_OS, "shim verification failed");
+-      return GRUB_ERR_BAD_OS;
+-    }
+-
+   grub_memset(context, 0, sizeof(*context));
+   status = grub_shim_read_header (addr, size, context);
+   if (status != GRUB_ERR_NONE)
+@@ -870,12 +863,18 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
+       /* try with shim */
+       else if (status == GRUB_EFI_SECURITY_VIOLATION)
+         {
+-	  status = grub_shim_load_image (address, size, &context);
+-	  if (status != GRUB_EFI_SUCCESS)
+-	    {
+-	      grub_error (GRUB_ERR_BAD_OS, "shim cannot load image");
+-	      goto fail;
+-	    }
++          status = grub_shim_verify (address, size);
++          if (status != GRUB_EFI_SUCCESS)
++            {
++              grub_error (GRUB_ERR_BAD_OS, "shim verification failed");
++              goto fail;
++            }
++          status = grub_shim_load_image (address, size, &context);
++          if (status != GRUB_EFI_SUCCESS)
++            {
++              grub_error (GRUB_ERR_BAD_OS, "shim cannot load image");
++              goto fail;
++            }
+ 	}
+       else
+ 	{
+-- 
+1.9.1
+
