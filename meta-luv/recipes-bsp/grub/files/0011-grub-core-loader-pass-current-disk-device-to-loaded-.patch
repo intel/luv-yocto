@@ -1,0 +1,73 @@
+From e9f36c0f90c3cf5086be12bf81698fb50c311d62 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Tue, 29 Dec 2015 12:35:17 -0800
+Subject: [PATCH 11/11] grub: core: loader: pass current disk device to loaded image
+
+Pass the disk device in use by GRUB to the loaded image. This useful
+for the particular case of ramdisks so that they can be accessed
+by the loaded image.
+
+A backup copy of the disk device is saved so that it can be restored
+when the loaded image return to GRUB. This is useful the loaded image
+might have modified the device (e.g., add elements to the disk list
+that will not longer exist when returning to GRUB).
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ grub-core/loader/efi/chainloader.c | 19 ++++++++++++++++++-
+ 1 file changed, 18 insertions(+), 1 deletion(-)
+
+diff --git a/grub-core/loader/efi/chainloader.c b/grub-core/loader/efi/chainloader.c
+index 50c3b9a..553c40b 100644
+--- a/grub-core/loader/efi/chainloader.c
++++ b/grub-core/loader/efi/chainloader.c
+@@ -50,6 +50,7 @@ static grub_int32_t shim_used;
+ static grub_efi_physical_address_t shim_buffer;
+ static grub_efi_uintn_t shim_pages;
+ static grub_efi_loaded_image_t shim_li_bak;
++struct grub_disk_dev disk_dev_bak;
+ static grub_efi_status_t (*shim_entry_point) (grub_efi_handle_t image_handle,
+ 					      grub_efi_system_table_t *systab);
+ 
+@@ -611,6 +612,7 @@ grub_chainloader_boot (void)
+   grub_efi_uintn_t exit_data_size;
+   grub_efi_char16_t *exit_data = NULL;
+   grub_efi_loaded_image_t *loaded_image = NULL;
++  grub_device_t dev = 0;
+   grub_efi_status_t
+   (*saved_exit) (grub_efi_handle_t image_handle,
+ 		 grub_efi_status_t exit_status,
+@@ -637,6 +639,15 @@ grub_chainloader_boot (void)
+       else
+ 	/* restore loaded image */
+ 	grub_memcpy(loaded_image, &shim_li_bak, sizeof(shim_li_bak));
++
++      /* restore disk */
++      /* Get the root device's device path.  */
++      dev = grub_device_open (0);
++      if (! dev)
++        grub_printf("warn: could not find device!\n");
++      else
++        grub_memcpy(dev->disk->dev, &disk_dev_bak, sizeof(disk_dev_bak));
++
+     }
+   if (status != GRUB_EFI_SUCCESS)
+     {
+@@ -967,7 +978,13 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
+       loader_options->cmdline_size = 0;
+     }
+ 
+-  loader_options->disk_dev = 0;
++  /* backup disk in case is changed by callee */
++  grub_memcpy(&disk_dev_bak, dev->disk->dev, sizeof(disk_dev_bak));
++  /* only pass memdisks */
++  if (dev->disk->dev->id == GRUB_DISK_DEVICE_MEMDISK_ID)
++    loader_options->disk_dev = dev->disk->dev;
++  else
++    loader_options->disk_dev = 0;
+   loaded_image->load_options = loader_options;
+   loaded_image->load_options_size = sizeof(*loader_options);
+ 
+-- 
+1.9.1
+
