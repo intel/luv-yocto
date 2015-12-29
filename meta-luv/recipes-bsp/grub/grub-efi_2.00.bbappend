@@ -9,6 +9,7 @@ SRC_URI += "file://0001-pe32.h-add-header-structures-for-TE-and-DOS-executab.pat
            file://0007-efi-chainloader-take-care-of-unload-undershim.patch \
            file://0008-grub-core-efi-chainloader-verify-and-load-image-sepa.patch \
            file://0009-grub-core-loader-extend-loader-options.patch \
+           file://0010-grub-core-loader-add-support-for-memdisks.patch \
           "
 
 GRUB_BUILDIN = "boot linux ext2 fat serial part_msdos part_gpt \
