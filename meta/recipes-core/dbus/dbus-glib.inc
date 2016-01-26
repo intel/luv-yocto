@@ -26,7 +26,7 @@ EXTRA_OECONF = "--with-introspect-xml=${STAGING_DATADIR_NATIVE}/dbus/dbus-bus-in
                 --with-dbus-binding-tool=${STAGING_BINDIR_NATIVE}/dbus-binding-tool"
 EXTRA_OECONF_class-native = "--with-introspect-xml=${STAGING_DATADIR_NATIVE}/dbus/dbus-bus-introspect.xml"
 
-PACKAGES += "${PN}-bash-completion ${PN}-tests-dbg ${PN}-tests"
+PACKAGES += "${PN}-bash-completion ${PN}-tests"
 
 FILES_${PN} = "${libdir}/lib*${SOLIBS}"
 FILES_${PN}-bash-completion = "${sysconfdir}/bash_completion.d/dbus-bash-completion.sh \
@@ -36,8 +36,5 @@ FILES_${PN}-dev += "${bindir}/dbus-binding-tool"
 
 RDEPENDS_${PN}-tests += "dbus-x11"
 FILES_${PN}-tests = "${datadir}/${BPN}/tests"
-FILES_${PN}-tests-dbg = "${datadir}/${BPN}/tests/.debug/* \
-                         ${datadir}/${BPN}/tests/core/.debug/* \
-                         ${datadir}/${BPN}/tests/interfaces/.debug/*"
 
 BBCLASSEXTEND = "native"

@@ -64,6 +64,7 @@ if 'sqlite' in DATABASES['default']['ENGINE']:
 
 if 'DATABASE_URL' in os.environ:
     dburl = os.environ['DATABASE_URL']
+
     if dburl.startswith('sqlite3://'):
         result = re.match('sqlite3://(.*)', dburl)
         if result is None:
@@ -78,7 +79,7 @@ if 'DATABASE_URL' in os.environ:
         }
     elif dburl.startswith('mysql://'):
         # URL must be in this form: mysql://user:pass@host:port/name
-        result = re.match(r"mysql://([^:]*):([^@]*)@([^:]*):(\d+)/([^/]*)", dburl)
+        result = re.match(r"mysql://([^:]*):([^@]*)@([^:]*):(\d*)/([^/]*)", dburl)
         if result is None:
             raise Exception("ERROR: Could not read mysql database url: %s" % dburl)
         DATABASES['default'] = {
@@ -228,7 +229,7 @@ CACHES = {
     #        },
            'default': {
                'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
-               'LOCATION': '/tmp/django-default-cache',
+               'LOCATION': '/tmp/toaster_cache_%d' % os.getuid(),
                'TIMEOUT': 1,
             }
           }
@@ -276,7 +277,6 @@ INSTALLED_APPS = (
     'django.contrib.humanize',
     'bldcollector',
     'toastermain',
-    'south',
 )
 
 
@@ -399,12 +399,3 @@ class InvalidString(str):
             "Undefined variable or unknown value for: \"%s\"" % other)
 
 TEMPLATE_STRING_IF_INVALID = InvalidString("%s")
-
-import sys
-sys.path.append(
-    os.path.join(
-    os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "contrib"),
-            "django-aggregate-if-master")
-    )

@@ -67,6 +67,14 @@ class CollectionError(bb.BBHandledException):
 class state:
     initial, parsing, running, shutdown, forceshutdown, stopped, error = range(7)
 
+    @classmethod
+    def get_name(cls, code):
+        for name in dir(cls):
+            value = getattr(cls, name)
+            if type(value) == type(cls.initial) and value == code:
+                return name
+        raise ValueError("Invalid status code: %s" % code)
+
 
 class SkippedPackage:
     def __init__(self, info = None, reason = None):
@@ -717,7 +725,14 @@ class BBCooker:
         depend_tree["packages"] = {}
         depend_tree["rdepends-pkg"] = {}
         depend_tree["rrecs-pkg"] = {}
+        depend_tree['providermap'] = {}
         depend_tree["layer-priorities"] = self.recipecache.bbfile_config_priorities
+
+        for name, fn in taskdata.get_providermap().iteritems():
+            pn = self.recipecache.pkg_fn[fn]
+            if name != pn:
+                version = "%s:%s-%s" % self.recipecache.pkg_pepvpr[fn]
+                depend_tree['providermap'][name] = (pn, version)
 
         for task in xrange(len(rq.rqdata.runq_fnid)):
             taskname = rq.rqdata.runq_task[task]
@@ -1019,22 +1034,21 @@ class BBCooker:
 
     def findFilesMatchingInDir(self, filepattern, directory):
         """
-        Searches for files matching the regex 'pattern' which are children of
+        Searches for files containing the substring 'filepattern' which are children of
         'directory' in each BBPATH. i.e. to find all rootfs package classes available
         to BitBake one could call findFilesMatchingInDir(self, 'rootfs_', 'classes')
         or to find all machine configuration files one could call:
-        findFilesMatchingInDir(self, 'conf/machines', 'conf')
+        findFilesMatchingInDir(self, '.conf', 'conf/machine')
         """
 
         matches = []
-        p = re.compile(re.escape(filepattern))
         bbpaths = self.data.getVar('BBPATH', True).split(':')
         for path in bbpaths:
             dirpath = os.path.join(path, directory)
             if os.path.exists(dirpath):
                 for root, dirs, files in os.walk(dirpath):
                     for f in files:
-                        if p.search(f):
+                        if filepattern in f:
                             matches.append(f)
 
         if matches:
@@ -1072,7 +1086,7 @@ class BBCooker:
 
         for pfn in self.recipecache.pkg_fn:
             inherits = self.recipecache.inherits.get(pfn, None)
-            if inherits and inherits.count(klass) > 0:
+            if inherits and klass in inherits:
                 pkg_list.append(self.recipecache.pkg_fn[pfn])
 
         return pkg_list
@@ -1094,28 +1108,6 @@ class BBCooker:
         # generate a dependency tree for all our packages
         tree = self.generatePkgDepTreeData(pkgs, 'build')
         bb.event.fire(bb.event.TargetsTreeGenerated(tree), self.data)
-
-    def buildWorldTargetList(self):
-        """
-         Build package list for "bitbake world"
-        """
-        parselog.debug(1, "collating packages for \"world\"")
-        for f in self.recipecache.possible_world:
-            terminal = True
-            pn = self.recipecache.pkg_fn[f]
-
-            for p in self.recipecache.pn_provides[pn]:
-                if p.startswith('virtual/'):
-                    parselog.debug(2, "World build skipping %s due to %s provider starting with virtual/", f, p)
-                    terminal = False
-                    break
-                for pf in self.recipecache.providers[p]:
-                    if self.recipecache.pkg_fn[pf] != pn:
-                        parselog.debug(2, "World build skipping %s due to both us and %s providing %s", f, pf, p)
-                        terminal = False
-                        break
-            if terminal:
-                self.recipecache.world_target.add(pn)
 
     def interactiveMode( self ):
         """Drop off into a shell"""
@@ -1577,7 +1569,7 @@ class BBCooker:
                 parselog.warn("Explicit target \"%s\" is in ASSUME_PROVIDED, ignoring" % pkg)
 
         if 'world' in pkgs_to_build:
-            self.buildWorldTargetList()
+            bb.providers.buildWorldTargetList(self.recipecache)
             pkgs_to_build.remove('world')
             for t in self.recipecache.world_target:
                 pkgs_to_build.append(t)
@@ -2123,11 +2115,6 @@ class CookerParser(object):
             self.error += 1
             _, value, _ = sys.exc_info()
             logger.error('ExpansionError during parsing %s: %s', value.recipe, str(exc))
-            self.shutdown(clean=False)
-            return False
-        except SyntaxError as exc:
-            self.error += 1
-            logger.error('Unable to parse %s', exc.recipe)
             self.shutdown(clean=False)
             return False
         except Exception as exc:

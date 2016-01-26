@@ -29,9 +29,11 @@ inherit autotools pkgconfig
 B = "${S}/build.${HOST_SYS}.${TARGET_SYS}"
 
 FULL_OPTIMIZATION_armv7a = "-fexpensive-optimizations -fomit-frame-pointer -O4 -ffast-math"
+FULL_OPTIMIZATION_armv7ve = "-fexpensive-optimizations -fomit-frame-pointer -O4 -ffast-math"
 BUILD_OPTIMIZATION = "${FULL_OPTIMIZATION}"
 
 EXTRA_FFCONF_armv7a = "--cpu=cortex-a8"
+EXTRA_FFCONF_armv7ve = "--cpu=cortex-a8"
 EXTRA_FFCONF ?= ""
 
 PACKAGECONFIG ??= "avdevice avfilter avplay bzip2 gpl theora x264 ${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'x11', '', d)}"
@@ -97,7 +99,7 @@ do_install_append() {
     fi
 }
 
-PACKAGES += "${PN}-vhook-dbg ${PN}-vhook ffmpeg-x264-presets"
+PACKAGES += "${PN}-vhook ffmpeg-x264-presets"
 PACKAGES_DYNAMIC += "^lib(av(codec|device|filter|format|util)|swscale).*"
 
 RSUGGESTS_${PN} = "mplayer"
@@ -105,7 +107,6 @@ FILES_${PN} = "${bindir}"
 FILES_${PN}-dev = "${includedir}/${PN}"
 
 FILES_${PN}-vhook = "${libdir}/vhook"
-FILES_${PN}-vhook-dbg += "${libdir}/vhook/.debug"
 
 FILES_ffmpeg-x264-presets = "${datadir}/*.avpreset"
 

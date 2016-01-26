@@ -101,8 +101,7 @@ do_install_append() {
 }
 
 pkg_postinst_${PN}() {
-
-    [ "x\$D" == "x" ] && ldconfig
+    [ "x\$D" = "x" ] && ldconfig
     test -f ${localstatedir}/lib/rpm/Packages || rpm --initdb
     rm -f ${localstatedir}/lib/rpm/Filemd5s \
           ${localstatedir}/lib/rpm/Filedigests \
@@ -112,7 +111,7 @@ pkg_postinst_${PN}() {
 }
 
 pkg_postrm_${PN}() {
-    [ "x\$D" == "x" ] && ldconfig
+    [ "x\$D" = "x" ] && ldconfig
 
 }
 
@@ -124,11 +123,6 @@ FILES_${PN} +=  "${libdir}/rpm \
                 "
 RDEPENDS_${PN} = "base-files run-postinsts"
 RDEPENDS_${PN}_class-native = ""
-
-FILES_${PN}-dbg += "${libdir}/rpm/.debug/* \
-                    ${libdir}/rpm-plugins/.debug/* \
-                    ${libdir}/python2.7/site-packages/rpm/.debug/* \
-                   "
 
 FILES_${PN}-dev += "${libdir}/python2.7/site-packages/rpm/*.la"
 

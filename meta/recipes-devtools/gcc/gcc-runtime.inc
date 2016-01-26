@@ -1,6 +1,6 @@
 require gcc-configure-common.inc
 
-CXXFLAGS := "${@oe_filter_out('-fvisibility-inlines-hidden', '${CXXFLAGS}', d)}"
+CXXFLAGS_remove = "-fvisibility-inlines-hidden"
 
 EXTRA_OECONF_PATHS = "\
     --with-gxx-include-dir=${includedir}/c++/${BINV} \
@@ -10,7 +10,9 @@ EXTRA_OECONF_PATHS = "\
 
 EXTRA_OECONF_append_linuxstdbase = " --enable-clocale=gnu"
 
-RUNTIMETARGET = "libssp libstdc++-v3 libgomp libatomic"
+RUNTIMETARGET = "libssp libstdc++-v3 libgomp libatomic \
+    ${@bb.utils.contains_any('FORTRAN', [',fortran',',f77'], 'libquadmath', '', d)} \
+"
 #  ?
 # libiberty
 # libmudflap
@@ -143,11 +145,11 @@ FILES_libstdc++ = "${libdir}/libstdc++.so.*"
 FILES_libstdc++-dev = "\
     ${includedir}/c++/ \
     ${libdir}/libstdc++.so \
-    ${libdir}/libstdc++.la \
+    ${libdir}/libstdc++*.la \
     ${libdir}/libsupc++.la \
 "
 FILES_libstdc++-staticdev = "\
-    ${libdir}/libstdc++.a \
+    ${libdir}/libstdc++*.a \
     ${libdir}/libsupc++.a \
 "
 

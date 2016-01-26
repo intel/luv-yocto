@@ -585,12 +585,10 @@ def verify_checksum(ud, d, precomputed={}):
             raise NoChecksumError('Missing SRC_URI checksum', ud.url)
 
         # Log missing sums so user can more easily add them
-        if not ud.md5_expected:
+        if not ud.md5_expected and not ud.sha256_expected:
             logger.warn('Missing md5 SRC_URI checksum for %s, consider adding to the recipe:\n'
                         'SRC_URI[%s] = "%s"',
                         ud.localpath, ud.md5_name, md5data)
-
-        if not ud.sha256_expected:
             logger.warn('Missing sha256 SRC_URI checksum for %s, consider adding to the recipe:\n'
                         'SRC_URI[%s] = "%s"',
                         ud.localpath, ud.sha256_name, sha256data)
@@ -955,7 +953,7 @@ def try_mirror_url(fetch, origud, ud, ld, check = False):
                 origud.method.download(origud, ld)
                 if hasattr(origud.method,"build_mirror_data"):
                     origud.method.build_mirror_data(origud, ld)
-            return ud.localpath
+            return origud.localpath
         # Otherwise the result is a local file:// and we symlink to it
         if not os.path.exists(origud.localpath):
             if os.path.islink(origud.localpath):
@@ -1407,6 +1405,10 @@ class FetchMethod(object):
                     cmd = 'rpm2cpio.sh %s | cpio -id' % (file)
             elif file.endswith('.deb') or file.endswith('.ipk'):
                 cmd = 'ar -p %s data.tar.gz | zcat | tar --no-same-owner -xpf -' % file
+            elif file.endswith('.tar.7z'):
+                cmd = '7z x -so %s | tar xf - ' % file
+            elif file.endswith('.7z'):
+                cmd = '7za x -y %s 1>/dev/null' % file
 
         if not unpack or not cmd:
             # If file == dest, then avoid any copies, as we already put the file into dest!

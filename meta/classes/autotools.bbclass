@@ -83,17 +83,16 @@ CONFIGURE_SCRIPT ?= "${AUTOTOOLS_SCRIPT_PATH}/configure"
 AUTOTOOLS_AUXDIR ?= "${AUTOTOOLS_SCRIPT_PATH}"
 
 oe_runconf () {
-	cfgscript="${CONFIGURE_SCRIPT}"
+	# Use relative path to avoid buildpaths in files
+	cfgscript_name="`basename ${CONFIGURE_SCRIPT}`"
+	cfgscript=`python -c "import os; print os.path.relpath(os.path.dirname('${CONFIGURE_SCRIPT}'), '.')"`/$cfgscript_name
 	if [ -x "$cfgscript" ] ; then
 		bbnote "Running $cfgscript ${CONFIGUREOPTS} ${EXTRA_OECONF} $@"
-		set +e
-		${CACHED_CONFIGUREVARS} $cfgscript ${CONFIGUREOPTS} ${EXTRA_OECONF} "$@"
-		if [ "$?" != "0" ]; then
-			echo "Configure failed. The contents of all config.log files follows to aid debugging"
-			find ${B} -ignore_readdir_race -name config.log -print -exec cat {} \;
-			die "oe_runconf failed"
+		if ! ${CACHED_CONFIGUREVARS} $cfgscript ${CONFIGUREOPTS} ${EXTRA_OECONF} "$@"; then
+			bbnote "The following config.log files may provide further information."
+			bbnote `find ${B} -ignore_readdir_race -type f -name config.log`
+			bbfatal_log "configure failed"
 		fi
-		set -e
 	else
 		bbfatal "no configure script found at $cfgscript"
 	fi

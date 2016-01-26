@@ -22,9 +22,6 @@ inherit gnomebase gtk-doc qemu ptest-gnome upstream-version-is-even
 
 EXTRA_AUTORECONF = ""
 
-# seems to go wrong with default cflags
-FULL_OPTIMIZATION_arm = "-O2"
-
 EXTRA_OECONF = "--disable-introspection \
 	        --disable-debug \
 	        "
@@ -40,7 +37,6 @@ do_compile_prepend () {
 }
 
 FILES_${PN} = "${bindir}/* ${libdir}/libpango*${SOLIBS}"
-FILES_${PN}-dbg += "${libdir}/pango/${LIBV}/modules/.debug"
 FILES_${PN}-dev += "${libdir}/pango/${LIBV}/modules/*.la"
 
 RDEPENDS_${PN}-ptest += "liberation-fonts"

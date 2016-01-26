@@ -32,7 +32,7 @@
 <!--               <link linkend='var-glossary-n'>N</link> -->
        <link linkend='var-OBJCOPY'>O</link>
        <link linkend='var-P'>P</link>
-       <link linkend='var-QMAKE_PROFILES'>Q</link>
+<!--               <link linkend='var-glossary-q'>Q</link> -->
        <link linkend='var-RANLIB'>R</link>
        <link linkend='var-S'>S</link>
        <link linkend='var-T'>T</link>
@@ -3943,50 +3943,6 @@
             </glossdef>
         </glossentry>
 
-        <glossentry id='var-EXTRA_QMAKEVARS_POST'><glossterm>EXTRA_QMAKEVARS_POST</glossterm>
-            <info>
-                EXTRA_QMAKEVARS_POST[doc] = "Configuration variables or options you want to pass to qmake when the arguments need to be after the .pro file list on the command line."
-            </info>
-            <glossdef>
-                <para role="glossdeffirst">
-<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
-                    Configuration variables or options you want to pass to
-                    <filename>qmake</filename>.
-                    Use this variable when the arguments need to be after the
-                    <filename>.pro</filename> file list on the command line.
-                </para>
-
-                <para>
-                    This variable is used with recipes that inherit the
-                    <link linkend='ref-classes-qmake*'><filename>qmake_base</filename></link>
-                    class or other classes that inherit
-                    <filename>qmake_base</filename>.
-                </para>
-            </glossdef>
-        </glossentry>
-
-       <glossentry id='var-EXTRA_QMAKEVARS_PRE'><glossterm>EXTRA_QMAKEVARS_PRE</glossterm>
-            <info>
-                EXTRA_QMAKEVARS_PRE[doc] = "Configuration variables or options you want to pass to qmake when the arguments need to be before the .pro file list on the command line."
-            </info>
-            <glossdef>
-                <para role="glossdeffirst">
-<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
-                    Configuration variables or options you want to pass to
-                    <filename>qmake</filename>.
-                    Use this variable when the arguments need to be before the
-                    <filename>.pro</filename> file list on the command line.
-                </para>
-
-                <para>
-                    This variable is used with recipes that inherit the
-                    <link linkend='ref-classes-qmake*'><filename>qmake_base</filename></link>
-                    class or other classes that inherit
-                    <filename>qmake_base</filename>.
-                </para>
-            </glossdef>
-        </glossentry>
-
         <glossentry id='var-EXTRA_USERS_PARAMS'><glossterm>EXTRA_USERS_PARAMS</glossterm>
             <info>
                 EXTRA_USERS_PARAMS[doc] = "When a recipe inherits the extrausers class, this variable provides image level user and group operations."
@@ -5768,32 +5724,45 @@
                     Specifies the complete list of supported image types
                     by default:
                     <literallayout class='monospaced'>
-     jffs2
-     jffs2.sum
-     cramfs
-     ext2
-     ext2.gz
-     ext2.bz2
-     ext3
-     ext3.gz
-     ext2.lzma
      btrfs
-     live
-     squashfs
-     squashfs-xz
-     ubi
-     ubifs
-     tar
-     tar.gz
-     tar.bz2
-     tar.xz
      cpio
      cpio.gz
-     cpio.xz
+     cpio.lz4
      cpio.lzma
+     cpio.xz
+     cramfs
+     elf
+     ext2
+     ext2.bz2
+     ext2.gz
+     ext2.lzma
+     ext3
+     ext3.gz
+     ext4
+     ext4.gz
+     hdddirect
+     hddimg
+     iso
+     jffs2
+     jffs2.sum
+     multiubi
+     qcow2
+     squashfs
+     squashfs-lzo
+     squashfs-xz
+     tar
+     tar.bz2
+     tar.gz
+     tar.lz4
+     tar.xz
+     ubi
+     ubifs
      vdi
      vmdk
-     elf
+     wic
+     wic.bz2
+     wic.gz
+     wic.lzma
                     </literallayout>
                 </para>
 
@@ -9841,35 +9810,6 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
 
     </glossdiv>
 
-    <glossdiv id='var-glossary-q'><title>Q</title>
-
-        <glossentry id='var-QMAKE_PROFILES'><glossterm>QMAKE_PROFILES</glossterm>
-            <info>
-                QMAKE_PROFILES[doc] = "Specifies your own subset of .pro files to be built for use with qmake."
-            </info>
-            <glossdef>
-                <para role="glossdeffirst">
-<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
-                    Specifies your own subset of <filename>.pro</filename>
-                    files to be built for use with
-                    <filename>qmake</filename>.
-                    If you do not set this variable, all
-                    <filename>.pro</filename> files in the directory pointed to
-                    by <link linkend='var-S'><filename>S</filename></link>
-                    will be built by default.
-                </para>
-
-                <para>
-                    This variable is used with recipes that inherit the
-                    <link linkend='ref-classes-qmake*'><filename>qmake_base</filename></link>
-                    class or other classes that inherit
-                    <filename>qmake_base</filename>.
-                </para>
-            </glossdef>
-        </glossentry>
-
-    </glossdiv>
-
     <glossdiv id='var-glossary-r'><title>R</title>
 
         <glossentry id='var-RANLIB'><glossterm>RANLIB</glossterm>
@@ -10801,7 +10741,8 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
             <glossdef>
                 <para role="glossdeffirst">
 <!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
-                    The toolchain binary prefix used for nativesdk recipes.
+                    The toolchain binary prefix used for
+                    <filename>nativesdk</filename> recipes.
                     The OpenEmbedded build system uses the
                     <filename>SDK_PREFIX</filename> value to set the
                     <link linkend='var-TARGET_PREFIX'><filename>TARGET_PREFIX</filename></link>

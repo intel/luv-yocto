@@ -11,6 +11,7 @@ SRC_URI = "http://snapshot.debian.org/archive/debian/20050312T000000Z/pool/main/
            file://net-tools-config.h \
            file://net-tools-config.make \
            file://ifconfig-interface-0-del-IP-will-remove-the-aliased-.patch \
+           file://musl-fixes.patch \
 	   "
 
 # for this package we're mostly interested in tracking debian patches,
@@ -30,6 +31,10 @@ SRC_URI[patch.sha256sum] = "aeeeafaff68866a446f01bb639d4e0146a60af34dcd20e31a3e4
 UPSTREAM_CHECK_URI = "${DEBIAN_MIRROR}/main/n/net-tools/"
 
 inherit gettext
+
+do_patch[depends] = "quilt-native:do_populate_sysroot"
+
+LDFLAGS_append_libc-uclibc = " -lintl "
 
 # The Makefile is lame, no parallel build
 PARALLEL_MAKE = ""

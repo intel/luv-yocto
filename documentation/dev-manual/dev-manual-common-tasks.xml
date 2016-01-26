@@ -4558,9 +4558,17 @@
                             option or the equivalent rootfs derived from the
 			                <filename>-e</filename> command-line
 			                option.
-                            Exactly what those contents and
-			                filesystem type end up being are dependent
-			                on the given plugin implementation.
+                            Exactly what those contents and filesystem type end
+                            up being are dependent on the given plugin
+                            implementation.
+                            </para>
+                            <para>If you do not use the
+                            <filename>--source</filename> option, the
+                            <filename>wic</filename> command creates an empty
+                            partition.
+                            Consequently, you must use the
+                            <filename>--size</filename> option to specify the
+                            size of the empty partition.
                             </para></listitem>
                         <listitem><para><emphasis><filename>--ondisk</filename> or <filename>--ondrive</filename>:</emphasis>
                             Forces the partition to be created on a particular
@@ -4604,6 +4612,49 @@
                             This option is a <filename>wic</filename>-specific
                             option that says to start a partition on an
                             x KBytes boundary.</para></listitem>
+                        <listitem><para><emphasis><filename>--no-table</filename>:</emphasis>
+                            This option is a <filename>wic</filename>-specific
+                            option.
+                            Using the option reserves space for the partition
+                            and causes it to become populated.
+                            However, the partition is not added to the
+                            partition table.
+                            </para></listitem>
+                        <listitem><para><emphasis><filename>--extra-space</filename>:</emphasis>
+                            This option is a <filename>wic</filename>-specific
+                            option that adds extra space after the space
+                            filled by the content of the partition.
+                            The final size can go beyond the size specified
+                            by the <filename>--size</filename> option.
+                            The default value is 10 Mbytes.
+                            </para></listitem>
+                        <listitem><para><emphasis><filename>--overhead-factor</filename>:</emphasis>
+                            This option is a <filename>wic</filename>-specific
+                            option that multiplies the size of the partition by
+                            the option's value.
+                            You must supply a value greater than or equal to
+                            "1".
+                            The default value is "1.3".
+                            </para></listitem>
+                        <listitem><para><emphasis><filename>--part-type</filename>:</emphasis>
+                            This option is a <filename>wic</filename>-specific
+                            option that specifies the partition type globally
+                            unique identifier (GUID) for GPT partitions.
+                            You can find the list of partition type GUIDs
+                            at
+                            <ulink url='http://en.wikipedia.org/wiki/GUID_Partition_Table#Partition_type_GUIDs'></ulink>.
+                            </para></listitem>
+                        <listitem><para><emphasis><filename>--use-uuid</filename>:</emphasis>
+                            This option is a <filename>wic</filename>-specific
+                            option that causes <filename>wic</filename> to
+                            generate a random GUID for the partition.
+                            The generated identifier is used in the bootloader
+                            configuration to specify the root partition.
+                            </para></listitem>
+                        <listitem><para><emphasis><filename>--uuid</filename>:</emphasis>
+                            This option is a <filename>wic</filename>-specific
+                            option that specifies the partition UUID.
+                            </para></listitem>
                     </itemizedlist>
                 </para>
             </section>
@@ -4632,6 +4683,14 @@
                             These parameters will be added to the syslinux
                             <filename>APPEND</filename> or
                             <filename>grub</filename> kernel command line.
+                            </para></listitem>
+                        <listitem><para><emphasis><filename>--configfile</filename>:</emphasis>
+                            Specifies a user-defined configuration file for
+                            the bootloader.
+                            You can provide a full pathname for the file or
+                            a file that exists in the
+                            <filename>canned-wks</filename> folder.
+                            This option overrides all other bootloader options.
                             </para></listitem>
                     </itemizedlist>
                 </para>
@@ -7429,8 +7488,8 @@
                 <title>Running ptest</title>
 
                 <para>
-                    The <filename>ptest-runner</filename> package installs a
-                    shell script that loops through all installed ptest test
+                    The <filename>ptest-runner2</filename> package installs a
+                    program that loops through all installed ptest test
                     suites and runs them in sequence.
                     Consequently, you might want to add this package to
                     your image.

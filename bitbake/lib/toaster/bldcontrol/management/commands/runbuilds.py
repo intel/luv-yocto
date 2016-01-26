@@ -14,14 +14,14 @@ class Command(NoArgsCommand):
     help    = "Schedules and executes build requests as possible. Does not return (interrupt with Ctrl-C)"
 
 
-    @transaction.commit_on_success
+    @transaction.atomic
     def _selectBuildEnvironment(self):
         bec = getBuildEnvironmentController(lock = BuildEnvironment.LOCK_FREE)
         bec.be.lock = BuildEnvironment.LOCK_LOCK
         bec.be.save()
         return bec
 
-    @transaction.commit_on_success
+    @transaction.atomic
     def _selectBuildRequest(self):
         br = BuildRequest.objects.filter(state = BuildRequest.REQ_QUEUED).order_by('pk')[0]
         br.state = BuildRequest.REQ_INPROGRESS
@@ -57,7 +57,7 @@ class Command(NoArgsCommand):
             br.save()
 
             # this triggers an async build
-            bec.triggerBuild(br.brbitbake_set.all(), br.brlayer_set.all(), br.brvariable_set.all(), br.brtarget_set.all())
+            bec.triggerBuild(br.brbitbake, br.brlayer_set.all(), br.brvariable_set.all(), br.brtarget_set.all())
 
         except Exception as e:
             logger.error("runbuilds: Error launching build %s" % e)

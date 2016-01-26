@@ -1,12 +1,10 @@
-import unittest
 import os
 import re
-import shutil
 import datetime
 
-import oeqa.utils.ftools as ftools
 from oeqa.selftest.base import oeSelfTest
-from oeqa.utils.commands import Command, runCmd, bitbake, get_bb_var, get_test_layer
+from oeqa.utils.commands import bitbake, get_bb_var
+from oeqa.utils.decorators import testcase
 
 
 class BuildhistoryBase(oeSelfTest):
@@ -43,3 +41,6 @@ class BuildhistoryBase(oeSelfTest):
             self.assertTrue(search_for_error, msg="Could not find desired error in output: %s" % error_regex)
         else:
             self.assertEqual(result.status, 0, msg="Command 'bitbake %s' has failed unexpectedly: %s" % (target, result.output))
+
+    # No tests should be added to the base class.
+    # Please create a new class that inherit this one, or use one of those already available for adding tests.

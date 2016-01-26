@@ -24,6 +24,7 @@ import os
 os.environ["DJANGO_SETTINGS_MODULE"] = "toaster.toastermain.settings"
 
 
+import django
 from django.utils import timezone
 
 
@@ -33,14 +34,16 @@ def _configure_toaster():
     sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'toaster'))
 _configure_toaster()
 
-from toaster.orm.models import Build, Task, Recipe, Layer_Version, Layer, Target, LogMessage, HelpText
-from toaster.orm.models import Target_Image_File, BuildArtifact
-from toaster.orm.models import Variable, VariableHistory
-from toaster.orm.models import Package, Package_File, Target_Installed_Package, Target_File
-from toaster.orm.models import Task_Dependency, Package_Dependency
-from toaster.orm.models import Recipe_Dependency
+django.setup()
 
-from toaster.orm.models import Project
+from orm.models import Build, Task, Recipe, Layer_Version, Layer, Target, LogMessage, HelpText
+from orm.models import Target_Image_File, BuildArtifact
+from orm.models import Variable, VariableHistory
+from orm.models import Package, Package_File, Target_Installed_Package, Target_File
+from orm.models import Task_Dependency, Package_Dependency
+from orm.models import Recipe_Dependency, Provides
+
+from orm.models import Project
 from bldcontrol.models import BuildEnvironment, BuildRequest
 
 from bb.msg import BBLogFormatter as formatter
@@ -146,7 +149,7 @@ class ORMWrapper(object):
             prj = Project.objects.get(pk = project_id)
 
         else:                           # this build was triggered by a legacy system, or command line interactive mode
-            prj = Project.objects.get_default_project()
+            prj = Project.objects.get_or_create_default_project()
             logger.debug(1, "buildinfohelper: project is not specified, defaulting to %s" % prj)
 
 
@@ -308,6 +311,11 @@ class ORMWrapper(object):
         # then we are wholly responsible for the data
         # and therefore we return the 'real' recipe rather than the build
         # history copy of the recipe.
+        if  recipe_information['layer_version'].build is not None and \
+            recipe_information['layer_version'].build.project == \
+                Project.objects.get_or_create_default_project():
+            return recipe
+
         if built_recipe is None:
             return recipe
 
@@ -345,7 +353,7 @@ class ORMWrapper(object):
         # If we're doing a command line build then associate this new layer with the
         # project to avoid it 'contaminating' toaster data
         project = None
-        if build_obj.project == Project.objects.get_default_project():
+        if build_obj.project == Project.objects.get_or_create_default_project():
             project = build_obj.project
 
         layer_version_object, _ = Layer_Version.objects.get_or_create(
@@ -858,12 +866,10 @@ class BuildInfoHelper(object):
 
     def _get_path_information(self, task_object):
         assert isinstance(task_object, Task)
-        build_stats_format = "{tmpdir}/buildstats/{target}-{machine}/{buildname}/{package}/"
+        build_stats_format = "{tmpdir}/buildstats/{buildname}/{package}/"
         build_stats_path = []
 
         for t in self.internal_state['targets']:
-            target = t.target
-            machine = self.internal_state['build'].machine
             buildname = self.internal_state['build'].build_name
             pe, pv = task_object.recipe.version.split(":",1)
             if len(pe) > 0:
@@ -871,8 +877,8 @@ class BuildInfoHelper(object):
             else:
                 package = task_object.recipe.name + "-" + pv
 
-            build_stats_path.append(build_stats_format.format(tmpdir=self.tmp_dir, target=target,
-                                                     machine=machine, buildname=buildname,
+            build_stats_path.append(build_stats_format.format(tmpdir=self.tmp_dir,
+                                                     buildname=buildname,
                                                      package=package))
 
         return build_stats_path
@@ -1180,6 +1186,7 @@ class BuildInfoHelper(object):
         assert 'layer-priorities' in event._depgraph
         assert 'pn' in event._depgraph
         assert 'tdepends' in event._depgraph
+        assert 'providermap' in event._depgraph
 
         errormsg = ""
 
@@ -1257,15 +1264,27 @@ class BuildInfoHelper(object):
         # buildtime
         recipedeps_objects = []
         for recipe in event._depgraph['depends']:
-            try:
-                target = self.internal_state['recipes'][recipe]
-                for dep in event._depgraph['depends'][recipe]:
+           target = self.internal_state['recipes'][recipe]
+           for dep in event._depgraph['depends'][recipe]:
+                if dep in assume_provided:
+                    continue
+                via = None
+                if dep in event._depgraph['providermap']:
+                    deprecipe = event._depgraph['providermap'][dep][0]
+                    dependency = self.internal_state['recipes'][deprecipe]
+                    via = Provides.objects.get_or_create(name=dep,
+                                                         recipe=dependency)[0]
+                elif dep in self.internal_state['recipes']:
                     dependency = self.internal_state['recipes'][dep]
-                    recipedeps_objects.append(Recipe_Dependency( recipe = target,
-                            depends_on = dependency, dep_type = Recipe_Dependency.TYPE_DEPENDS))
-            except KeyError as e:
-                if e not in assume_provided and not str(e).startswith("virtual/"):
-                    errormsg += "  stpd: KeyError saving recipe dependency for %s, %s \n" % (recipe, e)
+                else:
+                    errormsg += "  stpd: KeyError saving recipe dependency for %s, %s \n" % (recipe, dep)
+                    continue
+                recipe_dep = Recipe_Dependency(recipe=target,
+                                               depends_on=dependency,
+                                               via=via,
+                                               dep_type=Recipe_Dependency.TYPE_DEPENDS)
+                recipedeps_objects.append(recipe_dep)
+
         Recipe_Dependency.objects.bulk_create(recipedeps_objects)
 
         # save all task information

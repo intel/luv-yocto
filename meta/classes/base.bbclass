@@ -230,7 +230,8 @@ python base_eventhandler() {
                     statuslines.extend(flines)
 
         statusheader = e.data.getVar('BUILDCFG_HEADER', True)
-        bb.plain('\n%s\n%s\n' % (statusheader, '\n'.join(statuslines)))
+        if statusheader:
+            bb.plain('\n%s\n%s\n' % (statusheader, '\n'.join(statuslines)))
 
     # This code is to silence warnings where the SDK variables overwrite the 
     # target ones and we'd see dulpicate key names overwriting each other
@@ -381,7 +382,10 @@ python () {
                     newappends.append(a)
                 elif a.startswith("virtual/"):
                     subs = a.split("/", 1)[1]
-                    newappends.append("virtual/" + prefix + subs + extension)
+                    if subs.startswith(prefix):
+                        newappends.append(a + extension)
+                    else:
+                        newappends.append("virtual/" + prefix + subs + extension)
                 else:
                     if a.startswith(prefix):
                         newappends.append(a + extension)

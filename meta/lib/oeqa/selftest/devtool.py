@@ -15,18 +15,45 @@ class DevtoolBase(oeSelfTest):
 
     def _test_recipe_contents(self, recipefile, checkvars, checkinherits):
         with open(recipefile, 'r') as f:
+            invar = None
+            invalue = None
             for line in f:
-                if '=' in line:
+                var = None
+                if invar:
+                    value = line.strip().strip('"')
+                    if value.endswith('\\'):
+                        invalue += ' ' + value[:-1].strip()
+                        continue
+                    else:
+                        invalue += ' ' + value.strip()
+                        var = invar
+                        value = invalue
+                        invar = None
+                elif '=' in line:
                     splitline = line.split('=', 1)
                     var = splitline[0].rstrip()
                     value = splitline[1].strip().strip('"')
-                    if var in checkvars:
-                        needvalue = checkvars.pop(var)
-                        self.assertEqual(value, needvalue, 'values for %s do not match' % var)
-                if line.startswith('inherit '):
+                    if value.endswith('\\'):
+                        invalue = value[:-1].strip()
+                        invar = var
+                        continue
+                elif line.startswith('inherit '):
                     inherits = line.split()[1:]
 
-        self.assertEqual(checkvars, {}, 'Some variables not found: %s' % checkvars)
+                if var and var in checkvars:
+                    needvalue = checkvars.pop(var)
+                    if needvalue is None:
+                        self.fail('Variable %s should not appear in recipe')
+                    if isinstance(needvalue, set):
+                        value = set(value.split())
+                    self.assertEqual(value, needvalue, 'values for %s do not match' % var)
+
+
+        missingvars = {}
+        for var, value in checkvars.iteritems():
+            if value is not None:
+                missingvars[var] = value
+        self.assertEqual(missingvars, {}, 'Some expected variables not found in recipe: %s' % checkvars)
 
         for inherit in checkinherits:
             self.assertIn(inherit, inherits, 'Missing inherit of %s' % inherit)
@@ -68,6 +95,8 @@ class DevtoolBase(oeSelfTest):
         filelist = []
         for line in output.splitlines():
             splitline = line.split()
+            if len(splitline) < 8:
+                self.fail('_process_ls_output: invalid output line: %s' % line)
             # Remove trailing . on perms
             splitline[0] = splitline[0].rstrip('.')
             # Remove leading . on paths
@@ -179,15 +208,16 @@ class DevtoolTests(DevtoolBase):
         # Fetch source
         tempdir = tempfile.mkdtemp(prefix='devtoolqa')
         self.track_for_cleanup(tempdir)
-        url = 'http://www.intra2net.com/en/developer/libftdi/download/libftdi1-1.1.tar.bz2'
+        version = '1.1'
+        url = 'https://www.intra2net.com/en/developer/libftdi/download/libftdi1-%s.tar.bz2' % version
         result = runCmd('wget %s' % url, cwd=tempdir)
-        result = runCmd('tar xfv libftdi1-1.1.tar.bz2', cwd=tempdir)
-        srcdir = os.path.join(tempdir, 'libftdi1-1.1')
+        result = runCmd('tar xfv libftdi1-%s.tar.bz2' % version, cwd=tempdir)
+        srcdir = os.path.join(tempdir, 'libftdi1-%s' % version)
         self.assertTrue(os.path.isfile(os.path.join(srcdir, 'CMakeLists.txt')), 'Unable to find CMakeLists.txt in source directory')
         # Test devtool add (and use -V so we test that too)
         self.track_for_cleanup(self.workspacedir)
         self.add_command_to_tearDown('bitbake-layers remove-layer */workspace')
-        result = runCmd('devtool add libftdi %s -V 1.1' % srcdir)
+        result = runCmd('devtool add libftdi %s -V %s' % (srcdir, version))
         self.assertTrue(os.path.exists(os.path.join(self.workspacedir, 'conf', 'layer.conf')), 'Workspace directory not created')
         # Test devtool status
         result = runCmd('devtool status')
@@ -195,6 +225,14 @@ class DevtoolTests(DevtoolBase):
         self.assertIn(srcdir, result.output)
         # Clean up anything in the workdir/sysroot/sstate cache (have to do this *after* devtool add since the recipe only exists then)
         bitbake('libftdi -c cleansstate')
+        # libftdi's python/CMakeLists.txt is a bit broken, so let's just disable it
+        # There's also the matter of it installing cmake files to a path we don't
+        # normally cover, which triggers the installed-vs-shipped QA test we have
+        # within do_package
+        recipefile = '%s/recipes/libftdi/libftdi_%s.bb' % (self.workspacedir, version)
+        result = runCmd('recipetool setvar %s EXTRA_OECMAKE -- \'-DPYTHON_BINDINGS=OFF -DLIBFTDI_CMAKE_CONFIG_DIR=${datadir}/cmake/Modules\'' % recipefile)
+        with open(recipefile, 'a') as f:
+            f.write('\nFILES_${PN}-dev += "${datadir}/cmake/Modules"\n')
         # Test devtool build
         result = runCmd('devtool build libftdi')
         staging_libdir = get_bb_var('STAGING_LIBDIR', 'libftdi')
@@ -232,15 +270,16 @@ class DevtoolTests(DevtoolBase):
         self.assertIn(srcdir, result.output)
         # Check recipe
         recipefile = get_bb_var('FILE', testrecipe)
-        self.assertIn('%s.bb' % testrecipe, recipefile, 'Recipe file incorrectly named')
+        self.assertIn('%s_%s.bb' % (testrecipe, testver), recipefile, 'Recipe file incorrectly named')
         checkvars = {}
-        checkvars['S'] = '${WORKDIR}/MarkupSafe-%s' % testver
-        checkvars['SRC_URI'] = url
+        checkvars['S'] = '${WORKDIR}/MarkupSafe-${PV}'
+        checkvars['SRC_URI'] = url.replace(testver, '${PV}')
         self._test_recipe_contents(recipefile, checkvars, [])
         # Try with version specified
         result = runCmd('devtool reset -n %s' % testrecipe)
         shutil.rmtree(srcdir)
-        result = runCmd('devtool add %s %s -f %s -V %s' % (testrecipe, srcdir, url, testver))
+        fakever = '1.9'
+        result = runCmd('devtool add %s %s -f %s -V %s' % (testrecipe, srcdir, url, fakever))
         self.assertTrue(os.path.isfile(os.path.join(srcdir, 'setup.py')), 'Unable to find setup.py in source directory')
         # Test devtool status
         result = runCmd('devtool status')
@@ -248,10 +287,10 @@ class DevtoolTests(DevtoolBase):
         self.assertIn(srcdir, result.output)
         # Check recipe
         recipefile = get_bb_var('FILE', testrecipe)
-        self.assertIn('%s_%s.bb' % (testrecipe, testver), recipefile, 'Recipe file incorrectly named')
+        self.assertIn('%s_%s.bb' % (testrecipe, fakever), recipefile, 'Recipe file incorrectly named')
         checkvars = {}
-        checkvars['S'] = '${WORKDIR}/MarkupSafe-${PV}'
-        checkvars['SRC_URI'] = url.replace(testver, '${PV}')
+        checkvars['S'] = '${WORKDIR}/MarkupSafe-%s' % testver
+        checkvars['SRC_URI'] = url
         self._test_recipe_contents(recipefile, checkvars, [])
 
     @testcase(1161)
@@ -279,7 +318,7 @@ class DevtoolTests(DevtoolBase):
         self.assertIn('_git.bb', recipefile, 'Recipe file incorrectly named')
         checkvars = {}
         checkvars['S'] = '${WORKDIR}/git'
-        checkvars['PV'] = '1.0+git${SRCPV}'
+        checkvars['PV'] = '1.11+git${SRCPV}'
         checkvars['SRC_URI'] = url
         checkvars['SRCREV'] = '${AUTOREV}'
         self._test_recipe_contents(recipefile, checkvars, [])
@@ -301,6 +340,33 @@ class DevtoolTests(DevtoolBase):
         checkvars['PV'] = '1.5+git${SRCPV}'
         checkvars['SRC_URI'] = url
         checkvars['SRCREV'] = checkrev
+        self._test_recipe_contents(recipefile, checkvars, [])
+
+    @testcase(1391)
+    def test_devtool_add_fetch_simple(self):
+        # Fetch source from a remote URL, auto-detecting name
+        tempdir = tempfile.mkdtemp(prefix='devtoolqa')
+        self.track_for_cleanup(tempdir)
+        testver = '1.6.0'
+        url = 'http://www.ivarch.com/programs/sources/pv-%s.tar.bz2' % testver
+        testrecipe = 'pv'
+        srcdir = os.path.join(self.workspacedir, 'sources', testrecipe)
+        # Test devtool add
+        self.track_for_cleanup(self.workspacedir)
+        self.add_command_to_tearDown('bitbake-layers remove-layer */workspace')
+        result = runCmd('devtool add %s' % url)
+        self.assertTrue(os.path.exists(os.path.join(self.workspacedir, 'conf', 'layer.conf')), 'Workspace directory not created. %s' % result.output)
+        self.assertTrue(os.path.isfile(os.path.join(srcdir, 'configure')), 'Unable to find configure script in source directory')
+        # Test devtool status
+        result = runCmd('devtool status')
+        self.assertIn(testrecipe, result.output)
+        self.assertIn(srcdir, result.output)
+        # Check recipe
+        recipefile = get_bb_var('FILE', testrecipe)
+        self.assertIn('%s_%s.bb' % (testrecipe, testver), recipefile, 'Recipe file incorrectly named')
+        checkvars = {}
+        checkvars['S'] = None
+        checkvars['SRC_URI'] = url.replace(testver, '${PV}')
         self._test_recipe_contents(recipefile, checkvars, [])
 
     @testcase(1164)
@@ -875,10 +941,11 @@ class DevtoolTests(DevtoolBase):
         # Additionally we are testing build-time functionality as well, so
         # really this has to be done as an oe-selftest test.
         #
+
+        features = 'MACHINE = "qemux86"\n'
+        self.write_config(features)
+
         # Check preconditions
-        machine = get_bb_var('MACHINE')
-        if not machine.startswith('qemu'):
-            self.skipTest('This test only works with qemu machines')
         if not os.path.exists('/etc/runqemu-nosudo'):
             self.skipTest('You must set up tap devices with scripts/runqemu-gen-tapdevs before running this test')
         result = runCmd('PATH="$PATH:/sbin:/usr/sbin" ip tuntap show', ignore_status=True)

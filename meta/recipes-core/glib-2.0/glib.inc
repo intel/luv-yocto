@@ -17,10 +17,10 @@ SECTION = "libs"
 
 BBCLASSEXTEND = "native nativesdk"
 
-DEPENDS = "virtual/libiconv libffi zlib"
-DEPENDS_append = " ${@bb.utils.contains('PTEST_ENABLED', '1', ' glib-2.0-native dbus', '', d)}"
+DEPENDS = "virtual/libiconv libffi zlib glib-2.0-native"
+DEPENDS_append = " ${@bb.utils.contains('PTEST_ENABLED', '1', ' dbus', '', d)}"
 DEPENDS_class-native = "pkgconfig-native gettext-native libffi-native zlib-native"
-DEPENDS_class-nativesdk = "nativesdk-libtool nativesdk-gettext nativesdk-libffi nativesdk-zlib"
+DEPENDS_class-nativesdk = "nativesdk-libtool nativesdk-gettext nativesdk-libffi nativesdk-zlib glib-2.0-native"
 
 PACKAGES =+ "${PN}-utils ${PN}-bash-completion ${PN}-codegen"
 
@@ -49,9 +49,7 @@ FILES_${PN} = "${libdir}/lib*${SOLIBS} ${libdir}/gio ${datadir}/glib-2.0/schemas
 FILES_${PN}-dev += "${libdir}/glib-2.0/include \
                     ${libdir}/gio/modules/lib*${SOLIBSDEV} \
                     ${libdir}/gio/modules/*.la"
-FILES_${PN}-dbg += "${datadir}/glib-2.0/gdb ${datadir}/gdb \
-                    ${libdir}/gio/modules/.debug \
-                    ${libdir}/glib-2.0/installed-tests/glib/.debug"
+FILES_${PN}-dbg += "${datadir}/glib-2.0/gdb ${datadir}/gdb"
 FILES_${PN}-codegen = "${datadir}/glib-2.0/codegen/*.py"
 FILES_${PN}-bash-completion = "${sysconfdir}/bash_completion.d \
                                ${datadir}/bash-completion"
@@ -73,6 +71,16 @@ do_install_append () {
 	if [ -f ${D}${bindir}/glib-mkenums ]; then
 		sed -i -e '1s,#!.*perl,#! ${USRBINPATH}/env perl,' ${D}${bindir}/glib-mkenums
 	fi
+
+	if [ -f ${D}${datadir}/installed-tests/glib/gdbus-serialization.test ]; then
+		if ${@bb.utils.contains("DISTRO_FEATURES", "x11", "false", "true", d)}; then
+			rm ${D}${datadir}/installed-tests/glib/gdbus-serialization.test
+		fi
+	fi
+}
+
+do_install_append_libc-musl () {
+	rm -f ${D}${libdir}/charset.alias
 }
 
 RDEPENDS_${PN}-ptest += "\

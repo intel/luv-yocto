@@ -13,8 +13,8 @@ DEPENDS = "liburcu popt lttng-ust libxml2"
 RDEPENDS_${PN} = "libgcc"
 RDEPENDS_${PN}-ptest += "make perl bash"
 
-SRCREV = "d71e55a5f1f423eeaa47c08e5797e47ce8e825fb"
-PV = "2.7.0+git${SRCPV}"
+SRCREV = "a90f2c1e10b759782653a81815625e9d1bbb75ca"
+PV = "2.7.1+git${SRCPV}"
 
 PYTHON_OPTION = "am_cv_python_pyexecdir='${libdir}/python${PYTHON_BASEVERSION}/site-packages' \
                  am_cv_python_pythondir='${libdir}/python${PYTHON_BASEVERSION}/site-packages' \
@@ -26,6 +26,7 @@ PACKAGECONFIG[lttng-ust] = "--enable-lttng-ust, --disable-lttng-ust, lttng-ust"
 PACKAGECONFIG[kmod] = "--enable-kmod, --disable-kmod, kmod"
 
 SRC_URI = "git://git.lttng.org/lttng-tools.git;branch=stable-2.7 \
+           file://Revert-Build-look-for-python-3.0-when-building-pytho.patch \
            file://stop-using-SIGUNUSED.patch \
            file://runtest-2.4.0.patch \
            file://run-ptest"
@@ -39,8 +40,6 @@ GROUPADD_PARAM_${PN} = "tracing"
 
 FILES_${PN} += "${libdir}/lttng/libexec/* ${datadir}/xml/lttng \
                 ${libdir}/python${PYTHON_BASEVERSION}/site-packages/*"
-FILES_${PN}-dbg += "${libdir}/lttng/libexec/.debug \
-                    ${libdir}/python2.7/site-packages/.debug"
 FILES_${PN}-staticdev += "${libdir}/python${PYTHON_BASEVERSION}/site-packages/*.a"
 FILES_${PN}-dev += "${libdir}/python${PYTHON_BASEVERSION}/site-packages/*.la"
 

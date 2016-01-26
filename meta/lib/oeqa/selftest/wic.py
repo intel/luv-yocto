@@ -50,7 +50,7 @@ class Wic(oeSelfTest):
         if not Wic.image_is_ready:
             bitbake('syslinux syslinux-native parted-native gptfdisk-native '
                     'dosfstools-native mtools-native')
-            bitbake('core-image-minimal')
+            bitbake('core-image-minimal:do_image_complete core-image-minimal:do_rootfs_wicenv')
             Wic.image_is_ready = True
 
         rmtree(self.resultdir, ignore_errors=True)
@@ -253,6 +253,14 @@ class Wic(oeSelfTest):
     def test_mkefidisk(self):
         """Test creation of mkefidisk image"""
         image = "mkefidisk"
+        self.assertEqual(0, runCmd("wic create %s -e core-image-minimal" \
+                                   % image).status)
+        self.assertEqual(1, len(glob(self.resultdir + "%s-*direct" % image)))
+
+    @testcase(1385)
+    def test_directdisk_bootloader_config(self):
+        """Test creation of directdisk-bootloader-config image"""
+        image = "directdisk-bootloader-config"
         self.assertEqual(0, runCmd("wic create %s -e core-image-minimal" \
                                    % image).status)
         self.assertEqual(1, len(glob(self.resultdir + "%s-*direct" % image)))

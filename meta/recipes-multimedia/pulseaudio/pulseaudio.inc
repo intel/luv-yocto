@@ -7,7 +7,7 @@ LIC_FILES_CHKSUM = "file://GPL;md5=4325afd396febcb659c36b49533135d4 \
                     file://LGPL;md5=2d5025d4aa3495befef8f17206a5b0a1 \
                     file://src/pulsecore/resampler.h;beginline=4;endline=21;md5=09794012ae16912c0270f3280cc8ff84"
 
-DEPENDS = "libatomic-ops liboil libsndfile1 libtool"
+DEPENDS = "libatomic-ops libsndfile1 libtool"
 # optional
 DEPENDS += "udev alsa-lib glib-2.0 gconf"
 DEPENDS += "json-c gdbm speexdsp libxml-parser-perl-native libcap"
@@ -52,6 +52,7 @@ PACKAGECONFIG[jack] = "--enable-jack,--disable-jack,jack"
 # Since many embedded systems don't have non-root users, it's useful to be
 # able to use pulseaudio autospawn for root as well.
 PACKAGECONFIG[autospawn-for-root] = ",,,"
+PACKAGECONFIG[lirc] = "--enable-lirc,--disable-lirc,lirc"
 
 EXTRA_OECONF_append_arm = "${@bb.utils.contains("TUNE_FEATURES", "neon", "", " --enable-neon-opt=no", d)}"
 EXTRA_OECONF_append_armeb = "${@bb.utils.contains("TUNE_FEATURES", "neon", "", " --enable-neon-opt=no", d)}"
@@ -110,8 +111,6 @@ FILES_libpulse = "${libdir}/libpulse.so.* ${sysconfdir}/pulse/client.conf"
 FILES_libpulse-simple = "${libdir}/libpulse-simple.so.*"
 FILES_libpulse-mainloop-glib = "${libdir}/libpulse-mainloop-glib.so.*"
 
-FILES_${PN}-dbg += "${libexecdir}/pulse/.debug \
-                    ${libdir}/pulse-${PV}/modules/.debug"
 FILES_${PN}-dev += "${libdir}/pulse-${PV}/modules/*.la ${datadir}/vala ${libdir}/cmake"   
 FILES_${PN}-conf = "${sysconfdir}"
 FILES_${PN}-bin += "${sysconfdir}/default/volatiles/volatiles.04_pulse"

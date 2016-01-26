@@ -6,7 +6,7 @@
 {%if mru and mru.count > 0%}
 
   {%if mrb_type == 'project' %}
-      <h2>
+      <h2 class="page-header">
       Latest project builds
 
       {% if project.is_default %}
@@ -14,7 +14,7 @@
       {% endif %}
       </h2>
   {% else %}
-    <div class="page-header">
+    <div class="page-header top-air">
       <h1>
       Latest builds
       </h1>

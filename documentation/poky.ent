@@ -1,7 +1,7 @@
-<!ENTITY DISTRO "2.0">
-<!ENTITY DISTRO_COMPRESSED "20">
-<!ENTITY DISTRO_NAME "jethro">
-<!ENTITY YOCTO_DOC_VERSION "2.0">
+<!ENTITY DISTRO "2.1">
+<!ENTITY DISTRO_COMPRESSED "21">
+<!ENTITY DISTRO_NAME "tbd">
+<!ENTITY YOCTO_DOC_VERSION "2.1">
 <!ENTITY POKYVERSION "15.0.0">
 <!ENTITY POKYVERSION_COMPRESSED "1400">
 <!ENTITY YOCTO_POKY "poky-&DISTRO_NAME;-&POKYVERSION;">
@@ -54,8 +54,9 @@
 <!ENTITY YOCTO_DOCS_MM_URL "&YOCTO_DOCS_URL;/&YOCTO_DOC_VERSION;/mega-manual/mega-manual.html">
 <!ENTITY YOCTO_DOCS_BB_URL "&YOCTO_DOCS_URL;/&YOCTO_DOC_VERSION;/bitbake-user-manual/bitbake-user-manual.html">
 <!ENTITY YOCTO_DOCS_TOAST_URL "&YOCTO_DOCS_URL;/&YOCTO_DOC_VERSION;/toaster-manual/toaster-manual.html">
+<!ENTITY YOCTO_DOCS_SDK_URL "&YOCTO_DOCS_URL;/&YOCTO_DOC_VERSION;/sdk-manual/sdk-manual.html">
 <!ENTITY YOCTO_ADTPATH_DIR "/opt/poky/&DISTRO;">
-<!ENTITY YOCTO_POKY_TARBALL "&YOCTO_POKY;.tar.bz2">
+<!ENTITY YOCTO_POKY_TARBALL "&YOCTO_POKY;.ftar.bz2">
 <!ENTITY OE_INIT_PATH "&YOCTO_POKY;/oe-init-build-env">
 <!ENTITY OE_INIT_FILE "oe-init-build-env">
 <!ENTITY UBUNTU_HOST_PACKAGES_ESSENTIAL "gawk wget git-core diffstat unzip texinfo gcc-multilib \
@@ -63,7 +64,7 @@
 <!ENTITY FEDORA_HOST_PACKAGES_ESSENTIAL "gawk make wget tar bzip2 gzip python unzip perl patch \
      diffutils diffstat git cpp gcc gcc-c++ glibc-devel texinfo chrpath \
      ccache perl-Data-Dumper perl-Text-ParseWords perl-Thread-Queue socat \
-     findutils which">
+     findutils which perl-bignum">
 <!ENTITY OPENSUSE_HOST_PACKAGES_ESSENTIAL "python gcc gcc-c++ git chrpath make wget python-xml \
      diffstat makeinfo python-curses patch socat">
 <!ENTITY CENTOS_HOST_PACKAGES_ESSENTIAL "gawk make wget tar bzip2 gzip python unzip perl patch \

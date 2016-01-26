@@ -1,5 +1,5 @@
 # remove tasks that modify the source tree in case externalsrc is inherited
-SRCTREECOVEREDTASKS += "do_kernel_link_vmlinux do_kernel_configme do_validate_branches do_kernel_configcheck do_kernel_checkout do_shared_workdir do_fetch do_unpack do_patch"
+SRCTREECOVEREDTASKS += "do_kernel_configme do_validate_branches do_kernel_configcheck do_kernel_checkout do_shared_workdir do_fetch do_unpack do_patch"
 
 # returns local (absolute) path names for all valid patches in the
 # src_uri
@@ -184,11 +184,18 @@ do_kernel_checkout() {
 	source_dir=`echo ${S} | sed 's%/$%%'`
 	source_workdir="${WORKDIR}/git"
 	if [ -d "${WORKDIR}/git/" ]; then
-		# case: git repository (bare or non-bare)
+		# case: git repository
 		# if S is WORKDIR/git, then we shouldn't be moving or deleting the tree.
 		if [ "${source_dir}" != "${source_workdir}" ]; then
-			rm -rf ${S}
-			mv ${WORKDIR}/git ${S}
+			if [ -d "${source_workdir}/.git" ]; then
+				# regular git repository with .git
+				rm -rf ${S}
+				mv ${WORKDIR}/git ${S}
+			else
+				# create source for bare cloned git repository
+				git clone ${WORKDIR}/git ${S}
+				rm -rf ${WORKDIR}/git
+			fi
 		fi
 		cd ${S}
 	else
@@ -346,18 +353,6 @@ do_validate_branches() {
 			git reset --hard ${force_srcrev}
 		fi
 	fi
-}
-
-# Many scripts want to look in arch/$arch/boot for the bootable
-# image. This poses a problem for vmlinux based booting. This 
-# task arranges to have vmlinux appear in the normalized directory
-# location.
-do_kernel_link_vmlinux() {
-	if [ ! -d "${B}/arch/${ARCH}/boot" ]; then
-		mkdir ${B}/arch/${ARCH}/boot
-	fi
-	cd ${B}/arch/${ARCH}/boot
-	ln -sf ../../../vmlinux
 }
 
 OE_TERMINAL_EXPORTS += "KBUILD_OUTPUT"

@@ -74,7 +74,6 @@ addtask deploy after do_install before do_build
 INHIBIT_PACKAGE_DEBUG_SPLIT = "1"
 
 RDEPENDS_${PN}_class-target = "diffutils freetype"
-FILES_${PN}-dbg += "${libdir}/${BPN}/*/.debug"
 
 INSANE_SKIP_${PN} = "arch"
 INSANE_SKIP_${PN}-dbg = "arch"

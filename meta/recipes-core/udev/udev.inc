@@ -31,7 +31,10 @@ SRC_URI = "${KERNELORG_MIRROR}/linux/utils/kernel/hotplug/udev-${PV}.tar.gz \
            file://add-install-ptest.patch \
            file://fix_rule-syntax-regex-ptest.patch \
            file://run-ptest \
-           file://init"
+           file://init \
+           file://0001-mtd_probe.h-Add-stdint.h-as-it-was-removed-from-mtd-.patch \
+           file://0002-configure.ac-Makefile.am-Check-for-input.h-and-input.patch \
+           "
 
 inherit autotools pkgconfig update-rc.d ptest
 RDEPENDS_${PN}-ptest += "make perl python"
@@ -68,10 +71,6 @@ RRECOMMENDS_${PN} += "udev-cache"
 RCONFLICTS_${PN} += "udev-utils"
 RREPLACES_${PN} += "udev-utils"
 
-FILES_${PN}-dbg += "${libexecdir}/.debug"
-FILES_${PN}-dbg += "${base_libdir}/udev/.debug/"
-FILES_${PN}-dbg += "${base_libdir}/udev/.debug/*"
-FILES_${PN}-dbg += "${nonarch_base_libdir}/udev/.debug/*"
 FILES_${PN}-dev = "${datadir}/pkgconfig/udev.pc \
                    ${includedir}/libudev.h ${libdir}/libudev.so ${libdir}/libudev.la \
                    ${libdir}/libudev.a ${libdir}/pkgconfig/libudev.pc \

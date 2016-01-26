@@ -27,7 +27,10 @@ urlpatterns = patterns('toastergui.views',
         # landing page
         url(r'^landing/$', 'landing', name='landing'),
 
-        url(r'^builds/$', 'builds', name='all-builds'),
+        url(r'^builds/$',
+            tables.AllBuildsTable.as_view(template_name="builds-toastertable.html"),
+            name='all-builds'),
+
         # build info navigation
         url(r'^build/(?P<build_id>\d+)$', 'builddashboard', name="builddashboard"),
 
@@ -74,12 +77,15 @@ urlpatterns = patterns('toastergui.views',
         # project URLs
         url(r'^newproject/$', 'newproject', name='newproject'),
 
-
-        url(r'^projects/$', 'projects', name='all-projects'),
+        url(r'^projects/$',
+            tables.ProjectsTable.as_view(template_name="projects-toastertable.html"),
+            name='all-projects'),
 
         url(r'^project/(?P<pid>\d+)/$', 'project', name='project'),
         url(r'^project/(?P<pid>\d+)/configuration$', 'projectconf', name='projectconf'),
-        url(r'^project/(?P<pid>\d+)/builds/$', 'projectbuilds', name='projectbuilds'),
+        url(r'^project/(?P<pid>\d+)/builds/$',
+            tables.ProjectBuildsTable.as_view(template_name="projectbuilds-toastertable.html"),
+            name='projectbuilds'),
 
         # the import layer is a project-specific functionality;
         url(r'^project/(?P<pid>\d+)/importlayer$', 'importlayer', name='importlayer'),
@@ -168,5 +174,5 @@ urlpatterns = patterns('toastergui.views',
             name='xhr_customrecipe'),
 
           # default redirection
-        url(r'^$', RedirectView.as_view( url= 'landing')),
+        url(r'^$', RedirectView.as_view(url='landing', permanent=True)),
 )

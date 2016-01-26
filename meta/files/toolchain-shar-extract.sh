@@ -1,6 +1,6 @@
 #!/bin/sh
 
-[ -z "$ENVCLEANED" ] && exec /usr/bin/env -i ENVCLEANED=1 "$0" "$@"
+[ -z "$ENVCLEANED" ] && exec /usr/bin/env -i ENVCLEANED=1 HOME="$HOME" "$0" "$@"
 [ -f /etc/environment ] && . /etc/environment
 export PATH=`echo "$PATH" | sed -e 's/:\.//' -e 's/::/:/'`
 
@@ -27,6 +27,11 @@ if [ "$INST_ARCH" != "$SDK_ARCH" ]; then
 		echo "Error: Installation machine not supported!"
 		exit 1
 	fi
+fi
+
+if ! xz -V > /dev/null 2>&1; then
+	echo "Error: xz is required for installation of this SDK, please install it first"
+	exit 1
 fi
 
 DEFAULT_INSTALL_DIR="@SDKPATH@"
@@ -168,7 +173,7 @@ fi
 payload_offset=$(($(grep -na -m1 "^MARKER:$" $0|cut -d':' -f1) + 1))
 
 printf "Extracting SDK..."
-tail -n +$payload_offset $0| $SUDO_EXEC tar xj -C $target_sdk_dir --checkpoint=.2500
+tail -n +$payload_offset $0| $SUDO_EXEC tar xJ -C $target_sdk_dir --checkpoint=.2500 || exit 1
 echo "done"
 
 printf "Setting it up..."

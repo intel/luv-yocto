@@ -29,10 +29,61 @@ from django.core import validators
 from django.conf import settings
 import django.db.models.signals
 
+import os.path
+import re
 
 import logging
 logger = logging.getLogger("toaster")
 
+if 'sqlite' in settings.DATABASES['default']['ENGINE']:
+    from django.db import transaction, OperationalError
+    from time import sleep
+
+    _base_save = models.Model.save
+    def save(self, *args, **kwargs):
+        while True:
+            try:
+                with transaction.atomic():
+                    return _base_save(self, *args, **kwargs)
+            except OperationalError as err:
+                if 'database is locked' in str(err):
+                    logger.warning("%s, model: %s, args: %s, kwargs: %s",
+                                   err, self.__class__, args, kwargs)
+                    sleep(0.5)
+                    continue
+                raise
+
+    models.Model.save = save
+
+    # HACK: Monkey patch Django to fix 'database is locked' issue
+
+    from django.db.models.query import QuerySet
+    _base_insert = QuerySet._insert
+    def _insert(self,  *args, **kwargs):
+        with transaction.atomic(using=self.db, savepoint=False):
+            return _base_insert(self, *args, **kwargs)
+    QuerySet._insert = _insert
+
+    from django.utils import six
+    def _create_object_from_params(self, lookup, params):
+        """
+        Tries to create an object using passed params.
+        Used by get_or_create and update_or_create
+        """
+        try:
+            obj = self.create(**params)
+            return obj, True
+        except IntegrityError:
+            exc_info = sys.exc_info()
+            try:
+                return self.get(**lookup), False
+            except self.model.DoesNotExist:
+                pass
+            six.reraise(*exc_info)
+
+    QuerySet._create_object_from_params = _create_object_from_params
+
+    # end of HACK
 
 class GitURLValidator(validators.URLValidator):
     import re
@@ -91,18 +142,25 @@ class ProjectManager(models.Manager):
 
         return prj
 
-    def create(self, *args, **kwargs):
-        raise Exception("Invalid call to Project.objects.create. Use Project.objects.create_project() to create a project")
-
     # return single object with is_default = True
-    def get_default_project(self):
+    def get_or_create_default_project(self):
         projects = super(ProjectManager, self).filter(is_default = True)
+
         if len(projects) > 1:
-            raise Exception("Inconsistent project data: multiple " +
-                            "default projects (i.e. with is_default=True)")
+            raise Exception('Inconsistent project data: multiple ' +
+                            'default projects (i.e. with is_default=True)')
         elif len(projects) < 1:
-            raise Exception("Inconsistent project data: no default project found")
-        return projects[0]
+            options = {
+                'name': 'Command line builds',
+                'short_description': 'Project for builds started outside Toaster',
+                'is_default': True
+            }
+            project = Project.objects.create(**options)
+            project.save()
+
+            return project
+        else:
+            return projects[0]
 
 class Project(models.Model):
     search_allowed_fields = ['name', 'short_description', 'release__name', 'release__branch_name']
@@ -179,6 +237,14 @@ class Project(models.Model):
         except (Build.DoesNotExist,IndexError):
             return( "not_found" )
 
+    def get_last_build_extensions(self):
+        """
+        Get list of file name extensions for images produced by the most
+        recent build
+        """
+        last_build = Build.objects.get(pk = self.get_last_build_id())
+        return last_build.get_image_file_extensions()
+
     def get_last_imgfiles(self):
         build_id = self.get_last_build_id
         if (-1 == build_id):
@@ -187,23 +253,6 @@ class Project(models.Model):
             return Variable.objects.filter(build = build_id, variable_name = "IMAGE_FSTYPES")[ 0 ].variable_value
         except (Variable.DoesNotExist,IndexError):
             return( "not_found" )
-
-    # returns a queryset of compatible layers for a project
-    def compatible_layerversions(self, release = None, layer_name = None):
-        logger.warning("This function is deprecated")
-        if release == None:
-            release = self.release
-        # layers on the same branch or layers specifically set for this project
-        queryset = Layer_Version.objects.filter(((Q(up_branch__name = release.branch_name) & Q(project = None)) | Q(project = self)) & Q(build__isnull=True))
-
-        if layer_name is not None:
-            # we select only a layer name
-            queryset = queryset.filter(layer__name = layer_name)
-
-        # order by layer version priority
-        queryset = queryset.filter(Q(layer_source=None) | Q(layer_source__releaselayersourcepriority__release = release)).select_related('layer_source', 'layer', 'up_branch', "layer_source__releaselayersourcepriority__priority").order_by("-layer_source__releaselayersourcepriority__priority")
-
-        return queryset
 
     def get_all_compatible_layer_versions(self):
         """ Returns Queryset of all Layer_Versions which are compatible with
@@ -338,6 +387,57 @@ class Build(models.Model):
             eta += ((eta - self.started_on)*(100-completeper))/completeper
         return eta
 
+    def get_image_file_extensions(self):
+        """
+        Get list of file name extensions for images produced by this build
+        """
+        targets = Target.objects.filter(build_id = self.id)
+        extensions = []
+
+        # pattern to match against file path for building extension string
+        pattern = re.compile('\.([^\.]+?)$')
+
+        for target in targets:
+            if (not target.is_image):
+                continue
+
+            target_image_files = Target_Image_File.objects.filter(target_id = target.id)
+
+            for target_image_file in target_image_files:
+                file_name = os.path.basename(target_image_file.file_name)
+                suffix = ''
+
+                continue_matching = True
+
+                # incrementally extract the suffix from the file path,
+                # checking it against the list of valid suffixes at each
+                # step; if the path is stripped of all potential suffix
+                # parts without matching a valid suffix, this returns all
+                # characters after the first '.' in the file name
+                while continue_matching:
+                    matches = pattern.search(file_name)
+
+                    if None == matches:
+                        continue_matching = False
+                        suffix = re.sub('^\.', '', suffix)
+                        continue
+                    else:
+                        suffix = matches.group(1) + suffix
+
+                    if suffix in Target_Image_File.SUFFIXES:
+                        continue_matching = False
+                        continue
+                    else:
+                        # reduce the file name and try to find the next
+                        # segment from the path which might be part
+                        # of the suffix
+                        file_name = re.sub('.' + matches.group(1), '', file_name)
+                        suffix = '.' + suffix
+
+                if not suffix in extensions:
+                    extensions.append(suffix)
+
+        return ', '.join(extensions)
 
     def get_sorted_target_list(self):
         tgts = Target.objects.filter(build_id = self.id).order_by( 'target' );
@@ -345,6 +445,12 @@ class Build(models.Model):
 
     def get_outcome_text(self):
         return Build.BUILD_OUTCOME[int(self.outcome)][1]
+
+    @property
+    def failed_tasks(self):
+        """ Get failed tasks for the build """
+        tasks = self.task_build.all()
+        return tasks.filter(order__gt=0, outcome=Task.OUTCOME_FAILED)
 
     @property
     def errors(self):
@@ -357,8 +463,26 @@ class Build(models.Model):
         return self.logmessage_set.filter(level=LogMessage.WARNING)
 
     @property
+    def timespent(self):
+        return self.completed_on - self.started_on
+
+    @property
     def timespent_seconds(self):
-        return (self.completed_on - self.started_on).total_seconds()
+        return self.timespent.total_seconds()
+
+    @property
+    def target_labels(self):
+        """
+        Sorted (a-z) "target1:task, target2, target3" etc. string for all
+        targets in this build
+        """
+        targets = self.target_set.all()
+        target_labels = [target.target +
+                         (':' + target.task if target.task else '')
+                         for target in targets]
+        target_labels.sort()
+
+        return target_labels
 
     def get_current_status(self):
         """
@@ -423,6 +547,15 @@ class Target(models.Model):
         return self.target
 
 class Target_Image_File(models.Model):
+    # valid suffixes for image files produced by a build
+    SUFFIXES = {
+        'btrfs', 'cpio', 'cpio.gz', 'cpio.lz4', 'cpio.lzma', 'cpio.xz',
+        'cramfs', 'elf', 'ext2', 'ext2.bz2', 'ext2.gz', 'ext2.lzma', 'ext4',
+        'ext4.gz', 'ext3', 'ext3.gz', 'hddimg', 'iso', 'jffs2', 'jffs2.sum',
+        'squashfs', 'squashfs-lzo', 'squashfs-xz', 'tar.bz2', 'tar.lz4',
+        'tar.xz', 'tartar.gz', 'ubi', 'ubifs', 'vmdk'
+    }
+
     target = models.ForeignKey(Target)
     file_name = models.FilePathField(max_length=254)
     file_size = models.IntegerField()
@@ -591,8 +724,8 @@ class Package(models.Model):
 class Package_DependencyManager(models.Manager):
     use_for_related_fields = True
 
-    def get_query_set(self):
-        return super(Package_DependencyManager, self).get_query_set().exclude(package_id = F('depends_on__id'))
+    def get_queryset(self):
+        return super(Package_DependencyManager, self).get_queryset().exclude(package_id = F('depends_on__id'))
 
 class Package_Dependency(models.Model):
     TYPE_RDEPENDS = 0
@@ -692,8 +825,12 @@ class Recipe(models.Model):
 class Recipe_DependencyManager(models.Manager):
     use_for_related_fields = True
 
-    def get_query_set(self):
-        return super(Recipe_DependencyManager, self).get_query_set().exclude(recipe_id = F('depends_on__id'))
+    def get_queryset(self):
+        return super(Recipe_DependencyManager, self).get_queryset().exclude(recipe_id = F('depends_on__id'))
+
+class Provides(models.Model):
+    name = models.CharField(max_length=100)
+    recipe = models.ForeignKey(Recipe)
 
 class Recipe_Dependency(models.Model):
     TYPE_DEPENDS = 0
@@ -705,6 +842,7 @@ class Recipe_Dependency(models.Model):
     )
     recipe = models.ForeignKey(Recipe, related_name='r_dependencies_recipe')
     depends_on = models.ForeignKey(Recipe, related_name='r_dependencies_depends')
+    via = models.ForeignKey(Provides, null=True, default=None)
     dep_type = models.IntegerField(choices=DEPENDS_TYPE)
     objects = Recipe_DependencyManager()
 
@@ -1177,7 +1315,9 @@ class Layer_Version(models.Model):
         return self._handle_url_path(self.layer.vcs_web_tree_base_url, '')
 
     def get_equivalents_wpriority(self, project):
-        return project.compatible_layerversions(layer_name = self.layer.name)
+        layer_versions = project.get_all_compatible_layer_versions()
+        filtered = layer_versions.filter(layer__name = self.layer.name)
+        return filtered.order_by("-layer_source__releaselayersourcepriority__priority")
 
     def get_vcs_reference(self):
         if self.branch is not None and len(self.branch) > 0:

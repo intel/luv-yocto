@@ -219,6 +219,9 @@ class BitBakeConfigParameters(cookerdata.ConfigParameters):
         parser.add_option("", "--no-setscene", help = "Do not run any setscene tasks. sstate will be ignored and everything needed, built.",
                    action = "store_true", dest = "nosetscene", default = False)
 
+        parser.add_option("", "--setscene-only", help = "Only run setscene tasks, don't run any real tasks.",
+                   action = "store_true", dest = "setsceneonly", default = False)
+
         parser.add_option("", "--remote-server", help = "Connect to the specified server.",
                    action = "store", dest = "remote_server", default = False)
 
@@ -406,6 +409,13 @@ def bitbake_main(configParams, configuration):
         except Exception as e:
             bb.fatal("Could not connect to server %s: %s" % (configParams.remote_server, str(e)))
 
+        if configParams.kill_server:
+            server_connection.connection.terminateServer()
+            bb.event.ui_queue = []
+            return 0
+
+        server_connection.setupEventQueue()
+
         # Restore the environment in case the UI needs it
         for k in cleanedvars:
             os.environ[k] = cleanedvars[k]
@@ -415,11 +425,6 @@ def bitbake_main(configParams, configuration):
 
         if configParams.status_only:
             server_connection.terminate()
-            return 0
-
-        if configParams.kill_server:
-            server_connection.connection.terminateServer()
-            bb.event.ui_queue = []
             return 0
 
         try:

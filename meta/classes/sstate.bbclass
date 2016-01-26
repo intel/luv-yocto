@@ -854,6 +854,10 @@ def setscene_depvalid(task, taskdependees, notneeded, d):
     if taskdependees[task][1] == "do_populate_lic":
         return True
 
+    # We only need to trigger packagedata through direct dependencies
+    if taskdependees[task][1] == "do_packagedata":
+        return True
+
     for dep in taskdependees:
         bb.debug(2, "  considering dependency: %s" % (str(taskdependees[dep])))
         if task == dep:
@@ -893,6 +897,9 @@ def setscene_depvalid(task, taskdependees, notneeded, d):
             return False
 
         if taskdependees[task][1] == 'do_shared_workdir':
+            continue
+
+        if taskdependees[dep][1] == "do_populate_lic":
             continue
 
         # This is due to the [depends] in useradd.bbclass complicating matters
@@ -949,8 +956,12 @@ python sstate_eventhandler2() {
                 if stamp not in stamps:
                     toremove.append(l)
                     if stamp not in seen:
-                        bb.note("Stamp %s is not reachable, removing related manifests" % stamp)
+                        bb.debug(2, "Stamp %s is not reachable, removing related manifests" % stamp)
                         seen.append(stamp)
+
+        if toremove:
+            bb.note("There are %d recipes to be removed from sysroot %s, removing..." % (len(toremove), a))
+
         for r in toremove:
             (stamp, manifest, workdir) = r.split()
             for m in glob.glob(manifest + ".*"):

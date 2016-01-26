@@ -24,7 +24,7 @@ import os
 import re
 import shutil
 
-from wic import kickstart, msger
+from wic import msger
 from wic.pluginbase import SourcePlugin
 from wic.utils.oe.misc import exec_cmd, exec_native_cmd, get_bitbake_var
 
@@ -64,13 +64,11 @@ class IsoImagePlugin(SourcePlugin):
         else:
             splashline = ""
 
-        options = creator.ks.handler.bootloader.appendLine
-
-        timeout = kickstart.get_timeout(creator.ks, 10)
+        bootloader = creator.ks.bootloader
 
         syslinux_conf = ""
         syslinux_conf += "PROMPT 0\n"
-        syslinux_conf += "TIMEOUT %s \n" % timeout
+        syslinux_conf += "TIMEOUT %s \n" % (bootloader.timeout or 10)
         syslinux_conf += "\n"
         syslinux_conf += "ALLOWOPTIONS 1\n"
         syslinux_conf += "SERIAL 0 115200\n"
@@ -82,7 +80,8 @@ class IsoImagePlugin(SourcePlugin):
 
         kernel = "/bzImage"
         syslinux_conf += "KERNEL " + kernel + "\n"
-        syslinux_conf += "APPEND initrd=/initrd LABEL=boot %s\n" % options
+        syslinux_conf += "APPEND initrd=/initrd LABEL=boot %s\n" \
+                             % bootloader.append
 
         msger.debug("Writing syslinux config %s/ISO/isolinux/isolinux.cfg" \
                     % cr_workdir)
@@ -100,14 +99,13 @@ class IsoImagePlugin(SourcePlugin):
         else:
             splashline = ""
 
-        options = creator.ks.handler.bootloader.appendLine
+        bootloader = creator.ks.bootloader
 
         grubefi_conf = ""
         grubefi_conf += "serial --unit=0 --speed=115200 --word=8 "
         grubefi_conf += "--parity=no --stop=1\n"
         grubefi_conf += "default=boot\n"
-        timeout = kickstart.get_timeout(creator.ks, 10)
-        grubefi_conf += "timeout=%s\n" % timeout
+        grubefi_conf += "timeout=%s\n" % (bootloader.timeout or 10)
         grubefi_conf += "\n"
         grubefi_conf += "search --set=root --label %s " % part.label
         grubefi_conf += "\n"
@@ -116,7 +114,7 @@ class IsoImagePlugin(SourcePlugin):
         kernel = "/bzImage"
 
         grubefi_conf += "linux %s rootwait %s\n" \
-            % (kernel, options)
+            % (kernel, bootloader.append)
         grubefi_conf += "initrd /initrd \n"
         grubefi_conf += "}\n"
 
@@ -264,26 +262,26 @@ class IsoImagePlugin(SourcePlugin):
 
         isodir = "%s/ISO" % cr_workdir
 
-        if part.rootfs is None:
+        if part.rootfs_dir is None:
             if not 'ROOTFS_DIR' in rootfs_dir:
                 msger.error("Couldn't find --rootfs-dir, exiting.\n")
             rootfs_dir = rootfs_dir['ROOTFS_DIR']
         else:
-            if part.rootfs in rootfs_dir:
-                rootfs_dir = rootfs_dir[part.rootfs]
-            elif part.rootfs:
-                rootfs_dir = part.rootfs
+            if part.rootfs_dir in rootfs_dir:
+                rootfs_dir = rootfs_dir[part.rootfs_dir]
+            elif part.rootfs_dir:
+                rootfs_dir = part.rootfs_dir
             else:
                 msg = "Couldn't find --rootfs-dir=%s connection "
                 msg += "or it is not a valid path, exiting.\n"
-                msger.error(msg % part.rootfs)
+                msger.error(msg % part.rootfs_dir)
 
         if not os.path.isdir(rootfs_dir):
             rootfs_dir = get_bitbake_var("IMAGE_ROOTFS")
         if not os.path.isdir(rootfs_dir):
             msger.error("Couldn't find IMAGE_ROOTFS, exiting.\n")
 
-        part.set_rootfs(rootfs_dir)
+        part.rootfs_dir = rootfs_dir
 
         # Prepare rootfs.img
         hdd_dir = get_bitbake_var("HDDDIR")
@@ -304,7 +302,7 @@ class IsoImagePlugin(SourcePlugin):
             # which contains rootfs
             du_cmd = "du -bks %s" % rootfs_dir
             out = exec_cmd(du_cmd)
-            part.set_size(int(out.split()[0]))
+            part.size = int(out.split()[0])
             part.extra_space = 0
             part.overhead_factor = 1.2
             part.prepare_rootfs(cr_workdir, oe_builddir, rootfs_dir, \
@@ -504,8 +502,8 @@ class IsoImagePlugin(SourcePlugin):
         out = exec_cmd(du_cmd)
         isoimg_size = int(out.split()[0])
 
-        part.set_size(isoimg_size)
-        part.set_source_file(iso_img)
+        part.size = isoimg_size
+        part.source_file = iso_img
 
     @classmethod
     def do_install_disk(cls, disk, disk_name, creator, workdir, oe_builddir,

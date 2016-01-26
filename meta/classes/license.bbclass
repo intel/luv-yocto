@@ -21,8 +21,12 @@ python write_package_manifest() {
     license_image_dir = d.expand('${LICENSE_DIRECTORY}/${IMAGE_NAME}')
     bb.utils.mkdirhier(license_image_dir)
     from oe.rootfs import image_list_installed_packages
+    from oe.utils import format_pkg_list
+
+    pkgs = image_list_installed_packages(d)
+    output = format_pkg_list(pkgs)
     open(os.path.join(license_image_dir, 'package.manifest'),
-        'w+').write(image_list_installed_packages(d))
+        'w+').write(output)
 }
 
 python write_deploy_manifest() {
@@ -38,7 +42,7 @@ python license_create_manifest() {
         return 0
 
     pkg_dic = {}
-    for pkg in image_list_installed_packages(d).splitlines():
+    for pkg in sorted(image_list_installed_packages(d)):
         pkg_info = os.path.join(d.getVar('PKGDATA_DIR', True),
                                 'runtime-reverse', pkg)
         pkg_name = os.path.basename(os.readlink(pkg_info))
@@ -70,7 +74,7 @@ def write_license_files(d, license_manifest, pkg_dic):
                 except oe.license.LicenseError as exc:
                     bb.fatal('%s: %s' % (d.getVar('P', True), exc))
             else:
-                pkg_dic[pkg]["LICENSES"] = re.sub('[|&()*]', '', pkg_dic[pkg]["LICENSE"])
+                pkg_dic[pkg]["LICENSES"] = re.sub('[|&()*]', ' ', pkg_dic[pkg]["LICENSE"])
                 pkg_dic[pkg]["LICENSES"] = re.sub('  *', ' ', pkg_dic[pkg]["LICENSES"])
                 pkg_dic[pkg]["LICENSES"] = pkg_dic[pkg]["LICENSES"].split()
 
@@ -192,7 +196,7 @@ def get_deployed_dependencies(d):
     # usually in this var and not listed in rootfs.
     # At last, get the dependencies from boot classes because
     # it might contain the bootloader.
-    taskdata = d.getVar("BB_TASKDEPDATA", True)
+    taskdata = d.getVar("BB_TASKDEPDATA", False)
     depends = list(set([dep[0] for dep
                     in taskdata.itervalues()
                     if not dep[0].endswith("-native")]))
@@ -228,6 +232,7 @@ def get_deployed_dependencies(d):
                 break
 
     return deploy
+get_deployed_dependencies[vardepsexclude] = "BB_TASKDEPDATA"
 
 def get_boot_dependencies(d):
     """
@@ -236,7 +241,7 @@ def get_boot_dependencies(d):
 
     depends = []
     boot_depends_string = ""
-    taskdepdata = d.getVar("BB_TASKDEPDATA", True)
+    taskdepdata = d.getVar("BB_TASKDEPDATA", False)
     # Only bootimg and bootdirectdisk include the depends flag
     boot_tasks = ["do_bootimg", "do_bootdirectdisk",]
 
@@ -264,6 +269,7 @@ def get_boot_dependencies(d):
                         depends.append(taskdep[0])
                         break
     return depends
+get_boot_dependencies[vardepsexclude] = "BB_TASKDEPDATA"
 
 def get_deployed_files(man_file):
     """

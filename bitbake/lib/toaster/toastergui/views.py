@@ -35,7 +35,7 @@ from orm.models import BitbakeVersion, CustomImageRecipe
 from bldcontrol import bbcontroller
 from django.views.decorators.cache import cache_control
 from django.core.urlresolvers import reverse, resolve
-from django.core.exceptions import MultipleObjectsReturned
+from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.http import HttpResponseBadRequest, HttpResponseNotFound
 from django.utils import timezone
@@ -43,6 +43,7 @@ from django.utils.html import escape
 from datetime import timedelta, datetime
 from django.utils import formats
 from toastergui.templatetags.projecttags import json as jsonfilter
+from decimal import Decimal
 import json
 from os.path import dirname
 from functools import wraps
@@ -73,7 +74,7 @@ class MimeTypeFinder(object):
 def landing(request):
     # in build mode, we redirect to the command-line builds page
     # if there are any builds for the default (cli builds) project
-    default_project = Project.objects.get_default_project()
+    default_project = Project.objects.get_or_create_default_project()
     default_project_builds = Build.objects.filter(project = default_project)
 
     # we only redirect to projects page if there is a user-generated project
@@ -91,49 +92,6 @@ def landing(request):
 
     return render(request, 'landing.html', context)
 
-# returns a list for most recent builds;
-def _get_latest_builds(prj=None):
-    queryset = Build.objects.all()
-
-    if prj is not None:
-        queryset = queryset.filter(project = prj)
-
-    return list(itertools.chain(
-        queryset.filter(outcome=Build.IN_PROGRESS).order_by("-started_on"),
-        queryset.filter(outcome__lt=Build.IN_PROGRESS).order_by("-started_on")[:3] ))
-
-
-# a JSON-able dict of recent builds; for use in the Project page, xhr_ updates,  and other places, as needed
-def _project_recent_build_list(prj):
-    data = []
-    # take the most recent 3 completed builds, plus any builds in progress
-    for x in _get_latest_builds(prj):
-        d = {
-            "id":  x.pk,
-            "targets" : map(lambda y: {"target": y.target, "task": y.task }, x.target_set.all()), # TODO: create the task entry in the Target table
-            "status": x.get_current_status(),
-            "errors": map(lambda y: {"type": y.lineno, "msg": y.message, "tb": y.pathname}, (x.logmessage_set.filter(level__gte=LogMessage.WARNING)|x.logmessage_set.filter(level=LogMessage.EXCEPTION))),
-            "updated": x.completed_on.strftime('%s')+"000",
-            "command_time": (x.completed_on - x.started_on).total_seconds(),
-            "br_page_url": reverse('builddashboard', args=(x.pk,) ),
-            "build" : map( lambda y: {"id": y.pk,
-                        "status": y.get_outcome_display(),
-                        "completed_on" : y.completed_on.strftime('%s')+"000",
-                        "build_time" : (y.completed_on - y.started_on).total_seconds(),
-                        "build_page_url" : reverse('builddashboard', args=(y.pk,)),
-                        'build_time_page_url': reverse('buildtime', args=(y.pk,)),
-                        "errors": y.errors.count(),
-                        "warnings": y.warnings.count(),
-                        "completeper": y.completeper() if y.outcome == Build.IN_PROGRESS else "0",
-                        "eta": y.eta().strftime('%s')+"000" if y.outcome == Build.IN_PROGRESS else "0",
-                        }, [x]),
-            }
-        data.append(d)
-
-    return data
-
-
-
 def objtojson(obj):
     from django.db.models.query import QuerySet
     from django.db.models import Model
@@ -144,6 +102,8 @@ def objtojson(obj):
         return obj.total_seconds()
     elif isinstance(obj, QuerySet) or isinstance(obj, set):
         return list(obj)
+    elif isinstance(obj, Decimal):
+        return str(obj)
     elif type(obj).__name__ == "RelatedManager":
         return [x.pk for x in obj.all()]
     elif hasattr( obj, '__dict__') and isinstance(obj, Model):
@@ -502,7 +462,7 @@ def builddashboard( request, build_id ):
     for t in tgts:
         elem = { }
         elem[ 'target' ] = t
-        if ( t.is_image ):
+        if t.is_image:
             hasImages = True
         npkg = 0
         pkgsz = 0
@@ -521,8 +481,7 @@ def builddashboard( request, build_id ):
                 ndx = 0;
             f = i.file_name[ ndx + 1: ]
             imageFiles.append({ 'id': i.id, 'path': f, 'size' : i.file_size })
-        if ( t.is_image and
-             (( len( imageFiles ) <= 0 ) or ( len( t.license_manifest_path ) <= 0 ))):
+        if t.is_image and (len(imageFiles) <= 0 or len(t.license_manifest_path) <= 0):
             targetHasNoImages = True
         elem[ 'imageFiles' ] = imageFiles
         elem[ 'targetHasNoImages' ] = targetHasNoImages
@@ -1915,258 +1874,6 @@ if True:
         ''' The exception raised on invalid POST requests '''
         pass
 
-    # shows the "all builds" page for managed mode; it displays build requests (at least started!) instead of actual builds
-    # WARNING _build_list_helper() may raise a RedirectException, which
-    # will set the GET parameters and redirect back to the
-    # all-builds or projectbuilds page as appropriate;
-    # TODO don't use exceptions to control program flow
-    @_template_renderer("builds.html")
-    def builds(request):
-        # define here what parameters the view needs in the GET portion in order to
-        # be able to display something.  'count' and 'page' are mandatory for all views
-        # that use paginators.
-
-        queryset = Build.objects.all()
-
-        redirect_page = resolve(request.path_info).url_name
-
-        context, pagesize, orderby = _build_list_helper(request,
-                                                        queryset,
-                                                        redirect_page)
-        # all builds page as a Project column
-        context['tablecols'].append({
-            'name': 'Project',
-            'clclass': 'project_column'
-        })
-
-        _set_parameters_values(pagesize, orderby, request)
-        return context
-
-
-    # helper function, to be used on "all builds" and "project builds" pages
-    def _build_list_helper(request, queryset_all, redirect_page, pid=None):
-        default_orderby = 'completed_on:-'
-        (pagesize, orderby) = _get_parameters_values(request, 10, default_orderby)
-        mandatory_parameters = { 'count': pagesize,  'page' : 1, 'orderby' : orderby }
-        retval = _verify_parameters( request.GET, mandatory_parameters )
-        if retval:
-            params = {}
-            if pid:
-                params = {'pid': pid}
-            raise RedirectException(redirect_page,
-                                    request.GET,
-                                    mandatory_parameters,
-                                    **params)
-
-        # boilerplate code that takes a request for an object type and returns a queryset
-        # for that object type. copypasta for all needed table searches
-        (filter_string, search_term, ordering_string) = _search_tuple(request, Build)
-
-        # post-process any date range filters
-        filter_string, daterange_selected = _modify_date_range_filter(filter_string)
-
-        # don't show "in progress" builds in "all builds" or "project builds"
-        queryset_all = queryset_all.exclude(outcome = Build.IN_PROGRESS)
-
-        # append project info
-        queryset_all = queryset_all.select_related("project")
-
-        # annotate with number of ERROR and EXCEPTION log messages
-        queryset_all = queryset_all.annotate(
-            errors_no = Count(
-                'logmessage',
-                only=Q(logmessage__level=LogMessage.ERROR) |
-                     Q(logmessage__level=LogMessage.EXCEPTION)
-            )
-        )
-
-        # annotate with number of warnings
-        q_warnings = Q(logmessage__level=LogMessage.WARNING)
-        queryset_all = queryset_all.annotate(
-            warnings_no = Count('logmessage', only=q_warnings)
-        )
-
-        # add timespent field
-        timespent = 'completed_on - started_on'
-        queryset_all = queryset_all.extra(select={'timespent': timespent})
-
-        queryset_with_search = _get_queryset(Build, queryset_all,
-                                             None, search_term,
-                                             ordering_string, '-completed_on')
-
-        queryset = _get_queryset(Build, queryset_all,
-                                 filter_string, search_term,
-                                 ordering_string, '-completed_on')
-
-        # retrieve the objects that will be displayed in the table; builds a paginator and gets a page range to display
-        build_info = _build_page_range(Paginator(queryset, pagesize), request.GET.get('page', 1))
-
-        # build view-specific information; this is rendered specifically in the builds page, at the top of the page (i.e. Recent builds)
-        build_mru = _get_latest_builds()[:3]
-
-        # calculate the exact begining of local today and yesterday, append context
-        context_date,today_begin,yesterday_begin = _add_daterange_context(queryset_all, request, {'started_on','completed_on'})
-
-        # set up list of fstypes for each build
-        fstypes_map = {};
-        for build in build_info:
-            targets = Target.objects.filter( build_id = build.id )
-            comma = "";
-            extensions = "";
-            for t in targets:
-                if ( not t.is_image ):
-                    continue
-                tif = Target_Image_File.objects.filter( target_id = t.id )
-                for i in tif:
-                    s=re.sub('.*tar.bz2', 'tar.bz2', i.file_name)
-                    if s == i.file_name:
-                        s=re.sub('.*\.', '', i.file_name)
-                    if None == re.search(s,extensions):
-                        extensions += comma + s
-                        comma = ", "
-            fstypes_map[build.id]=extensions
-
-        # send the data to the template
-        context = {
-                # specific info for
-                    'mru' : build_mru,
-                # TODO: common objects for all table views, adapt as needed
-                    'objects' : build_info,
-                    'objectname' : "builds",
-                    'default_orderby' : default_orderby,
-                    'fstypes' : fstypes_map,
-                    'search_term' : search_term,
-                    'total_count' : queryset_with_search.count(),
-                    'daterange_selected' : daterange_selected,
-                # Specifies the display of columns for the table, appearance in "Edit columns" box, toggling default show/hide, and specifying filters for columns
-                    'tablecols' : [
-                    {'name': 'Outcome',                                                # column with a single filter
-                     'qhelp' : "The outcome tells you if a build successfully completed or failed",     # the help button content
-                     'dclass' : "span2",                                                # indication about column width; comes from the design
-                     'orderfield': _get_toggle_order(request, "outcome"),               # adds ordering by the field value; default ascending unless clicked from ascending into descending
-                     'ordericon':_get_toggle_order_icon(request, "outcome"),
-                      # filter field will set a filter on that column with the specs in the filter description
-                      # the class field in the filter has no relation with clclass; the control different aspects of the UI
-                      # still, it is recommended for the values to be identical for easy tracking in the generated HTML
-                     'filter' : {'class' : 'outcome',
-                                 'label': 'Show:',
-                                 'options' : [
-                                             ('Successful builds', 'outcome:' + str(Build.SUCCEEDED), queryset_with_search.filter(outcome=str(Build.SUCCEEDED)).count()),  # this is the field search expression
-                                             ('Failed builds', 'outcome:'+ str(Build.FAILED), queryset_with_search.filter(outcome=str(Build.FAILED)).count()),
-                                             ]
-                                }
-                    },
-                    {'name': 'Recipe',                                                 # default column, disabled box, with just the name in the list
-                     'qhelp': "What you built (i.e. one or more recipes or image recipes)",
-                     'orderfield': _get_toggle_order(request, "target__target"),
-                     'ordericon':_get_toggle_order_icon(request, "target__target"),
-                    },
-                    {'name': 'Machine',
-                     'qhelp': "The machine is the hardware for which you are building a recipe or image recipe",
-                     'orderfield': _get_toggle_order(request, "machine"),
-                     'ordericon':_get_toggle_order_icon(request, "machine"),
-                     'dclass': 'span3'
-                    },                           # a slightly wider column
-                    {'name': 'Started on', 'clclass': 'started_on', 'hidden' : 1,      # this is an unchecked box, which hides the column
-                     'qhelp': "The date and time you started the build",
-                     'orderfield': _get_toggle_order(request, "started_on", True),
-                     'ordericon':_get_toggle_order_icon(request, "started_on"),
-                     'orderkey' : "started_on",
-                     'filter' : {'class' : 'started_on',
-                                 'label': 'Show:',
-                                 'options' : [
-                                             ("Today's builds" , 'started_on__gte:'+today_begin.strftime("%Y-%m-%d"), queryset_all.filter(started_on__gte=today_begin).count()),
-                                             ("Yesterday's builds",
-                                                 'started_on__gte!started_on__lt:'
-                                                     +yesterday_begin.strftime("%Y-%m-%d")+'!'
-                                                     +today_begin.strftime("%Y-%m-%d"),
-                                                 queryset_all.filter(
-                                                     started_on__gte=yesterday_begin,
-                                                     started_on__lt=today_begin
-                                                     ).count()),
-                                             ("Build date range", 'daterange', 1, '', 'started_on'),
-                                             ]
-                                }
-                     },
-                    {'name': 'Completed on',
-                     'qhelp': "The date and time the build finished",
-                     'orderfield': _get_toggle_order(request, "completed_on", True),
-                     'ordericon':_get_toggle_order_icon(request, "completed_on"),
-                     'orderkey' : 'completed_on',
-                     'filter' : {'class' : 'completed_on',
-                                 'label': 'Show:',
-                                 'options' : [
-                                             ("Today's builds" , 'completed_on__gte:'+today_begin.strftime("%Y-%m-%d"), queryset_all.filter(completed_on__gte=today_begin).count()),
-                                             ("Yesterday's builds",
-                                                 'completed_on__gte!completed_on__lt:'
-                                                     +yesterday_begin.strftime("%Y-%m-%d")+'!'
-                                                     +today_begin.strftime("%Y-%m-%d"),
-                                                 queryset_all.filter(
-                                                     completed_on__gte=yesterday_begin,
-                                                     completed_on__lt=today_begin
-                                                     ).count()),
-                                             ("Build date range", 'daterange', 1, '', 'completed_on'),
-                                             ]
-                                }
-                    },
-                    {'name': 'Failed tasks', 'clclass': 'failed_tasks',                # specifing a clclass will enable the checkbox
-                     'qhelp': "How many tasks failed during the build",
-                     'filter' : {'class' : 'failed_tasks',
-                                 'label': 'Show:',
-                                 'options' : [
-                                             ('Builds with failed tasks', 'task_build__outcome:4', queryset_with_search.filter(task_build__outcome=4).count()),
-                                             ('Builds without failed tasks', 'task_build__outcome:NOT4', queryset_with_search.filter(~Q(task_build__outcome=4)).count()),
-                                             ]
-                                }
-                    },
-                    {'name': 'Errors', 'clclass': 'errors_no',
-                     'qhelp': "How many errors were encountered during the build (if any)",
-                     # Comment out sorting and filter until YOCTO #8131 is fixed
-                     #'orderfield': _get_toggle_order(request, "errors_no", True),
-                     #'ordericon':_get_toggle_order_icon(request, "errors_no"),
-                     #'orderkey' : 'errors_no',
-                     #'filter' : {'class' : 'errors_no',
-                     #            'label': 'Show:',
-                     #            'options' : [
-                     #                        ('Builds with errors', 'errors_no__gte:1', queryset_with_search.filter(errors_no__gte=1).count()),
-                     #                        ('Builds without errors', 'errors_no:0', queryset_with_search.filter(errors_no=0).count()),
-                     #                        ]
-                     #           }
-                    },
-                    {'name': 'Warnings', 'clclass': 'warnings_no',
-                     'qhelp': "How many warnings were encountered during the build (if any)",
-                     # Comment out sorting and filter until YOCTO #8131 is fixed
-                     #'orderfield': _get_toggle_order(request, "warnings_no", True),
-                     #'ordericon':_get_toggle_order_icon(request, "warnings_no"),
-                     #'orderkey' : 'warnings_no',
-                     #'filter' : {'class' : 'warnings_no',
-                     #            'label': 'Show:',
-                     #            'options' : [
-                     #                        ('Builds with warnings','warnings_no__gte:1', queryset_with_search.filter(warnings_no__gte=1).count()),
-                     #                        ('Builds without warnings','warnings_no:0', queryset_with_search.filter(warnings_no=0).count()),
-                     #                        ]
-                     #           }
-                    },
-                    {'name': 'Time', 'clclass': 'time', 'hidden' : 1,
-                     'qhelp': "How long it took the build to finish",
-                     # Comment out sorting until YOCTO #8131 is fixed
-                     #'orderfield': _get_toggle_order(request, "timespent", True),
-                     #'ordericon':_get_toggle_order_icon(request, "timespent"),
-                     #'orderkey' : 'timespent',
-                    },
-                    {'name': 'Image files', 'clclass': 'output',
-                     'qhelp': "The root file system types produced by the build. You can find them in your <code>/build/tmp/deploy/images/</code> directory",
-                        # TODO: compute image fstypes from Target_Image_File
-                    }
-                    ]
-                }
-
-        # merge daterange values
-        context.update(context_date)
-        return context, pagesize, orderby
-
-
-
     # new project
     def newproject(request):
         template = "newproject.html"
@@ -2264,16 +1971,17 @@ if True:
                 prj.bitbake_version = prj.release.bitbake_version
                 prj.save()
                 # we need to change the layers
-                for i in prj.projectlayer_set.all():
+                for project in prj.projectlayer_set.all():
                     # find and add a similarly-named layer on the new branch
                     try:
-                        lv = prj.compatible_layerversions(layer_name = i.layercommit.layer.name)[0]
-                        ProjectLayer.objects.get_or_create(project = prj, layercommit = lv)
+                        layer_versions = prj.get_all_compatible_layer_versions()
+                        layer_versions = layer_versions.filter(layer__name = project.layercommit.layer.name)
+                        ProjectLayer.objects.get_or_create(project = prj, layercommit = layer_versions.first())
                     except IndexError:
                         pass
                     finally:
                         # get rid of the old entry
-                        i.delete()
+                        project.delete()
 
             if 'machineName' in request.POST:
                 machinevar = prj.projectvariable_set.get(name="MACHINE")
@@ -2300,7 +2008,7 @@ if True:
             "completedbuilds": Build.objects.exclude(outcome = Build.IN_PROGRESS).filter(project_id = pid),
             "prj" : {"name": prj.name, },
             "buildrequests" : prj.build_set.filter(outcome=Build.IN_PROGRESS),
-            "builds" : _project_recent_build_list(prj),
+            #"builds" : _project_recent_build_list(prj),
             "layers" :  map(lambda x: {
                         "id": x.layercommit.pk,
                         "orderid": x.pk,
@@ -2383,12 +2091,17 @@ if True:
 
             retval = []
 
-            for i in prj.projectlayer_set.all():
-                lv = prj.compatible_layerversions(release = Release.objects.get(pk=new_release_id)).filter(layer__name = i.layercommit.layer.name)
+            for project in prj.projectlayer_set.all():
+                release = Release.objects.get(pk = new_release_id)
+
+                layer_versions = prj.get_all_compatible_layer_versions()
+                layer_versions = layer_versions.filter(release = release)
+                layer_versions = layer_versions.filter(layer__name = project.layercommit.layer.name)
+
                 # there is no layer_version with the new release id,
                 # and the same name
-                if lv.count() < 1:
-                    retval.append(i)
+                if layer_versions.count() < 1:
+                    retval.append(project)
 
             return response({"error":"ok",
                              "rows" : map( _lv_to_dict(prj),
@@ -2802,12 +2515,7 @@ if True:
             'all_proxy','ftp_proxy','http_proxy ','https_proxy'
             }
 
-        vars_fstypes  = {
-            'btrfs','cpio','cpio.gz','cpio.lz4','cpio.lzma','cpio.xz','cramfs',
-            'elf','ext2','ext2.bz2','ext2.gz','ext2.lzma', 'ext4', 'ext4.gz', 'ext3','ext3.gz','hddimg',
-            'iso','jffs2','jffs2.sum','squashfs','squashfs-lzo','squashfs-xz','tar.bz2',
-            'tar.lz4','tar.xz','tartar.gz','ubi','ubifs','vmdk'
-        }
+        vars_fstypes = Target_Image_File.SUFFIXES
 
         return(vars_managed,sorted(vars_fstypes),vars_blacklist)
 
@@ -2867,257 +2575,63 @@ if True:
 
         return context
 
-    # WARNING _build_list_helper() may raise a RedirectException, which
-    # will set the GET parameters and redirect back to the
-    # all-builds or projectbuilds page as appropriate;
-    # TODO don't use exceptions to control program flow
-    @_template_renderer('projectbuilds.html')
-    def projectbuilds(request, pid):
-        prj = Project.objects.get(id = pid)
-
-        if request.method == "POST":
-            # process any build request
-
-            if 'buildCancel' in request.POST:
-                for i in request.POST['buildCancel'].strip().split(" "):
-                    try:
-                        br = BuildRequest.objects.select_for_update().get(project = prj, pk = i, state__lte = BuildRequest.REQ_QUEUED)
-                        br.state = BuildRequest.REQ_DELETED
-                        br.save()
-                    except BuildRequest.DoesNotExist:
-                        pass
-
-            if 'buildDelete' in request.POST:
-                for i in request.POST['buildDelete'].strip().split(" "):
-                    try:
-                        BuildRequest.objects.select_for_update().get(project = prj, pk = i, state__lte = BuildRequest.REQ_DELETED).delete()
-                    except BuildRequest.DoesNotExist:
-                        pass
-
-            if 'targets' in request.POST:
-                ProjectTarget.objects.filter(project = prj).delete()
-                s = str(request.POST['targets'])
-                for t in s.translate(None, ";%|\"").split(" "):
-                    if ":" in t:
-                        target, task = t.split(":")
-                    else:
-                        target = t
-                        task = ""
-                    ProjectTarget.objects.create(project = prj,
-                                                 target = target,
-                                                 task = task)
-                prj.schedule_build()
-
-        queryset = Build.objects.filter(project_id = pid)
-
-        redirect_page = resolve(request.path_info).url_name
-
-        context, pagesize, orderby = _build_list_helper(request,
-                                                        queryset,
-                                                        redirect_page,
-                                                        pid)
-
-        context['project'] = prj
-        _set_parameters_values(pagesize, orderby, request)
-
-        # add the most recent builds for this project
-        context['mru'] = _get_latest_builds(prj)
-
-        return context
-
-
-    def _file_name_for_artifact(b, artifact_type, artifact_id):
+    def _file_names_for_artifact(build, artifact_type, artifact_id):
+        """
+        Return a tuple (file path, file name for the download response) for an
+        artifact of type artifact_type with ID artifact_id for build; if
+        artifact type is not supported, returns (None, None)
+        """
         file_name = None
-        # Target_Image_File file_name
-        if artifact_type == "imagefile":
-            file_name = Target_Image_File.objects.get(target__build = b, pk = artifact_id).file_name
+        response_file_name = None
+
+        if artifact_type == "cookerlog":
+            file_name = build.cooker_log_path
+            response_file_name = "cooker.log"
+
+        elif artifact_type == "imagefile":
+            file_name = Target_Image_File.objects.get(target__build = build, pk = artifact_id).file_name
 
         elif artifact_type == "buildartifact":
-            file_name = BuildArtifact.objects.get(build = b, pk = artifact_id).file_name
+            file_name = BuildArtifact.objects.get(build = build, pk = artifact_id).file_name
 
-        elif artifact_type ==  "licensemanifest":
-            file_name = Target.objects.get(build = b, pk = artifact_id).license_manifest_path
+        elif artifact_type == "licensemanifest":
+            file_name = Target.objects.get(build = build, pk = artifact_id).license_manifest_path
 
         elif artifact_type == "tasklogfile":
-            file_name = Task.objects.get(build = b, pk = artifact_id).logfile
+            file_name = Task.objects.get(build = build, pk = artifact_id).logfile
 
         elif artifact_type == "logmessagefile":
-            file_name = LogMessage.objects.get(build = b, pk = artifact_id).pathname
-        else:
-            raise Exception("FIXME: artifact type %s not implemented" % (artifact_type))
+            file_name = LogMessage.objects.get(build = build, pk = artifact_id).pathname
 
-        return file_name
+        if file_name and not response_file_name:
+            response_file_name = os.path.basename(file_name)
 
+        return (file_name, response_file_name)
 
     def build_artifact(request, build_id, artifact_type, artifact_id):
-        if artifact_type in ["cookerlog"]:
-            try:
-                build = Build.objects.get(pk = build_id)
-                file_name = build.cooker_log_path
+        """
+        View which returns a build artifact file as a response
+        """
+        file_name = None
+        response_file_name = None
+
+        try:
+            build = Build.objects.get(pk = build_id)
+            file_name, response_file_name = _file_names_for_artifact(
+                build, artifact_type, artifact_id
+            )
+
+            if file_name and response_file_name:
                 fsock = open(file_name, "r")
                 content_type = MimeTypeFinder.get_mimetype(file_name)
 
                 response = HttpResponse(fsock, content_type = content_type)
 
-                disposition = 'attachment; filename=cooker.log'
-                response['Content-Disposition'] = disposition
+                disposition = "attachment; filename=" + response_file_name
+                response["Content-Disposition"] = disposition
 
                 return response
-            except IOError:
-                context = {
-                    'build' : Build.objects.get(pk = build_id),
-                }
-                return render(request, "unavailable_artifact.html", context)
-
-        else:
-            # retrieve the artifact directly from the build environment
-            return _get_be_artifact(request, build_id, artifact_type, artifact_id)
-
-
-    def _get_be_artifact(request, build_id, artifact_type, artifact_id):
-        try:
-            b = Build.objects.get(pk=build_id)
-            if b.buildrequest is None or b.buildrequest.environment is None:
-                raise Exception("Artifact not available for download (missing build request or build environment)")
-
-            file_name = _file_name_for_artifact(b, artifact_type, artifact_id)
-            fsock = None
-            content_type='application/force-download'
-
-            if file_name is None:
-                raise Exception("Could not handle artifact %s id %s" % (artifact_type, artifact_id))
             else:
-                content_type = MimeTypeFinder.get_mimetype(file_name)
-                fsock = b.buildrequest.environment.get_artifact(file_name)
-                file_name = os.path.basename(file_name) # we assume that the build environment system has the same path conventions as host
-
-            response = HttpResponse(fsock, content_type = content_type)
-
-            # returns a file from the environment
-            response['Content-Disposition'] = 'attachment; filename=' + file_name
-            return response
-        except IOError:
-            context = {
-                'build' : Build.objects.get(pk = build_id),
-            }
-            return render(request, "unavailable_artifact.html", context)
-
-
-
-
-    @_template_renderer("projects.html")
-    def projects(request):
-        (pagesize, orderby) = _get_parameters_values(request, 10, 'updated:-')
-        mandatory_parameters = { 'count': pagesize,  'page' : 1, 'orderby' : orderby }
-        retval = _verify_parameters( request.GET, mandatory_parameters )
-        if retval:
-            raise RedirectException( 'all-projects', request.GET, mandatory_parameters )
-
-        queryset_all = Project.objects.all()
-
-        # annotate each project with its number of builds
-        queryset_all = queryset_all.annotate(num_builds=Count('build'))
-
-        # exclude the command line builds project if it has no builds
-        q_default_with_builds = Q(is_default=True) & Q(num_builds__gt=0)
-        queryset_all = queryset_all.filter(Q(is_default=False) |
-                                           q_default_with_builds)
-
-        # boilerplate code that takes a request for an object type and returns a queryset
-        # for that object type. copypasta for all needed table searches
-        (filter_string, search_term, ordering_string) = _search_tuple(request, Project)
-        queryset_with_search = _get_queryset(Project, queryset_all, None, search_term, ordering_string, '-updated')
-        queryset = _get_queryset(Project, queryset_all, filter_string, search_term, ordering_string, '-updated')
-
-        # retrieve the objects that will be displayed in the table; projects a paginator and gets a page range to display
-        project_info = _build_page_range(Paginator(queryset, pagesize), request.GET.get('page', 1))
-
-        # add fields needed in JSON dumps for API call support
-        for p in project_info.object_list:
-            p.id = p.pk
-            p.projectPageUrl = reverse('project', args=(p.id,))
-            p.layersTypeAheadUrl = reverse('xhr_layerstypeahead', args=(p.id,))
-            p.recipesTypeAheadUrl = reverse('xhr_recipestypeahead', args=(p.id,))
-            p.projectBuildsUrl = reverse('projectbuilds', args=(p.id,))
-
-        # build view-specific information; this is rendered specifically in the builds page, at the top of the page (i.e. Recent builds)
-        build_mru = _get_latest_builds()
-
-        # translate the project's build target strings
-        fstypes_map = {};
-        for project in project_info:
-            try:
-                targets = Target.objects.filter( build_id = project.get_last_build_id() )
-                comma = "";
-                extensions = "";
-                for t in targets:
-                    if ( not t.is_image ):
-                        continue
-                    tif = Target_Image_File.objects.filter( target_id = t.id )
-                    for i in tif:
-                        s=re.sub('.*tar.bz2', 'tar.bz2', i.file_name)
-                        if s == i.file_name:
-                            s=re.sub('.*\.', '', i.file_name)
-                        if None == re.search(s,extensions):
-                            extensions += comma + s
-                            comma = ", "
-                fstypes_map[project.id]=extensions
-            except (Target.DoesNotExist,IndexError):
-                fstypes_map[project.id]=project.get_last_imgfiles
-
-        context = {
-                'mru' : build_mru,
-
-                'objects' : project_info,
-                'objectname' : "projects",
-                'default_orderby' : 'id:-',
-                'search_term' : search_term,
-                'total_count' : queryset_with_search.count(),
-                'fstypes' : fstypes_map,
-                'build_FAILED' : Build.FAILED,
-                'build_SUCCEEDED' : Build.SUCCEEDED,
-                'tablecols': [
-                    {'name': 'Project',
-                    'orderfield': _get_toggle_order(request, "name"),
-                    'ordericon':_get_toggle_order_icon(request, "name"),
-                    'orderkey' : 'name',
-                    },
-                    {'name': 'Last activity on',
-                    'clclass': 'updated',
-                    'qhelp': "Shows the starting date and time of the last project build. If the project has no builds, it shows the date the project was created",
-                    'orderfield': _get_toggle_order(request, "updated", True),
-                    'ordericon':_get_toggle_order_icon(request, "updated"),
-                    'orderkey' : 'updated',
-                    },
-                    {'name': 'Release',
-                    'qhelp' : "The version of the build system used by the project",
-                    'orderfield': _get_toggle_order(request, "release__name"),
-                    'ordericon':_get_toggle_order_icon(request, "release__name"),
-                    'orderkey' : 'release__name',
-                    },
-                    {'name': 'Machine',
-                    'qhelp': "The hardware currently selected for the project",
-                    },
-                    {'name': 'Number of builds',
-                    'qhelp': "How many builds have been run for the project",
-                    },
-                    {'name': 'Last build outcome', 'clclass': 'loutcome',
-                    'qhelp': "Tells you if the last project build completed successfully or failed",
-                    },
-                    {'name': 'Recipe', 'clclass': 'ltarget',
-                    'qhelp': "The last recipe that was built in this project",
-                    },
-                    {'name': 'Errors', 'clclass': 'lerrors',
-                    'qhelp': "How many errors were encountered during the last project build (if any)",
-                    },
-                    {'name': 'Warnings', 'clclass': 'lwarnings',
-                    'qhelp': "How many warnigns were encountered during the last project build (if any)",
-                    },
-                    {'name': 'Image files', 'clclass': 'limagefiles', 'hidden': 1,
-                    'qhelp': "The root file system types produced by the last project build",
-                    },
-                    ]
-            }
-
-        _set_parameters_values(pagesize, orderby, request)
-        return context
+                return render(request, "unavailable_artifact.html")
+        except ObjectDoesNotExist, IOError:
+            return render(request, "unavailable_artifact.html")
