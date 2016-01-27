@@ -1,0 +1,42 @@
+From 37df937ea81790fa0bb30e6b65e282fcca1056d3 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Mon, 28 Dec 2015 12:59:39 -0800
+Subject: [PATCH] Makefile: use more than one parallel job when building
+
+Many components are built for BITS. Thus, it could benefit greatly from
+parallel builds. In regular components, oe_runmake would take care of
+adjusting the number of parallel jobs. However, the BITS makefile performs
+subsequent calls to 'make' and thus oe_runmake cannot be used. Instead,
+a BITS_PARALLEL_JOBS string is used. This string is then replaced with
+bitbake's PARALLEL_MAKE.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ Makefile | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 3e4b924..768a388 100644
+--- a/Makefile
++++ b/Makefile
+@@ -118,7 +118,7 @@ common-modules:=fat part_msdos part_gpt iso9660
+ build-grub-%: autogen-grub
+ 	$(Q)mkdir '$(workdir)/grub-build-$*'
+ 	$(Q)cd '$(workdir)/grub-build-$*' && '$(grub-src)/configure' --prefix='$(grub-prefix)' --libdir='$(grub-libdir)' --program-prefix= --target=TARGET_SYS --build=BUILD_SYS --host=HOST_SYS --with-platform=$(lastword $(subst -, ,$*)) --disable-nls --disable-efiemu --disable-grub-emu-usb --disable-grub-emu-sdl --disable-grub-mkfont --disable-grub-mount --disable-device-mapper --disable-libzfs MAKEINFO=/bin/true
+-	$(Q)cd '$(workdir)/grub-build-$*' && $(MAKE) install
++	$(Q)cd '$(workdir)/grub-build-$*' && $(MAKE) BITS_PARALLEL_JOBS install
+ 	$(Q)mkdir -p '$(target)/boot/grub/$*'
+ 	$(Q)for suffix in img lst mod ; do \
+ 	    cp '$(grub-libdir)/grub/$*/'*.$$suffix '$(target)/boot/grub/$*/' ;\
+@@ -205,7 +205,7 @@ dist: install-src-bits
+ build-python-host: setup
+ 	$(Q)tar -cf - --exclude=.git -C $(BITS)/deps/python . | tar -xf - -C $(python-host-src)
+ 	$(Q)cd '$(python-host-src)' && ./configure
+-	$(Q)cd '$(python-host-src)' && $(MAKE)
++	$(Q)cd '$(python-host-src)' && $(MAKE) BITS_PARALLEL_JOBS
+ 	$(call mk_faketarget)
+ 
+ pylibtmp:=$(workdir)/python-lib
+-- 
+1.9.1
+

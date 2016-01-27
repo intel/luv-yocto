@@ -35,6 +35,7 @@ SRC_URI = "gitsm://github.com/biosbits/bits.git;protocol=http  \
            file://BITS-Makefile-allow-incremental-builds.patch \
            file://BITS-bits-cfg.txt-Set-batch-mode.patch \
            file://BITS-init.cfg-Exit-BITS-upon-completion.patch \
+           file://BITS-use-more-than-one-parallel-job-when-buildin.patch \
            file://luv-test-bits \
            file://luv-parser-bits \
            file://0001-only-output-to-log.patch;apply=no \
@@ -79,6 +80,7 @@ patch() {
 	sed -i s/BUILD_SYS/${BUILD_SYS}/ Makefile
 	sed -i s/TARGET_SYS/${TARGET_SYS}/ Makefile
 	sed -i s/HOST_SYS/${HOST_SYS}/ Makefile
+	sed -i s'/BITS_PARALLEL_JOBS/${PARALLEL_MAKE}/g' Makefile
 }
 
 do_patch_append() {
