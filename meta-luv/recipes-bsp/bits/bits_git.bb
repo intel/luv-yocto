@@ -75,11 +75,17 @@ do_deploy() {
 
 addtask deploy before do_build after do_install
 
-do_compile() {
+patch() {
 	sed -i s/BUILD_SYS/${BUILD_SYS}/ Makefile
 	sed -i s/TARGET_SYS/${TARGET_SYS}/ Makefile
 	sed -i s/HOST_SYS/${HOST_SYS}/ Makefile
+}
 
+do_patch_append() {
+    bb.build.exec_func('patch', d)
+}
+
+do_compile() {
 	oe_runmake bytecompile-pylib
 	oe_runmake bytecompile-bits-python
 	oe_runmake build-grub-${BITS_ARCH}-efi
