@@ -1,5 +1,18 @@
 FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 
+# Parameters used only when building for netboot.
+# There should be a way to obtain this programmatically. However, this is the way
+# in which other recipes specify the ramdisk.
+GRUB_MEMDISK_IMAGE = "luv-netboot-image"
+GRUB_MEMDISK="${DEPLOY_DIR_IMAGE}/${GRUB_MEMDISK_IMAGE}-${MACHINE}.hddimg"
+
+# Fixup the GRUB_BUIIDIN variable to include both the memdisk module as well as the
+# disk image.
+python __anonymous(){
+    if bb.utils.contains('DISTRO_FEATURES', 'luv-netboot', True, False, d):
+        d.appendVar("GRUB_BUILDIN", ' memdisk -m ${GRUB_MEMDISK}')
+}
+
 SRC_URI += "file://0001-pe32.h-add-header-structures-for-TE-and-DOS-executab.patch \
            file://0002-shim-add-needed-data-structures.patch \
            file://0003-efi-chainloader-implement-an-UEFI-Exit-service-for-s.patch \
