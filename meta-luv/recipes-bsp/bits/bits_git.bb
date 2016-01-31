@@ -39,6 +39,7 @@ SRC_URI = "gitsm://github.com/biosbits/bits.git;protocol=http  \
            file://BITS-python-redirect-add-support-for-cpio-archives.patch \
            file://BITS-save-log-to-a-cpio-archive.patch \
            file://GRUB-core-handle-loader-options.patch \
+           file://BITS-GRUB-prepare-to-use-a-memdisk.patch \
            file://luv-test-bits \
            file://luv-parser-bits \
            file://0001-only-output-to-log.patch;apply=no \
@@ -66,6 +67,10 @@ def get_bits_arch(d):
 
 BITS_ARCH = "${@get_bits_arch(d)}"
 
+
+LUV_NETBOOT_MODULES = "${@bb.utils.contains('DISTRO_FEATURES', 'luv-netboot', "memdisk", "", d)}"
+LUV_NETBOOT_ROOT = "${@bb.utils.contains('DISTRO_FEATURES', 'luv-netboot', "(memdisk)", "", d)}"
+
 LUV_TEST_LOG_PARSER = "luv-parser-bits"
 
 do_deploy() {
@@ -84,6 +89,9 @@ patch() {
 	sed -i s/TARGET_SYS/${TARGET_SYS}/ Makefile
 	sed -i s/HOST_SYS/${HOST_SYS}/ Makefile
 	sed -i s'/BITS_PARALLEL_JOBS/${PARALLEL_MAKE}/g' Makefile
+	sed -i s'/LUV_NETBOOT_MODULES/${LUV_NETBOOT_MODULES}/' Makefile
+	sed -i s'/LUV_NETBOOT_ROOT/${LUV_NETBOOT_ROOT}/' Makefile
+
 }
 
 do_patch_append() {
