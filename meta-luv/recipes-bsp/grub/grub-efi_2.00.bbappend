@@ -13,6 +13,7 @@ SRC_URI += "file://0001-pe32.h-add-header-structures-for-TE-and-DOS-executab.pat
            file://0011-grub-core-loader-extend-loader-options.patch \
            file://0012-grub-core-loader-add-support-for-memdisks.patch \
            file://0013-grub-core-loader-pass-current-disk-device-to-loaded-.patch \
+           file://0014-grub-util-set-prefix-to-EFI-BOOT-when-booting-f.patch \
           "
 
 GRUB_BUILDIN = "boot linux ext2 fat serial part_msdos part_gpt \
