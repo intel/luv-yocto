@@ -157,3 +157,13 @@ python build_efi_cfg() {
 
     cfgfile.close()
 }
+
+create_symlinks() {
+	cd ${DEPLOY_DIR_IMAGE}
+
+	rm -f ${DEPLOY_DIR_IMAGE}/${IMAGE_LINK_NAME}.iso
+	ln -s ${IMAGE_NAME}.iso ${DEPLOY_DIR_IMAGE}/${IMAGE_LINK_NAME}.iso
+
+	rm -f ${DEPLOY_DIR_IMAGE}/${IMAGE_LINK_NAME}.hddimg
+	ln -s ${IMAGE_NAME}.hddimg ${DEPLOY_DIR_IMAGE}/${IMAGE_LINK_NAME}.hddimg
+}
