@@ -14,8 +14,8 @@ def bootimg_depends(bb, d):
          if re.search("aarch64",deps):
                  return "${MLPREFIX}grub"
 
-RDEPENDS = "${@bootimg_depends(bb, d)}"
-do_bootimg[depends] += "${RDEPENDS}:do_deploy \
+_RDEPENDS = "${@bootimg_depends(bb, d)}"
+do_bootimg[depends] += "${_RDEPENDS}:do_deploy \
                         sbsigntool-native:do_populate_sysroot"
 
 EFI_LOADER_IMAGE = "${@base_conditional('TARGET_ARCH', 'x86_64', 'bootx64.efi', 'bootia32.efi', d)}"
