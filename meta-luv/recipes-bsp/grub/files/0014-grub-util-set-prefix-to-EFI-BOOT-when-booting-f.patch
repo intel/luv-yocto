@@ -1,0 +1,31 @@
+From 6477cac1e026ee5b16e4f1c7097ad1dd7c3832d1 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Mon, 30 Nov 2015 04:33:41 -0800
+Subject: [PATCH] grub: util: set prefix to EFI/BOOT when booting from
+ memdisk
+
+When booting from a memdisk, GRUB hardcodes the prefix to /boot/grub.
+Instead, set it to /EFI/BOOT. This is convenient for our purposes as it
+allows us to reuse the disk-generation functionality in bootimg.bbclass
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ util/grub-mkimage.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/util/grub-mkimage.c b/util/grub-mkimage.c
+index a551bbb..883c3bd 100644
+--- a/util/grub-mkimage.c
++++ b/util/grub-mkimage.c
+@@ -1768,7 +1768,7 @@ argp_parser (int key, char *arg, struct argp_state *state)
+       if (arguments->prefix)
+ 	free (arguments->prefix);
+ 
+-      arguments->prefix = xstrdup ("(memdisk)/boot/grub");
++      arguments->prefix = xstrdup ("(memdisk)/EFI/BOOT");
+       break;
+ 
+     case 'c':
+-- 
+1.9.1
+
