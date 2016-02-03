@@ -20,6 +20,41 @@ psplash_write() {
     fi
 }
 
+write_html_file()
+{
+    file=$1
+    html=$(echo $file | sed 's/\.results$/\.html/i')
+    echo "<html>" > $html
+    echo "<head>" >> $html
+    echo "<title> "$luv_version" </title> " >> $html
+    echo "<style>" >> $html
+    echo "< body {font-family:arial,sans-serif}
+          div.testsuite {margin-left:70px}
+          div.tittle {margin-left:50px}
+          div.testcase {margin-left:100px} " >> $html
+    echo "</style>" >> $html
+    echo "</head>" >> $html
+    echo "   <body>" >> $html
+    while read line ; do
+    case $line in
+        *+* )
+        echo "<div class="testcase">$line</div>" >> $html
+        ;;
+        *-* )
+        echo "<div class="testsuite">$line</div>" >> $html
+        ;;
+        *UEFI* )
+        echo "<div class="tittle">$line</div>" >> $html
+        ;;
+         * )
+        echo "$line<br>" >> $html
+        ;;
+    esac
+    done < $file
+    echo "   </body>" >> $html
+    echo "</html>" >> $html
+}
+
 # Save test results to a disk. In order to reliable identify the
 # correct partition, mount using the disk's UUID. If the partition
 # cannot be mounted, test results are not saved.
@@ -158,37 +193,7 @@ done | awk '/      \[\+/ { units += 1 }
 	printf("\nRan %d testsuites and %d unittests, %d passes, %d fails, %d skipped.\n", suites, units, passes, fails, skips)
     }' | tee -a /tmp/luv.results | tee -a ${LUV_SAVE_RESULTS_DIR}/luv.results
 
-file=${LUV_SAVE_RESULTS_DIR}/luv.results
-html=$(echo $file | sed 's/\.results$/\.html/i')
-   echo "<html>" > $html
-   echo "<head>" >> $html
-   echo "<title> "$luv_version" </title> " >> $html
-   echo "<style>" >> $html
-echo "< body {font-family:arial,sans-serif}
-   div.testsuite {margin-left:70px}
-   div.tittle {margin-left:50px}
-   div.testcase {margin-left:100px} " >> $html
-echo "</style>" >> $html
-echo "</head>" >> $html
-   echo "   <body>" >> $html
-   while read line ; do
-case $line in
-	*+* )
-        echo "<div class="testcase">$line</div>" >> $html
-	;;
-	*-* )
-	echo "<div class="testsuite">$line</div>" >> $html
-	;;
-	*UEFI* )
-        echo "<div class="tittle">$line</div>" >> $html
-	;;
-         * )
-	echo "$line<br>" >> $html
-	;;
-esac
-   done < $file
-   echo "   </body>" >> $html
-   echo "</html>" >> $html
+write_html_file ${LUV_SAVE_RESULTS_DIR}/luv.results
 
 mountpoint -q ${LUV_EFI}
 if [ $? -eq 0 ]; then
