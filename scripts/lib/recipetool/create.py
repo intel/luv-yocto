@@ -108,6 +108,11 @@ def create_recipe(args):
             # Assume the archive contains the directory structure verbatim
             # so we need to extract to a subdirectory
             fetchuri += ';subdir=%s' % os.path.splitext(os.path.basename(urlparse.urlsplit(fetchuri).path))[0]
+        git_re = re.compile('(https?)://([^;]+\.git)(;.*)?')
+        res = git_re.match(fetchuri)
+        if res:
+            # Need to switch the URI around so that the git fetcher is used
+            fetchuri = 'git://%s;protocol=%s%s' % (res.group(2), res.group(1), res.group(3) or '')
         srcuri = fetchuri
         rev_re = re.compile(';rev=([^;]+)')
         res = rev_re.search(srcuri)
@@ -117,14 +122,25 @@ def create_recipe(args):
         tempsrc = tempfile.mkdtemp(prefix='recipetool-')
         srctree = tempsrc
         logger.info('Fetching %s...' % srcuri)
-        checksums = scriptutils.fetch_uri(tinfoil.config_data, fetchuri, srctree, srcrev)
+        try:
+            checksums = scriptutils.fetch_uri(tinfoil.config_data, fetchuri, srctree, srcrev)
+        except bb.fetch2.FetchError:
+            # Error already printed
+            sys.exit(1)
         dirlist = os.listdir(srctree)
         if 'git.indirectionsymlink' in dirlist:
             dirlist.remove('git.indirectionsymlink')
-        if len(dirlist) == 1 and os.path.isdir(os.path.join(srctree, dirlist[0])):
-            # We unpacked a single directory, so we should use that
-            srcsubdir = dirlist[0]
-            srctree = os.path.join(srctree, srcsubdir)
+        if len(dirlist) == 1:
+            singleitem = os.path.join(srctree, dirlist[0])
+            if os.path.isdir(singleitem):
+                # We unpacked a single directory, so we should use that
+                srcsubdir = dirlist[0]
+                srctree = os.path.join(srctree, srcsubdir)
+            else:
+                with open(singleitem, 'r') as f:
+                    if '<html' in f.read(100).lower():
+                        logger.error('Fetching "%s" returned a single HTML page - check the URL is correct and functional' % fetchuri)
+                        sys.exit(1)
     else:
         # Assume we're pointing to an existing source tree
         if args.extract_to:
@@ -267,6 +283,8 @@ def create_recipe(args):
             # to just remove it first
             os.rmdir(args.extract_to)
         shutil.move(srctree, args.extract_to)
+        if tempsrc == srctree:
+            tempsrc = None
         logger.info('Source extracted to %s' % args.extract_to)
 
     if outfile == '-':

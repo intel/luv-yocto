@@ -39,6 +39,13 @@ SRC_URI = "${GLIBC_GIT_URI};branch=${SRCBRANCH};name=glibc \
            file://0026-eglibc-dl_debug_mask-is-controlled-by-__OPTION_EGLIB.patch \
            file://0027-eglibc-use-option-groups-Conditionally-exclude-c-tes.patch \
            file://nscd-no-bash.patch \
+           file://strcoll-Remove-incorrect-STRDIFF-based-optimization-.patch \
+           file://0028-Clear-ELF_RTYPE_CLASS_EXTERN_PROTECTED_DATA-for-prel.patch \
+           file://CVE-2015-8777.patch \
+           file://CVE-2015-8779.patch \
+           file://CVE-2015-9761_1.patch \
+           file://CVE-2015-9761_2.patch \
+           file://CVE-2015-8776.patch \
 "
 
 SRC_URI += "\
