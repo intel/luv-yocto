@@ -80,7 +80,6 @@ if [ $? -eq 1 ] ; then
     exit
 fi
 
-tstamp=$(date +"%Y-%m-%d--%H-%M-%S")
 mkdir -p ${LUV_STORAGE}
 if [ $? -eq 0 ]; then
     mount /dev/disk/by-uuid/${LUV_STORAGE_UUID} ${LUV_STORAGE}
@@ -95,21 +94,22 @@ if [ $? -eq 0 ]; then
             fi
             exit
         fi
-
-        n=$(ls ${LUV_STORAGE}/ | grep $tstamp | wc -l)
-        if [ $n -ge 1 ]; then
-            LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}/luv-results-$tstamp-$n/
-        else
-            LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}/luv-results-$tstamp/
-        fi
-
-        mkdir -p ${LUV_SAVE_RESULTS_DIR}raw/
-        [ $? -eq 0 ] && LUV_SAVE_RAW_DIR=${LUV_SAVE_RESULTS_DIR}raw/
-
-        mkdir -p ${LUV_SAVE_RESULTS_DIR}parsed/
-        [ $? -eq 0 ] && LUV_SAVE_PARSED_DIR=${LUV_SAVE_RESULTS_DIR}parsed
     fi
 fi
+
+tstamp=$(date +"%Y-%m-%d--%H-%M-%S")
+n=$(ls ${LUV_STORAGE}/ | grep $tstamp | wc -l)
+if [ $n -ge 1 ]; then
+    LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}/luv-results-$tstamp-$n/
+else
+    LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}/luv-results-$tstamp/
+fi
+
+mkdir -p ${LUV_SAVE_RESULTS_DIR}raw/
+[ $? -eq 0 ] && LUV_SAVE_RAW_DIR=${LUV_SAVE_RESULTS_DIR}raw/
+
+mkdir -p ${LUV_SAVE_RESULTS_DIR}parsed/
+[ $? -eq 0 ] && LUV_SAVE_PARSED_DIR=${LUV_SAVE_RESULTS_DIR}parsed
 
 mkdir -p ${LUV_EFI}
 if [ $? -eq 0 ]; then
