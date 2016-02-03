@@ -30,11 +30,6 @@ efi_populate() {
 
     install -d ${DEST}${EFIDIR}
 
-    # Create bits directory only for x86_64 target.
-    if [ "${TARGET_ARCH}" = "x86_64" ]; then
-       install -d ${DEST}${EFIDIR}/bits
-    fi
-
     # Install both the grub2 and BITS loaders
     # install -m 0644 ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${DEST}${EFIDIR}
 
@@ -65,30 +60,42 @@ efi_populate() {
                 mv ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE}-unsigned ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE}
     fi
 
-    # Install BITS only for x86_64 architecture
     if [ "${TARGET_ARCH}" = "x86_64" ]; then
-	    cp -r ${DEPLOY_DIR_IMAGE}/bits/boot ${DEST}
-            # TODO: Need condiitional signing based on DISTRO_FEATURES
-            mv ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
-               ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}-unsigned
-
-            sbsign --key ${DEPLOY_DIR_IMAGE}/LUV.key --cert ${DEPLOY_DIR_IMAGE}/LUV.crt \
-                   --output ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
-                   ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}-unsigned
-
-	    install -m 0644 ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
-	        ${DEST}${EFIDIR}/bits/
-
-           # restore files
-           rm ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}
-           mv ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}-unsigned \
-               ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}
+        efi_populate_bits ${DEST}
     fi
 
     # Install splash and grub.cfg files into EFI directory.
     install -m 0644 ${GRUBCFG} ${DEST}${EFIDIR}
 
     install -m 0644 ${WORKDIR}/${SPLASH_IMAGE} ${DEST}${EFIDIR}
+}
+
+efi_populate_bits() {
+    DEST=$1
+    # TODO: weird behavior here. When building luv-live-image,
+    #   cp -r -v ${DEPLOY_DIR_IMAGE}/bits/boot ${DEST}
+    # copies the boot directory into ${DEST} without issue. However,
+    # the same line when building for luv-netboot-image copies the _contents_
+    # of the the boot directory into ${DEST}. For now, perform the copy
+    # manually.
+    install -d ${DEST}/boot
+    cp -r ${DEPLOY_DIR_IMAGE}/bits/boot/* ${DEST}/boot
+    # TODO: Need condiitional signing based on DISTRO_FEATURES
+    mv ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
+       ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}-unsigned
+
+    sbsign --key ${DEPLOY_DIR_IMAGE}/LUV.key --cert ${DEPLOY_DIR_IMAGE}/LUV.crt \
+           --output ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
+           ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}-unsigned
+
+    install -d ${DEST}${EFIDIR}/bits
+    install -m 0644 ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
+            ${DEST}${EFIDIR}/bits/
+
+    # restore files
+    rm ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}
+    mv ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}-unsigned \
+    ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}
 }
 
 efi_iso_populate() {
