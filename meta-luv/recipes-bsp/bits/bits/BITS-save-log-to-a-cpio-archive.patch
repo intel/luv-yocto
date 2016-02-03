@@ -14,18 +14,19 @@ The init module is updated to make use of this cpio archive.
 
 Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
 ---
- Makefile       | 4 ++++
- python/init.py | 1 +
- 2 files changed, 5 insertions(+)
+ Makefile       | 5 ++++-
+ python/init.py | 2 +-
+ 2 files changed, 5 insertions(+), 2 deletions(-)
 
 diff --git a/Makefile b/Makefile
-index 4d24e5b..f866a59 100644
+index 4d24e5b..ddcebd2 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -155,6 +155,10 @@ dist: install-grub-cfg
+@@ -154,7 +154,10 @@ dist: install-grub-cfg
+ 
  # Add a 512k preallocated file, full of newlines, to hold BITS logs.
  install-log: setup
- 	$(Q)yes '' | head -c 524288 > '$(target)/boot/bits-log.txt'
+-	$(Q)yes '' | head -c 524288 > '$(target)/boot/bits-log.txt'
 +	$(Q)mkdir -p $(target)/bitsrdtmp/home/root
 +	$(Q)yes '' | head -c 524288 > '$(target)/bitsrdtmp/home/root/bits-log.txt'
 +	$(Q)cd $(target)/bitsrdtmp; find . | cpio --create --format='newc' > $(target)/boot/bitsrd
@@ -34,13 +35,14 @@ index 4d24e5b..f866a59 100644
  dist: install-log
  
 diff --git a/python/init.py b/python/init.py
-index db5abd8..45e847a 100644
+index db5abd8..3dec2cc 100644
 --- a/python/init.py
 +++ b/python/init.py
-@@ -242,6 +242,7 @@ def init():
+@@ -241,7 +241,7 @@ def init():
+                 traceback.print_exc()
  
          print "\nBatch mode complete\n"
-         redirect.write_logfile("/boot/bits-log.txt")
+-        redirect.write_logfile("/boot/bits-log.txt")
 +        redirect.write_logfile_cpio("/boot/bitsrd", "home/root/bits-log.txt")
  
      import_start_msg("cpumenu")

@@ -157,7 +157,7 @@ python build_efi_cfg() {
 
     cfgfile.write('\n')
 
-    cfgfile.write('initrd /initrd\n')
+    cfgfile.write('initrd /initrd /boot/bitsrd\n')
     cfgfile.write('}\n')
 
     loader = d.getVar('EFI_LOADER_IMAGE', True)
