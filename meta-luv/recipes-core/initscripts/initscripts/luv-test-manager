@@ -8,6 +8,17 @@ alert_missing_partition="STOP! No partition found to store the results..please r
 # warn the user when the disk is nearly full
 alert_disk_is_full="Removable disk space is running low , please backup and empty the disk to try again !!"
 
+# ### Definitions for disk partitions and mount points
+LUV_STORAGE=/mnt/luv-storage
+LUV_STORAGE_UUID=05D6-1523
+LUV_STORAGE_MIN_AVAIL=2000
+LUV_EFI=/mnt/luv-efi/
+LUV_EFI_UUID=423C-C2C8
+
+LUV_SAVE_RAW_DIR=/dev/null
+LUV_SAVE_PARSED_DIR=/dev/null
+LUV_SAVE_RESULTS_DIR=/dev/null
+
 grep -q noluv /proc/cmdline
 if [ $? -ne 1 ]; then
     exit 0
@@ -57,22 +68,10 @@ write_html_file()
 
 # Save test results to a disk. In order to reliable identify the
 # correct partition, mount using the disk's UUID. If the partition
-# cannot be mounted, test results are not saved.
+# cannot be mounted, test execution is aborted.
 # Also, if the space left on disk is less than 2MB, abort.
 
-LUV_SAVE_RAW_DIR=/dev/null
-LUV_SAVE_PARSED_DIR=/dev/null
-LUV_SAVE_RESULTS_DIR=/dev/null
-
-LUV_STORAGE=/mnt/luv-storage
-LUV_PARTITION_UUID=05D6-1523
-LUV_DISK_DEVICE=/dev/disk/by-uuid/${LUV_PARTITION_UUID}
-LUV_STORAGE_MIN_AVAIL=2000
-
-## checking if the partiton is matched , else results
-## cannot be saved in the removable media after tests are done
-
-ls /dev/disk/by-uuid | grep -q ${LUV_PARTITION_UUID}
+ls /dev/disk/by-uuid | grep -q ${LUV_STORAGE_UUID}
 if [ $? -eq 1 ] ; then
     psplash_write " MSG $alert_missing_partition "
     if [ -e $FIFO ]; then
@@ -84,7 +83,7 @@ fi
 tstamp=$(date +"%Y-%m-%d--%H-%M-%S")
 mkdir -p ${LUV_STORAGE}
 if [ $? -eq 0 ]; then
-    mount ${LUV_DISK_DEVICE} ${LUV_STORAGE}
+    mount /dev/disk/by-uuid/${LUV_STORAGE_UUID} ${LUV_STORAGE}
     if [ $? -eq 0 ]; then
 
         # check if there is enough space on disk
@@ -111,9 +110,6 @@ if [ $? -eq 0 ]; then
         [ $? -eq 0 ] && LUV_SAVE_PARSED_DIR=${LUV_SAVE_RESULTS_DIR}parsed
     fi
 fi
-
-LUV_EFI_UUID=423C-C2C8
-LUV_EFI=/mnt/luv-efi/
 
 mkdir -p ${LUV_EFI}
 if [ $? -eq 0 ]; then
