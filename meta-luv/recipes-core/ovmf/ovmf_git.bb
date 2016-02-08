@@ -37,7 +37,31 @@ do_fix_toolchain(){
     sed -i -e "s#^LINKER\(.*\)#LINKER\1\nCFLAGS += ${BUILD_CFLAGS}#" ${S}/BaseTools/Source/C/VfrCompile/GNUmakefile
 }
 
-GCC_VER="$(${CC} -v 2>&1 | tail -n1 | awk '{print $3}' | awk -F. '{print $1$2}')"
+GCC_VER="$(${CC} -v 2>&1 | tail -n1 | awk '{print $3}')"
+
+fixup_target_tools() {
+    case ${1} in
+      4.5.*)
+        FIXED_GCCVER=GCC45
+        ;;
+      4.6.*)
+        FIXED_GCCVER=GCC46
+        ;;
+      4.7.*)
+        FIXED_GCCVER=GCC47
+        ;;
+      4.8.*)
+        FIXED_GCCVER=GCC48
+        ;;
+      4.9.*|4.1[0-9].*|5.*.*)
+        FIXED_GCCVER=GCC49
+        ;;
+      *)
+        FIXED_GCCVER=GCC44
+        ;;
+    esac
+    echo ${FIXED_GCCVER}
+}
 
 do_compile() {
     export LFLAGS="${LDFLAGS}"
@@ -45,7 +69,9 @@ do_compile() {
     if [ "${TARGET_ARCH}" != "x86_64" ] ; then
         OVMF_ARCH="IA32"
     fi
-    ${S}/OvmfPkg/build.sh -a $OVMF_ARCH -b RELEASE -t GCC${GCC_VER}
+
+    FIXED_GCCVER=$(fixup_target_tools ${GCC_VER})
+    ${S}/OvmfPkg/build.sh -a $OVMF_ARCH -b RELEASE -t ${FIXED_GCCVER}
 }
 
 do_install() {
@@ -54,7 +80,9 @@ do_install() {
         OVMF_DIR_SUFFIX="Ia32" # Note the different capitalization
     fi
     install -d ${D}${datadir}/ovmf
-    build_dir="${S}/Build/Ovmf$OVMF_DIR_SUFFIX/RELEASE_GCC${GCC_VER}"
+
+    FIXED_GCCVER=$(fixup_target_tools ${GCC_VER})
+    build_dir="${S}/Build/Ovmf$OVMF_DIR_SUFFIX/RELEASE_${FIXED_GCCVER}"
     install -m 0755 ${build_dir}/FV/OVMF.fd \
 	${D}${datadir}/ovmf/bios.bin
 }
