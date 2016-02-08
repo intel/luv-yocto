@@ -15,21 +15,22 @@ the existing grub-mkimage provided by the grub-efi recipe.
 
 Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
 ---
- Makefile | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ Makefile | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
 diff --git a/Makefile b/Makefile
-index b691a03..d50804e 100644
+index df084d2..d1b1b12 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -113,7 +113,9 @@ build-grub-%: autogen-grub
+@@ -112,7 +112,10 @@ build-grub-%: autogen-grub
  	$(Q)for suffix in img lst mod ; do \
- 	    cp '$(grub-libdir)/grub/$*/'*.$$suffix '$(target)/boot/grub/$*/' ;\
+ 	    cp '$(grub-prefix)/lib/grub/$*/'*.$$suffix '$(target)/boot/grub/$*/' ;\
  	done
--	$(Q)'$(grub-prefix)/bin/grub-mkimage' -O $* --output='$(target)/$($*-img)' --prefix=/boot/grub $($*-extra-modules) $(common-modules)
+-	$(Q)'$(grub-prefix)-$*/bin/grub-mkimage' -O $* --output='$(target)/$($*-img)' --prefix=/boot/grub $($*-extra-modules) $(common-modules)
 +
 +mkimage-grub-%: build-grub-%
 +	$(Q)bits-grub-mkimage -O $* --output='$(target)/$($*-img)' --prefix=/boot/grub $($*-extra-modules) $(common-modules)
++
  
  # Workaround for syslinux 5 bug booting lnxboot.img
  fixup-grub-i386-pc: build-grub-i386-pc
