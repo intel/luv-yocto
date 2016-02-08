@@ -33,7 +33,7 @@ diff --git a/Makefile b/Makefile
 index bae271b..7ad3694 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -63,7 +63,12 @@ srcdir:=$(target)/boot/src
+@@ -62,7 +62,12 @@ srcdir:=$(target)/boot/src
  
  setup-dirs:='$(workdir)' '$(target)' '$(target)/boot' '$(target)/boot/grub' '$(target)/boot/mcu' '$(target)/boot/mcu.first' '$(target)/boot/python' '$(srcdir)' '$(target)/efi/boot' '$(contrib-deps)' '$(python-host-src)'
  
@@ -47,7 +47,7 @@ index bae271b..7ad3694 100644
  
  all: dist
  
-@@ -76,17 +81,20 @@ setup:
+@@ -75,17 +80,20 @@ setup:
  ifneq ($(LOCAL),)
  	@echo 'Including local-files in the build; DO NOT DISTRIBUTE THIS BUILD.'
  endif
@@ -69,7 +69,7 @@ index bae271b..7ad3694 100644
  
  fixup-libffi: copydeps
  	$(Q)sed -e 's/#ifndef @TARGET@/#ifdef GRUB_TARGET_CPU_I386/' \
-@@ -95,9 +103,11 @@ fixup-libffi: copydeps
+@@ -94,9 +102,11 @@ fixup-libffi: copydeps
  	        -e 's/@HAVE_LONG_DOUBLE_VARIANT@/0/' \
  	        -e 's/@FFI_EXEC_TRAMPOLINE_TABLE@/0/' \
  	        '$(contrib-deps)/libffi/include/ffi.h.in' > '$(contrib-deps)/libffi/include/ffi.h'
@@ -81,15 +81,16 @@ index bae271b..7ad3694 100644
  
  i386-pc-img:=boot/grub/core.img
  i386-efi-img:=efi/boot/bootia32.efi
-@@ -113,37 +123,45 @@ build-grub-%: autogen-grub
+@@ -112,38 +122,46 @@ build-grub-%: autogen-grub
  	$(Q)for suffix in img lst mod ; do \
- 	    cp '$(grub-libdir)/grub/$*/'*.$$suffix '$(target)/boot/grub/$*/' ;\
+ 	    cp '$(grub-prefix)/lib/grub/$*/'*.$$suffix '$(target)/boot/grub/$*/' ;\
  	done
 +	$(call mk_faketarget)
  
  mkimage-grub-%: build-grub-%
  	$(Q)bits-grub-mkimage -O $* --output='$(target)/$($*-img)' --prefix=/boot/grub $($*-extra-modules) $(common-modules)
 +	$(call mk_faketarget)
+ 
  
  # Workaround for syslinux 5 bug booting lnxboot.img
  fixup-grub-i386-pc: build-grub-i386-pc
@@ -167,7 +168,7 @@ index bae271b..7ad3694 100644
  
  pylibtmp:=$(workdir)/python-lib
  pylibs:=\
-@@ -254,6 +279,7 @@ install-pylib: setup
+@@ -271,6 +296,7 @@ install-pylib: setup
  	$(Q)mkdir -p '$(pylibtmp)'
  	$(Q)cd '$(pylibtmp)' && mkdir -p $(filter-out ./,$(dir $(pylibs)))
  	$(Q)cd '$(BITS)/deps/python/Lib' && cp --parents -a $(pylibs) '$(pylibtmp)'
@@ -175,7 +176,7 @@ index bae271b..7ad3694 100644
  
  # The dd invocation sets the mtime to zero in all bytecode files, since GRUB2
  # (and thus our implementation of fstat) doesn't support mtime.
-@@ -265,21 +291,26 @@ endef
+@@ -282,21 +308,26 @@ endef
  bytecompile-pylib: install-pylib
  	$(call bytecompile,$(pylibtmp))
  	$(Q)cd '$(pylibtmp)' && zip -qr '$(target)/boot/python/lib.zip' . -i '*.pyc'
