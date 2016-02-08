@@ -2,11 +2,11 @@ SUMMARY = "Firmware testsuite"
 DESCRIPTION = "The tool fwts comprises of tests that are designed to exercise BIOS, these need access to read BIOS data and ACPI tables"
 HOMEPAGE = "https://wiki.ubuntu.com/Kernel/Reference/fwts"
 LICENSE = "GPLv2+"
-LIC_FILES_CHKSUM = "file://src/main.c;beginline=1;endline=16;md5=9bd929284041f05a42b0b6a7b1864a31"
+LIC_FILES_CHKSUM = "file://src/main.c;beginline=1;endline=16;md5=31da590f3e9f3bd34dcdb9e4db568519"
 
-PV = "V15.12.00+git${SRCPV}"
+PV = "V16.01.00+git${SRCPV}"
 
-SRCREV = "0e34bf37f64d1a2db986a67f60464983ba261061"
+SRCREV = "2496948dba3a2253ad4148dc11009e338b66ee50"
 SRC_URI = "git://kernel.ubuntu.com/hwe/fwts.git \
            file://luv-parser-fwts \
           "
