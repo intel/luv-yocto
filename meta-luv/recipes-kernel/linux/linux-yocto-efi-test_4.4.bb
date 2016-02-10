@@ -42,7 +42,7 @@
 #              defaults, not set to 'n'. To properly expand a defconfig like
 #              this, specify: KCONFIG_MODE="--alldefconfig" in the kernel
 #              recipe.
-# 
+#
 #   example configuration addition:
 #            SRC_URI += "file://smp.cfg"
 #   example patch addition (for kernel v3.4 only):
@@ -51,29 +51,39 @@
 #            SRC_URI += "file://feature.scc"
 #
 
-KBRANCH="stable"
+KBRANCH="master"
 inherit kernel
 require recipes-kernel/linux/linux-yocto.inc
 
 # Override SRC_URI in a bbappend file to point at a different source
 # tree if you do not want to build from Linus' tree.
-SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/mfleming/efi.git;protocol=git;branch=${KBRANCH};name=machine"
+SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git;protocol=git;branch=${KBRANCH};name=machine"
+
+# Add the defconfig from v4.4 kernel and the configuration fragments
 SRC_URI += "file://defconfig"
-SRC_URI += "file://x86-efi-Fix-boot-crash-by-mapping-EFI-memmap-entries.patch"
+SRC_URI += "file://modules.cfg"
+SRC_URI += "file://display.cfg"
+SRC_URI += "file://ram_block.cfg"
+SRC_URI += "file://debug.cfg"
+SRC_URI += "file://efi.cfg"
+SRC_URI += "file://usb_hcd.cfg"
+
+# Override KCONFIG_MODE to '--alldefconfig' from the default '--allnoconfig'
+KCONFIG_MODE = '--alldefconfig'
 
 # While building for AArch64 architecture fetch latest Linus' tree
 # and apply default config, which includes ACPI options enabled.
-SRC_URI_aarch64 = "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git;protocol=git;branch=master;name=machine"
+SRC_URI_aarch64 = "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git;protocol=git;branch=${KBRANCH};name=machine"
 SRC_URI_aarch64 += "file://${MACHINE}/defconfig"
 
-LINUX_VERSION ?= "4.1"
+LINUX_VERSION ?= "4.4"
 LINUX_VERSION_EXTENSION ?= "-efitest"
 
 # Override SRCREV to point to a different commit in a bbappend file to
 # build a different release of the Linux kernel.
 # tag: v3.4 76e10d158efb6d4516018846f60c2ab5501900bc
-SRCREV_machine_qemux86-64 = "${AUTOREV}"
-SRCREV_machine_qemux86 = "${AUTOREV}"
+SRCREV_machine_qemux86-64 = "afd2ff9b7e1b367172f18ba7f693dfb62bdcb2dc"
+SRCREV_machine_qemux86 = "afd2ff9b7e1b367172f18ba7f693dfb62bdcb2dc"
 
 SRCREV_machine_qemuarm64 = "${AUTOREV}"
 
