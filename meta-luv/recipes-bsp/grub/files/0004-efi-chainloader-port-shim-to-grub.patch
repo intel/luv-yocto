@@ -20,8 +20,8 @@ Shim can be found here: https://github.com/rhinstaller/shim
 
 Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
 ---
- grub-core/loader/efi/chainloader.c | 534 +++++++++++++++++++++++++++++++++++++
- 1 file changed, 534 insertions(+)
+ grub-core/loader/efi/chainloader.c | 532 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 532 insertions(+)
 
 diff --git a/grub-core/loader/efi/chainloader.c b/grub-core/loader/efi/chainloader.c
 index 3f3e6e3..bd83859 100644
@@ -35,7 +35,7 @@ index 3f3e6e3..bd83859 100644
  #include <grub/command.h>
  #include <grub/i18n.h>
  #include <grub/net.h>
-@@ -45,6 +46,539 @@ static grub_efi_uintn_t pages;
+@@ -45,6 +46,537 @@ static grub_efi_uintn_t pages;
  static grub_efi_device_path_t *file_path;
  static grub_efi_handle_t image_handle;
  static grub_efi_char16_t *cmdline;
@@ -350,17 +350,15 @@ index 3f3e6e3..bd83859 100644
 +                          + sizeof (grub_efi_uint32_t)
 +                          + sizeof (struct grub_pe32_coff_header)
 +                          + pe_hdr->pe32.file_hdr.optional_header_size;
-+  if (((grub_efi_uint32_t)context->image_size - section_header_offset)
-+      / sizeof (struct grub_pe32_section_table)
-+      <= context->num_sections)
++  if ((context->image_size - section_header_offset)
++      <= context->num_sections * sizeof (struct grub_pe32_section_table))
 +    {
 +      grub_printf("Image sections overflow image size\n");
 +      return GRUB_ERR_FILE_READ_ERROR;
 +    }
 +
 +  if ((context->header_size - section_header_offset)
-+      / sizeof (struct grub_pe32_section_table)
-+      < (grub_efi_uint32_t)context->num_sections)
++      < context->num_sections * sizeof (struct grub_pe32_section_table))
 +    {
 +      grub_printf("Image sections overflow section headers\n");
 +      return GRUB_ERR_FILE_READ_ERROR;
