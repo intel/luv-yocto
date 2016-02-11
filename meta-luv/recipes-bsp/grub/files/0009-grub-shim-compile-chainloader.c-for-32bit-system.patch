@@ -1,0 +1,166 @@
+From ee9d8dbb0e22450bb2b291b34b01538962303f82 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@intel.com>
+Date: Wed, 3 Feb 2016 11:17:54 -0800
+Subject: [PATCH] grub: shim: compile chainloader.c for 32bit system
+
+Modify variable sizes, edit pointer indirections and casts to
+make sure grub-efi compiles for 32 as well as 64 bit systems.
+grub_addr_t is 32-bit and 64-bit when building for i386 and x86_64
+respectively. We are keeping the shim_buffer as a
+grub_efi_physical_address variable, which is always 64-bit as this is
+required by the UEFI interface Allocate PAges. We internally (i.e.
+within the grub context) use the grub_addr_t.
+
+Signed-off-by: Megha Dey <megha.dey@intel.com>
+---
+ grub-core/loader/efi/chainloader.c | 58 +++++++++++++++++++-------------------
+ 1 file changed, 29 insertions(+), 29 deletions(-)
+
+diff --git a/grub-core/loader/efi/chainloader.c b/grub-core/loader/efi/chainloader.c
+index e35f36a..4f793ba 100644
+--- a/grub-core/loader/efi/chainloader.c
++++ b/grub-core/loader/efi/chainloader.c
+@@ -149,12 +149,12 @@ grub_shim_image_is_loadable (union grub_shim_optional_header_union *pe_hdr)
+ /*
+  * Perform basic bounds checking of the intra-image pointers
+  */
+-static grub_efi_uint64_t
+-grub_shim_image_address (grub_addr_t image, grub_uint32_t size, grub_uint32_t addr)
++static void *
++grub_shim_image_address (void* image, grub_uint32_t size, grub_uint32_t addr)
+ {
+   if (addr > size)
+     return 0;
+-  return image + addr;
++  return (void*)((grub_addr_t)image + addr);
+ }
+ 
+ /*
+@@ -179,12 +179,8 @@ grub_shim_relocate_coff (struct grub_shim_pe_coff_loader_image_context *context,
+   else
+     context->pe_hdr->pe32.opt_hdr.image_base = (grub_efi_uint32_t)(unsigned long)data;
+ 
+-  reloc_base = (struct grub_image_base_relocation *)
+-               grub_shim_image_address ((grub_efi_uint64_t)orig, size,
+-					context->reloc_dir->rva);
+-  reloc_base_end = (struct grub_image_base_relocation *)
+-                   grub_shim_image_address ((grub_efi_uint64_t)orig, size,
+-					    context->reloc_dir->rva
++  reloc_base = grub_shim_image_address (orig, size, context->reloc_dir->rva);
++  reloc_base_end = grub_shim_image_address (orig, size, context->reloc_dir->rva
+ 					    + context->reloc_dir->size - 1);
+ 
+   if (!reloc_base || !reloc_base_end)
+@@ -219,9 +215,7 @@ grub_shim_relocate_coff (struct grub_shim_pe_coff_loader_image_context *context,
+           }
+ 
+         fixup_base = (grub_uint8_t *)
+-		     grub_shim_image_address ((grub_efi_uint64_t)data,
+-					      size,
+-					      reloc_base->virtual_address);
++		     grub_shim_image_address (data, size, reloc_base->virtual_address);
+         if (!fixup_base)
+           {
+             grub_printf("Invalid fixup_base\n");
+@@ -294,10 +288,12 @@ grub_shim_relocate_coff (struct grub_shim_pe_coff_loader_image_context *context,
+ }
+ 
+ /*
+- * Read the binary header and grab appropriate information from it
++ * Read the binary header and grab appropriate information from it.
++ * The 'data' variable needs to be of a 32 bit data type for 32 bit
++ * target platforms and 64 bit for 64 bit platforms.
+  */
+ static grub_err_t
+-grub_shim_read_header(grub_efi_physical_address_t data, grub_uint32_t datasize,
++grub_shim_read_header(grub_addr_t data, grub_uint32_t datasize,
+ 		      struct grub_shim_pe_coff_loader_image_context *context)
+ {
+   struct grub_dos_header *dos_hdr = (struct grub_dos_header *)data;
+@@ -491,9 +487,13 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
+       return GRUB_ERR_OUT_OF_MEMORY;
+     }
+ 
+-  /* TODO: do we need the double cast? */
+-  grub_memcpy ((void *) ((grub_efi_physical_address_t) shim_buffer),
+-               (void *) ((grub_addr_t) addr), context->header_size);
++  /* We need a double cast because before casting to a pointer, we need to
++   * cast to the correct variable size. shim_buffer is always 64-bit but
++   * within 32-bit grub, we can safely cast it to a 32-bit variable
++   */
++
++  grub_memcpy ((void *) ((grub_addr_t) shim_buffer),
++               (void *) (addr), context->header_size);
+   /*
+    * Copy the executable's sections to their desired offsets
+   */
+@@ -509,11 +509,11 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
+         if (sect_size > section->raw_data_size)
+ 	  sect_size = section->raw_data_size;
+ 
+-	base = (grub_int8_t *)
+-	       grub_shim_image_address (shim_buffer, context->image_size,
++	base = grub_shim_image_address ((void *)(grub_addr_t)shim_buffer,
++					context->image_size,
+ 					section->virtual_address);
+-	end = (grub_int8_t *)
+-	      grub_shim_image_address (shim_buffer, context->image_size,
++	end = grub_shim_image_address ((void *)(grub_addr_t)shim_buffer,
++				       context->image_size,
+ 				       section->virtual_address
+ 				       + sect_size - 1);
+ 	if (!base || !end)
+@@ -532,7 +532,6 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
+ 	  }
+ 
+ 	if (section->raw_data_size > 0)
+-	  /* TODO: do we need the double cast? */
+ 	  grub_memcpy ((void *)base,
+ 		       (void *) (((grub_addr_t) addr)
+ 		       + section->raw_data_offset), sect_size);
+@@ -552,7 +551,7 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
+   if (context->reloc_dir->size)
+     {
+       status = grub_shim_relocate_coff (context, (void *) addr,
+-					(void *) shim_buffer);
++					(void *) (grub_addr_t)shim_buffer);
+       if (status != GRUB_ERR_NONE)
+ 	{
+ 	  grub_printf("Relocation failed: [%u]\n", status);
+@@ -560,9 +559,9 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
+ 	  goto fail;
+ 	}
+     }
+-  shim_entry_point = (void *)grub_shim_image_address (shim_buffer,
+-						      context->image_size,
+-						      context->entry_point);
++  shim_entry_point = grub_shim_image_address ((void *)(grub_addr_t)shim_buffer,
++					      context->image_size,
++					      context->entry_point);
+   if (!shim_entry_point)
+     {
+       grub_printf("Invalid entry point\n");
+@@ -629,8 +628,9 @@ grub_chainloader_boot (void)
+       saved_exit = grub_efi_system_table->boot_services->exit;
+       grub_efi_system_table->boot_services->exit = efi_shim_exit;
+       status = efi_call_foo(shim_entry_point,
+-	                    (grub_efi_uint64_t)grub_efi_image_handle,
+-	                    (grub_efi_uint64_t)grub_efi_system_table);
++			    (grub_addr_t)grub_efi_image_handle,
++			    (grub_addr_t)grub_efi_system_table);
++
+       grub_efi_system_table->boot_services->exit = saved_exit;
+ 
+       loaded_image = grub_efi_get_loaded_image (grub_efi_image_handle);
+@@ -903,7 +903,7 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
+   if (shim_used)
+     {
+       grub_memcpy(&shim_li_bak, loaded_image, sizeof(shim_li_bak));
+-      loaded_image->image_base = (void *)shim_buffer;
++      loaded_image->image_base = (void *)(grub_addr_t)shim_buffer;
+       loaded_image->image_size = context.image_size;
+     }
+   else
+-- 
+1.9.1
+
