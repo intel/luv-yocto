@@ -29,6 +29,20 @@ S = "${WORKDIR}/git"
 
 export INC = "-I${STAGING_INCDIR}/${PYTHON_DIR}"
 
+def get_target_arch(d):
+ import re
+ target = d.getVar('TARGET_ARCH', True)
+ if target == "x86_64":
+    return 'x86_64'
+ elif re.match('i.86', target):
+    return 'i386'
+ elif re.match('arm', target):
+    return 'arm'
+ else:
+    raise bb.parse.SkipPackage("TARGET_ARCH %s not supported!" % target)
+
+EXTRA_OEMAKE += "ARCH="${@get_target_arch(d)}""
+
 fix_mod_path() {
     sed -i -e "s:^INSTALL_MOD_PATH_PREFIX = .*:INSTALL_MOD_PATH_PREFIX = \"${PYTHON_SITEPACKAGES_DIR}\":" ${S}/source/tool/chipsec_main.py
     sed -i -e "s:PYTHONPATH:${PYTHON_SITEPACKAGES_DIR}:" ${WORKDIR}/chipsec
