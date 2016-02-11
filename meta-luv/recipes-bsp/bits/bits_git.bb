@@ -101,7 +101,7 @@ BITS_INSTALL_TARGETS ="install-doc install-grub-cfg install-log install-bitsvers
                        install-bitsconfigdefaults install-toplevel-cfg install-bits-cfg \
                        install-readme install-news install-install install-copying"
 
-do_install() {
+do_install_class-target() {
 	oe_runmake mkimage-grub-${BITS_ARCH}-efi
 	oe_runmake ${BITS_INSTALL_TARGETS}
 
