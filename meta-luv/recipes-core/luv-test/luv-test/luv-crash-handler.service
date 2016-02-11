@@ -1,7 +1,7 @@
 [Unit]
 Description=Run the LUV crash handler
+ConditionKernelCommandLine=!luv.netboot
 Wants=dev-disk-by\x2duuid-05D6\x2d1523.device
-After=dev-disk-by\x2duuid-05D6\x2d1523.device
 
 [Service]
 Type=oneshot
