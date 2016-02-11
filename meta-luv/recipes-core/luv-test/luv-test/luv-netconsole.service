@@ -1,6 +1,8 @@
 [Unit]
 Description=Run the LUV netconsole
-After=luv-crash-handler.service
+ConditionKernelCommandLine=!luv_netconsole=none
+After=network-online.target
+Wants=network-online.target
 Before=klogscanner.service
 
 [Service]
