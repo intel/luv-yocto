@@ -7,6 +7,7 @@ SRC_URI += "file://0001-pe32.h-add-header-structures-for-TE-and-DOS-executab.pat
            file://0005-efi-chainloader-use-shim-to-load-and-verify-an-image.patch \
            file://0006-efi-chainloader-boot-the-image-using-shim.patch \
            file://0007-efi-chainloader-take-care-of-unload-undershim.patch \
+           file://0008-grub-shim-Add-call-wrappers-for-32-bit-systems.patch \
           "
 
 GRUB_BUILDIN = "boot linux ext2 fat serial part_msdos part_gpt \
