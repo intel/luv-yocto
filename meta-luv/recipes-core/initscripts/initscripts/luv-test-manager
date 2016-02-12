@@ -175,7 +175,7 @@ for r in $runner_list; do
         parser="/bin/cat"
     }
 
-    $runner | tee ${LUV_LOG_DIR}/$r | tee ${LUV_SAVE_RAW_DIR}/$r | $parser | \
+    $runner |& tee ${LUV_LOG_DIR}/$r | tee ${LUV_SAVE_RAW_DIR}/$r | $parser | \
               tee ${LUV_SAVE_PARSED_DIR}/$r | ${LUV_PARSER_DIR}/test-manager | \
               tee /dev/console | \
               tee -a /tmp/luv.results | tee -a ${LUV_SAVE_RESULTS_DIR}/luv.results
