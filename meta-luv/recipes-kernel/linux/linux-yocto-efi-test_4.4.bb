@@ -67,6 +67,7 @@ SRC_URI += "file://ram_block.cfg"
 SRC_URI += "file://debug.cfg"
 SRC_URI += "file://efi.cfg"
 SRC_URI += "file://usb_hcd.cfg"
+SRC_URI += "file://ndctl.cfg"
 
 # Detect illegal access to UEFI Boot Services memory regions.
 SRC_URI += "file://0001-Add-function-to-fixup-page-faults-in-BOOT_SERVICES_-.patch \
@@ -100,3 +101,21 @@ PV = "${LINUX_VERSION}+git${SRCPV}"
 # Override COMPATIBLE_MACHINE to include your machine in a bbappend
 # file. Leaving it empty here ensures an early explicit build failure.
 COMPATIBLE_MACHINE = "qemux86|qemux86-64|qemuarm64"
+
+do_compile_kernelmodules_append() {
+    if echo "${TARGET_ARCH}" | grep -q "i.86" || [ "${TARGET_ARCH}" = "x86_64" ]; then
+        oe_runmake -C ${B} M=${S}/tools/testing/nvdimm/
+    fi
+}
+
+do_install_append() {
+    if echo "${TARGET_ARCH}" | grep -q "i.86" || [ "${TARGET_ARCH}" = "x86_64" ]; then
+        oe_runmake DEPMOD=echo INSTALL_MOD_PATH=${D} \
+                   -C ${B} M=${S}/tools/testing/nvdimm modules_install
+         # There are 2 copies of the NVDIMM modules which are built. This is a
+         # temporary fix to make sure the correct set of modules are used.
+         rm -rf ${D}/lib/modules/4.4.0-yocto-standard/kernel/drivers/nvdimm/
+         cp ${D}/lib/modules/4.4.0-yocto-standard/extra/nfit.ko \
+            ${D}/lib/modules/4.4.0-yocto-standard/kernel/drivers/acpi/
+    fi
+}
