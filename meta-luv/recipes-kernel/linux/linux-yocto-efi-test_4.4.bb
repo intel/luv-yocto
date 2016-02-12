@@ -67,6 +67,7 @@ SRC_URI += "file://ram_block.cfg"
 SRC_URI += "file://debug.cfg"
 SRC_URI += "file://efi.cfg"
 SRC_URI += "file://usb_hcd.cfg"
+SRC_URI += "file://ndctl.cfg"
 
 # Detect illegal access to UEFI Boot Services memory regions.
 SRC_URI += "file://0001-Add-function-to-fixup-page-faults-in-BOOT_SERVICES_-.patch \
@@ -100,3 +101,16 @@ PV = "${LINUX_VERSION}+git${SRCPV}"
 # Override COMPATIBLE_MACHINE to include your machine in a bbappend
 # file. Leaving it empty here ensures an early explicit build failure.
 COMPATIBLE_MACHINE = "qemux86|qemux86-64|qemuarm64"
+
+do_compile_append() {
+    unset CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
+    oe_runmake
+    oe_runmake -C ${B} M=${S}/tools/testing/nvdimm/
+}
+
+do_install_append() {
+    unset CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
+
+    oe_runmake DEPMOD=echo INSTALL_MOD_PATH=${D} \
+        -C ${B} M=${S}/tools/testing/nvdimm modules_install
+}
