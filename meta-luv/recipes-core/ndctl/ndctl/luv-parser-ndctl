@@ -1,0 +1,34 @@
+#!/bin/sh
+#
+# Parse the output of ndctl and write a luv-test-manager compatible
+# log to stdout.
+
+awk -F: '
+
+/\ERROR/ {
+	"date +%H:%M:%S:%N" | getline current_time;
+	close ("date +%H:%M:%S:%N")
+	printf("1.1 %s ndctl %s RESULT 0 0 0 1 0\r\n", current_time, $1);
+	fflush("");
+	}
+
+/\SKIP/ {
+        "date +%H:%M:%S:%N" | getline current_time;
+        close ("date +%H:%M:%S:%N")
+        printf("1.1 %s ndctl %s RESULT 0 0 0 1 0\r\n", current_time, $1);
+        fflush("");
+        }
+
+/\FAIL/ {
+        "date +%H:%M:%S:%N" | getline current_time;
+        close ("date +%H:%M:%S:%N")
+        printf("1.1 %s ndctl %s RESULT 0 1 0 0 0\r\n", current_time, $1);
+        fflush("");
+        }
+
+/\PASS/ {
+        "date +%H:%M:%S:%N" | getline current_time;
+        close ("date +%H:%M:%S:%N")
+        printf("1.1 %s ndctl %s RESULT 1 0 0 0 0\r\n", current_time, $1);
+        fflush("");
+        }'

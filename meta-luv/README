@@ -56,6 +56,7 @@ Table of Contents
 =================
 
   I. Adding the meta-luv layer to your build
+ II. Executing ACPI NFIT destructive tests
 
 
 I. Adding the meta-luv layer to your build
@@ -80,3 +81,15 @@ Then it is necessary to specify the luv distribution in local.conf.
 e.g.:
 
   DISTRO = "luv"
+
+
+II. Executing ACPI NFIT destructive tests
+=================================================
+
+The NDCTL test suite includes a batch of destructive tests. These are
+disabled by default. If the user wants to execute these destructive
+tests, the luv.nfit-destructive option needs to be passed as a kernel
+parameter. This can be done by adding this option to the grub linux
+command that loads the Linux kernel. The file to implement this change
+is EFI/BOOT/grub.cfg located in the bootable partition of the LUV
+media.

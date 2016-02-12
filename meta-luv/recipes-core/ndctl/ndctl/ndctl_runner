@@ -1,0 +1,12 @@
+#!/bin/sh
+#
+# Copyright 2016 Intel Corporation; author Megha Dey
+#
+# Script to run NDCTL test suite
+
+echo "LUV NDCTL test suite"
+ndctl test
+grep -q luv.nfit-destructive /proc/cmdline
+if [ $? -ne 1 ]; then
+    ndctl bat
+fi
