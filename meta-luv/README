@@ -55,8 +55,9 @@ M: Naresh Bhat <naresh.bhat@linaro.org>
 Table of Contents
 =================
 
-  I. Adding the meta-luv layer to your build
- II. Executing ACPI NFIT destructive tests
+   I. Adding the meta-luv layer to your build
+  II. Building LUV
+ III. Executing ACPI NFIT destructive tests
 
 
 I. Adding the meta-luv layer to your build
@@ -77,13 +78,33 @@ other layers needed. e.g.:
     /path/to/yocto/meta-luv \
     "
 
-Then it is necessary to specify the luv distribution in local.conf.
+II. Building LUV
+=================================================
+
+LUV can boot from either a local network or a disk. The process to build
+is slightly different for each case.
+
+If you intend to build an image to boot from a physical disk, then it is
+necessary to specify the luv distribution in local.conf.
 e.g.:
 
   DISTRO = "luv"
 
+Afterwards, you can simply do:
 
-II. Executing ACPI NFIT destructive tests
+  bitbake luv-live-image
+
+If you intend to build an image to boot from a local network, then it is
+necessary to specify the luv-netboot distribution in local.conf.
+e.g.:
+
+  DISTRO = "luv-netboot"
+
+Afterwards, you can simply do:
+
+  bitbake luv-netboot-image
+
+III. Executing ACPI NFIT destructive tests
 =================================================
 
 The NDCTL test suite includes a batch of destructive tests. These are
