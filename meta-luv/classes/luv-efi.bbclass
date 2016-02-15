@@ -39,7 +39,8 @@ efi_populate() {
                 echo "grubaa64.efi" > ${DEST}${EFIDIR}/startup.nsh
 
     # TODO: need conditional signing; e.g., if (DISTRO_FEATURES contains secure_boot)
-    else
+    # shim bootloader does not seem to work with i386. Thus we don't use it for 32-bit
+    elif [ "${TARGET_ARCH}" = "x86_64" ]; then
                 # sign grub2 bootloader
                 sbsign --key ${DEPLOY_DIR_IMAGE}/LUV.key --cert ${DEPLOY_DIR_IMAGE}/LUV.crt \
                        --output ${DEPLOY_DIR_IMAGE}/grubx64.efi ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE}
@@ -58,9 +59,11 @@ efi_populate() {
                 # restore files to leave all in good shape for all the callers of the funciton
                 mv ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${DEPLOY_DIR_IMAGE}/shim.efi
                 mv ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE}-unsigned ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE}
+    else
+		install -m 0644 ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${DEST}${EFIDIR}
     fi
 
-    if [ "${TARGET_ARCH}" = "x86_64" ]; then
+    if echo "${TARGET_ARCH}" | grep -q "i.86" || [ "${TARGET_ARCH}" = "x86_64" ]; then
         efi_populate_bits ${DEST}
     fi
 
@@ -109,7 +112,7 @@ efi_iso_populate() {
         echo "grubaa64.efi" > ${EFIIMGDIR}/startup.nsh
         cp $iso_dir/Image ${EFIIMGDIR}
     fi
-    if [ "${TARGET_ARCH}" = "x86_64" ] ; then
+    if echo "${TARGET_ARCH}" | grep -q "i.86" || [ "${TARGET_ARCH}" = "x86_64" ]; then
         echo "${GRUB_IMAGE}" > ${EFIIMGDIR}/startup.nsh
         cp $iso_dir/vmlinuz ${EFIIMGDIR}
     fi
@@ -124,6 +127,8 @@ efi_hddimg_populate() {
 }
 
 python build_efi_cfg() {
+    import re
+
     path = d.getVar('GRUBCFG', True)
     if not path:
         raise bb.build.FuncFailed('Unable to read GRUBCFG')
@@ -133,13 +138,15 @@ python build_efi_cfg() {
     except OSError:
         raise bb.build.funcFailed('Unable to open %s' % (cfgfile))
 
-    if "${TARGET_ARCH}" == "x86_64":
+    target = d.getVar('TARGET_ARCH', True)
+
+    if re.search("(x86_64|i.86)", target):
        cfgfile.write('default=bits\n')
        cfgfile.write('timeout=0\n')
        cfgfile.write('fallback=0\n')
 
     cfgfile.write('menuentry \'luv\' {\n')
-    if "${TARGET_ARCH}" == "x86_64":
+    if re.search("(x86_64|i.86)", target):
        cfgfile.write('linux /vmlinuz')
     if "${TARGET_ARCH}" == "aarch64":
         cfgfile.write('linux /Image')
@@ -157,7 +164,7 @@ python build_efi_cfg() {
     if not loader:
         raise bb.build.FuncFailed('Unable to find EFI_LOADER_IMAGE')
 
-    if "${TARGET_ARCH}" == "x86_64":
+    if re.search("(x86_64|i.86)", target):
        cfgfile.write('menuentry \'bits\' {\n')
        cfgfile.write('chainloader /EFI/BOOT/bits/%s\n' % loader)
        cfgfile.write('}\n')
