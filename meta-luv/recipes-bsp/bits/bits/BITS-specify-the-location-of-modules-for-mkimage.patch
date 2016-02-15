@@ -1,0 +1,33 @@
+From 314705fc11c10493366c2eb6b5503ecac77fbdd4 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Mon, 15 Feb 2016 08:04:10 -0800
+Subject: [PATCH] Makefile: specify the location  modules for mkimage
+
+When grub-mkimage is called without specifying a directory for it to
+take the images and modules, it defaults to the lib directory in which
+it was biult. This is a problem since it will try to use the images
+and modules for the native built. We intend to use those of the target
+build. Thus, specify the intended directory, i.e., libdir of the target
+build.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index 4ea7e0e..fa35b67 100644
+--- a/Makefile
++++ b/Makefile
+@@ -125,7 +125,7 @@ build-grub-%: autogen-grub
+ 	$(call mk_faketarget)
+ 
+ mkimage-grub-%: build-grub-%
+-	$(Q)bits-grub-mkimage -O $* --output='$(target)/$($*-img)' --prefix=/boot/grub $($*-extra-modules) $(common-modules)
++	$(Q)bits-grub-mkimage -O $* --output='$(target)/$($*-img)' --prefix=/boot/grub -d '$(workdir)/grub-build-$*/grub-core' $($*-extra-modules) $(common-modules)
+ 	$(call mk_faketarget)
+ 
+ 
+-- 
+1.9.1
+
