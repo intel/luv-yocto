@@ -71,6 +71,8 @@ SRC_URI += "file://usb_hcd.cfg"
 # Detect illegal access to UEFI Boot Services memory regions.
 SRC_URI += "file://0001-Add-function-to-fixup-page-faults-in-BOOT_SERVICES_-.patch \
             file://0002-efi-allow-efi_mem_desc_lookup-find-EFI_BOOT_SERVICES.patch \
+            file://0003-x86-efi-Fixup-faults-from-UEFI-firmware.patch \
+           "
 
 # Override KCONFIG_MODE to '--alldefconfig' from the default '--allnoconfig'
 KCONFIG_MODE = '--alldefconfig'
