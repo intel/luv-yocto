@@ -155,6 +155,11 @@ python build_efi_cfg() {
     if append:
         cfgfile.write('%s' % (append))
 
+    append_var = d.getVar('APPEND_netconsole', True)
+    if append_var:
+        cfgfile.write(" ")
+        cfgfile.write('%s' % (append_var))
+
     cfgfile.write('\n')
 
     cfgfile.write('initrd /initrd /boot/bitsrd\n')
