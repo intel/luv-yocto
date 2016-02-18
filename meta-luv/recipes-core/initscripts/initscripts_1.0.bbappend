@@ -2,7 +2,8 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 
 SRC_URI += "file://luv-test-manager file://luv-test-parser \
             file://luv-crash-handler \
-            file://luv-netconsole"
+            file://luv-netconsole \
+            file://luv-net-param"
 
 RDEPENDS_${PN}+= "kernel-modules iputils iproute2"
 
@@ -27,4 +28,8 @@ do_install_append() {
 
         # Create runlevel link for the luv-netconsole
         update-rc.d -r ${D} luv-netconsole start 98 2 3 4 5 .
+
+        # Install luv-net-param in bin directory
+        install -d ${D}${bindir}
+        install -m 0755 ${WORKDIR}/luv-net-param ${D}${bindir}
 }
