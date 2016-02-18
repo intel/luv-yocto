@@ -1,0 +1,98 @@
+#!/bin/sh
+#
+# Copyright 2015 Intel Corporation; author Gayatri Kammela
+#
+# Netconsole is a linux feature that sends the kernel messages
+# to a remote machine via ethernet. The kernel messages sent over
+# to remote machine are useful for debugging in case of a kernel
+# panic.This script enables netconsole feature in LUV
+#
+#####################################################################
+
+# Display error messages
+Network_error="LUV_NETCONSOLE: Your network is unreachable, please check and try again"
+Network_proxy_error="LUV_NETCONSOLE: Your network seems unreachable, please check proxys"
+Netconsole_param_error="LUV_NETCONSOLE: Are you sure you gave the luv_netconsole parameter?"
+
+# Install netconsole module
+install_net_mod() {
+    modprobe -r  netconsole
+    modprobe netconsole netconsole=$NETCONSOLE_PORT@$SEND_IP/$SEND_IF,$NETCONSOLE_PORT@$REC_IP/$REC_MAC
+}
+
+# Get local IP and Interface
+check_local_ip() {
+    SEND_IF=$(ip -o -4 r s to default | grep ^default | awk '{print $5}')
+    SEND_IP=$(ifconfig  | grep $SEND_IF -A1 | grep inet | awk -F: '{print $2}' | awk '{print $1}')
+    if [ -z "$SEND_IF" ] && [ -z "$SEND_IP" ] ; then
+        echo $Network_error > /dev/kmsg
+        return 1
+    fi
+# ping the local ip and see if its reachable(due to proxys sometimes)
+    $(ping -c 1 $SEND_IP > /dev/null)
+    if [ $? -eq 1 ] ; then
+        echo $Network_proxy_error > /dev/kmsg
+        return 1
+    else
+        install_net_mod
+    fi
+}
+
+# Get reciever's HW/mac address
+get_mac_addr() {
+# Find if the reciever is in the same subnet as host machine.This can be checked by
+# sending a packet  to the remote machine. The packet will be succesfully recieved if
+# it is on same subnet else the packet will be lost
+
+    $(ping -rc 1 $REC_IP > /dev/null)
+    if [ $? -eq 0 ] ; then
+        REC_MAC_EX=$(arp -n $REC_IP | awk '{ print $3 }')
+        REC_MAC=$(echo $REC_MAC_EX | awk '{ print $2 }')
+        check_local_ip
+    else
+
+## netstat displays network connections, routing tables, and a number of network
+## interface statistics.use netstat to get the ip address available when we grep
+## default gateway '0.0.0.0'. It checks for the processes that are listening for
+## connections on any IP address on your machine.
+        DEF_GATE=$(netstat -rn | grep ^0.0.0.0 | awk '{print $2}')
+
+## send one packet to the ip address that we grep it from default gateway to check 
+## if its alive
+        $(ping -c 1 $DEF_GATE > /dev/null)
+
+## Get the reciever HW MAC Address using the reciever's ip address
+        if [ $? -eq 0 ] ; then
+            REC_MAC_EX=$(arp -n $DEF_GATE | awk '{ print $3 }')
+            REC_MAC=$(echo $REC_MAC_EX | awk '{ print $2 }')
+            check_local_ip
+        else
+            echo $Network_error > /dev/kmsg
+            return 1
+        fi
+    fi
+}
+
+# Get port and ip address from the luv-net-param script
+NETCONSOLE_PORT=$(luv-net-param | tail -1 | awk '{print $2}')
+REC_IP=$(luv-net-param | tail -1 | awk '{print $1}')
+luv-net-param | tee /dev/kmsg
+
+# Refresh the arp buffer to detect the ip's in the same subnet
+$(cat /proc/net/arp > /dev/null)
+
+# Check if the parameters are not empty
+if [ -z "$NETCONSOLE_PORT" ] && [ -z "$REC_IP"  ] ; then
+    echo $Netconsole_param_error > /dev/kmsg
+else
+
+# Check if the parameters are not strings
+    if ! [[ $NETCONSOLE_PORT =~ ^[0-9]+$ ]] && ! [[ $REC_IP =~ ^[0-9]+$ ]] ; then
+            echo $Netconsole_param_error > /dev/kmsg
+    else
+        get_mac_addr
+
+# Disable helper by default
+        echo 0 > /proc/sys/net/netfilter/nf_conntrack_helper
+    fi
+fi
