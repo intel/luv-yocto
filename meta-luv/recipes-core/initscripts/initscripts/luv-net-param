@@ -1,0 +1,88 @@
+#!/bin/bash
+#
+# Copyright 2016 Intel Corporation; author Gayatri Kammela
+#
+# This script gets the ip address and port number from the luv_netconsole
+# boot parameter and checks against different scenarios. This script
+# is being called by the luv-netconsole to fetch ip address and port.
+# The ip and port number are required to load the netconsole module.
+#
+################################################################
+
+# Display error messages
+Netconsole_usage="LUV_NETCONSOLE: Usage - luv_netconsole=<remote IP> ,<Port>"
+Param_empty_error="LUV_NETCONSOLE: Param is unset or empty or filled with spaces."
+Param_invalid_error="LUV_NETCONSOLE: Given luv_netconsole format is invalid.
+You either didn't provide the IP and port or forgot ','"
+
+# Check if the port number is valid and against scales as ports below
+# 4000 can be reserved and highest port number
+check_port() {
+    low_scale=4000
+    high_scale=65535
+    if ! [[ $netconsole_port =~ ^[0-9]+$ ]] ; then
+        echo "LUV_NETCONSOLE: Not a valid port!"
+        return 1
+    else
+        if [ $netconsole_port -lt $low_scale ]  && [ $netconsole_port -gt $high_scale ] ;
+        then
+            echo "LUV_NETCONSOLE:Provide port ranges between $low_scale and $high_scale"
+            return 1
+        fi
+    fi
+}
+
+# Check if the ip address is valid
+check_ip() {
+    if ! [[ $rec_ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+        echo " LUV_NETCONSOLE: Not a valid IP"
+        return 1
+    fi
+}
+
+# check if the netconsole parameter is provided in the proper format
+check_format() {
+    echo $param | grep -q ','
+    if [ $? -eq 0 ] ; then
+# Get the ipaddress and port number provided by the user
+        luv_net1=$(echo $param | grep -Eo "[0.0-9.0]+" | head -1)
+        luv_net2=$(echo $param | grep -Eo "[0.0-9.0]+" | tail -1)
+
+# check if the netconsole parameter is empty or filled with spaces and
+# compare the sizes of the variables just in case if user reverse the ip address
+# and port number order while providing it in the grub.cfg file
+        if [ -z "$luv_net1" ] && [ -z "$luv_net2" ]  ; then
+            echo $Param_invalid
+            echo $Netconsole_usage
+            return 1
+        else
+            if [ ${#luv_net1} -gt ${#luv_net2} ] ; then
+                rec_ip=$luv_net1
+                netconsole_port=$luv_net2
+            else
+                rec_ip=$luv_net2
+                netconsole_port=$luv_net1
+                echo "LUV_NETCONSOLE: You changed the format! we will take care of it."
+                echo $Netconsole_usage
+            fi
+            check_ip
+        fi
+        check_port
+    else
+        echo $Param_invalid_error
+        echo $Netconsole_usage
+        return 1
+    fi
+}
+
+$(cat /proc/cmdline | grep luv_netconsole > /dev/null)
+if [ $? -eq 0 ] ; then
+
+# Get the luv_netconsole parameter values from the kernel command line using sed
+    param=$(cat /proc/cmdline | sed -e 's/^.*luv_netconsole=//' -e 's/ .*$//')
+    check_format
+    echo $rec_ip  $netconsole_port
+else
+    echo $Netconsole_usage
+    echo "Please see the meta-luv/README file for further information"
+fi
