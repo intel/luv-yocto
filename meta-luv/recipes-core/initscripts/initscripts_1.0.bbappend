@@ -3,6 +3,8 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 SRC_URI += "file://luv-test-manager file://luv-test-parser \
             file://luv-crash-handler"
 
+RDEPENDS_${PN}+= "kernel-modules iputils iproute2"
+
 do_install_append() {
 	install -m 755 ${WORKDIR}/luv-test-manager ${D}${sysconfdir}/init.d/
 
