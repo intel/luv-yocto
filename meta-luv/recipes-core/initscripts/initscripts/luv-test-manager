@@ -215,8 +215,8 @@ for r in $runner_list; do
               tee /dev/console | parse_line | \
               tee -a /tmp/luv.results | tee -a ${LUV_SAVE_RESULTS_DIR}/luv.results
     sync
-done | awk '/      \[\+/ { units += 1 }
-    /    \[\-/ { suites += 1 }
+done | awk '/+/ { units += 1 }
+    /-/ { suites += 1 }
     /pass/ { passes += 1 }
     /fail/ { fails += $3 }
     /skip/ { skips += 1 }
