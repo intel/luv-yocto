@@ -1,7 +1,8 @@
 FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 
 SRC_URI += "file://luv-test-manager file://luv-test-parser \
-            file://luv-crash-handler"
+            file://luv-crash-handler \
+            file://luv-netconsole"
 
 RDEPENDS_${PN}+= "kernel-modules iputils iproute2"
 
@@ -21,4 +22,9 @@ do_install_append() {
 
 	# Create runlevel link for the crash handler
 	update-rc.d -r ${D} luv-crash-handler start 98 3 5 .
+
+        install -m 755 ${WORKDIR}/luv-netconsole ${D}${sysconfdir}/init.d/
+
+        # Create runlevel link for the luv-netconsole
+        update-rc.d -r ${D} luv-netconsole start 98 2 3 4 5 .
 }
