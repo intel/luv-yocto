@@ -136,7 +136,7 @@ psplash_write "MSG Running tests..."
 
 luv_version=$(cut -d\\ -f1 /etc/issue)
 
-cat <<EOF
+cat <<EOF | tee /dev/kmsg
 Welcome to ${luv_version}
 
 Running tests...
@@ -164,7 +164,7 @@ mkdir -p ${LUV_LOG_DIR}
 psplash_write "PROGRESS 0"
 
 # Begin the results files by stating the version of luv
-cat <<EOF | tee ${LUV_SAVE_RESULTS_DIR}/luv.results > /tmp/luv.results
+cat <<EOF | tee /dev/kmsg | tee ${LUV_SAVE_RESULTS_DIR}/luv.results > /tmp/luv.results
 $luv_version
 
 Date and time of the system : $tstamp
@@ -174,6 +174,25 @@ System: $(cat /proc/cpuinfo | grep 'model name' | cut -d: -f2 | uniq) x $(nproc)
 Test results summary:
 
 EOF
+
+# all the messages from dmesg buffer comes with timestamp and since the
+# user space messages are being directed to dmesg via /dev/kmsg, most of
+# the messages miss the timestamp. In order to provide timestamp for each,
+# parse each user space message line by line via /dev/kmsg
+
+parse_line()
+{
+    while read line ; do
+    case $line in
+        *+* )
+        echo ' ' $line
+        ;;
+        * )
+        echo $line
+        ;;
+    esac
+    done | tee /dev/kmsg
+}
 
 runner_list=`ls -A ${LUV_TESTS_DIR}`
 
@@ -193,7 +212,7 @@ for r in $runner_list; do
 
     $runner |& tee ${LUV_LOG_DIR}/$r | tee ${LUV_SAVE_RAW_DIR}/$r | $parser | \
               tee ${LUV_SAVE_PARSED_DIR}/$r | ${LUV_PARSER_DIR}/test-manager | \
-              tee /dev/console | \
+              tee /dev/console | parse_line | \
               tee -a /tmp/luv.results | tee -a ${LUV_SAVE_RESULTS_DIR}/luv.results
     sync
 done | awk '/      \[\+/ { units += 1 }
@@ -203,7 +222,7 @@ done | awk '/      \[\+/ { units += 1 }
     /skip/ { skips += 1 }
     END {
 	printf("\nRan %d testsuites and %d unittests, %d passes, %d fails, %d skipped.\n", suites, units, passes, fails, skips)
-    }' | tee -a /tmp/luv.results | tee -a ${LUV_SAVE_RESULTS_DIR}/luv.results
+    }' | tee /dev/kmsg | tee -a /tmp/luv.results | tee -a ${LUV_SAVE_RESULTS_DIR}/luv.results
 
 write_html_file ${LUV_SAVE_RESULTS_DIR}/luv.results
 
