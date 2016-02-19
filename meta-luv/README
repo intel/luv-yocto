@@ -58,6 +58,7 @@ Table of Contents
    I. Adding the meta-luv layer to your build
   II. Building LUV
  III. Executing ACPI NFIT destructive tests
+  IV. Use of Netconsole in LUV
 
 
 I. Adding the meta-luv layer to your build
@@ -114,3 +115,73 @@ parameter. This can be done by adding this option to the grub linux
 command that loads the Linux kernel. The file to implement this change
 is EFI/BOOT/grub.cfg located in the bootable partition of the LUV
 media.
+
+IV. Use of Netconsole in LUV
+=================================================
+
+Netconsole is a Linux feature and a kernel module that sends all
+kernel log messages to a remote machine over the network. It does not
+have all overwhelming userspace messages and pretty convenient when
+a serial console is unavailable. Netconsole (network console) is just
+an alternative to serial console.
+
+Why Netconsole?
+---------------
+As already stated, it comes in handy when no serial console is
+available and, importantly, it is a powerful kernel debugging tool.
+It sends the kernel log messages(dmesg)to a different machine over
+UDP packets and helps in debugging when there is system hang.
+
+Why in LUV?
+-----------
+LUV is used to test systems for any firmware issues and there is
+a possibility that the system may hang during the execution of LUV.
+It is very important that LUV gets the debug information
+to narrow down the causes and provide support to its users.
+
+Usage in LUV
+------------
+In order to make use of the netconsole feature in LUV users must aware
+of its usage.
+
+The current release of luv-netconsole could support Linux and Microsoft
+Windows hosts and remote machines. However, at the moment it is only
+possible to make changes in the grub.cfg file using a Linux system.
+This file is available in the second partition of the image mounted
+or flashed in a USB stick.
+
+Choose the IP address and port number where you want all messages
+to be sent to. Once decided, you can replace the dummy IP address and
+port number given in grub.cfg as luv_netconsole=10.11.12.13,64001
+(the IP address and port number respectively).
+
+The grub.cfg file is located in boot partition. The location is
+EFI/BOOT/grub.cfg. Edit the file to meet the needs of netconsole.
+
+On the remote machine, use netcat or nc to listen all the messages
+that are being sent:
+
+   $ netcat -l -u <port number> (or)  nc -l -u <port number>
+example:
+   $ netcat -l -u 64001
+
+Steps on how to get IP address and choose port number
+-----------------------------------------------------
+On your terminal do
+
+   $ ifconfig
+
+Look for interfaces like eth0, eth1, lo and wlan0. All the ethernet
+interfaces are eth0, eth1 .., and lo is the loopback interface
+(system uses to communicate with itself), and wireless interfaces
+are wlan0, wlan1 etc. There can be interfaces (usually unamed by user
+while setting up) other than the ones mentioned here.
+
+Now look for 'inet addr' in available interfaces other than lo. If
+you want to use wireless network look in 'wlan' interfaces, or look in
+ethernet 'eth' interfaces etc.
+
+inet addr is the IP address we are looking for.
+
+Choose port numbers which are not reserved for any kernel activities
+like 4000's and above. port 64001 is chosen in luv-netconsole.
