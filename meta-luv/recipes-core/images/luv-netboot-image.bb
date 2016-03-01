@@ -13,8 +13,9 @@ INITRD = "${DEPLOY_DIR_IMAGE}/${INITRD_IMAGE}-${MACHINE}.cpio.gz"
 PCBIOS_remove = "1"
 PCBIOS_append = "0"
 
-APPEND = "crashkernel=256M console=ttyS0,115200 console=ttyPCH0,115200 luv.netboot"
-APPEND_aarch64 = "crashkernel=256M console=ttyAMA0 uefi_debug acpi=force"
+APPEND = "debug crashkernel=256M console=ttyS0,115200 console=ttyPCH0,115200 luv.netboot console=tty0,115200 ip=dhcp log_buf_len=1M"
+APPEND_netconsole = "luv_netconsole=10.11.12.13,64001"
+APPEND_aarch64 = "crashkernel=256M console=ttyAMA0 uefi_debug acpi=force luv.netboot"
 
 HDDDIR = "${S}/hddimg"
 
