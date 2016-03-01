@@ -5,7 +5,7 @@ SRC_URI += "file://luv-test-manager file://luv-test-parser \
             file://luv-netconsole \
             file://luv-netconsole-params"
 
-RDEPENDS_${PN}+= "kernel-modules iputils iproute2 bash"
+RDEPENDS_${PN}+= "kernel-modules iputils iproute2 bash init-ifupdown dhcp-client"
 
 do_install_append() {
 	install -m 755 ${WORKDIR}/luv-test-manager ${D}${sysconfdir}/init.d/
