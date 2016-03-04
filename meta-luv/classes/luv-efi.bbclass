@@ -21,6 +21,8 @@ do_bootimg[depends] += "${_RDEPENDS}:do_deploy \
 EFI_LOADER_IMAGE = "${@base_conditional('TARGET_ARCH', 'x86_64', 'bootx64.efi', 'bootia32.efi', d)}"
 EFIDIR = "/EFI/BOOT"
 
+LUV_FOR_NETBOOT="${@bb.utils.contains('DISTRO_FEATURES', 'luv-netboot','1' , '0', d)}"
+
 GRUBCFG = "${S}/grub.cfg"
 
 efi_populate() {
@@ -40,7 +42,7 @@ efi_populate() {
 
     # TODO: need conditional signing; e.g., if (DISTRO_FEATURES contains secure_boot)
     # shim bootloader does not seem to work with i386. Thus we don't use it for 32-bit
-    elif [ "${TARGET_ARCH}" = "x86_64" ]; then
+    elif [ "${TARGET_ARCH}" = "x86_64" ] && [ "${LUV_FOR_NETBOOT}" = "0"  ]; then
                 # sign grub2 bootloader
                 sbsign --key ${DEPLOY_DIR_IMAGE}/LUV.key --cert ${DEPLOY_DIR_IMAGE}/LUV.crt \
                        --output ${DEPLOY_DIR_IMAGE}/grubx64.efi ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE}
@@ -83,22 +85,29 @@ efi_populate_bits() {
     # manually.
     install -d ${DEST}/boot
     cp -r ${DEPLOY_DIR_IMAGE}/bits/boot/* ${DEST}/boot
-    # TODO: Need condiitional signing based on DISTRO_FEATURES
-    mv ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
-       ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}-unsigned
 
-    sbsign --key ${DEPLOY_DIR_IMAGE}/LUV.key --cert ${DEPLOY_DIR_IMAGE}/LUV.crt \
-           --output ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
+    # install EFI GRUB image, sign if needed
+    # TODO: Need condiitional signing based on DISTRO_FEATURES
+    install -d ${DEST}${EFIDIR}/bits
+
+    if [ "${LUV_FOR_NETBOOT}" = "0" ]; then
+        mv ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
            ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}-unsigned
 
-    install -d ${DEST}${EFIDIR}/bits
-    install -m 0644 ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
-            ${DEST}${EFIDIR}/bits/
+        sbsign --key ${DEPLOY_DIR_IMAGE}/LUV.key --cert ${DEPLOY_DIR_IMAGE}/LUV.crt \
+               --output ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
+               ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}-unsigned
 
-    # restore files
-    rm ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}
-    mv ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}-unsigned \
-    ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}
+        install -m 0644 ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
+                ${DEST}${EFIDIR}/bits/
+        # restore files
+        rm ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}
+        mv ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}-unsigned \
+           ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}
+    else
+        install -m 0644 ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
+                ${DEST}${EFIDIR}/bits/
+    fi
 }
 
 efi_iso_populate() {
