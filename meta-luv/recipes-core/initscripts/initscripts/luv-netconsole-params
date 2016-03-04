@@ -1,0 +1,120 @@
+#!/bin/bash
+#
+# Copyright 2016 Intel Corporation; author Gayatri Kammela
+#
+# This script gets the ip address and port number from the luv_netconsole
+# boot parameter and checks against different scenarios. This script
+# is being called by the luv-netconsole to fetch ip address and port.
+# The ip and port number are required to load the netconsole module.
+#
+################################################################
+
+# Check if the port number is valid and scales against ports below
+# 4000 can be reserved and highest port number
+check_valid_port() {
+    low_scale=4000
+    high_scale=65535
+    if  [[ $netconsole_port =~ ^[0-9]+$ ]] ; then
+        if [ $netconsole_port -lt $low_scale ]  && [ $netconsole_port -gt $high_scale ] ;
+        then
+            echo "LUV_NETCONSOLE:Provide port ranges between $low_scale and $high_scale"
+            return 1
+        else
+            return 0
+        fi
+    else
+        return 1
+    fi
+}
+
+# Check if the ip address is valid
+check_valid_ip_address() {
+    if ! [[ $rec_ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+        return 1
+    else
+        return 0
+    fi
+}
+
+# check if the netconsole parameter is provided in the proper format
+check_params_format() {
+    echo $param | grep -q ','
+    if [ $? -eq 0 ] ; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# check if the netconsole parameter is empty or filled with spaces
+check_params_empty() {
+    luv_net1=$(echo $param | cut -d ',' -f 1)
+    luv_net2=$(echo $param | cut -d ',' -f 2)
+    if [ -z "$luv_net1" ] && [ -z "$luv_net2" ]  ; then
+        return 1
+    else
+        return 0
+    fi
+}
+
+# Compare the sizes of the variables just in case if user reverse the ip address
+# and port number order while providing it in the grub.cfg file
+compare_params_size() {
+    if [ ${#luv_net1} -ge 4 ] && [ ${#luv_net2} -ge 4 ] ; then
+        if [ ${#luv_net1} -gt ${#luv_net2} ] ; then
+            rec_ip=$luv_net1
+            netconsole_port=$luv_net2
+        else
+            rec_ip=$luv_net2
+            netconsole_port=$luv_net1
+            echo "LUV_NETCONSOLE: You changed the format! we will take care of it."
+        fi
+            return 0
+    else
+        return 1
+    fi
+}
+
+# Display error messages
+Netconsole_usage="LUV_NETCONSOLE: Usage-luv_netconsole=<remote IP> ,<Port>"
+Param_empty_error="LUV_NETCONSOLE: Param is unset or empty or filled with spaces."
+Param_format_invalid="LUV_NETCONSOLE: Given luv_netconsole format is invalid.
+You either didn't provide the IP and port or forgot ','"
+
+# Check if luv_netconsole parameter is available in command line
+$(cat /proc/cmdline | grep luv_netconsole > /dev/null)
+if [ $? -eq 0 ] ; then
+    # Get the luv_netconsole parameter values from the kernel command line using sed
+    param=$(cat /proc/cmdline | sed -e 's/^.*luv_netconsole=//' -e 's/ .*$//')
+    check_params_format
+        if [ $? -eq 0 ] ; then
+            check_params_empty
+            if [ $? -eq 0 ] ; then
+                compare_params_size
+                if [ $? -eq 0 ] ; then
+                    check_valid_ip_address
+                    if [ $? -eq 0 ] ; then
+                        check_valid_port
+                        if [ $? -eq 0 ] ; then
+                            echo $rec_ip  $netconsole_port
+                        else
+                            echo "LUV_NETCONSOLE: Not a valid port!"
+                        fi
+                    else
+                        echo "LUV_NETCONSOLE: Not a valid IP!"
+                    fi
+                else
+                    echo " LUV_NETCONSOLE: Missing port and/or IP!"
+                fi
+            else
+                echo $Param_empty_error
+                echo $Netconsole_usage
+            fi
+        else
+            echo ${Param_format_invalid}
+            echo ${Netconsole_usage}
+        fi
+else
+    echo "luv_netconsole parameter is not available!"
+    echo "Please see the meta-luv/README file for further information"
+fi
