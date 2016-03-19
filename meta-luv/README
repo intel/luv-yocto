@@ -59,6 +59,7 @@ Table of Contents
   II. Building LUV
  III. Executing ACPI NFIT destructive tests
   IV. Use of Netconsole in LUV
+   V. Obtaining debug information
 
 
 I. Adding the meta-luv layer to your build
@@ -185,3 +186,18 @@ inet addr is the IP address we are looking for.
 
 Choose port numbers which are not reserved for any kernel activities
 like 4000's and above. port 64001 is chosen in luv-netconsole.
+
+V. Obtaining debug information
+=================================================
+
+Sometimes is the execution of tests may end unexpectedly. In this kind
+of situations could be useful to see how much the test manager
+progresses and, maybe, identify the offending test case. To enable
+this option, you need to add luv.debug in the parameters that grub
+passes to Linux via the linux command. The grub configuration file
+is located in EFI/BOOT/grub.cfg in the test results partition (the
+first partition you see in the LUV disk).
+
+When luv.debug is enabled, the LUV test manager will leave a file
+named luv-debug.log inside the time-stamped directory luv-results-
+yyyy-mm-dd--hh-mm--ss with the debug data it collected.
