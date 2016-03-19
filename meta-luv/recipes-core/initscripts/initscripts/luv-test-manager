@@ -1,3 +1,4 @@
+#!/bin/bash
 #
 # Copyright 2014 Intel Corporation; author Matt Fleming
 #
@@ -28,6 +29,14 @@ grep -q luv\.netboot /proc/cmdline
 if [ $? -eq 0 ]; then
     echo "LUV booted from network..."
     LUVNETBOOT="1"
+fi
+
+grep -q luv\.debug /proc/cmdline
+if [ $? -eq 0 ]; then
+    echo "Enable LUV debug mode..."
+    LUVDEBUG="1"
+    set -x
+    set -v
 fi
 
 FIFO="/mnt/.psplash/psplash_fifo"
@@ -132,6 +141,12 @@ mkdir -p ${LUV_SAVE_RESULTS_DIR}raw/
 mkdir -p ${LUV_SAVE_RESULTS_DIR}parsed/
 [ $? -eq 0 ] && LUV_SAVE_PARSED_DIR=${LUV_SAVE_RESULTS_DIR}parsed
 
+if [ ! -z ${LUVDEBUG} ]; then
+    # once we know where our storage is, redirect output to a file there
+    exec &> >(tee ${LUV_SAVE_RESULTS_DIR}luv-debug.log)
+fi
+
+
 psplash_write "MSG Running tests..."
 
 luv_version=$(cut -d\\ -f1 /etc/issue)
@@ -232,6 +247,11 @@ if [ $? -eq 0 ]; then
     umount ${LUV_EFI}
 fi
 
+# close debug log file before unmounting LUV_STORAGE.
+if [ ! -z ${LUVDEBUG} ]; then
+    exec &> /dev/console
+fi
+
 mountpoint -q ${LUV_STORAGE}
 if [ $? -eq 0 ]; then
     umount ${LUV_STORAGE}
@@ -264,3 +284,6 @@ if [ $? -ne 1 ]; then
     # Put reboot task into background and drop to a shell
     $(sleep ${REBOOT_TIMEOUT} ; reboot)&
 fi
+
+set +x
+set +v
