@@ -25,6 +25,17 @@ LUV_FOR_NETBOOT="${@bb.utils.contains('DISTRO_FEATURES', 'luv-netboot','1' , '0'
 
 GRUBCFG = "${S}/grub.cfg"
 
+def extra_initrd(d):
+    import re
+
+    target = d.getVar('TARGET_ARCH', True)
+    if re.search('86', target):
+        return '/boot/bitsrd'
+    else:
+        return ''
+
+EXTRA_INITRD = "${@extra_initrd(d)}"
+
 efi_populate() {
     # DEST must be the root of the image so that EFIDIR is not
     # nested under a top level directory.
@@ -171,8 +182,10 @@ python build_efi_cfg() {
 
     cfgfile.write('\n')
 
-    cfgfile.write('initrd /initrd /boot/bitsrd\n')
-    cfgfile.write('}\n')
+    cfgfile.write('initrd /initrd')
+    extra_initrd = d.getVar('EXTRA_INITRD', True)
+    cfgfile.write(' %s' % extra_initrd)
+    cfgfile.write('\n}\n')
 
     loader = d.getVar('EFI_LOADER_IMAGE', True)
     if not loader:
