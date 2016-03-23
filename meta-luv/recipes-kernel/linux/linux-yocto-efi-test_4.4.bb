@@ -84,7 +84,10 @@ KCONFIG_MODE = '--alldefconfig'
 # While building for AArch64 architecture fetch latest Linus' tree
 # and apply default config, which includes ACPI options enabled.
 SRC_URI_aarch64 = "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git;protocol=git;branch=${KBRANCH};name=machine"
-SRC_URI_aarch64 += "file://${MACHINE}/defconfig"
+SRC_URI_aarch64 += "file://${MACHINE}/defconfig \
+                    file://${MACHINE}/acpi.cfg \
+                    file://${MACHINE}/network.cfg \
+                   "
 
 LINUX_VERSION ?= "4.4"
 LINUX_VERSION_EXTENSION ?= "-efitest"
