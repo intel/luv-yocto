@@ -20,6 +20,8 @@ DEPENDS = "virtual/kernel python-core nasm-native"
 RDEPENDS_${PN} = "python python-shell python-stringold python-xml \
     python-ctypes python-fcntl python-importlib"
 
+COMPATIBLE_HOST='(i.86|x86_64).*'
+
 inherit module-base
 inherit python-dir
 inherit distutils
