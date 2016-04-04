@@ -4,7 +4,8 @@ LICENSE = "BSD"
 LIC_FILES_CHKSUM = "file://OvmfPkg/License.txt;md5=343dc88e82ff33d042074f62050c3496"
 
 SRC_URI = "git://github.com/tianocore/edk2.git;branch=master \
-	file://0001-BaseTools-Force-tools-variables-to-host-toolchain.patch"
+	file://0001-BaseTools-Force-tools-variables-to-host-toolchain.patch \
+	file://0001-OvmfPkg-Enable-BGRT-in-OVMF.patch"
 
 SRCREV="166a6552a829ab680862331449f11970c085f26d"
 
