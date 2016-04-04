@@ -1,12 +1,12 @@
 DESCRIPTION = "OVMF - UEFI firmware for Qemu and KVM"
 HOMEPAGE = "http://sourceforge.net/apps/mediawiki/tianocore/index.php?title=OVMF"
 LICENSE = "BSD"
-LIC_FILES_CHKSUM = "file://OvmfPkg/License.txt;md5=ffd52cf9a8e0e036b9a61a0de2dc87ed"
+LIC_FILES_CHKSUM = "file://OvmfPkg/License.txt;md5=343dc88e82ff33d042074f62050c3496"
 
 SRC_URI = "git://github.com/tianocore/edk2.git;branch=master \
 	file://0001-BaseTools-Force-tools-variables-to-host-toolchain.patch"
 
-SRCREV="dc4ad1532e59fd1a185d6b90d1c2a92cf8713f40"
+SRCREV="166a6552a829ab680862331449f11970c085f26d"
 
 S = "${WORKDIR}/git"
 
