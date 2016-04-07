@@ -34,8 +34,9 @@ is only concerned about runtime memory regions.
 Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
 ---
  arch/x86/platform/efi/efi.c | 31 +++++++++++++++++++++++++++++++
+ drivers/firmware/efi/efi.c  |  2 +-
  include/linux/efi.h         |  8 ++++++++
- 2 files changed, 39 insertions(+)
+ 3 files changed, 40 insertions(+), 1 deletion(-)
 
 diff --git a/arch/x86/platform/efi/efi.c b/arch/x86/platform/efi/efi.c
 index ad28540..c83016c 100644
@@ -76,6 +77,19 @@ index ad28540..c83016c 100644
 +	return 0;
 +}
 +#endif
+diff --git a/drivers/firmware/efi/efi.c b/drivers/firmware/efi/efi.c
+index 027ca21..89c1285 100644
+--- a/drivers/firmware/efi/efi.c
++++ b/drivers/firmware/efi/efi.c
+@@ -251,7 +251,7 @@ subsys_initcall(efisubsys_init);
+  * and if so, populate the supplied memory descriptor with the appropriate
+  * data.
+  */
+-int __init efi_mem_desc_lookup(u64 phys_addr, efi_memory_desc_t *out_md)
++int efi_mem_desc_lookup(u64 phys_addr, efi_memory_desc_t *out_md)
+ {
+ 	struct efi_memory_map *map = efi.memmap;
+ 	phys_addr_t p, e;
 diff --git a/include/linux/efi.h b/include/linux/efi.h
 index 569b5a8..6208fce 100644
 --- a/include/linux/efi.h
