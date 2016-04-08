@@ -14,7 +14,7 @@ PARSER_PATH = "${sysconfdir}/luv/parsers"
 
 FILES_${PN} += "${RUNNER_PATH}/${PN} ${PARSER_PATH}/${PN}"
 
-do_install_runner() {
+do_install_append() {
     runner_dir="${D}${RUNNER_PATH}"
     install -d $runner_dir
 
@@ -39,5 +39,3 @@ ${LUV_TEST} ${LUV_TEST_ARGS}
 EOF
     chmod +x ${runner_dir}/${PN}
 }
-
-addtask install_runner after do_install before do_package
