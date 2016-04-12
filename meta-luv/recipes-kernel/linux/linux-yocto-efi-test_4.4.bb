@@ -59,18 +59,6 @@ require recipes-kernel/linux/linux-yocto.inc
 # tree if you do not want to build from Linus' tree.
 SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git;protocol=git;branch=${KBRANCH};name=machine"
 
-# Add the defconfig from v4.4 kernel and the configuration fragments
-SRC_URI += "file://defconfig"
-SRC_URI += "file://modules.cfg"
-SRC_URI += "file://display.cfg"
-SRC_URI += "file://ram_block.cfg"
-SRC_URI += "file://debug.cfg"
-SRC_URI += "file://efi.cfg"
-SRC_URI += "file://usb_hcd.cfg"
-SRC_URI += "file://ndctl.cfg"
-SRC_URI += "file://network.cfg"
-SRC_URI += "file://network-devices.cfg"
-
 # Detect illegal access to UEFI Boot Services memory regions.
 SRC_URI += "file://0001-Add-function-to-fixup-page-faults-in-BOOT_SERVICES_-.patch \
             file://0002-efi-allow-efi_mem_desc_lookup-find-EFI_BOOT_SERVICES.patch \
@@ -78,27 +66,47 @@ SRC_URI += "file://0001-Add-function-to-fixup-page-faults-in-BOOT_SERVICES_-.pat
             file://0004-x86-efi-Introduce-EFI_BOOT_SERVICES_WARN.patch \
            "
 
+# Add the defconfig from v4.4 kernel and the configuration x86 fragments
+SRC_URI_append_x86 = "file://defconfig \
+                      file://modules.cfg \
+                      file://display.cfg \
+                      file://ram_block.cfg \
+                      file://debug.cfg \
+                      file://efi.cfg \
+                      file://usb_hcd.cfg \
+                      file://ndctl.cfg \
+                      file://network.cfg \
+                      file://network-devices.cfg \
+                     "
+
+# Add the defconfig from v4.4 kernel and the configuration x86-64 fragments
+SRC_URI_append_x86-64 = "file://defconfig \
+                         file://modules.cfg \
+                         file://display.cfg \
+                         file://ram_block.cfg \
+                         file://debug.cfg \
+                         file://efi.cfg \
+                         file://usb_hcd.cfg \
+                         file://ndctl.cfg \
+                         file://network.cfg \
+                         file://network-devices.cfg \
+                        "
+
+# Add the defconfig from v4.4 kernel and the configuration arm64 fragments
+SRC_URI_append_aarch64 = "file://${MACHINE}/defconfig \
+                          file://${MACHINE}/acpi.cfg \
+                          file://${MACHINE}/network.cfg \
+                         "
+
 # Override KCONFIG_MODE to '--alldefconfig' from the default '--allnoconfig'
 KCONFIG_MODE = '--alldefconfig'
-
-# While building for AArch64 architecture fetch latest Linus' tree
-# and apply default config, which includes ACPI options enabled.
-SRC_URI_aarch64 = "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git;protocol=git;branch=${KBRANCH};name=machine"
-SRC_URI_aarch64 += "file://${MACHINE}/defconfig \
-                    file://${MACHINE}/acpi.cfg \
-                    file://${MACHINE}/network.cfg \
-                   "
-
 LINUX_VERSION ?= "4.4"
 LINUX_VERSION_EXTENSION ?= "-efitest"
 
 # Override SRCREV to point to a different commit in a bbappend file to
 # build a different release of the Linux kernel.
 # tag: v3.4 76e10d158efb6d4516018846f60c2ab5501900bc
-SRCREV_machine_qemux86-64 = "afd2ff9b7e1b367172f18ba7f693dfb62bdcb2dc"
-SRCREV_machine_qemux86 = "afd2ff9b7e1b367172f18ba7f693dfb62bdcb2dc"
-
-SRCREV_machine_qemuarm64 = "${AUTOREV}"
+SRCREV = "afd2ff9b7e1b367172f18ba7f693dfb62bdcb2dc"
 
 PR = "r5"
 PV = "${LINUX_VERSION}+git${SRCPV}"
