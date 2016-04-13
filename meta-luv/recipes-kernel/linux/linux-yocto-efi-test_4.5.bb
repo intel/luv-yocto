@@ -66,7 +66,7 @@ SRC_URI += "file://0001-Add-function-to-fixup-page-faults-in-BOOT_SERVICES_-.pat
             file://0004-x86-efi-Introduce-EFI_BOOT_SERVICES_WARN.patch \
            "
 
-# Add the defconfig from v4.4 kernel and the configuration x86 fragments
+# Add the defconfig from v4.5 kernel and the configuration x86 fragments
 SRC_URI_append_x86 = "file://defconfig \
                       file://modules.cfg \
                       file://display.cfg \
@@ -79,7 +79,7 @@ SRC_URI_append_x86 = "file://defconfig \
                       file://network-devices.cfg \
                      "
 
-# Add the defconfig from v4.4 kernel and the configuration x86-64 fragments
+# Add the defconfig from v4.5 kernel and the configuration x86-64 fragments
 SRC_URI_append_x86-64 = "file://defconfig \
                          file://modules.cfg \
                          file://display.cfg \
@@ -92,7 +92,7 @@ SRC_URI_append_x86-64 = "file://defconfig \
                          file://network-devices.cfg \
                         "
 
-# Add the defconfig from v4.4 kernel and the configuration arm64 fragments
+# Add the defconfig from v4.5 kernel and the configuration arm64 fragments
 SRC_URI_append_aarch64 = "file://${MACHINE}/defconfig \
                           file://${MACHINE}/acpi.cfg \
                           file://${MACHINE}/network.cfg \
@@ -100,13 +100,13 @@ SRC_URI_append_aarch64 = "file://${MACHINE}/defconfig \
 
 # Override KCONFIG_MODE to '--alldefconfig' from the default '--allnoconfig'
 KCONFIG_MODE = '--alldefconfig'
-LINUX_VERSION ?= "4.4"
+LINUX_VERSION ?= "4.5"
 LINUX_VERSION_EXTENSION ?= "-efitest"
 
 # Override SRCREV to point to a different commit in a bbappend file to
 # build a different release of the Linux kernel.
-# tag: v3.4 76e10d158efb6d4516018846f60c2ab5501900bc
-SRCREV = "afd2ff9b7e1b367172f18ba7f693dfb62bdcb2dc"
+# tag: v4.5 b562e44f507e863c6792946e4e1b1449fbbac85d
+SRCREV = "b562e44f507e863c6792946e4e1b1449fbbac85d"
 
 PR = "r5"
 PV = "${LINUX_VERSION}+git${SRCPV}"
@@ -127,8 +127,8 @@ do_install_append() {
                    -C ${B} M=${S}/tools/testing/nvdimm modules_install
          # There are 2 copies of the NVDIMM modules which are built. This is a
          # temporary fix to make sure the correct set of modules are used.
-         rm -rf ${D}/lib/modules/4.4.0-yocto-standard/kernel/drivers/nvdimm/
-         cp ${D}/lib/modules/4.4.0-yocto-standard/extra/nfit.ko \
-            ${D}/lib/modules/4.4.0-yocto-standard/kernel/drivers/acpi/
+         rm -rf ${D}/lib/modules/${LINUX_VERSION}.0-yocto-standard/kernel/drivers/nvdimm/
+         cp ${D}/lib/modules/${LINUX_VERSION}.0-yocto-standard/extra/nfit.ko \
+            ${D}/lib/modules/${LINUX_VERSION}.0-yocto-standard/kernel/drivers/acpi/
     fi
 }
