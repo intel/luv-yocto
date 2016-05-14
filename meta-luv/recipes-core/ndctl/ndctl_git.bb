@@ -18,7 +18,7 @@ inherit module-base
 SRC_URI += "git://github.com/pmem/ndctl.git"
 SRC_URI += "file://luv-parser-ndctl"
 SRC_URI += "file://ndctl_runner"
-SRCREV = "1d97adbd2c728cf137d8fcd08a206a92451a39bb"
+SRCREV = "d3fdcf9ac24d3f57968d166a1c240b2f5e44aab8"
 
 S = "${WORKDIR}/git"
 DEPENDS = "virtual/kernel kmod udev"
