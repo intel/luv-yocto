@@ -11,10 +11,10 @@ IMAGE_INSTALL = "\
     "
 
 X86_ADDITIONS = "chipsec python-codecs python-subprocess kexec vmcore-dmesg bits \
-                 ndctl kernel-modules"
+                 kernel-modules"
 
 IMAGE_INSTALL_append_qemux86 = "${X86_ADDITIONS}"
-IMAGE_INSTALL_append_qemux86-64 = "${X86_ADDITIONS}"
+IMAGE_INSTALL_append_qemux86-64 = "${X86_ADDITIONS} ndctl"
 
 export IMAGE_BASENAME = "core-image-efi-initramfs"
 
