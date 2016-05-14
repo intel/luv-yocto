@@ -11,6 +11,8 @@ HOMEPAGE = "https://git.kernel.org/cgit/linux/kernel/git/nvdimm/nvdimm.git/tree/
 LICENSE = "GPLv2+"
 LIC_FILES_CHKSUM = "file://COPYING;md5=e66651809cac5da60c8b80e9e4e79e08"
 
+PV = "v50+git${SRCPV}"
+
 inherit autotools-brokensep luv-test
 inherit pkgconfig
 inherit module-base
