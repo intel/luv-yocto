@@ -21,6 +21,7 @@ inherit module-base
 
 SRC_URI += "git://github.com/pmem/ndctl.git"
 SRC_URI += "file://0001-ndctl-fix-build-on-systems-where-bin-sh-is-not-a-lin.patch"
+SRC_URI += "file://0002-ndctl-add-disable-docs-option-to-configure.patch"
 SRC_URI += "file://luv-parser-ndctl"
 SRC_URI += "file://ndctl_runner"
 SRCREV = "d3fdcf9ac24d3f57968d166a1c240b2f5e44aab8"
