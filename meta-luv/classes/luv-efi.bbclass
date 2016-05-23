@@ -43,9 +43,6 @@ efi_populate() {
 
     install -d ${DEST}${EFIDIR}
 
-    # Install both the grub2 and BITS loaders
-    # install -m 0644 ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${DEST}${EFIDIR}
-
     # Install grub2 in EFI directory
     if [ "${TARGET_ARCH}" = "aarch64" ]; then
 		install -m 0644 ${DEPLOY_DIR_IMAGE}/grubaa64.efi ${DEST}${EFIDIR}
