@@ -7,7 +7,7 @@ SRC_URI = "git://github.com/tianocore/edk2.git;branch=master \
 	file://0001-BaseTools-Force-tools-variables-to-host-toolchain.patch \
 	file://0001-OvmfPkg-Enable-BGRT-in-OVMF.patch"
 
-SRCREV="166a6552a829ab680862331449f11970c085f26d"
+SRCREV="3e43396b3506b9fdaf71ffb69ed160f2e108894b"
 
 S = "${WORKDIR}/git"
 
