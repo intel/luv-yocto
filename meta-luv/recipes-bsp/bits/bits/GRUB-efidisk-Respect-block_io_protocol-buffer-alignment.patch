@@ -1,0 +1,135 @@
+From 20bd730fe7184635f5cbd57a6f5af91421ce1754 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Tue, 24 May 2016 08:33:58 -0700
+Subject: [PATCH] efidisk: Respect block_io_protocol buffer alignment
+
+This a backport of:
+
+commit 51f375d688529b7c1819ba40188ee52b9333887c
+Author: Leif Lindholm <leif.lindholm@linaro.org>
+Date:   Sat Feb 27 13:44:59 2016 +0100
+
+    efidisk: Respect block_io_protocol buffer alignment
+
+from the grub development tree. Paraphrasing Leif's words, the
+grub_efi_block_io_media contains the io_align field, which describes
+the minimum alignment required for buffers used in data transfers
+with device. Lief's approach is to create a temporary buffer for
+the data transfers that meets the alignment requireements of the
+device.
+
+Recent updates to firmware implementations, including Tianocore,
+enforce this alignment (i.e. EFI_INVALID_PARAMETER is returned on
+unaligned buffers). Thus, it is necessary to backport this fix to
+our grub.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ grub-core/disk/efi/efidisk.c | 59 +++++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 53 insertions(+), 6 deletions(-)
+
+diff --git a/deps/grub/grub-core/disk/efi/efidisk.c b/deps/grub/grub-core/disk/efi/efidisk.c
+index d9d788c..07f1eab 100644
+--- a/deps/grub/grub-core/disk/efi/efidisk.c
++++ b/deps/grub/grub-core/disk/efi/efidisk.c
+@@ -515,8 +515,15 @@ grub_efidisk_open (const char *name, struct grub_disk *disk)
+   m = d->block_io->media;
+   /* FIXME: Probably it is better to store the block size in the disk,
+      and total sectors should be replaced with total blocks.  */
+-  grub_dprintf ("efidisk", "m = %p, last block = %llx, block size = %x\n",
+-		m, (unsigned long long) m->last_block, m->block_size);
++  grub_dprintf ("efidisk",
++		"m = %p, last block = %llx, block size = %x, io align = %x\n",
++		m, (unsigned long long) m->last_block, m->block_size,
++		m->io_align);
++
++  /* Ensure required buffer alignment is a power of two (or is zero). */
++  if (m->io_align & (m->io_align - 1))
++    return grub_error (GRUB_ERR_IO, "invalid buffer alignment %d", m->io_align);
++
+   disk->total_sectors = m->last_block + 1;
+   if (m->block_size & (m->block_size - 1) || !m->block_size)
+     return grub_error (GRUB_ERR_IO, "invalid sector size %d",
+@@ -546,6 +553,8 @@ grub_efidisk_read (struct grub_disk *disk, grub_disk_addr_t sector,
+   struct grub_efidisk_data *d;
+   grub_efi_block_io_t *bio;
+   grub_efi_status_t status;
++  grub_size_t io_align, num_bytes;
++  char *aligned_buf = 0;
+ 
+   d = disk->data;
+   bio = d->block_io;
+@@ -554,10 +563,30 @@ grub_efidisk_read (struct grub_disk *disk, grub_disk_addr_t sector,
+ 		"reading 0x%lx sectors at the sector 0x%llx from %s\n",
+ 		(unsigned long) size, (unsigned long long) sector, disk->name);
+ 
++  /* Set alignment to 1 if 0 specified */
++  io_align = bio->media->io_align ? bio->media->io_align : 1;
++  num_bytes = size << disk->log_sector_size;
++
++  if ((grub_addr_t) buf & (io_align - 1))
++    {
++      aligned_buf = grub_memalign (io_align, num_bytes);
++      if (! aligned_buf)
++        return GRUB_ERR_OUT_OF_MEMORY;
++    }
++  else
++    aligned_buf = buf;
++
+   status = efi_call_5 (bio->read_blocks, bio, bio->media->media_id,
+ 		       (grub_efi_uint64_t) sector,
+-		       (grub_efi_uintn_t) size << disk->log_sector_size,
+-		       buf);
++		       (grub_efi_uintn_t) num_bytes,
++		       aligned_buf);
++
++  if ((grub_addr_t) buf & (io_align - 1))
++    {
++      grub_memcpy (buf, aligned_buf, num_bytes);
++      grub_free (aligned_buf);
++    }
++
+   if (status != GRUB_EFI_SUCCESS)
+     return grub_error (GRUB_ERR_READ_ERROR,
+ 		       N_("failure reading sector 0x%llx from `%s'"),
+@@ -575,6 +604,8 @@ grub_efidisk_write (struct grub_disk *disk, grub_disk_addr_t sector,
+   struct grub_efidisk_data *d;
+   grub_efi_block_io_t *bio;
+   grub_efi_status_t status;
++  grub_size_t io_align, num_bytes;
++  char *aligned_buf = 0;
+ 
+   d = disk->data;
+   bio = d->block_io;
+@@ -583,10 +614,26 @@ grub_efidisk_write (struct grub_disk *disk, grub_disk_addr_t sector,
+ 		"writing 0x%lx sectors at the sector 0x%llx to %s\n",
+ 		(unsigned long) size, (unsigned long long) sector, disk->name);
+ 
++  /* Set alignment to 1 if 0 specified */
++  io_align = bio->media->io_align ? bio->media->io_align : 1;
++  num_bytes = size << disk->log_sector_size;
++
++  if ((grub_addr_t) buf & (io_align - 1))
++    {
++      aligned_buf = grub_memalign (io_align, num_bytes);
++      if (! aligned_buf)
++        return GRUB_ERR_OUT_OF_MEMORY;
++      grub_memcpy (aligned_buf, buf, num_bytes);
++    }
++
+   status = efi_call_5 (bio->write_blocks, bio, bio->media->media_id,
+ 		       (grub_efi_uint64_t) sector,
+-		       (grub_efi_uintn_t) size << disk->log_sector_size,
+-		       (void *) buf);
++		       (grub_efi_uintn_t) num_bytes,
++		       aligned_buf ? aligned_buf : (void *)buf);
++
++  if ((grub_addr_t) buf & (io_align - 1))
++    grub_free (aligned_buf);
++
+   if (status != GRUB_EFI_SUCCESS)
+     return grub_error (GRUB_ERR_WRITE_ERROR,
+ 		       N_("failure writing sector 0x%llx to `%s'"),
+-- 
+2.8.1
+
