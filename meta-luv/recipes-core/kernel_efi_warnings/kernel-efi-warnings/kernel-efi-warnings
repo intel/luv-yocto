@@ -47,3 +47,32 @@ PTTRN="efi: Fixing illegal access to BOOT_SERVICES_\*. Bug in EFI firmware?"
 DESC="Check for illegal accesses to BOOT_SERVICES_* memory regions."
 
 test_dmesg "${TEST}" "${DESC}" "${PTTRN}"
+
+# Check if the kernel has issued messages about potential firmware bugs. The kernel
+# issues these messaages for definite and high priority bugs.
+
+TEST="Kernel_FW_BUG"
+PTTRN="\[Firmware Bug\]"
+DESC="Check for potential firmware bugs discovered by the Linux kernel."
+
+test_dmesg "${TEST}" "${DESC}" "${PTTRN}"
+
+# Check if the kernel has issued warning messages about the firmware. This level of
+# warning is ussed potentially unclear situations (kernel or firmware to blame?)
+# Also used for medium priority bugs.
+
+TEST="Kernel_FW_WARN"
+PTTRN="\[Firmware Warn\]"
+DESC="Check for warnings issued by the Linux kernel about the firmware."
+
+test_dmesg "${TEST}" "${DESC}" "${PTTRN}"
+
+# Check if the kernel has issued info messages warning about the firmware. This used
+# to inform about suspicious situations that don't compromise the stability of the
+# system.
+
+TEST="Kernel_FW_INFO"
+PTTRN="\[Firmware Info\]"
+DESC="Check for informative messages issued by the Linux kernel about the firmware."
+
+test_dmesg "${TEST}" "${DESC}" "${PTTRN}"
