@@ -3,8 +3,17 @@
 # Parse the output of kernel-efi-warnings and write a luv-test-manager
 # compatible log to stdout.
 awk '/Test:/ {
-	test=$2
-	printf ("1.0 kernel-efi-warnings %s INFO\n", test);
+	prev_test = test;
+	test=$2;
+	if (!parsing_tests) {
+		parsing_tests = 1;
+		prev_test = test;
+	} else {
+		printf ("1.0 kernel-efi-warnings %s END\n", prev_test);
+	}
+
+	printf ("1.0 kernel-efi-warnings %s START\n", test);
+	printf ("1.0 kernel-efi-warnings %s INFO %s\n", test, $0);
 	fflush("");
     }
 
@@ -15,6 +24,11 @@ awk '/Test:/ {
 
     /FAIL/ {
 	printf ("1.0 kernel-efi-warnings %s RESULT 0 1 0 0\n", test);
+	fflush("");
+    }
+
+    END {
+	printf ("1.0 kernel-efi-warnings %s END\n", test);
 	fflush("");
     }
 '
