@@ -77,6 +77,7 @@ SRC_URI_append_x86 = "file://defconfig \
                       file://ndctl.cfg \
                       file://network.cfg \
                       file://network-devices.cfg \
+                      file://linux_quirks.cfg \
                      "
 
 # Add the defconfig from v4.5 kernel and the configuration x86-64 fragments
@@ -90,6 +91,7 @@ SRC_URI_append_x86-64 = "file://defconfig \
                          file://ndctl.cfg \
                          file://network.cfg \
                          file://network-devices.cfg \
+                         file://linux_quirks.cfg \
                         "
 
 # Add the defconfig from v4.5 kernel and the configuration arm64 fragments
