@@ -19,6 +19,9 @@ awk '/\-\-\-\-/ {
 		# we only know the test name once we have processed the /running/
 		# pattern. Thus, we emit the START tag at the end of the header.
 		printf ("1.1 %s efivarfs %s START\n", current_time, test);
+		printf ("1.1 %s efivarfs %s INFO %s\n", current_time, test, $0);
+		printf ("1.1 %s efivarfs %s INFO %s\n", current_time, test, test_txt);
+		printf ("1.1 %s efivarfs %s INFO %s\n", current_time, test, $0);
 		fflush("");
 		in_header = 0;
 	}
@@ -28,8 +31,7 @@ awk '/\-\-\-\-/ {
 	"date +%H:%M:%S:%N" | getline current_time;
 	close ("date +%H:%M:%S:%N")
 	test=$2
-	printf ("1.1 %s efivarfs %s INFO \n", current_time, test);
-	fflush("");
+	test_txt = $0;
     }
 
     /\[PASS\]/ {
@@ -44,6 +46,11 @@ awk '/\-\-\-\-/ {
 	close ("date +%H:%M:%S:%N")
 	printf ("1.1 %s efivarfs %s RESULT 0 1 0 0 \n", current_time, test);
 	fflush("");
+    }
+
+    # we consider anything that does not fit these patterns
+    !(/\-\-\-\-/ || /running/) {
+	printf ("1.1 %s efivarfs %s INFO %s\n", current_time, test, $0);
     }
 
     END{
