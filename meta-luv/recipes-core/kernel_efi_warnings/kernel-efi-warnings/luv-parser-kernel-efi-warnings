@@ -13,7 +13,6 @@ awk '/Test:/ {
 	}
 
 	printf ("1.0 kernel-efi-warnings %s START\n", test);
-	printf ("1.0 kernel-efi-warnings %s INFO %s\n", test, $0);
 	fflush("");
     }
 
@@ -24,6 +23,11 @@ awk '/Test:/ {
 
     /FAIL/ {
 	printf ("1.0 kernel-efi-warnings %s RESULT 0 1 0 0\n", test);
+	fflush("");
+    }
+
+    {
+	printf ("1.0 kernel-efi-warnings %s INFO %s\n", test, $0);
 	fflush("");
     }
 
