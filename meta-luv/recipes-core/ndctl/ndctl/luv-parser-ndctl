@@ -8,15 +8,25 @@ awk -F: '
 function test_info(test_name, results) {
         "date +%H:%M:%S:%N" | getline current_time;
         close ("date +%H:%M:%S:%N");
-        info = "1.1 " current_time " ndctl " test_name " START\n";
+        gsub(/TEST_NAME/, test_name, info);
         info = info "1.1 " current_time " ndctl "test_name " RESULT " results "\r\n";
         info = info "1.1 " current_time  " ndctl " test_name  " END";
         return info;
 }
 
+!/LUV/  {
+        if (info == "") {
+            "date +%H:%M:%S:%N" | getline current_time;
+            close ("date +%H:%M:%S:%N");
+            info = "1.1 " current_time " ndctl TEST_NAME START\n";
+        }
+        info = info "1.1 " current_time " ndctl TEST_NAME INFO " $0 "\n";
+        }
+
 /\ERROR/ {
         results = "0 0 0 0 1";
         print test_info($1, results);
+        info = ""
 
 	fflush("");
 	}
@@ -24,6 +34,7 @@ function test_info(test_name, results) {
 /\SKIP/ {
         results =  "0 0 0 1 0";
         print test_info($1, results);
+        info = ""
 
         fflush("");
         }
@@ -31,6 +42,7 @@ function test_info(test_name, results) {
 /\FAIL/ {
         results = "0 1 0 0 0";
         print test_info($1, results);
+        info = ""
 
         fflush("");
         }
@@ -38,6 +50,7 @@ function test_info(test_name, results) {
 /\PASS/ {
         results = "1 0 0 0 0";
         print test_info($1, results);
+        info = ""
 
         fflush("");
         }'
