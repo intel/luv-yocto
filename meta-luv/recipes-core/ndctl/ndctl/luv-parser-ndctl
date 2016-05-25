@@ -5,30 +5,39 @@
 
 awk -F: '
 
+function test_info(test_name, results) {
+        "date +%H:%M:%S:%N" | getline current_time;
+        close ("date +%H:%M:%S:%N");
+        info = "1.1 " current_time " ndctl " test_name " START\n";
+        info = info "1.1 " current_time " ndctl "test_name " RESULT " results "\r\n";
+        info = info "1.1 " current_time  " ndctl " test_name  " END";
+        return info;
+}
+
 /\ERROR/ {
-	"date +%H:%M:%S:%N" | getline current_time;
-	close ("date +%H:%M:%S:%N")
-	printf("1.1 %s ndctl %s RESULT 0 0 0 0 1\r\n", current_time, $1);
+        results = "0 0 0 0 1";
+        print test_info($1, results);
+
 	fflush("");
 	}
 
 /\SKIP/ {
-        "date +%H:%M:%S:%N" | getline current_time;
-        close ("date +%H:%M:%S:%N")
-        printf("1.1 %s ndctl %s RESULT 0 0 0 1 0\r\n", current_time, $1);
+        results =  "0 0 0 1 0";
+        print test_info($1, results);
+
         fflush("");
         }
 
 /\FAIL/ {
-        "date +%H:%M:%S:%N" | getline current_time;
-        close ("date +%H:%M:%S:%N")
-        printf("1.1 %s ndctl %s RESULT 0 1 0 0 0\r\n", current_time, $1);
+        results = "0 1 0 0 0";
+        print test_info($1, results);
+
         fflush("");
         }
 
 /\PASS/ {
-        "date +%H:%M:%S:%N" | getline current_time;
-        close ("date +%H:%M:%S:%N")
-        printf("1.1 %s ndctl %s RESULT 1 0 0 0 0\r\n", current_time, $1);
+        results = "1 0 0 0 0";
+        print test_info($1, results);
+
         fflush("");
         }'
