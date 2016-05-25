@@ -3,7 +3,28 @@
 # Parse the output of the Linux kernel efivarfs selftests and write to
 # stdout in a luv-test-manager compatible log.
 
-awk '/running/ {
+awk '/\-\-\-\-/ {
+        "date +%H:%M:%S:%N" | getline current_time;
+        close ("date +%H:%M:%S:%N")
+	# The test header starts and end with the pattern of this block.  Thus, we
+	# need to distinguish whether we are inside of it.
+	if (!in_header) {
+		if (!parsing_tests) {
+			parsing_tests = 1;
+		} else {
+			printf ("1.1 %s efivarfs %s END\n", current_time, test);
+		}
+		in_header = 1;
+	} else {
+		# we only know the test name once we have processed the /running/
+		# pattern. Thus, we emit the START tag at the end of the header.
+		printf ("1.1 %s efivarfs %s START\n", current_time, test);
+		fflush("");
+		in_header = 0;
+	}
+    }
+
+    /running/ {
 	"date +%H:%M:%S:%N" | getline current_time;
 	close ("date +%H:%M:%S:%N")
 	test=$2
@@ -23,4 +44,10 @@ awk '/running/ {
 	close ("date +%H:%M:%S:%N")
 	printf ("1.1 %s efivarfs %s RESULT 0 1 0 0 \n", current_time, test);
 	fflush("");
+    }
+
+    END{
+	"date +%H:%M:%S:%N" | getline current_time;
+	close ("date +%H:%M:%S:%N")
+	printf ("1.1 %s efivarfs %s END\n", current_time, test);
     }'
