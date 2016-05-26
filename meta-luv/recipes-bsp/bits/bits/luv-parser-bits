@@ -4,14 +4,28 @@
 # compatible version to stdout.
 #
 awk '/\=\=\=/ {
-	if (test) {
-		printf "1.0 bits %s RESULT %d %d %d 0\n", test, passes,
-fails, skips;
-		fflush("");
+	# There is not a clear way of identifying the end of a test. Thus,
+	# we rely on the start of the next test. Of course, we should not
+	# print the END tag if we are not parsing any test.
+	prev_test = test;
+	test=$2;
+	if (!parsing_tests) {
+		parsing_tests = 1;
+		prev_test = test;
+	} else {
+		printf "1.0 bits %s RESULT %d %d %d 0\n", prev_test, passes,
+			fails, skips;
 		passes = 0; fails = 0; skips =0;
+		printf ("1.0 bits %s END\n", prev_test);
 	}
 
-	test=$2
+	# We have reached of the test cases
+	if ($2 == "Overall") {
+		exit 0;
+	}
+
+	printf ("1.0 bits %s START\n", test);
+	fflush("");
 }
 
 /^Summary/ {
