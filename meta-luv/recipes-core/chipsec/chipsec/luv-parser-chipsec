@@ -22,7 +22,7 @@ awk ' /\[\+\] imported/ {
 	"date +%H:%M:%S:%N" | getline current_time;
 	close ("date +%H:%M:%S:%N")
 	if (test_strs[$2] && !error_strs[$2]) {
-		printf("1.1 %s chipsec %s RESULT 0 0 0 1 0\r\n", current_time, $2);
+		printf("1.1 %s chipsec %s RESULT 0 0 0 0 1\r\n", current_time, $2);
 		fflush("");
 		error_strs[$2] = 1;
 	}
