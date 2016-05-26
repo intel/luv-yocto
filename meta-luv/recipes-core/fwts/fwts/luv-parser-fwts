@@ -12,8 +12,8 @@ awk '!/^summary/ && !/^fwts/ && /\;SUM.*passed|\;INF/ {
 	"date +%H:%M:%S:%N" | getline current_time;
 	close ("date +%H:%M:%S:%N")
 	if ($2 == ";SUM") {
-		printf ("1.1 %s fwts %s RESULT %d %d %d %d\n",
-			current_time, $1, $3, $5, $7, $9);
+		printf ("1.1 %s fwts %s RESULT %d %d %d %d %d\n",
+			current_time, $1, $3, $5, $9, $11, $7);
 		fflush("");
 	} else if ($2 == ";INF") {
 		printf ("1.1 %s fwts %s INFO %s\n", current_time, $1, substr($0, index($0, $3)));
