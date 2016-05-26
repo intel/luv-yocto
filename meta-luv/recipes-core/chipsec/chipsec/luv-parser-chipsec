@@ -37,6 +37,12 @@ awk ' /\[\*\] running module/ {
         exit 0;
 }
 
+{
+	if (parsing_tests) {
+		printf ("1.1 %s chipsec %s INFO %s \n", current_time, testname, $0);
+	}
+}
+
 /\[\*\] SKIPPED/ || /Skipping/ {
 	"date +%H:%M:%S:%N" | getline current_time;
 	close ("date +%H:%M:%S:%N")
