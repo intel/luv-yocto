@@ -236,8 +236,10 @@ done | awk '/\[\+/  { units += 1 }
     /pass/ { passes += 1 }
     /fail/ { fails += $3 }
     /skip/ { skips += 1 }
+    /warn/ { warns += $3 }
     END {
-	printf("\nRan %d testsuites and %d unittests, %d passes, %d fails, %d skipped.\n", suites, units, passes, fails, skips)
+	printf("\nRan %d testsuites and %d unittests, %d passes, %d fails, %d skipped, %d warnings.\n",
+		suites, units, passes, fails, skips, warns)
     }' | tee /dev/kmsg | tee -a /tmp/luv.results | tee -a ${LUV_SAVE_RESULTS_DIR}/luv.results
 
 write_html_file ${LUV_SAVE_RESULTS_DIR}/luv.results
