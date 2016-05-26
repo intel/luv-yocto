@@ -30,6 +30,7 @@ awk '
 		fails=$7
 		aborts=$8
 		skips=$9
+		warns=$10
 	}
 }
 
@@ -43,6 +44,7 @@ awk '
 		fails=$6
 		aborts=$7
 		skips=$8
+		warns=$10
 	}
 }
 
@@ -82,6 +84,8 @@ awk '
 			printf("%d failures!\n", fails);
 		else if ((aborts > 0 || skips > 0) && !passes)
 			printf("skipped\n");
+		else if (warns > 0)
+			printf("%d warnings\n", warns);
 		else
 			printf("passed\n");
 		fflush("");
