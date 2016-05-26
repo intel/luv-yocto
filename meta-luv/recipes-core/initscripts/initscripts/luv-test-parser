@@ -13,7 +13,7 @@
 #
 # where <tag> and <tag data> are one of,
 #
-# <tag> ::= RESULT <passes> <fails> <warns> <aborts> <skips>
+# <tag> ::= RESULT <passes> <fails> <aborts> <skips> <warns>
 #         | INFO <string>
 #
 # This is the format that all data on stdin must have.
