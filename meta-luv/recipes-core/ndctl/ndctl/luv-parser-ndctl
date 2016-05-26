@@ -8,7 +8,7 @@ awk -F: '
 /\ERROR/ {
 	"date +%H:%M:%S:%N" | getline current_time;
 	close ("date +%H:%M:%S:%N")
-	printf("1.1 %s ndctl %s RESULT 0 0 0 1 0\r\n", current_time, $1);
+	printf("1.1 %s ndctl %s RESULT 0 0 0 0 1\r\n", current_time, $1);
 	fflush("");
 	}
 
