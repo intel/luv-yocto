@@ -28,6 +28,15 @@ awk ' /\[\+\] imported/ {
 	}
 }
 
+/\[\!\] WARNING/ {
+	"date +%H:%M:%S:%N" | getline current_time;
+	close ("date +%H:%M:%S:%N")
+	if (test_strs[$3]) {
+		printf("1.1 %s chipsec %s RESULT 0 0 0 0 1\r\n", current_time, $3);
+		fflush("");
+	}
+}
+
 /\[\-\] FAILED/ {
 	"date +%H:%M:%S:%N" | getline current_time;
 	close ("date +%H:%M:%S:%N")
