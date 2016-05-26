@@ -2,9 +2,14 @@
 #
 # Copyright (C) 2014 Intel Corporation; author Matt Fleming
 #
-# The schema for the luv test manager looks like this,
+# Two schemas for the luv test manager are supported.
+# The 1.0 schema looks like this,
 #
 #  <version> <testsuite> <unittest> <tag> <tag data>
+#
+# The 1.1 schema looks like this,
+#
+# <version> <timestamp> <testsuite> <unittest> <tag> <tag data>
 #
 # where <tag> and <tag data> are one of,
 #
