@@ -28,6 +28,10 @@ awk '/\=\=\=/ {
 	fflush("");
 }
 
+{
+	printf ("1.0 bits %s INFO %s \n", test, $0);
+}
+
 /^Summary/ {
 	passes += $2
 	fails += $4
