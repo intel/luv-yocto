@@ -118,6 +118,8 @@ function html_create_testinfo_ctrl_link(id, text)
 	if (tag == "START") {
 		printf("      [+] %s... ", unittest);
 		fflush("");
+		# initialize empty string for the info of this test
+		info = "";
 	}
 
 	if (tag == "RESULT") {
@@ -146,8 +148,21 @@ function html_create_testinfo_ctrl_link(id, text)
 		print unittest_status;
 		fflush("");
 	} else if (tag == "INFO") {
-		# Do nothing for now.
+		info = info tstamp substr($0, index($0, tag) + length(tag)) "\n";
 	}
+
+	if (tag == "END") {
+		# We need to wait until we complete parsing the unit test to
+		# generate the HTML code to have all the test log info and its
+		# status.
+
+		href = html_create_testinfo_ctrl_link(unittest,\
+						      unittest "... " unittest_status);
+		gsub(/\n/, "<br>\n", info);
+		content = html_create_div("content_" unittest, "testcase_info", info, 1);
+		div = html_create_div("test_" unittest, "testcase", href content, 1);
+		print div >> HTML;
+        }
 }
 # We opened two HTML divs when started parsing. Close them.
 END {
