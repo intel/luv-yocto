@@ -20,6 +20,51 @@
 
 awk '
 
+# Enclose '\''contents'\'' in an HTML div container. The id of the
+# element is given by '\''elem_id'\'', a '\''class'\'' name for CSS
+# style can be given. The container can be closed or left open. This
+# is useful if not all of the contents are know when generating the
+# container.
+
+function html_create_div(elem_id, class, contents, closediv)
+{
+        div =  "<div id=\"" elem_id "\" class=\"" class "\">\n" contents;
+        if (closediv == 1)
+                div = div "\n</div> <!--" elem_id "-->";
+        return div;
+}
+
+# Create an HTML link to control a testinfo container '\''id'\''. The
+# link will point to a script function called toggle(id) when clicked.
+# Thus, such function needs to be provided separately. The '\''text'\''
+# is scanned for the pass/skip/failed. If found, the text color is set
+# to green/orange/red, respectively; else, it is left to the default
+# color. Users of this script are responsible of providing the definition
+# of the toggle function.
+
+function html_create_testinfo_ctrl_link(id, text)
+{
+        if (text ~ /pass/) {
+                status = "passed";
+        } else if (text ~ /skip/) {
+                status = "skipped";
+        # also use the leading space to not confuse with the kernel-
+        # efi-warnings test suite
+        } else if (text ~ / warning/) {
+                status = "warning";
+        } else if (text ~ /fail/) {
+                status = "failed";
+        } else {
+                status = "";
+        }
+        link = "toggle('\''" id "'\'');return false;";
+        html = "<a id=\"control_" id "\" href=\"#\" ";
+        html = html "onClick=\"" link "\">[+]</a>";
+        html = html "<span class=\"" status "\">" text;
+        html = html "</span>\n";
+        return html;
+}
+
 /^1.1/ {
 	testsuite=$3
 	unittest=$4
