@@ -136,13 +136,14 @@ function html_create_testinfo_ctrl_link(id, text)
 		#
 		# Passes indicate everything is fine.
 		if (fails > 0)
-			printf("%d failures!\n", fails);
+			unittest_status = sprintf("%d failures!", fails);
 		else if ((aborts > 0 || skips > 0) && !passes)
-			printf("skipped\n");
+			unittest_status = "skipped";
 		else if (warns > 0)
-			printf("%d warnings\n", warns);
+			unittest_status = sprintf("%d warnings", warns);
 		else
-			printf("passed\n");
+			unittest_status = "passed";
+		print unittest_status;
 		fflush("");
 	} else if (tag == "INFO") {
 		# Do nothing for now.
