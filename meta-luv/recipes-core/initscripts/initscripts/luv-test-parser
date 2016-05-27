@@ -55,16 +55,14 @@ awk '
 		fflush("");
 	}
 
-	# New test?
-	if (!tests[unittest]) {
-		tests[unittest] = 1;
+	#
+	# Parse tags
+	#
+	if (tag == "START") {
 		printf("      [+] %s... ", unittest);
 		fflush("");
 	}
 
-	#
-	# Parse tags
-	#
 	if (tag == "RESULT") {
 		#
 		# Instead of reporting all results to the user lets only
