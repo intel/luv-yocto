@@ -17,8 +17,11 @@
 #         | INFO <string>
 #
 # This is the format that all data on stdin must have.
+#
+# If the LUV_HTML_REPORT variable is specified, an HTML version of
+# the reults will be appended to the file specified to such variable.
 
-awk '
+awk -v HTML=${LUV_HTML_REPORT} '
 
 # Enclose '\''contents'\'' in an HTML div container. The id of the
 # element is given by '\''elem_id'\'', a '\''class'\'' name for CSS
@@ -95,9 +98,18 @@ function html_create_testinfo_ctrl_link(id, text)
 
 {
 	if (!b) {
+		if (!HTML) {
+			HTML = "/dev/null"
+		}
 		b = 1;
 		printf ("    [-] %s\n", testsuite);
 		fflush("");
+		# begin HTML code for this test suite
+		ts_content =  html_create_testinfo_ctrl_link(testsuite,
+							     testsuite);
+		ts_content =  ts_content html_create_div("content_" testsuite,
+							 "testsuite", "", 0);
+		print html_create_div(testsuite, "", ts_content, 0) >> HTML;
 	}
 
 	#
@@ -135,4 +147,10 @@ function html_create_testinfo_ctrl_link(id, text)
 	} else if (tag == "INFO") {
 		# Do nothing for now.
 	}
-}'
+}
+# We opened two HTML divs when started parsing. Close them.
+END {
+	print "</div> <!--content_" testsuite "-->" >> HTML;
+	print "</div> <!--" testsuite "-->" >> HTML;
+}
+'
