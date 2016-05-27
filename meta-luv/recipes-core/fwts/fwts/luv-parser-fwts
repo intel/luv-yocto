@@ -8,9 +8,35 @@
 # - only include info about test passes/fails, etc
 # - print in luv-test-manager format
 
-awk '!/^summary/ && !/^fwts/ && /\;SUM.*passed|\;INF/ {
+awk '!/^summary/ && !/^fwts/ {
 	"date +%H:%M:%S:%N" | getline current_time;
 	close ("date +%H:%M:%S:%N")
+
+	if ($2 == ";HED") {
+		# Some test cases issue more than one ;HED tag. Only issue a
+		# START tag we begin parsing a new test case
+		if (!parsing_test) {
+			parsing_test = 1;
+			test = $1
+			printf ("1.1 %s fwts %s START\n", current_time, test);
+			fflush("");
+		}
+	}
+
+	# FWTS uses blank lines to delimit the end of test case
+	if (!NF) {
+		if (parsing_test) {
+			printf ("1.1 %s fwts %s END\n", current_time, test);
+			parsing_test = 0;
+			fflush("");
+		}
+	}
+}
+
+!/^summary/ && !/^fwts/ && /\;SUM.*passed|\;INF/ {
+	"date +%H:%M:%S:%N" | getline current_time;
+	close ("date +%H:%M:%S:%N")
+
 	if ($2 == ";SUM") {
 		printf ("1.1 %s fwts %s RESULT %d %d %d %d %d\n",
 			current_time, $1, $3, $5, $9, $11, $7);
@@ -19,4 +45,5 @@ awk '!/^summary/ && !/^fwts/ && /\;SUM.*passed|\;INF/ {
 		printf ("1.1 %s fwts %s INFO %s\n", current_time, $1, substr($0, index($0, $3)));
 		fflush("");
 	}
+
 }'
