@@ -179,7 +179,7 @@ mkdir -p ${LUV_LOG_DIR}
 psplash_write "PROGRESS 0"
 
 # Begin the results files by stating the version of luv
-cat <<EOF | tee /dev/kmsg | tee ${LUV_SAVE_RESULTS_DIR}/luv.results > /tmp/luv.results
+cat <<EOF | tee /dev/kmsg ${LUV_SAVE_RESULTS_DIR}/luv.results /tmp/luv.results
 $luv_version
 
 Date and time of the system : $tstamp
@@ -226,10 +226,10 @@ for r in $runner_list; do
     }
 
     # Make /dev/console silent to avoid the results being printed twice
-    $runner |& tee ${LUV_LOG_DIR}/$r | tee ${LUV_SAVE_RAW_DIR}/$r | $parser | \
+    $runner |& tee ${LUV_LOG_DIR}/$r ${LUV_SAVE_RAW_DIR}/$r | $parser | \
               tee ${LUV_SAVE_PARSED_DIR}/$r | ${LUV_PARSER_DIR}/test-manager | \
               parse_line | \
-              tee -a /tmp/luv.results | tee -a ${LUV_SAVE_RESULTS_DIR}/luv.results
+              tee -a /tmp/luv.results ${LUV_SAVE_RESULTS_DIR}/luv.results
     sync
 done | awk '/\[\+/  { units += 1 }
     /\[\-/  { suites += 1 }
@@ -240,7 +240,7 @@ done | awk '/\[\+/  { units += 1 }
     END {
 	printf("\nRan %d testsuites and %d unittests, %d passes, %d fails, %d skipped, %d warnings.\n",
 		suites, units, passes, fails, skips, warns)
-    }' | tee /dev/kmsg | tee -a /tmp/luv.results | tee -a ${LUV_SAVE_RESULTS_DIR}/luv.results
+    }' | tee -a /dev/kmsg /tmp/luv.results ${LUV_SAVE_RESULTS_DIR}/luv.results
 
 write_html_file ${LUV_SAVE_RESULTS_DIR}/luv.results
 
