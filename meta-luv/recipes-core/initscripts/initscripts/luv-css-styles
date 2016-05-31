@@ -1,0 +1,29 @@
+/*  Copyright (C) 2014 Intel Corporation; author Ricardo Neri
+
+A collection of styles to format HTML components in the LUV
+test results */
+
+body {
+	font-family:arial,sans-serif
+}
+
+div.testsuite, div.testcase_info {
+        margin-left: 50px;
+        display: none;
+        }
+
+div.testcase, div.inline {
+        display:block;
+        }
+
+.failed {
+	color: red;
+}
+
+.passed {
+	color: green;
+}
+
+.skipped, .warning {
+	color: orange;
+}

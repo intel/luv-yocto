@@ -3,7 +3,9 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 SRC_URI += "file://luv-test-manager file://luv-test-parser \
             file://luv-crash-handler \
             file://luv-netconsole \
-            file://luv-netconsole-params"
+            file://luv-netconsole-params \
+            file://luv-scripts \
+            file://luv-css-styles"
 
 RDEPENDS_${PN}+= "kernel-modules iputils iproute2 bash init-ifupdown dhcp-client"
 
@@ -32,4 +34,12 @@ do_install_append() {
         # Install luv-netconsole-params in bin directory
         install -d ${D}${bindir}
         install -m 0755 ${WORKDIR}/luv-netconsole-params ${D}${bindir}
+
+        # Install HTML base code files
+        echo "data dir is ${datadir}"
+        install -d ${D}${datadir}/luv/html
+        install -m 0644 ${WORKDIR}/luv-scripts ${D}${datadir}/luv/html
+        install -m 0644 ${WORKDIR}/luv-css-styles ${D}${datadir}/luv/html
 }
+
+FILES_${PN} += "${datadir}/luv/html/luv-scripts ${datadir}/luv/html/luv-css-styles"
