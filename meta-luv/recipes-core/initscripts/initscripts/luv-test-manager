@@ -46,38 +46,42 @@ psplash_write() {
     fi
 }
 
-write_html_file()
+html_start()
 {
-    file=$1
-    html=$(echo $file | sed 's/\.results$/\.html/i')
-    echo "<html>" > $html
+    html=$1
+    echo "<!DOCTYPE html>" > $html
+    echo "<html>" >> $html
     echo "<head>" >> $html
     echo "<title> "$luv_version" </title> " >> $html
     echo "<style>" >> $html
-    echo "< body {font-family:arial,sans-serif}
-          div.testsuite {margin-left:70px}
-          div.tittle {margin-left:50px}
-          div.testcase {margin-left:100px} " >> $html
+    cat /usr/share/luv/html/luv-css-styles >> $html
     echo "</style>" >> $html
+    echo "<script type=\"text/javascript\">" >> $html
+    cat /usr/share/luv/html/luv-scripts >> $html
+    echo "</script>" >> $html
     echo "</head>" >> $html
-    echo "   <body>" >> $html
-    while read line ; do
-    case $line in
-        *+* )
-        echo "<div class="testcase">$line</div>" >> $html
-        ;;
-        *-* )
-        echo "<div class="testsuite">$line</div>" >> $html
-        ;;
-        *UEFI* )
-        echo "<div class="tittle">$line</div>" >> $html
-        ;;
-         * )
-        echo "$line<br>" >> $html
-        ;;
-    esac
-    done < $file
-    echo "   </body>" >> $html
+    echo "<body>" >> $html
+}
+
+html_inline()
+{
+    awk -v HTML="${1}" '
+    BEGIN {
+        print "<div class=\"inline\">" >> HTML
+    }
+    {
+        print $0
+        print $0 "<br>">> HTML
+    }
+    END {
+        print "</div>" >> HTML
+    }'
+}
+
+html_finish()
+{
+    html=$1
+    echo "</body>" >> $html
     echo "</html>" >> $html
 }
 
@@ -171,6 +175,10 @@ LUV_LOG_DIR=/var/log/luv/
 
 mkdir -p ${LUV_LOG_DIR}
 
+# Start the HTML report
+# We need to export LUV_HTML_REPORT to be consumed by the LUV test parser
+export LUV_HTML_REPORT=${LUV_SAVE_RESULTS_DIR}/luv.html
+html_start ${LUV_HTML_REPORT}
 #
 # We can't get very accurate progress because we've no way of knowing
 # how many unit tests each test suite includes. Use a coarse-grained
@@ -179,7 +187,8 @@ mkdir -p ${LUV_LOG_DIR}
 psplash_write "PROGRESS 0"
 
 # Begin the results files by stating the version of luv
-cat <<EOF | tee /dev/kmsg ${LUV_SAVE_RESULTS_DIR}/luv.results /tmp/luv.results
+cat <<EOF | html_inline ${LUV_HTML_REPORT} | tee /dev/kmsg \
+    ${LUV_SAVE_RESULTS_DIR}/luv.results /tmp/luv.results
 $luv_version
 
 Date and time of the system : $tstamp
@@ -240,9 +249,10 @@ done | awk '/\[\+/  { units += 1 }
     END {
 	printf("\nRan %d testsuites and %d unittests, %d passes, %d fails, %d skipped, %d warnings.\n",
 		suites, units, passes, fails, skips, warns)
-    }' | tee -a /dev/kmsg /tmp/luv.results ${LUV_SAVE_RESULTS_DIR}/luv.results
+    }' | html_inline ${LUV_HTML_REPORT} | tee -a /dev/kmsg /tmp/luv.results \
+         ${LUV_SAVE_RESULTS_DIR}/luv.results
 
-write_html_file ${LUV_SAVE_RESULTS_DIR}/luv.results
+html_finish ${LUV_HTML_REPORT}
 
 mountpoint -q ${LUV_EFI}
 if [ $? -eq 0 ]; then
