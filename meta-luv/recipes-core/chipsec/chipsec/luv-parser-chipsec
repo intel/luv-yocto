@@ -17,10 +17,17 @@ awk ' /\[\*\] running module/ {
 		parsing_tests = 1;
 		prev_test = testname;
 	} else {
+		printf("1.1 %s chipsec %s RESULT %d %d 0 %d %d\r\n",
+		       current_time, testname, passes, fails, skips, warns);
 		printf ("1.1 %s chipsec %s END\n", current_time, prev_test);
+		fflush("");
 	}
 	testname = $4;
 	printf ("1.1 %s chipsec %s START\n", current_time, testname);
+	passes = 0;
+	fails  = 0;
+	skips  = 0;
+	warns  = 0;
 }
 
 /\*\*\*  SUMMARY  \*\*\*/ {
@@ -34,8 +41,7 @@ awk ' /\[\*\] running module/ {
 	"date +%H:%M:%S:%N" | getline current_time;
 	close ("date +%H:%M:%S:%N")
 	if (parsing_tests) {
-		printf("1.1 %s chipsec %s RESULT 0 0 0 1 0\r\n", current_time, testname);
-		fflush("");
+		skips += 1;
 	}
 }
 
@@ -43,8 +49,7 @@ awk ' /\[\*\] running module/ {
 	"date +%H:%M:%S:%N" | getline current_time;
 	close ("date +%H:%M:%S:%N")
 	if (parsing_tests) {
-		printf("1.1 %s chipsec %s RESULT 0 0 0 0 1\r\n", current_time, testname);
-		fflush("");
+		warns += 1;
 	}
 }
 
@@ -56,8 +61,7 @@ awk ' /\[\*\] running module/ {
 	"date +%H:%M:%S:%N" | getline current_time;
 	close ("date +%H:%M:%S:%N")
 	if (parsing_tests) {
-		printf("1.1 %s chipsec %s RESULT 0 0 0 0 1\r\n", current_time, testname);
-		fflush("");
+		warns += 1;
 	}
 }
 
@@ -65,8 +69,7 @@ awk ' /\[\*\] running module/ {
 	"date +%H:%M:%S:%N" | getline current_time;
 	close ("date +%H:%M:%S:%N")
 	if (parsing_tests) {
-		printf("1.1 %s chipsec %s RESULT 0 1 0 0 0\r\n", current_time, testname);
-		fflush("");
+		fails += 1;
 	}
 }
 
@@ -74,7 +77,6 @@ awk ' /\[\*\] running module/ {
 	"date +%H:%M:%S:%N" | getline current_time;
 	close ("date +%H:%M:%S:%N")
 	if (parsing_tests) {
-		printf("1.1 %s chipsec %s RESULT 1 0 0 0 0\r\n", current_time, testname);
-		fflush("");
+		passes += 1;
 	}
 }'
