@@ -45,8 +45,8 @@ efi_populate() {
 
     # Install grub2 in EFI directory
     if [ "${TARGET_ARCH}" = "aarch64" ]; then
-		install -m 0644 ${DEPLOY_DIR_IMAGE}/grubaa64.efi ${DEST}${EFIDIR}
-                echo "grubaa64.efi" > ${DEST}${EFIDIR}/startup.nsh
+		install -m 0644 ${DEPLOY_DIR_IMAGE}/bootaa64.efi ${DEST}${EFIDIR}
+                echo "bootaa64.efi" > ${DEST}${EFIDIR}/startup.nsh
 
     # TODO: need conditional signing; e.g., if (DISTRO_FEATURES contains secure_boot)
     # shim bootloader does not seem to work with i386. Thus we don't use it for 32-bit
@@ -126,7 +126,7 @@ efi_iso_populate() {
     cp -r $iso_dir/${EFIDIR}/* ${EFIIMGDIR}${EFIDIR}
 
     if [ "${TARGET_ARCH}" = "aarch64" ] ; then
-        echo "grubaa64.efi" > ${EFIIMGDIR}/startup.nsh
+        echo "bootaa64.efi" > ${EFIIMGDIR}/startup.nsh
         cp $iso_dir/Image ${EFIIMGDIR}
     fi
     if echo "${TARGET_ARCH}" | grep -q "i.86" || [ "${TARGET_ARCH}" = "x86_64" ]; then
