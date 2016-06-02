@@ -11,7 +11,8 @@ SRC_URI = "git://github.com/chipsec/chipsec.git \
     file://chipsec file://luv-parser-chipsec \
     file://fix-setup.py-for-Linux.patch \
     file://chipsec-setup-install-cores-library-under-helper-lin.patch \
-    file://0001-chipsec-building-for-32-bit-systems.patch"
+    file://0001-chipsec-building-for-32-bit-systems.patch \
+    file://0002-chipsec_km-utilize-inode_lock-unlock-wrappers-for-ne.patch"
 
 SRCREV="20cc5a30675548a764dadfe0dc677a283816906c"
 PV="1.2.2"
