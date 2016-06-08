@@ -39,7 +39,9 @@ do_bootimg[noexec] = "1"
 
 do_populate_image() {
 	install -d  ${HDDDIR}${EFIDIR}
-	efi_populate_bits ${HDDDIR}
+	if [ "${TARGET_ARCH}" != "aarch64" ]; then
+		efi_populate_bits ${HDDDIR}
+	fi
 	install -m 0644 ${GRUBCFG} ${HDDDIR}${EFIDIR}
 	build_hddimg
 }
