@@ -54,7 +54,11 @@ python do_mkimage() {
 
 do_deploy() {
 	rm -f ${DEPLOY_DIR_IMAGE}/${PN}.efi
-	ln -s ${DEPLOY_DIR_IMAGE}/bootx64.efi ${DEPLOY_DIR_IMAGE}/${PN}.efi
+	if [ "${TARGET_ARCH}" == "aarch64" ]; then
+		ln -s ${DEPLOY_DIR_IMAGE}/bootaa64.efi ${DEPLOY_DIR_IMAGE}/${PN}.efi
+	else
+		ln -s ${DEPLOY_DIR_IMAGE}/bootx64.efi ${DEPLOY_DIR_IMAGE}/${PN}.efi
+	fi
 }
 
 addtask do_mkimage before do_build
