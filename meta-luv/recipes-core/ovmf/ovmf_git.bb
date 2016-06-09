@@ -5,7 +5,8 @@ LIC_FILES_CHKSUM = "file://OvmfPkg/License.txt;md5=343dc88e82ff33d042074f62050c3
 
 SRC_URI = "git://github.com/tianocore/edk2.git;branch=master \
 	file://0001-BaseTools-Force-tools-variables-to-host-toolchain.patch \
-	file://0001-OvmfPkg-Enable-BGRT-in-OVMF.patch"
+	file://0001-OvmfPkg-Enable-BGRT-in-OVMF.patch \
+	file://0002-ovmf-update-path-to-native-BaseTools.patch"
 
 SRCREV="3e43396b3506b9fdaf71ffb69ed160f2e108894b"
 
@@ -13,16 +14,29 @@ S = "${WORKDIR}/git"
 
 DEPENDS_class-native="util-linux-native iasl-native"
 
+DEPENDS_class-target="ovmf-native"
+
+EDK_TOOLS_DIR="edk2_basetools"
+
 # OVMF has trouble building with the default optimization of -O2.
 BUILD_OPTIMIZATION="-pipe"
 
 # OVMF supports IA only, although it could conceivably support ARM someday.
 COMPATIBLE_HOST='(i.86|x86_64).*'
 
-do_patch_append() {
+do_patch_append_class-native() {
     bb.build.exec_func('do_fix_iasl', d)
     bb.build.exec_func('do_fix_toolchain', d)
 }
+
+do_fix_basetools_location() {
+    sed -i -e 's#BBAKE_EDK_TOOLS_PATH#${STAGING_BINDIR_NATIVE}/${EDK_TOOLS_DIR}#' ${S}/OvmfPkg/build.sh
+}
+
+do_patch_append_class-target() {
+    bb.build.exec_func('do_fix_basetools_location', d)
+}
+
 
 do_fix_iasl() {
     sed -i -e 's#/usr/bin/iasl#${STAGING_BINDIR_NATIVE}/iasl#' ${S}/BaseTools/Conf/tools_def.template
@@ -63,7 +77,11 @@ fixup_target_tools() {
     echo ${FIXED_GCCVER}
 }
 
-do_compile() {
+do_compile_class-native() {
+    oe_runmake -C ${S}/BaseTools
+}
+
+do_compile_class-target() {
     export LFLAGS="${LDFLAGS}"
     OVMF_ARCH="X64"
     if [ "${TARGET_ARCH}" != "x86_64" ] ; then
@@ -74,7 +92,12 @@ do_compile() {
     ${S}/OvmfPkg/build.sh -a $OVMF_ARCH -b RELEASE -t ${FIXED_GCCVER}
 }
 
-do_install() {
+do_install_class-native() {
+    install -d ${D}/${bindir}/edk2_basetools
+    cp -r ${S}/BaseTools ${D}/${bindir}/${EDK_TOOLS_DIR}
+}
+
+do_install_class-target() {
     OVMF_DIR_SUFFIX="X64"
     if [ "${TARGET_ARCH}" != "x86_64" ] ; then
         OVMF_DIR_SUFFIX="Ia32" # Note the different capitalization
