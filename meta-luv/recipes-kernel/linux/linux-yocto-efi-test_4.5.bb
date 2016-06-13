@@ -117,20 +117,11 @@ PV = "${LINUX_VERSION}+git${SRCPV}"
 # file. Leaving it empty here ensures an early explicit build failure.
 COMPATIBLE_MACHINE = "qemux86|qemux86-64|qemuarm64"
 
-do_compile_kernelmodules_append() {
-    if [ "${TARGET_ARCH}" = "x86_64" ]; then
-        oe_runmake -C ${B} M=${S}/tools/testing/nvdimm/
-    fi
-}
-
 do_install_append() {
     if [ "${TARGET_ARCH}" = "x86_64" ]; then
-        oe_runmake DEPMOD=echo INSTALL_MOD_PATH=${D} \
-                   -C ${B} M=${S}/tools/testing/nvdimm modules_install
          # There are 2 copies of the NVDIMM modules which are built. This is a
          # temporary fix to make sure the correct set of modules are used.
          rm -rf ${D}/lib/modules/${LINUX_VERSION}.0-yocto-standard/kernel/drivers/nvdimm/
-         cp ${D}/lib/modules/${LINUX_VERSION}.0-yocto-standard/extra/nfit.ko \
-            ${D}/lib/modules/${LINUX_VERSION}.0-yocto-standard/kernel/drivers/acpi/
+         rm ${D}/lib/modules/${LINUX_VERSION}.0-yocto-standard/kernel/drivers/acpi/nfit.ko
     fi
 }
