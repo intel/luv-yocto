@@ -66,7 +66,7 @@ SRC_URI += "file://0001-Add-function-to-fixup-page-faults-in-BOOT_SERVICES_-.pat
             file://0004-x86-efi-Introduce-EFI_BOOT_SERVICES_WARN.patch \
            "
 
-# Add the defconfig from v4.5 kernel and the configuration x86 fragments
+# Add the defconfig from v4.6 kernel and the configuration x86 fragments
 SRC_URI_append_x86 = "file://defconfig \
                       file://modules.cfg \
                       file://display.cfg \
@@ -80,7 +80,7 @@ SRC_URI_append_x86 = "file://defconfig \
                       file://linux_quirks.cfg \
                      "
 
-# Add the defconfig from v4.5 kernel and the configuration x86-64 fragments
+# Add the defconfig from v4.6 kernel and the configuration x86-64 fragments
 SRC_URI_append_x86-64 = "file://defconfig \
                          file://modules.cfg \
                          file://display.cfg \
@@ -94,7 +94,7 @@ SRC_URI_append_x86-64 = "file://defconfig \
                          file://linux_quirks.cfg \
                         "
 
-# Add the defconfig from v4.5 kernel and the configuration arm64 fragments
+# Add the defconfig from v4.6 kernel and the configuration arm64 fragments
 SRC_URI_append_aarch64 = "file://${MACHINE}/defconfig \
                           file://${MACHINE}/acpi.cfg \
                           file://${MACHINE}/network.cfg \
@@ -102,13 +102,13 @@ SRC_URI_append_aarch64 = "file://${MACHINE}/defconfig \
 
 # Override KCONFIG_MODE to '--alldefconfig' from the default '--allnoconfig'
 KCONFIG_MODE = '--alldefconfig'
-LINUX_VERSION ?= "4.5"
+LINUX_VERSION ?= "4.6"
 LINUX_VERSION_EXTENSION ?= "-efitest"
 
 # Override SRCREV to point to a different commit in a bbappend file to
 # build a different release of the Linux kernel.
-# tag: v4.5 b562e44f507e863c6792946e4e1b1449fbbac85d
-SRCREV = "b562e44f507e863c6792946e4e1b1449fbbac85d"
+# tag: v4.6 2dcd0af568b0cf583645c8a317dd12e344b1c72a
+SRCREV = "2dcd0af568b0cf583645c8a317dd12e344b1c72a"
 
 PR = "r5"
 PV = "${LINUX_VERSION}+git${SRCPV}"
