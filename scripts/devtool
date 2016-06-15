@@ -125,6 +125,25 @@ def read_workspace():
                                      'recipefile': recipefile}
                     logger.debug('Found recipe %s' % workspace[pn])
 
+def create_unlockedsigs():
+    """ This function will make unlocked-sigs.inc match the recipes in the
+    workspace. This runs on every run of devtool, but it lets us ensure
+    the unlocked items are in sync with the workspace. """
+
+    confdir = os.path.join(basepath, 'conf')
+    unlockedsigs = os.path.join(confdir, 'unlocked-sigs.inc')
+    bb.utils.mkdirhier(confdir)
+    with open(os.path.join(confdir, 'unlocked-sigs.inc'), 'w') as f:
+        f.write("# DO NOT MODIFY! YOUR CHANGES WILL BE LOST.\n" +
+                "# This layer was created by the OpenEmbedded devtool" +
+                " utility in order to\n" +
+                "# contain recipes that are unlocked.\n")
+
+        f.write('SIGGEN_UNLOCKED_RECIPES += "\\\n')
+        for pn in workspace:
+            f.write('    ' + pn)
+        f.write('"')
+
 def create_workspace(args, config, basepath, workspace):
     if args.layerpath:
         workspacedir = os.path.abspath(args.layerpath)
@@ -192,13 +211,6 @@ def main():
 
     # Default basepath
     basepath = os.path.dirname(os.path.abspath(__file__))
-    pth = basepath
-    while pth != '' and pth != os.sep:
-        if os.path.exists(os.path.join(pth, '.devtoolbase')):
-            context.fixed_setup = True
-            basepath = pth
-            break
-        pth = os.path.dirname(pth)
 
     parser = argparse_oe.ArgumentParser(description="OpenEmbedded development tool",
                                         add_help=False,
@@ -224,11 +236,22 @@ def main():
     if global_args.basepath:
         # Override
         basepath = global_args.basepath
-    elif not context.fixed_setup:
-        basepath = os.environ.get('BUILDDIR')
-        if not basepath:
-            logger.error("This script can only be run after initialising the build environment (e.g. by using oe-init-build-env)")
-            sys.exit(1)
+        if os.path.exists(os.path.join(basepath, '.devtoolbase')):
+            context.fixed_setup = True
+    else:
+        pth = basepath
+        while pth != '' and pth != os.sep:
+            if os.path.exists(os.path.join(pth, '.devtoolbase')):
+                context.fixed_setup = True
+                basepath = pth
+                break
+            pth = os.path.dirname(pth)
+
+        if not context.fixed_setup:
+            basepath = os.environ.get('BUILDDIR')
+            if not basepath:
+                logger.error("This script can only be run after initialising the build environment (e.g. by using oe-init-build-env)")
+                sys.exit(1)
 
     logger.debug('Using basepath %s' % basepath)
 
@@ -271,10 +294,18 @@ def main():
 
     subparsers = parser.add_subparsers(dest="subparser_name", title='subcommands', metavar='<subcommand>')
 
+    subparsers.add_subparser_group('sdk', 'SDK maintenance', -2)
+    subparsers.add_subparser_group('advanced', 'Advanced', -1)
+    subparsers.add_subparser_group('starting', 'Beginning work on a recipe', 100)
+    subparsers.add_subparser_group('info', 'Getting information')
+    subparsers.add_subparser_group('working', 'Working on a recipe in the workspace')
+    subparsers.add_subparser_group('testbuild', 'Testing changes on target')
+
     if not context.fixed_setup:
         parser_create_workspace = subparsers.add_parser('create-workspace',
                                                         help='Set up workspace in an alternative location',
-                                                        description='Sets up a new workspace. NOTE: other devtool subcommands will create a workspace automatically as needed, so you only need to use %(prog)s if you want to specify where the workspace should be located.')
+                                                        description='Sets up a new workspace. NOTE: other devtool subcommands will create a workspace automatically as needed, so you only need to use %(prog)s if you want to specify where the workspace should be located.',
+                                                        group='advanced')
         parser_create_workspace.add_argument('layerpath', nargs='?', help='Path in which the workspace layer should be created')
         parser_create_workspace.add_argument('--create-only', action="store_true", help='Only create the workspace layer, do not alter configuration')
         parser_create_workspace.set_defaults(func=create_workspace, no_workspace=True)
@@ -287,6 +318,7 @@ def main():
 
     if not getattr(args, 'no_workspace', False):
         read_workspace()
+        create_unlockedsigs()
 
     try:
         ret = args.func(args, config, basepath, workspace)
@@ -306,5 +338,5 @@ if __name__ == "__main__":
     except Exception:
         ret = 1
         import traceback
-        traceback.print_exc(5)
+        traceback.print_exc()
     sys.exit(ret)

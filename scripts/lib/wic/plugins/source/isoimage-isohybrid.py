@@ -23,6 +23,7 @@
 import os
 import re
 import shutil
+import glob
 
 from wic import msger
 from wic.pluginbase import SourcePlugin
@@ -150,8 +151,7 @@ class IsoImagePlugin(SourcePlugin):
             if not machine_arch:
                 msger.error("Couldn't find MACHINE_ARCH, exiting.\n")
 
-            initrd = "%s/%s-initramfs-%s.%s" \
-                    % (initrd_dir, image_name, machine_arch, image_type)
+            initrd = glob.glob('%s/%s*%s.%s' % (initrd_dir, image_name, machine_arch, image_type))[0]
 
         if not os.path.exists(initrd):
             # Create initrd from rootfs directory
@@ -174,8 +174,8 @@ class IsoImagePlugin(SourcePlugin):
             else:
                 msger.error("Couldn't find or build initrd, exiting.\n")
 
-            exec_cmd("cd %s && find . | cpio -o -H newc >%s/initrd.cpio " \
-                    % (initrd_dir, cr_workdir), as_shell=True)
+            exec_cmd("cd %s && find . | cpio -o -H newc -R +0:+0 >./initrd.cpio " \
+                    % initrd_dir, as_shell=True)
             exec_cmd("gzip -f -9 -c %s/initrd.cpio > %s" \
                     % (cr_workdir, initrd), as_shell=True)
             shutil.rmtree(initrd_dir)
@@ -208,10 +208,13 @@ class IsoImagePlugin(SourcePlugin):
         if not os.path.exists("%s/syslinux" % syslinux_dir):
             msger.info("Building syslinux...\n")
             exec_cmd("bitbake syslinux")
-            msger.info("Building syslinux-native...\n")
-            exec_cmd("bitbake syslinux-native")
         if not os.path.exists("%s/syslinux" % syslinux_dir):
             msger.error("Please build syslinux first\n")
+
+        # Make sure syslinux is available in native sysroot
+        if not os.path.exists("%s/usr/bin/syslinux" % native_sysroot):
+            msger.info("Building syslinux-native...\n")
+            exec_cmd("bitbake syslinux-native")
 
         #Make sure mkisofs is available in native sysroot
         if not os.path.isfile("%s/usr/bin/mkisofs" % native_sysroot):

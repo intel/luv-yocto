@@ -92,15 +92,42 @@ def _close_build_log(build_log):
         build_log.close()
         logger.removeHandler(build_log)
 
-_evt_list = [ "bb.runqueue.runQueueExitWait", "bb.event.LogExecTTY", "logging.LogRecord",
-              "bb.build.TaskFailed", "bb.build.TaskBase", "bb.event.ParseStarted",
-              "bb.event.ParseProgress", "bb.event.ParseCompleted", "bb.event.CacheLoadStarted",
-              "bb.event.CacheLoadProgress", "bb.event.CacheLoadCompleted", "bb.command.CommandFailed",
-              "bb.command.CommandExit", "bb.command.CommandCompleted",  "bb.cooker.CookerExit",
-              "bb.event.MultipleProviders", "bb.event.NoProvider", "bb.runqueue.sceneQueueTaskStarted",
-              "bb.runqueue.runQueueTaskStarted", "bb.runqueue.runQueueTaskFailed", "bb.runqueue.sceneQueueTaskFailed",
-              "bb.event.BuildBase", "bb.build.TaskStarted", "bb.build.TaskSucceeded", "bb.build.TaskFailedSilent",
-              "bb.event.MetadataEvent"]
+_evt_list = [
+    "bb.build.TaskBase",
+    "bb.build.TaskFailed",
+    "bb.build.TaskFailedSilent",
+    "bb.build.TaskStarted",
+    "bb.build.TaskSucceeded",
+    "bb.command.CommandCompleted",
+    "bb.command.CommandExit",
+    "bb.command.CommandFailed",
+    "bb.cooker.CookerExit",
+    "bb.event.BuildCompleted",
+    "bb.event.BuildStarted",
+    "bb.event.CacheLoadCompleted",
+    "bb.event.CacheLoadProgress",
+    "bb.event.CacheLoadStarted",
+    "bb.event.ConfigParsed",
+    "bb.event.DepTreeGenerated",
+    "bb.event.LogExecTTY",
+    "bb.event.MetadataEvent",
+    "bb.event.MultipleProviders",
+    "bb.event.NoProvider",
+    "bb.event.ParseCompleted",
+    "bb.event.ParseProgress",
+    "bb.event.RecipeParsed",
+    "bb.event.SanityCheck",
+    "bb.event.SanityCheckPassed",
+    "bb.event.TreeDataPreparationCompleted",
+    "bb.event.TreeDataPreparationStarted",
+    "bb.runqueue.runQueueTaskCompleted",
+    "bb.runqueue.runQueueTaskFailed",
+    "bb.runqueue.runQueueTaskSkipped",
+    "bb.runqueue.runQueueTaskStarted",
+    "bb.runqueue.sceneQueueTaskCompleted",
+    "bb.runqueue.sceneQueueTaskFailed",
+    "bb.runqueue.sceneQueueTaskStarted",
+    "logging.LogRecord"]
 
 def main(server, eventHandler, params):
     # set to a logging.FileHandler instance when a build starts;
@@ -126,8 +153,10 @@ def main(server, eventHandler, params):
     logger.addHandler(console)
     logger.setLevel(logging.INFO)
     llevel, debug_domains = bb.msg.constructLogOptions()
-    server.runCommand(["setEventMask", server.getEventHandle(), llevel, debug_domains, _evt_list])
-
+    result, error = server.runCommand(["setEventMask", server.getEventHandle(), llevel, debug_domains, _evt_list])
+    if not result or error:
+        logger.error("can't set event mask: %s", error)
+        return 1
 
     # verify and warn
     build_history_enabled = True
@@ -138,8 +167,23 @@ def main(server, eventHandler, params):
         build_history_enabled = False
 
     if not params.observe_only:
-        logger.error("ToasterUI can only work in observer mode")
-        return 1
+        params.updateFromServer(server)
+        params.updateToServer(server, os.environ.copy())
+        cmdline = params.parseActions()
+        if not cmdline:
+            print("Nothing to do.  Use 'bitbake world' to build everything, or run 'bitbake --help' for usage information.")
+            return 1
+        if 'msg' in cmdline and cmdline['msg']:
+            logger.error(cmdline['msg'])
+            return 1
+
+        ret, error = server.runCommand(cmdline['action'])
+        if error:
+            logger.error("Command '%s' failed: %s" % (cmdline, error))
+            return 1
+        elif ret != True:
+            logger.error("Command '%s' failed: returned %s" % (cmdline, ret))
+            return 1
 
     # set to 1 when toasterui needs to shut down
     main.shutdown = 0
@@ -151,7 +195,8 @@ def main(server, eventHandler, params):
     taskfailures = []
     first = True
 
-    buildinfohelper = BuildInfoHelper(server, build_history_enabled)
+    buildinfohelper = BuildInfoHelper(server, build_history_enabled,
+                                      os.getenv('TOASTER_BRBE'))
 
     # write our own log files into bitbake's log directory;
     # we're only interested in the path to the parent directory of
@@ -199,6 +244,7 @@ def main(server, eventHandler, params):
                     build_log, build_log_file_path = _open_build_log(log_dir)
 
                 buildinfohelper.store_started_build(event, build_log_file_path)
+                continue
 
             if isinstance(event, (bb.build.TaskStarted, bb.build.TaskSucceeded, bb.build.TaskFailedSilent)):
                 buildinfohelper.update_and_store_task(event)
@@ -326,24 +372,30 @@ def main(server, eventHandler, params):
 
                 # update the build info helper on BuildCompleted, not on CommandXXX
                 buildinfohelper.update_build_information(event, errors, warnings, taskfailures)
+
+                brbe = buildinfohelper.brbe
                 buildinfohelper.close(errorcode)
-                # mark the log output; controllers may kill the toasterUI after seeing this log
-                logger.info("ToasterUI build done 1, brbe: %s", buildinfohelper.brbe )
 
                 # we start a new build info
-                logger.debug("ToasterUI prepared for new build")
-                errors = 0
-                warnings = 0
-                taskfailures = []
-                buildinfohelper = BuildInfoHelper(server, build_history_enabled)
+                if params.observe_only:
+                    logger.debug("ToasterUI prepared for new build")
+                    errors = 0
+                    warnings = 0
+                    taskfailures = []
+                    buildinfohelper = BuildInfoHelper(server, build_history_enabled)
+                else:
+                    main.shutdown = 1
 
-                logger.info("ToasterUI build done 2")
+                logger.info("ToasterUI build done, brbe: %s", brbe)
                 continue
 
             if isinstance(event, (bb.command.CommandCompleted,
                                   bb.command.CommandFailed,
                                   bb.command.CommandExit)):
-                errorcode = 0
+                if params.observe_only:
+                    errorcode = 0
+                else:
+                    main.shutdown = 1
 
                 continue
 
@@ -377,19 +429,6 @@ def main(server, eventHandler, params):
                 main.shutdown = 1
                 continue
 
-            # ignore
-            if isinstance(event, (bb.event.BuildBase,
-                                  bb.event.StampUpdate,
-                                  bb.event.RecipePreFinalise,
-                                  bb.runqueue.runQueueEvent,
-                                  bb.runqueue.runQueueExitWait,
-                                  bb.event.OperationProgress,
-                                  bb.command.CommandFailed,
-                                  bb.command.CommandExit,
-                                  bb.command.CommandCompleted,
-                                  bb.event.ReachableStamps)):
-                continue
-
             if isinstance(event, bb.event.DepTreeGenerated):
                 buildinfohelper.store_dependency_information(event)
                 continue
@@ -409,13 +448,6 @@ def main(server, eventHandler, params):
             from pprint import pformat
             exception_data = traceback.format_exc()
             logger.error("%s\n%s" , e, exception_data)
-
-            _, _, tb = sys.exc_info()
-            if tb is not None:
-                curr = tb
-                while curr is not None:
-                    logger.error("Error data dump %s\n%s\n" , traceback.format_tb(curr,1), pformat(curr.tb_frame.f_locals))
-                    curr = curr.tb_next
 
             # save them to database, if possible; if it fails, we already logged to console.
             try:

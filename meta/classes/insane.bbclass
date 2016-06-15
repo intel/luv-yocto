@@ -38,7 +38,7 @@ ERROR_QA ?= "dev-so debug-deps dev-deps debug-files arch pkgconfig la \
             perms dep-cmp pkgvarcheck perm-config perm-line perm-link \
             split-strip packages-list pkgv-undefined var-undefined \
             version-going-backwards expanded-d invalid-chars \
-            license-checksum \
+            license-checksum dev-elf \
             "
 FAKEROOT_QA = "host-user-contaminated"
 FAKEROOT_QA[doc] = "QA tests which need to run under fakeroot. If any \
@@ -46,7 +46,7 @@ enabled tests are listed here, the do_package_qa task will run under fakeroot."
 
 ALL_QA = "${WARN_QA} ${ERROR_QA}"
 
-UNKNOWN_CONFIGURE_WHITELIST ?= "--enable-nls --disable-nls --disable-silent-rules --disable-dependency-tracking --with-libtool-sysroot"
+UNKNOWN_CONFIGURE_WHITELIST ?= "--enable-nls --disable-nls --disable-silent-rules --disable-dependency-tracking --with-libtool-sysroot --disable-static"
 
 #
 # dictionary for elf headers
@@ -127,6 +127,9 @@ def package_qa_get_machine_dict():
                         "mipsel":     (   8,     0,    0,          True,          32),
                         "mips64":     (   8,     0,    0,          False,         64),
                         "mips64el":   (   8,     0,    0,          True,          64),
+                        "microblaze":  (189,     0,    0,          False,         32),
+                        "microblazeeb":(189,     0,    0,          False,         32),
+                        "microblazeel":(189,     0,    0,          True,          32),
                       },
             "uclinux-uclibc" : {
                         "bfin":       ( 106,     0,    0,          True,         32),
@@ -275,6 +278,17 @@ def package_qa_check_dev(path, name, d, elf, messages):
         package_qa_add_message(messages, "dev-so", "non -dev/-dbg/nativesdk- package contains symlink .so: %s path '%s'" % \
                  (name, package_qa_clean_path(path,d)))
 
+QAPATHTEST[dev-elf] = "package_qa_check_dev_elf"
+def package_qa_check_dev_elf(path, name, d, elf, messages):
+    """
+    Check that -dev doesn't contain real shared libraries.  The test has to
+    check that the file is not a link and is an ELF object as some recipes
+    install link-time .so files that are linker scripts.
+    """
+    if name.endswith("-dev") and path.endswith(".so") and not os.path.islink(path) and elf:
+        package_qa_add_message(messages, "dev-elf", "-dev package contains non-symlink .so: %s path '%s'" % \
+                 (name, package_qa_clean_path(path,d)))
+
 QAPATHTEST[staticdev] = "package_qa_check_staticdev"
 def package_qa_check_staticdev(path, name, d, elf, messages):
     """
@@ -304,6 +318,9 @@ def package_qa_check_libdir(d):
 
     messages = []
 
+    # The re's are purposely fuzzy, as some there are some .so.x.y.z files
+    # that don't follow the standard naming convention. It checks later
+    # that they are actual ELF files
     lib_re = re.compile("^/lib.+\.so(\..+)?$")
     exec_re = re.compile("^%s.*/lib.+\.so(\..+)?$" % exec_prefix)
 
@@ -328,10 +345,22 @@ def package_qa_check_libdir(d):
                 rel_path = os.sep + rel_path
                 if lib_re.match(rel_path):
                     if base_libdir not in rel_path:
-                        messages.append("%s: found library in wrong location: %s" % (package, rel_path))
+                        # make sure it's an actual ELF file
+                        elf = oe.qa.ELFFile(full_path)
+                        try:
+                            elf.open()
+                            messages.append("%s: found library in wrong location: %s" % (package, rel_path))
+                        except (oe.qa.NotELFFileError):
+                            pass
                 if exec_re.match(rel_path):
                     if libdir not in rel_path and libexecdir not in rel_path:
-                        messages.append("%s: found library in wrong location: %s" % (package, rel_path))
+                        # make sure it's an actual ELF file
+                        elf = oe.qa.ELFFile(full_path)
+                        try:
+                            elf.open()
+                            messages.append("%s: found library in wrong location: %s" % (package, rel_path))
+                        except (oe.qa.NotELFFileError):
+                            pass
 
     if messages:
         package_qa_handle_error("libdir", "\n".join(messages), d)
@@ -414,7 +443,7 @@ def package_qa_check_unsafe_references_in_scripts(path, name, d, elf, messages):
         if bool(statinfo.st_mode & stat.S_IXUSR):
             # grep shell scripts for possible references to /exec_prefix/
             exec_prefix = d.getVar('exec_prefix', True)
-            statement = "grep -e '%s/' %s > /dev/null" % (exec_prefix, path)
+            statement = "grep -e '%s/[^ :]\{1,\}/[^ :]\{1,\}' %s > /dev/null" % (exec_prefix, path)
             if subprocess.call(statement, shell=True) == 0:
                 error_msg = pn + ": Found a reference to %s/ in %s" % (exec_prefix, path)
                 package_qa_handle_error("unsafe-references-in-scripts", error_msg, d)
@@ -778,7 +807,8 @@ def package_qa_walk(warnfuncs, errorfuncs, skip, package, d):
             elf = oe.qa.ELFFile(path)
             try:
                 elf.open()
-            except:
+            except (IOError, oe.qa.NotELFFileError):
+                # IOError can happen if the packaging control files disappear,
                 elf = None
             for func in warnfuncs:
                 func(path, package, d, elf, warnings)
@@ -829,7 +859,10 @@ def package_qa_check_rdepends(pkg, pkgdest, skip, taskdeps, packages, d):
                                 break
                     if rdep_data and 'PN' in rdep_data and rdep_data['PN'] in taskdeps:
                         continue
-                    error_msg = "%s rdepends on %s, but it isn't a build dependency?" % (pkg, rdepend)
+                    if rdep_data and 'PN' in rdep_data:
+                        error_msg = "%s rdepends on %s, but it isn't a build dependency, missing %s in DEPENDS or PACKAGECONFIG?" % (pkg, rdepend, rdep_data['PN'])
+                    else:
+                        error_msg = "%s rdepends on %s, but it isn't a build dependency?" % (pkg, rdepend)
                     package_qa_handle_error("build-deps", error_msg, d)
 
         if "file-rdeps" not in skip:
@@ -895,8 +928,8 @@ def package_qa_check_rdepends(pkg, pkgdest, skip, taskdeps, packages, d):
                         break
             if filerdepends:
                 for key in filerdepends:
-                    error_msg = "%s contained in package %s requires %s, but no providers found in its RDEPENDS" % \
-                            (filerdepends[key],pkg, key)
+                    error_msg = "%s contained in package %s requires %s, but no providers found in RDEPENDS_%s?" % \
+                            (filerdepends[key].replace("_%s" % pkg, "").replace("@underscore@", "_"), pkg, key, pkg)
                 package_qa_handle_error("file-rdeps", error_msg, d)
 
 def package_qa_check_deps(pkg, pkgdest, skip, d):
@@ -1076,12 +1109,17 @@ python do_package_qa () {
                continue
             if w in testmatrix and testmatrix[w] in g:
                 warnchecks.append(g[testmatrix[w]])
+            if w == 'unsafe-references-in-binaries':
+                oe.utils.write_ld_so_conf(d)
+
         errorchecks = []
         for e in (d.getVar("ERROR_QA", True) or "").split():
             if e in skip:
                continue
             if e in testmatrix and testmatrix[e] in g:
                 errorchecks.append(g[testmatrix[e]])
+            if e == 'unsafe-references-in-binaries':
+                oe.utils.write_ld_so_conf(d)
 
         bb.note("Checking Package: %s" % package)
         # Check package name
@@ -1119,7 +1157,7 @@ addtask do_package_qa_setscene
 python do_qa_staging() {
     bb.note("QA checking staging")
 
-    if not package_qa_check_staged(d.expand('${SYSROOT_DESTDIR}${STAGING_LIBDIR}'), d):
+    if not package_qa_check_staged(d.expand('${SYSROOT_DESTDIR}${libdir}'), d):
         bb.fatal("QA staging was broken by the package built above")
 }
 
@@ -1132,19 +1170,21 @@ python do_qa_configure() {
 
     configs = []
     workdir = d.getVar('WORKDIR', True)
-    bb.note("Checking autotools environment for common misconfiguration")
-    for root, dirs, files in os.walk(workdir):
-        statement = "grep -e 'CROSS COMPILE Badness:' -e 'is unsafe for cross-compilation' %s > /dev/null" % \
-                    os.path.join(root,"config.log")
-        if "config.log" in files:
-            if subprocess.call(statement, shell=True) == 0:
-                bb.fatal("""This autoconf log indicates errors, it looked at host include and/or library paths while determining system capabilities.
+
+    if bb.data.inherits_class('autotools', d):
+        bb.note("Checking autotools environment for common misconfiguration")
+        for root, dirs, files in os.walk(workdir):
+            statement = "grep -q -F -e 'CROSS COMPILE Badness:' -e 'is unsafe for cross-compilation' %s" % \
+                        os.path.join(root,"config.log")
+            if "config.log" in files:
+                if subprocess.call(statement, shell=True) == 0:
+                    bb.fatal("""This autoconf log indicates errors, it looked at host include and/or library paths while determining system capabilities.
 Rerun configure task after fixing this.""")
 
-        if "configure.ac" in files:
-            configs.append(os.path.join(root,"configure.ac"))
-        if "configure.in" in files:
-            configs.append(os.path.join(root, "configure.in"))
+            if "configure.ac" in files:
+                configs.append(os.path.join(root,"configure.ac"))
+            if "configure.in" in files:
+                configs.append(os.path.join(root, "configure.in"))
 
     ###########################################################################
     # Check gettext configuration and dependencies are correct

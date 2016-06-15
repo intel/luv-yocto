@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see http://www.gnu.org/licenses/.
 
-# Usage: source toaster [start|stop|restart-bitbake]
+# Usage: source toaster [start|stop]
 #                       [webport=<port>] [noui] [noweb]
 
 # Helper function to kill a background toaster development server
@@ -95,40 +95,16 @@ stop_system()
         kill `cat ${BUILDDIR}/.toasterui.pid` 2>/dev/null
         rm ${BUILDDIR}/.toasterui.pid
     fi
-    stop_bitbake
     webserverKillAll
     # unset exported variables
     unset DATABASE_URL
     unset TOASTER_CONF
     unset TOASTER_DIR
+    unset BITBAKE_UI
+    unset BBBASEDIR
     trap - SIGHUP
     #trap - SIGCHLD
     INSTOPSYSTEM=0
-}
-
-start_bitbake() {
-    unset BBSERVER
-    bitbake --read conf/toaster.conf --server-only -t xmlrpc -B 0.0.0.0:0
-    if [ $? -ne 0 ]; then
-        echo "Bitbake server start failed"
-        return 1
-    fi
-    export BBSERVER=0.0.0.0:-1
-    export DATABASE_URL=`$MANAGE get-dburl`
-    # we start the TOASTERUI only if not inhibited
-    if [ $NOTOASTERUI -eq 0 ]; then
-        bitbake --observe-only -u toasterui --remote-server=$BBSERVER -t xmlrpc \
-            >>${BUILDDIR}/toaster_ui.log 2>&1 \
-            & echo $! >${BUILDDIR}/.toasterui.pid
-    fi
-    return 0
-}
-
-stop_bitbake() {
-    BBSERVER=0.0.0.0:-1 bitbake -m
-    unset BBSERVER
-    # force stop any misbehaving bitbake server
-    lsof bitbake.lock | awk '{print $2}' | grep "[0-9]\+" | xargs -n1 -r kill
 }
 
 verify_prereq() {
@@ -156,7 +132,7 @@ else
     TOASTER=$0
 fi
 
-BBBASEDIR=`dirname $TOASTER`/..
+export BBBASEDIR=`dirname $TOASTER`/..
 MANAGE=$BBBASEDIR/lib/toaster/manage.py
 OEROOT=`dirname $TOASTER`/../..
 
@@ -177,7 +153,7 @@ if [ -n "$TEMPLATECONF" ]; then
         fi
         if [ ! -d "$TEMPLATECONF" ]; then
             echo >&2 "Error: '$TEMPLATECONF' must be a directory containing toasterconf.json"
-            [ "$TOASTER_MANAGED" = '1' ] && exit 1 || return 1
+            return 1
         fi
     fi
 fi
@@ -189,7 +165,7 @@ fi
 
 if [ ! -f $TOASTER_CONF ]; then
     echo "$TOASTER_CONF configuration file not found. Set TOASTER_CONF to specify file or fix .templateconf"
-    [ "$TOASTER_MANAGED" = '1' ] && exit 1 || return 1
+    return 1
 fi
 
 # this defines the dir toaster will use for
@@ -201,17 +177,19 @@ fi
 # make sure that the toaster.sqlite file doesn't default to `pwd` like it currently does.
 export TOASTER_DIR=`pwd`
 
-NOTOASTERUI=0
 WEBSERVER=1
 WEB_PORT="8000"
-
+unset CMD
 for param in $*; do
     case $param in
-    noui )
-            NOTOASTERUI=1
-    ;;
     noweb )
             WEBSERVER=0
+    ;;
+    start )
+            CMD=$param
+    ;;
+    stop )
+            CMD=$param
     ;;
     webport=*)
             WEB_PORT="${param#*=}"
@@ -220,16 +198,7 @@ done
 
 if [ `basename \"$0\"` = `basename \"${TOASTER}\"` ]; then
     echo "Error: This script needs to be sourced. Please run as . $TOASTER"
-    exit 1
-fi
-
-if [ "$1" = 'restart-bitbake' ] ; then
-    stop_bitbake
-    sleep 1
-    start_bitbake
-    rc=$?
-    sleep 3
-    return $rc
+    return 1
 fi
 
 verify_prereq || return 1
@@ -240,22 +209,6 @@ if [ -z "$BUILDDIR" ] ||  ! which bitbake >/dev/null 2>&1 ; then
     return 2
 fi
 
-# this is the configuraton file we are using for toaster
-# note default is assuming yocto. Override this if you are
-# running in a pure OE environment and use the toasterconf.json
-# in meta/conf/toasterconf.json
-# note: for future there are a number of relative path assumptions
-# in the local layers that currently prevent using an arbitrary
-# toasterconf.json
-if [ "$TOASTER_CONF" = "" ]; then
-    TOASTER_CONF="$(dirname $TOASTER)/../../meta-yocto/conf/toasterconf.json"
-    export TOASTER_CONF=$(python -c "import os; print os.path.realpath('$TOASTER_CONF')")
-fi
-if [ ! -f $TOASTER_CONF ]; then
-    echo "$TOASTER_CONF configuration file not found."
-    echo " set TOASTER_CONF to specify a path"
-    return 1
-fi
 # this defines the dir toaster will use for
 # 1) clones of layers (in _toaster_clones )
 # 2) the build dir (in build)
@@ -267,9 +220,12 @@ fi
 export TOASTER_DIR=`dirname $BUILDDIR`
 
 # Determine the action. If specified by arguments, fine, if not, toggle it
-if [ "$1" = 'start' ] || [ "$1" = 'stop' ]; then
-    CMD="$1"
-else
+if [ "$CMD" = "start" ] ; then
+    if [ -n "$BBSERVER" ]; then
+	echo " Toaster is already running. Exiting..."
+	return 1
+fi
+elif [ "$CMD" = "" ]; then
     if [ -z "$BBSERVER" ]; then
         CMD="start"
     else
@@ -288,16 +244,6 @@ case $CMD in
              $MANAGE checksocket "0.0.0.0:$WEB_PORT" || return 1
         fi
 
-        # Make sure it's safe to start by checking bitbake lock
-        if [ -e $BUILDDIR/bitbake.lock ]; then
-            python -c "import fcntl; fcntl.flock(open(\"$BUILDDIR/bitbake.lock\"), fcntl.LOCK_EX|fcntl.LOCK_NB)" 2>/dev/null
-            if [ $? -ne 0 ] ; then
-                echo "Error: bitbake lock state error. File locks show that the system is on." 1>&2
-                echo "Please wait for the current build to finish, stop and then start the system again." 1>&2
-                return 3
-            fi
-        fi
-
         # kill Toaster web server if it's alive
         if [ -e $BUILDDIR/.toastermain.pid ] && kill -0 `cat $BUILDDIR/.toastermain.pid`; then
             echo "Warning: bitbake appears to be dead, but the Toaster web server is running." 1>&2
@@ -307,30 +253,21 @@ case $CMD in
         fi
 
         # Create configuration file
-        conf=${BUILDDIR}/conf/toaster.conf
-        echo "# Created by toaster start script" > $conf
-        echo "INHERIT+=\"toaster buildhistory\"" >> $conf
+        conf=${BUILDDIR}/conf/local.conf
+        line='INHERIT+="toaster buildhistory"'
+        grep -q "$line" $conf || echo $line >> $conf
 
         if [ $WEBSERVER -gt 0 ] && ! webserverStartAll; then
             echo "Failed ${CMD}."
             return 4
         fi
-        start_bitbake
-        if [ $? -eq 0 ]; then
-            $MANAGE runbuilds & echo $! >${BUILDDIR}/.runbuilds.pid
-            # set fail safe stop system on terminal exit
-            trap stop_system SIGHUP
-            echo "Successful ${CMD}."
-            return 0
-        else
-            # failed start, do stop
-            stop_system
-            echo "Failed ${CMD}."
-            return 1
-        fi
-        # stop system on terminal exit
-        set -o monitor
+        export BITBAKE_UI='toasterui'
+        export DATABASE_URL=`$MANAGE get-dburl`
+        $MANAGE runbuilds & echo $! >${BUILDDIR}/.runbuilds.pid
+        # set fail safe stop system on terminal exit
         trap stop_system SIGHUP
+        echo "Successful ${CMD}."
+        return 0
     ;;
     stop )
         stop_system

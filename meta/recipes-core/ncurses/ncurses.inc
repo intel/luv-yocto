@@ -145,9 +145,14 @@ do_test() {
 # Split original _install_opts to two parts.
 # One is the options to install contents, the other is the parameters \
 # when running command "make install"
-_install_opts = "\
-  install.libs install.includes install.man \
-"
+# Note that install.libs will also implicitly install header files,
+# so we do not need to explicitly specify install.includes.
+# Doing so could in fact result in a race condition, as both targets
+# (install.libs and install.includes) would install the same headers
+# at the same time
+
+_install_opts = " install.libs install.man "
+
 _install_cfgs = "\
   DESTDIR='${D}' \
   PKG_CONFIG_LIBDIR='${libdir}/pkgconfig' \
@@ -264,8 +269,8 @@ BBCLASSEXTEND = "native nativesdk"
 
 PACKAGES += " \
   ${PN}-tools \
-  ${PN}-terminfo \
   ${PN}-terminfo-base \
+  ${PN}-terminfo \
 "
 
 FILES_${PN} = "\
@@ -284,8 +289,8 @@ FILES_${PN}-tools = "\
   ${bindir}/infotocap \
   ${bindir}/captoinfo \
   ${bindir}/infocmp \
-  ${bindir}/clear${@['', '.${BPN\x7d']['${CLASSOVERRIDE}' == 'class-target']} \
-  ${bindir}/reset${@['', '.${BPN\x7d']['${CLASSOVERRIDE}' == 'class-target']} \
+  ${bindir}/clear${@['', '.${BPN}']['${CLASSOVERRIDE}' == 'class-target']} \
+  ${bindir}/reset${@['', '.${BPN}']['${CLASSOVERRIDE}' == 'class-target']} \
   ${bindir}/tack \
   ${bindir}/tabs \
 "

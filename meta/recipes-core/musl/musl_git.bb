@@ -3,9 +3,9 @@
 
 require musl.inc
 
-SRCREV = "3abb094d19ca4c7c4adcf373d971fb5aa05c5252"
+SRCREV = "5978eb703ce0e64dd778a88c1ffffb76fe5e2202"
 
-PV = "1.1.12+git${SRCPV}"
+PV = "1.1.14+git${SRCPV}"
 
 # mirror is at git://github.com/kraj/musl.git
 
@@ -20,6 +20,7 @@ PROVIDES += "virtual/libc virtual/${TARGET_PREFIX}libc-for-gcc virtual/libiconv 
 DEPENDS = "virtual/${TARGET_PREFIX}binutils \
            virtual/${TARGET_PREFIX}gcc-initial \
            libgcc-initial \
+           linux-libc-headers \
            bsd-headers \
           "
 
@@ -53,7 +54,7 @@ do_install() {
 	ln -s ../../${libdir}/libc.so ${D}${bindir}/ldd
 }
 
-RDEPENDS_${PN}-dev = "linux-libc-headers-dev"
+RDEPENDS_${PN}-dev += "linux-libc-headers-dev bsd-headers-dev"
 RPROVIDES_${PN}-dev += "libc-dev virtual-libc-dev"
 RPROVIDES_${PN} += "ldd libsegfault rtld(GNU_HASH)"
 

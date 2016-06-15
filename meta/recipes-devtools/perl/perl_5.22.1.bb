@@ -87,6 +87,8 @@ export PERLHOSTLIB = "${STAGING_LIBDIR_NATIVE}/perl-native/perl/${PV}/"
 export PERL_LIB = "${STAGING_LIBDIR_NATIVE}/perl-native/perl/${PV}/"
 export PERL_ARCHLIB = "${STAGING_LIBDIR_NATIVE}/perl-native/perl/${PV}/"
 
+EXTRA_OEMAKE = "-e MAKEFLAGS="
+
 # LDFLAGS for shared libraries
 export LDDLFLAGS = "${LDFLAGS} -shared"
 
@@ -349,7 +351,7 @@ python populate_packages_prepend () {
     # modules. Don't attempt to use the result of do_split_packages() as some
     # modules are manually split (eg. perl-module-unicore).
     packages = filter(lambda p: 'perl-module-' in p, d.getVar('PACKAGES', True).split())
-    d.setVar("RRECOMMENDS_${PN}-modules", ' '.join(packages))
+    d.setVar(d.expand("RRECOMMENDS_${PN}-modules"), ' '.join(packages))
 }
 
 PACKAGES_DYNAMIC += "^perl-module-.*"

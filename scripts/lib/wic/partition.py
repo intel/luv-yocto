@@ -57,7 +57,10 @@ class Partition(object):
         self.size = args.size
         self.source = args.source
         self.sourceparams = args.sourceparams
+        self.use_uuid = args.use_uuid
         self.uuid = args.uuid
+        if args.use_uuid and not self.uuid:
+            self.uuid = str(uuid.uuid4())
 
         self.lineno = lineno
         self.source_file = ""
@@ -103,6 +106,7 @@ class Partition(object):
             if self.fstype and self.fstype == "swap":
                 self.prepare_swap_partition(cr_workdir, oe_builddir,
                                             native_sysroot)
+                self.source_file = "%s/fs.%s" % (cr_workdir, self.fstype)
             elif self.fstype:
                 rootfs = "%s/fs_%s.%s.%s" % (cr_workdir, self.label,
                                              self.lineno, self.fstype)

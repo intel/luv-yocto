@@ -1,4 +1,19 @@
 # Development tool - sdk-update command plugin
+#
+# Copyright (C) 2015-2016 Intel Corporation
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import os
 import subprocess
@@ -8,6 +23,7 @@ import shutil
 import errno
 import sys
 import tempfile
+import re
 from devtool import exec_build_env_command, setup_tinfoil, parse_recipe, DevtoolError
 
 logger = logging.getLogger('devtool')
@@ -95,8 +111,6 @@ def sdk_update(args, config, basepath, workspace):
     updateserver = args.updateserver
     if not updateserver:
         updateserver = config.get('SDK', 'updateserver', '')
-    if not updateserver:
-        raise DevtoolError("Update server not specified in config file, you must specify it on the command line")
     logger.debug("updateserver: %s" % updateserver)
 
     # Make sure we are using sdk-update from within SDK
@@ -135,6 +149,7 @@ def sdk_update(args, config, basepath, workspace):
             logger.debug("Found conf/locked-sigs.inc in %s" % updateserver)
         update_dict = generate_update_dict(new_locked_sig_file_path, old_locked_sig_file_path)
         logger.debug("update_dict = %s" % update_dict)
+        newsdk_path = updateserver
         sstate_dir = os.path.join(newsdk_path, 'sstate-cache')
         if not os.path.exists(sstate_dir):
             logger.error("sstate-cache directory not found under %s" % newsdk_path)
@@ -172,9 +187,15 @@ def sdk_update(args, config, basepath, workspace):
                 return 0
             # Update metadata
             logger.debug("Updating metadata via git ...")
-            # Try using 'git pull', if failed, use 'git clone'
+            #Check for the status before doing a fetch and reset
             if os.path.exists(os.path.join(basepath, 'layers/.git')):
-                ret = subprocess.call("git pull %s/layers/.git" % updateserver, shell=True, cwd=layers_dir)
+                out = subprocess.check_output("git status --porcelain", shell=True, cwd=layers_dir)
+                if not out:
+                    ret = subprocess.call("git fetch --all; git reset --hard", shell=True, cwd=layers_dir)
+                else:
+                    logger.error("Failed to update metadata as there have been changes made to it. Aborting.");
+                    logger.error("Changed files:\n%s" % out);
+                    return -1
             else:
                 ret = -1
             if ret != 0:
@@ -189,6 +210,28 @@ def sdk_update(args, config, basepath, workspace):
                     logger.error("Updating %s failed" % changedfile)
                     return ret
 
+            # Check if UNINATIVE_CHECKSUM changed
+            uninative = False
+            if 'conf/local.conf' in changedfiles:
+                def read_uninative_checksums(fn):
+                    chksumitems = []
+                    with open(fn, 'r') as f:
+                        for line in f:
+                            if line.startswith('UNINATIVE_CHECKSUM'):
+                                splitline = re.split(r'[\[\]"\']', line)
+                                if len(splitline) > 3:
+                                    chksumitems.append((splitline[1], splitline[3]))
+                    return chksumitems
+
+                oldsums = read_uninative_checksums(os.path.join(basepath, 'conf/local.conf'))
+                newsums = read_uninative_checksums(os.path.join(tmpsdk_dir, 'conf/local.conf'))
+                if oldsums != newsums:
+                    uninative = True
+                    for buildarch, chksum in newsums:
+                        uninative_file = os.path.join('downloads', 'uninative', chksum, '%s-nativesdk-libc.tar.bz2' % buildarch)
+                        mkdir(os.path.join(tmpsdk_dir, os.path.dirname(uninative_file)))
+                        ret = subprocess.call("wget -q -O %s %s/%s" % (uninative_file, updateserver, uninative_file), shell=True, cwd=tmpsdk_dir)
+
             # Ok, all is well at this point - move everything over
             tmplayers_dir = os.path.join(tmpsdk_dir, 'layers')
             if os.path.exists(tmplayers_dir):
@@ -200,6 +243,9 @@ def sdk_update(args, config, basepath, workspace):
                 shutil.move(os.path.join(tmpsdk_dir, changedfile), destfile)
             os.remove(os.path.join(conf_dir, 'sdk-conf-manifest'))
             shutil.move(tmpmanifest, conf_dir)
+            if uninative:
+                shutil.rmtree(os.path.join(basepath, 'downloads', 'uninative'))
+                shutil.move(os.path.join(tmpsdk_dir, 'downloads', 'uninative'), os.path.join(basepath, 'downloads'))
 
             if not sstate_mirrors:
                 with open(os.path.join(conf_dir, 'site.conf'), 'a') as f:
@@ -279,8 +325,11 @@ def sdk_install(args, config, basepath, workspace):
                 if recipe.endswith('-native') and 'package' in task:
                     continue
                 install_tasks.append('%s:%s' % (recipe, task))
+        options = ''
+        if not args.allow_build:
+            options += ' --setscene-only'
         try:
-            exec_build_env_command(config.init_path, basepath, 'bitbake --setscene-only %s' % ' '.join(install_tasks))
+            exec_build_env_command(config.init_path, basepath, 'bitbake %s %s' % (options, ' '.join(install_tasks)), watch=True)
         except bb.process.ExecutionError as e:
             raise DevtoolError('Failed to install %s:\n%s' % (recipe, str(e)))
         failed = False
@@ -296,10 +345,22 @@ def sdk_install(args, config, basepath, workspace):
 def register_commands(subparsers, context):
     """Register devtool subcommands from the sdk plugin"""
     if context.fixed_setup:
-        parser_sdk = subparsers.add_parser('sdk-update', help='Update SDK components from a nominated location')
-        parser_sdk.add_argument('updateserver', help='The update server to fetch latest SDK components from', nargs='?')
+        parser_sdk = subparsers.add_parser('sdk-update',
+                                           help='Update SDK components',
+                                           description='Updates installed SDK components from a remote server',
+                                           group='sdk')
+        updateserver = context.config.get('SDK', 'updateserver', '')
+        if updateserver:
+            parser_sdk.add_argument('updateserver', help='The update server to fetch latest SDK components from (default %s)' % updateserver, nargs='?')
+        else:
+            parser_sdk.add_argument('updateserver', help='The update server to fetch latest SDK components from')
         parser_sdk.add_argument('--skip-prepare', action="store_true", help='Skip re-preparing the build system after updating (for debugging only)')
         parser_sdk.set_defaults(func=sdk_update)
-        parser_sdk_install = subparsers.add_parser('sdk-install', help='Install additional SDK components', description='Installs additional recipe development files into the SDK. (You can use "devtool search" to find available recipes.)')
+
+        parser_sdk_install = subparsers.add_parser('sdk-install',
+                                                   help='Install additional SDK components',
+                                                   description='Installs additional recipe development files into the SDK. (You can use "devtool search" to find available recipes.)',
+                                                   group='sdk')
         parser_sdk_install.add_argument('recipename', help='Name of the recipe to install the development artifacts for', nargs='+')
+        parser_sdk_install.add_argument('-s', '--allow-build', help='Allow building requested item(s) from source', action='store_true')
         parser_sdk_install.set_defaults(func=sdk_install)

@@ -410,8 +410,10 @@ class RecipetoolTests(RecipetoolBase):
         srcuri = 'http://www.dest-unreach.org/socat/download/socat-%s.tar.bz2' % pv
         result = runCmd('recipetool create %s -o %s' % (srcuri, temprecipe))
         dirlist = os.listdir(temprecipe)
+        if len(dirlist) > 1:
+            self.fail('recipetool created more than just one file; output:\n%s\ndirlist:\n%s' % (result.output, str(dirlist)))
         if len(dirlist) < 1 or not os.path.isfile(os.path.join(temprecipe, dirlist[0])):
-            self.fail('recipetool did not create recipe file; output:\n%s' % result.output)
+            self.fail('recipetool did not create recipe file; output:\n%s\ndirlist:\n%s' % (result.output, str(dirlist)))
         self.assertEqual(dirlist[0], 'socat_%s.bb' % pv, 'Recipe file incorrectly named')
         checkvars = {}
         checkvars['LICENSE'] = set(['Unknown', 'GPLv2'])
@@ -422,6 +424,7 @@ class RecipetoolTests(RecipetoolBase):
         inherits = ['autotools']
         self._test_recipe_contents(os.path.join(temprecipe, dirlist[0]), checkvars, inherits)
 
+    @testcase(1418)
     def test_recipetool_create_cmake(self):
         # Try adding a recipe
         temprecipe = os.path.join(self.tempdir, 'recipe')

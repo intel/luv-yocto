@@ -23,7 +23,9 @@ SRC_URI = "ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-${PV}.tar.
            file://run-ptest \
            file://CVE-2016-1907_upstream_commit.patch \
            file://CVE-2016-1907_2.patch \
-           file://CVE-2016-1907_3.patch "
+           file://CVE-2016-1907_3.patch \
+           file://CVE-2016-3115.patch \
+           "
 
 PAM_SRC_URI = "file://sshd"
 
@@ -125,7 +127,7 @@ do_install_append () {
 }
 
 do_install_ptest () {
-	sed -i -e "s|^SFTPSERVER=.*|SFTPSERVER=${libdir}/${PN}/sftp-server|" regress/test-exec.sh
+	sed -i -e "s|^SFTPSERVER=.*|SFTPSERVER=${libexecdir}/sftp-server|" regress/test-exec.sh
 	cp -r regress ${D}${PTEST_PATH}
 }
 

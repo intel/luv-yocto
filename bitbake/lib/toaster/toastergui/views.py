@@ -27,10 +27,10 @@ import operator,re
 
 from django.db.models import F, Q, Sum, Count, Max
 from django.db import IntegrityError, Error
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from orm.models import Build, Target, Task, Layer, Layer_Version, Recipe, LogMessage, Variable
 from orm.models import Task_Dependency, Recipe_Dependency, Package, Package_File, Package_Dependency
-from orm.models import Target_Installed_Package, Target_File, Target_Image_File, BuildArtifact
+from orm.models import Target_Installed_Package, Target_File, Target_Image_File, BuildArtifact, CustomImagePackage
 from orm.models import BitbakeVersion, CustomImageRecipe
 from bldcontrol import bbcontroller
 from django.views.decorators.cache import cache_control
@@ -45,6 +45,7 @@ from django.utils import formats
 from toastergui.templatetags.projecttags import json as jsonfilter
 from decimal import Decimal
 import json
+import os
 from os.path import dirname
 from functools import wraps
 import itertools
@@ -480,7 +481,12 @@ def builddashboard( request, build_id ):
             if ( ndx < 0 ):
                 ndx = 0;
             f = i.file_name[ ndx + 1: ]
-            imageFiles.append({ 'id': i.id, 'path': f, 'size' : i.file_size })
+            imageFiles.append({
+                'id': i.id,
+                'path': f,
+                'size': i.file_size,
+                'suffix': i.suffix
+            })
         if t.is_image and (len(imageFiles) <= 0 or len(t.license_manifest_path) <= 0):
             targetHasNoImages = True
         elem[ 'imageFiles' ] = imageFiles
@@ -501,6 +507,7 @@ def builddashboard( request, build_id ):
 
     context = {
             'build'           : build,
+            'project'         : build.project,
             'hasImages'       : hasImages,
             'ntargets'        : ntargets,
             'targets'         : targets,
@@ -657,7 +664,9 @@ def recipe_packages(request, build_id, recipe_id):
 
 def target_common( request, build_id, target_id, variant ):
     template = "target.html"
-    (pagesize, orderby) = _get_parameters_values(request, 25, 'name:+')
+    default_orderby = 'name:+'
+
+    (pagesize, orderby) = _get_parameters_values(request, 25, default_orderby)
     mandatory_parameters = { 'count': pagesize,  'page' : 1, 'orderby': orderby }
     retval = _verify_parameters( request.GET, mandatory_parameters )
     if retval:
@@ -676,8 +685,6 @@ def target_common( request, build_id, target_id, variant ):
             Package, queryset, filter_string, search_term, ordering_string, 'name' )
     queryset = queryset.select_related("recipe", "recipe__layer_version", "recipe__layer_version__layer")
     packages = _build_page_range( Paginator(queryset, pagesize), request.GET.get( 'page', 1 ))
-
-
 
     build = Build.objects.get( pk = build_id )
 
@@ -791,11 +798,12 @@ eans multiple licenses exist that cover different parts of the source',
     context = {
         'objectname': variant,
         'build'                : build,
+        'project'              : build.project,
         'target'               : Target.objects.filter( pk = target_id )[ 0 ],
         'objects'              : packages,
         'packages_sum'         : packages_sum[ 'installed_size__sum' ],
         'object_search_display': "packages included",
-        'default_orderby'      : orderby,
+        'default_orderby'      : default_orderby,
         'tablecols'            : [
                     tc_package,
                     tc_packageVersion,
@@ -931,7 +939,10 @@ def dirinfo(request, build_id, target_id, file_path=None):
             if head != sep:
                 dir_list.insert(0, head)
 
-    context = { 'build': Build.objects.get(pk=build_id),
+    build = Build.objects.get(pk=build_id)
+
+    context = { 'build': build,
+                'project': build.project,
                 'target': Target.objects.get(pk=target_id),
                 'packages_sum': packages_sum['installed_size__sum'],
                 'objects': objects,
@@ -990,29 +1001,29 @@ def tasks_common(request, build_id, variant, task_anchor):
         anchor=task_anchor
 
     # default ordering depends on variant
-    if   'buildtime' == variant:
-        title_variant='Time'
-        object_search_display="time data"
-        filter_search_display="tasks"
-        (pagesize, orderby) = _get_parameters_values(request, 25, 'elapsed_time:-')
-    elif 'diskio'    == variant:
-        title_variant='Disk I/O'
-        object_search_display="disk I/O data"
-        filter_search_display="tasks"
-        (pagesize, orderby) = _get_parameters_values(request, 25, 'disk_io:-')
-    elif 'cpuusage'  == variant:
-        title_variant='CPU usage'
-        object_search_display="CPU usage data"
-        filter_search_display="tasks"
-        (pagesize, orderby) = _get_parameters_values(request, 25, 'cpu_usage:-')
-    else :
-        title_variant='Tasks'
-        object_search_display="tasks"
-        filter_search_display="tasks"
-        (pagesize, orderby) = _get_parameters_values(request, 25, 'order:+')
+    default_orderby = None
+    filter_search_display = 'tasks'
 
+    if 'buildtime' == variant:
+        default_orderby = 'elapsed_time:-'
+        title_variant = 'Time'
+        object_search_display = 'time data'
+    elif 'diskio' == variant:
+        default_orderby = 'disk_io:-'
+        title_variant = 'Disk I/O'
+        object_search_display = 'disk I/O data'
+    elif 'cputime' == variant:
+        default_orderby = 'cpu_time_system:-'
+        title_variant='CPU time'
+        object_search_display = 'CPU time data'
+    else:
+        default_orderby = 'order:+'
+        title_variant = 'Tasks'
+        object_search_display = 'tasks'
 
-    mandatory_parameters = { 'count': pagesize,  'page' : 1, 'orderby': orderby }
+    (pagesize, orderby) = _get_parameters_values(request, 25, default_orderby)
+
+    mandatory_parameters = {'count': pagesize, 'page' : 1, 'orderby': orderby}
 
     template = 'tasks.html'
     retval = _verify_parameters( request.GET, mandatory_parameters )
@@ -1156,23 +1167,38 @@ def tasks_common(request, build_id, variant, task_anchor):
         del tc_time['clclass']
         tc_cache['hidden']='1'
 
-    tc_cpu={
-        'name':'CPU usage',
-        'qhelp':'The percentage of task CPU utilization',
-        'orderfield': _get_toggle_order(request, "cpu_usage", True),
-        'ordericon':_get_toggle_order_icon(request, "cpu_usage"),
-        'orderkey' : 'cpu_usage',
-        'clclass': 'cpu_used', 'hidden' : 1,
+    tc_cpu_time_system={
+        'name':'System CPU time (secs)',
+        'qhelp':'Total amount of time spent executing in kernel mode, in ' +
+                'seconds. Note that this time can be greater than the task ' +
+                'time due to parallel execution.',
+        'orderfield': _get_toggle_order(request, "cpu_time_system", True),
+        'ordericon':_get_toggle_order_icon(request, "cpu_time_system"),
+        'orderkey' : 'cpu_time_system',
+        'clclass': 'cpu_time_system', 'hidden' : 1,
     }
 
-    if  'cpuusage' == variant:
-        tc_cpu['hidden']='0'
-        del tc_cpu['clclass']
+    tc_cpu_time_user={
+        'name':'User CPU time (secs)',
+        'qhelp':'Total amount of time spent executing in user mode, in seconds. ' +
+                'Note that this time can be greater than the task time due to ' +
+                'parallel execution.',
+        'orderfield': _get_toggle_order(request, "cpu_time_user", True),
+        'ordericon':_get_toggle_order_icon(request, "cpu_time_user"),
+        'orderkey' : 'cpu_time_user',
+        'clclass': 'cpu_time_user', 'hidden' : 1,
+    }
+
+    if 'cputime' == variant:
+        tc_cpu_time_system['hidden']='0'
+        tc_cpu_time_user['hidden']='0'
+        del tc_cpu_time_system['clclass']
+        del tc_cpu_time_user['clclass']
         tc_cache['hidden']='1'
 
     tc_diskio={
-        'name':'Disk I/O (ms)',
-        'qhelp':'Number of miliseconds the task spent doing disk input and output',
+        'name':'Disk I/O (bytes)',
+        'qhelp':'Number of bytes written to and read from the disk during the task',
         'orderfield': _get_toggle_order(request, "disk_io", True),
         'ordericon':_get_toggle_order_icon(request, "disk_io"),
         'orderkey' : 'disk_io',
@@ -1190,8 +1216,9 @@ def tasks_common(request, build_id, variant, task_anchor):
                 'filter_search_display': filter_search_display,
                 'mainheading': title_variant,
                 'build': build,
+                'project': build.project,
                 'objects': task_objects,
-                'default_orderby' : orderby,
+                'default_orderby' : default_orderby,
                 'search_term': search_term,
                 'total_count': queryset_with_search.count(),
                 'tablecols':[
@@ -1203,7 +1230,8 @@ def tasks_common(request, build_id, variant, task_anchor):
                     tc_outcome,
                     tc_cache,
                     tc_time,
-                    tc_cpu,
+                    tc_cpu_time_system,
+                    tc_cpu_time_user,
                     tc_diskio,
                 ]}
 
@@ -1224,9 +1252,8 @@ def buildtime(request, build_id):
 def diskio(request, build_id):
     return tasks_common(request, build_id, 'diskio', '')
 
-def cpuusage(request, build_id):
-    return tasks_common(request, build_id, 'cpuusage', '')
-
+def cputime(request, build_id):
+    return tasks_common(request, build_id, 'cputime', '')
 
 def recipes(request, build_id):
     template = 'recipes.html'
@@ -1236,7 +1263,10 @@ def recipes(request, build_id):
     if retval:
         return _redirect_parameters( 'recipes', request.GET, mandatory_parameters, build_id = build_id)
     (filter_string, search_term, ordering_string) = _search_tuple(request, Recipe)
-    queryset = Recipe.objects.filter(layer_version__id__in=Layer_Version.objects.filter(build=build_id)).select_related("layer_version", "layer_version__layer")
+
+    build = Build.objects.get(pk=build_id)
+
+    queryset = build.get_recipes()
     queryset = _get_queryset(Recipe, queryset, filter_string, search_term, ordering_string, 'name')
 
     recipes = _build_page_range(Paginator(queryset, pagesize),request.GET.get('page', 1))
@@ -1255,11 +1285,10 @@ def recipes(request, build_id):
             revlist.append(recipe_dep)
         revs[recipe.id] = revlist
 
-    build = Build.objects.get(pk=build_id)
-
     context = {
         'objectname': 'recipes',
         'build': build,
+        'project': build.project,
         'objects': recipes,
         'default_orderby' : 'name:+',
         'recipe_deps' : deps,
@@ -1344,10 +1373,12 @@ def configuration(request, build_id):
                  'MACHINE', 'DISTRO', 'DISTRO_VERSION', 'TUNE_FEATURES', 'TARGET_FPU')
     context = dict(Variable.objects.filter(build=build_id, variable_name__in=var_names)\
                                            .values_list('variable_name', 'variable_value'))
+    build = Build.objects.get(pk=build_id)
     context.update({'objectname': 'configuration',
                     'object_search_display':'variables',
                     'filter_search_display':'variables',
-                    'build': Build.objects.get(pk=build_id),
+                    'build': build,
+                    'project': build.project,
                     'targets': Target.objects.filter(build=build_id)})
     return render(request, template, context)
 
@@ -1384,12 +1415,15 @@ def configvars(request, build_id):
         file_filter += '/bitbake.conf'
     build_dir=re.sub("/tmp/log/.*","",Build.objects.get(pk=build_id).cooker_log_path)
 
+    build = Build.objects.get(pk=build_id)
+
     context = {
                 'objectname': 'configvars',
                 'object_search_display':'BitBake variables',
                 'filter_search_display':'variables',
                 'file_filter': file_filter,
-                'build': Build.objects.get(pk=build_id),
+                'build': build,
+                'project': build.project,
                 'objects' : variables,
                 'total_count':queryset_with_search.count(),
                 'default_orderby' : 'variable_name:+',
@@ -1458,6 +1492,7 @@ def bpackage(request, build_id):
     context = {
         'objectname': 'packages built',
         'build': build,
+        'project': build.project,
         'objects' : packages,
         'default_orderby' : 'name:+',
         'tablecols':[
@@ -1532,7 +1567,12 @@ def bpackage(request, build_id):
 def bfile(request, build_id, package_id):
     template = 'bfile.html'
     files = Package_File.objects.filter(package = package_id)
-    context = {'build': Build.objects.get(pk=build_id), 'objects' : files}
+    build = Build.objects.get(pk=build_id)
+    context = {
+        'build': build,
+        'project': build.project,
+        'objects' : files
+    }
     return render(request, template, context)
 
 
@@ -1845,7 +1885,6 @@ def managedcontextprocessor(request):
         "projects": projects,
         "non_cli_projects": projects.exclude(is_default=True),
         "DEBUG" : toastermain.settings.DEBUG,
-        "CUSTOM_IMAGE" : toastermain.settings.CUSTOM_IMAGE,
         "TOASTER_BRANCH": toastermain.settings.TOASTER_BRANCH,
         "TOASTER_REVISION" : toastermain.settings.TOASTER_REVISION,
     }
@@ -1856,6 +1895,7 @@ def managedcontextprocessor(request):
 import toastermain.settings
 
 from orm.models import Project, ProjectLayer, ProjectTarget, ProjectVariable
+from bldcontrol.models import  BuildEnvironment
 
 # we have a set of functions if we're in managed mode, or
 # a default "page not available" simple functions for interactive mode
@@ -2008,7 +2048,7 @@ if True:
             "completedbuilds": Build.objects.exclude(outcome = Build.IN_PROGRESS).filter(project_id = pid),
             "prj" : {"name": prj.name, },
             "buildrequests" : prj.build_set.filter(outcome=Build.IN_PROGRESS),
-            #"builds" : _project_recent_build_list(prj),
+            "builds" : Build.get_recent(prj),
             "layers" :  map(lambda x: {
                         "id": x.layercommit.pk,
                         "orderid": x.pk,
@@ -2063,13 +2103,23 @@ if True:
 
         name = "_js_unit_test_prj_"
 
-        # If there is an existing project by this name delete it. We don't want
-        # Lots of duplicates cluttering up the projects.
+        # If there is an existing project by this name delete it.
+        # We don't want Lots of duplicates cluttering up the projects.
         Project.objects.filter(name=name).delete()
 
-        new_project = Project.objects.create_project(name=name, release=release)
+        new_project = Project.objects.create_project(name=name,
+                                                     release=release)
+        # Add a layer
+        layer = new_project.get_all_compatible_layer_versions().first()
 
-        context = { 'project' : new_project }
+        ProjectLayer.objects.get_or_create(layercommit=layer,
+                                           project=new_project)
+
+        # make sure we have a machine set for this project
+        ProjectVariable.objects.get_or_create(project=new_project,
+                                              name="MACHINE",
+                                              value="qemux86")
+        context = {'project': new_project}
         return render(request, "js-unit-tests.html", context)
 
     from django.views.decorators.csrf import csrf_exempt
@@ -2158,6 +2208,10 @@ if True:
             except ProjectVariable.DoesNotExist:
                 pass
             try:
+                return_data['dl_dir'] = ProjectVariable.objects.get(project = prj, name = "DL_DIR").value,
+            except ProjectVariable.DoesNotExist:
+                pass
+            try:
                 return_data['fstypes'] = ProjectVariable.objects.get(project = prj, name = "IMAGE_FSTYPES").value,
             except ProjectVariable.DoesNotExist:
                 pass
@@ -2167,6 +2221,10 @@ if True:
                 pass
             try:
                 return_data['package_classes'] = ProjectVariable.objects.get(project = prj, name = "PACKAGE_CLASSES").value,
+            except ProjectVariable.DoesNotExist:
+                pass
+            try:
+                return_data['sstate_dir'] = ProjectVariable.objects.get(project = prj, name = "SSTATE_DIR").value,
             except ProjectVariable.DoesNotExist:
                 pass
 
@@ -2186,8 +2244,11 @@ if True:
         layers_added = [];
 
         # Rudimentary check for any possible html tags
-        if "<" in request.POST:
-          return HttpResponse(jsonfilter({"error": "Invalid character <"}), content_type = "application/json")
+        for val in request.POST.values():
+            if "<" in val:
+                return HttpResponse(jsonfilter(
+                    {"error": "Invalid character <"}),
+                    content_type="application/json")
 
         prj = Project.objects.get(pk=request.POST['project_id'])
 
@@ -2362,33 +2423,106 @@ if True:
 
         # create custom recipe
         try:
-            recipe = CustomImageRecipe.objects.create(
-                         name=request.POST["name"],
-                         base_recipe=params["base"],
-                         project=params["project"])
+
+            # Only allowed chars in name are a-z, 0-9 and -
+            if re.search(r'[^a-z|0-9|-]', request.POST["name"]):
+                return {"error": "invalid-name"}
+
+            custom_images = CustomImageRecipe.objects.all()
+
+            # Are there any recipes with this name already in our project?
+            existing_image_recipes_in_project = custom_images.filter(
+                name=request.POST["name"], project=params["project"])
+
+            if existing_image_recipes_in_project.count() > 0:
+                return {"error": "image-already-exists"}
+
+            # Are there any recipes with this name which aren't custom
+            # image recipes?
+            custom_image_ids = custom_images.values_list('id', flat=True)
+            existing_non_image_recipes = Recipe.objects.filter(
+                Q(name=request.POST["name"]) & ~Q(pk__in=custom_image_ids)
+            )
+
+            if existing_non_image_recipes.count() > 0:
+                return {"error": "recipe-already-exists"}
+
+            # create layer 'Custom layer' and verion if needed
+            layer = Layer.objects.get_or_create(
+                name=CustomImageRecipe.LAYER_NAME,
+                summary="Layer for custom recipes",
+                vcs_url="file:///toaster_created_layer")[0]
+
+            # Check if we have a layer version already
+            # We don't use get_or_create here because the dirpath will change
+            # and is a required field
+            lver = Layer_Version.objects.filter(Q(project=params['project']) &
+                                                Q(layer=layer) &
+                                                Q(build=None)).last()
+            if lver == None:
+                lver, created = Layer_Version.objects.get_or_create(
+                    project=params['project'],
+                    layer=layer,
+                    dirpath="toaster_created_layer")
+
+            # Add a dependency on our layer to the base recipe's layer
+            LayerVersionDependency.objects.get_or_create(
+                layer_version=lver,
+                depends_on=params["base"].layer_version)
+
+            # Add it to our current project if needed
+            ProjectLayer.objects.get_or_create(project=params['project'],
+                                               layercommit=lver,
+                                               optional=False)
+
+            # Create the actual recipe
+            recipe, created = CustomImageRecipe.objects.get_or_create(
+                name=request.POST["name"],
+                base_recipe=params["base"],
+                project=params["project"],
+                layer_version=lver,
+                is_image=True)
+
+            # If we created the object then setup these fields. They may get
+            # overwritten later on and cause the get_or_create to create a
+            # duplicate if they've changed.
+            if created:
+                recipe.file_path = request.POST["name"]
+                recipe.license = "MIT"
+                recipe.version = "0.1"
+                recipe.save()
+
         except Error as err:
             return {"error": "Can't create custom recipe: %s" % err}
 
         # Find the package list from the last build of this recipe/target
-        build = Build.objects.filter(target__target=params['base'].name,
-                    project=params['project']).last()
-
-        if build:
+        target = Target.objects.filter(Q(build__outcome=Build.SUCCEEDED) &
+                                       Q(build__project=params['project']) &
+                                       (Q(target=params['base'].name) |
+                                        Q(target=recipe.name))).last()
+        if target:
             # Copy in every package
             # We don't want these packages to be linked to anything because
             # that underlying data may change e.g. delete a build
-            for package in build.package_set.all():
-                # Create the duplicate
-                package.pk = None
-                package.save()
-                # Disassociate the package from the build
-                package.build = None
-                package.save()
-                recipe.packages.add(package)
-        else:
-            logger.warn("No packages found for this base recipe")
+            for tpackage in target.target_installed_package_set.all():
+                try:
+                    built_package = tpackage.package
+                    # The package had no recipe information so is a ghost
+                    # package skip it
+                    if built_package.recipe == None:
+                        continue;
+
+                    config_package = CustomImagePackage.objects.get(
+                        name=built_package.name)
+
+                    recipe.includes_set.add(config_package)
+                except Exception as e:
+                    logger.warning("Error adding package %s %s" %
+                                   (tpackage.package.name, e))
+                    pass
 
         return {"error": "ok",
+                "packages" : recipe.get_all_packages().count(),
                 "url": reverse('customrecipe', args=(params['project'].pk,
                                                      recipe.id))}
 
@@ -2413,34 +2547,105 @@ if True:
             or
             {"error": <error message>}
         """
-        objects = CustomImageRecipe.objects.filter(id=recipe_id)
-        if not objects:
+        try:
+            custom_recipe = CustomImageRecipe.objects.get(id=recipe_id)
+        except CustomImageRecipe.DoesNotExist:
             return {"error": "Custom recipe with id=%s "
                              "not found" % recipe_id}
+
         if request.method == 'GET':
-            values = CustomImageRecipe.objects.filter(id=recipe_id).values()
-            if values:
-                return {"error": "ok", "info": values[0]}
-            else:
-                return {"error": "Custom recipe with id=%s "
-                                 "not found" % recipe_id}
-            return {"error": "ok", "info": objects.values()[0]}
+            info = {"id" : custom_recipe.id,
+                    "name" : custom_recipe.name,
+                    "base_recipe_id": custom_recipe.base_recipe.id,
+                    "project_id": custom_recipe.project.id,
+                   }
+
+            return {"error": "ok", "info": info}
+
         elif request.method == 'DELETE':
-            objects.delete()
+            custom_recipe.delete()
             return {"error": "ok"}
         else:
             return {"error": "Method %s is not supported" % request.method}
+
+    def customrecipe_download(request, pid, recipe_id):
+        recipe = get_object_or_404(CustomImageRecipe, pk=recipe_id)
+
+        file_data = recipe.generate_recipe_file_contents()
+
+        response = HttpResponse(file_data, content_type='text/plain')
+        response['Content-Disposition'] = \
+                'attachment; filename="%s_%s.bb"' % (recipe.name,
+                                                     recipe.version)
+
+        return response
+
+    def _traverse_dependents(next_package_id, rev_deps, all_current_packages, tree_level=0):
+        """
+        Recurse through reverse dependency tree for next_package_id.
+        Limit the reverse dependency search to packages not already scanned,
+        that is, not already in rev_deps.
+        Limit the scan to a depth (tree_level) not exceeding the count of
+        all packages in the custom image, and if that depth is exceeded
+        return False, pop out of the recursion, and write a warning
+        to the log, but this is unlikely, suggesting a dependency loop
+        not caught by bitbake.
+        On return, the input/output arg rev_deps is appended with queryset
+        dictionary elements, annotated for use in the customimage template.
+        The list has unsorted, but unique elements.
+        """
+        max_dependency_tree_depth = all_current_packages.count()
+        if tree_level >= max_dependency_tree_depth:
+            logger.warning(
+                "The number of reverse dependencies "
+                "for this package exceeds " + max_dependency_tree_depth +
+                " and the remaining reverse dependencies will not be removed")
+            return True
+
+        package = CustomImagePackage.objects.get(id=next_package_id)
+        dependents = \
+            package.package_dependencies_target.annotate(
+                name=F('package__name'),
+                pk=F('package__pk'),
+                size=F('package__size'),
+            ).values("name", "pk", "size").exclude(
+                ~Q(pk__in=all_current_packages)
+            )
+
+        for pkg in dependents:
+            if pkg in rev_deps:
+                # already seen, skip dependent search
+                continue
+
+            rev_deps.append(pkg)
+            if (_traverse_dependents(
+                pkg["pk"], rev_deps, all_current_packages, tree_level+1)):
+                return True
+
+        return False
+
+    def _get_all_dependents(package_id, all_current_packages):
+        """
+        Returns sorted list of recursive reverse dependencies for package_id,
+        as a list of dictionary items, by recursing through dependency
+        relationships.
+        """
+        rev_deps = []
+        _traverse_dependents(package_id, rev_deps, all_current_packages)
+        rev_deps = sorted(rev_deps, key=lambda x: x["name"])
+        return rev_deps
 
     @xhr_response
     def xhr_customrecipe_packages(request, recipe_id, package_id):
         """
         ReST API to add/remove packages to/from custom recipe.
 
-        Entry point: /xhr_customrecipe/<recipe_id>/packages/
+        Entry point: /xhr_customrecipe/<recipe_id>/packages/<package_id>
 
         Methods:
             PUT - Add package to the recipe
             DELETE - Delete package from the recipe
+            GET - Get package information
 
         Returns:
             {"error": "ok"}
@@ -2453,26 +2658,149 @@ if True:
             return {"error": "Custom recipe with id=%s "
                              "not found" % recipe_id}
 
-        if request.method == 'GET' and not package_id:
-            return {"error": "ok",
-                    "packages": list(recipe.packages.values_list('id'))}
+        if package_id:
+            try:
+                package = CustomImagePackage.objects.get(id=package_id)
+            except Package.DoesNotExist:
+                return {"error": "Package with id=%s "
+                        "not found" % package_id}
 
-        try:
-            package = Package.objects.get(id=package_id)
-        except Package.DoesNotExist:
-            return {"error": "Package with id=%s "
-                             "not found" % package_id}
+        if request.method == 'GET':
+            # If no package_id then list the current packages
+            if not package_id:
+                total_size = 0
+                packages = recipe.get_all_packages().values("id",
+                                                            "name",
+                                                            "version",
+                                                            "size")
+                for package in packages:
+                    package['size_formatted'] = \
+                            filtered_filesizeformat(package['size'])
+                    total_size += package['size']
+
+                return {"error": "ok",
+                        "packages" : list(packages),
+                        "total" : len(packages),
+                        "total_size" : total_size,
+                        "total_size_formatted" :
+                        filtered_filesizeformat(total_size)
+                       }
+            else:
+                all_current_packages = recipe.get_all_packages()
+
+                # Dependencies for package which aren't satisfied by the
+                # current packages in the custom image recipe
+                deps = package.package_dependencies_source.annotate(
+                    name=F('depends_on__name'),
+                    pk=F('depends_on__pk'),
+                    size=F('depends_on__size'),
+                ).values("name", "pk", "size").filter(
+                    # There are two depends types we don't know why
+                    (Q(dep_type=Package_Dependency.TYPE_TRDEPENDS) |
+                    Q(dep_type=Package_Dependency.TYPE_RDEPENDS)) &
+                    ~Q(pk__in=all_current_packages)
+                )
+
+                # Reverse dependencies which are needed by packages that are
+                # in the image. Recursive search providing all dependents,
+                # not just immediate dependents.
+                reverse_deps = _get_all_dependents(package_id, all_current_packages)
+                total_size_deps = 0
+                total_size_reverse_deps = 0
+
+                for dep in deps:
+                    dep['size_formatted'] = \
+                            filtered_filesizeformat(dep['size'])
+                    total_size_deps += dep['size']
+
+                for dep in reverse_deps:
+                    dep['size_formatted'] = \
+                            filtered_filesizeformat(dep['size'])
+                    total_size_reverse_deps += dep['size']
+
+
+                return {"error": "ok",
+                        "id": package.pk,
+                        "name": package.name,
+                        "version": package.version,
+                        "unsatisfied_dependencies": list(deps),
+                        "unsatisfied_dependencies_size": total_size_deps,
+                        "unsatisfied_dependencies_size_formatted":
+                        filtered_filesizeformat(total_size_deps),
+                        "reverse_dependencies": list(reverse_deps),
+                        "reverse_dependencies_size": total_size_reverse_deps,
+                        "reverse_dependencies_size_formatted":
+                        filtered_filesizeformat(total_size_reverse_deps)}
+
+        included_packages = recipe.includes_set.values_list('pk', flat=True)
 
         if request.method == 'PUT':
-            recipe.packages.add(package)
-            return {"error": "ok"}
-        elif request.method == 'DELETE':
-            if package in recipe.packages.all():
-                recipe.packages.remove(package)
-                return {"error": "ok"}
+            # If we're adding back a package which used to be included in this
+            # image all we need to do is remove it from the excludes
+            if package.pk in included_packages:
+                try:
+                   recipe.excludes_set.remove(package)
+                   return {"error": "ok"}
+                except Package.DoesNotExist:
+                   return {"error":
+                           "Package %s not found in excludes but was in "
+                           "included list" % package.name}
+
             else:
-                return {"error": "Package '%s' is not in the recipe '%s'" % \
-                                 (package.name, recipe.name)}
+                recipe.appends_set.add(package)
+                # Make sure that package is not in the excludes set
+                try:
+                    recipe.excludes_set.remove(package)
+                except:
+                    pass
+                # Add the dependencies we think will be added to the recipe
+                # as a result of appending this package.
+                # TODO this should recurse down the entire deps tree
+                for dep in package.package_dependencies_source.all_depends():
+                    try:
+                        cust_package = CustomImagePackage.objects.get(
+                                           name=dep.depends_on.name)
+
+                        recipe.includes_set.add(cust_package)
+                        try:
+                            # When adding the pre-requisite package, make
+                            # sure it's not in the excluded list from a
+                            # prior removal.
+                            recipe.excludes_set.remove(cust_package)
+                        except Package.DoesNotExist:
+                            # Don't care if the package had never been excluded
+                            pass
+                    except:
+                        logger.warning("Could not add package's suggested"
+                                       "dependencies to the list")
+
+            return {"error": "ok"}
+
+        elif request.method == 'DELETE':
+            try:
+                # If we're deleting a package which is included we need to
+                # Add it to the excludes list.
+                if package.pk in included_packages:
+                    recipe.excludes_set.add(package)
+                else:
+                    recipe.appends_set.remove(package)
+                all_current_packages = recipe.get_all_packages()
+                reverse_deps_dictlist = _get_all_dependents(package.pk, all_current_packages)
+                ids = [entry['pk'] for entry in reverse_deps_dictlist]
+                reverse_deps = CustomImagePackage.objects.filter(id__in=ids)
+                for r in reverse_deps:
+                    try:
+                        if r.id in included_packages:
+                            recipe.excludes_set.add(r)
+                        else:
+                            recipe.appends_set.remove(r)
+                    except:
+                        pass
+
+                return {"error": "ok"}
+            except CustomImageRecipe.DoesNotExist:
+                return {"error": "Tried to remove package that wasn't present"}
+
         else:
             return {"error": "Method %s is not supported" % request.method}
 
@@ -2509,24 +2837,15 @@ if True:
         }
 
         vars_blacklist  = {
-            'DL_DR','PARALLEL_MAKE','BB_NUMBER_THREADS','SSTATE_DIR',
+            'PARALLEL_MAKE','BB_NUMBER_THREADS',
             'BB_DISKMON_DIRS','BB_NUMBER_THREADS','CVS_PROXY_HOST','CVS_PROXY_PORT',
-            'DL_DIR','PARALLEL_MAKE','SSTATE_DIR','SSTATE_DIR','SSTATE_MIRRORS','TMPDIR',
+            'PARALLEL_MAKE','SSTATE_MIRRORS','TMPDIR',
             'all_proxy','ftp_proxy','http_proxy ','https_proxy'
             }
 
         vars_fstypes = Target_Image_File.SUFFIXES
 
         return(vars_managed,sorted(vars_fstypes),vars_blacklist)
-
-    def customrecipe(request, pid, recipe_id):
-        project = Project.objects.get(pk=pid)
-        context = {'project' : project,
-                   'projectlayers': [],
-                   'recipe' : CustomImageRecipe.objects.get(pk=recipe_id)
-                  }
-
-        return render(request, "customrecipe.html", context)
 
     @_template_renderer("projectconf.html")
     def projectconf(request, pid):
@@ -2558,6 +2877,19 @@ if True:
         except ProjectVariable.DoesNotExist:
             pass
         try:
+            if ProjectVariable.objects.get(project = prj, name = "DL_DIR").value == "${TOPDIR}/../downloads":
+                be = BuildEnvironment.objects.get(pk = str(1))
+                dl_dir = os.path.join(dirname(be.builddir), "downloads")
+                context['dl_dir'] =  dl_dir
+                pv, created = ProjectVariable.objects.get_or_create(project = prj, name = "DL_DIR")
+                pv.value = dl_dir
+                pv.save()
+            else:
+                context['dl_dir'] = ProjectVariable.objects.get(project = prj, name = "DL_DIR").value
+            context['dl_dir_defined'] = "1"
+        except ProjectVariable.DoesNotExist,BuildEnvironment.DoesNotExist:
+            pass
+        try:
             context['fstypes'] =  ProjectVariable.objects.get(project = prj, name = "IMAGE_FSTYPES").value
             context['fstypes_defined'] = "1"
         except ProjectVariable.DoesNotExist:
@@ -2571,6 +2903,19 @@ if True:
             context['package_classes'] =  ProjectVariable.objects.get(project = prj, name = "PACKAGE_CLASSES").value
             context['package_classes_defined'] = "1"
         except ProjectVariable.DoesNotExist:
+            pass
+        try:
+            if ProjectVariable.objects.get(project = prj, name = "SSTATE_DIR").value == "${TOPDIR}/../sstate-cache":
+                be = BuildEnvironment.objects.get(pk = str(1))
+                sstate_dir = os.path.join(dirname(be.builddir), "sstate-cache")
+                context['sstate_dir'] = sstate_dir
+                pv, created = ProjectVariable.objects.get_or_create(project = prj, name = "SSTATE_DIR")
+                pv.value = sstate_dir
+                pv.save()
+            else:
+                context['sstate_dir'] = ProjectVariable.objects.get(project = prj, name = "SSTATE_DIR").value
+            context['sstate_dir_defined'] = "1"
+        except ProjectVariable.DoesNotExist, BuildEnvironment.DoesNotExist:
             pass
 
         return context

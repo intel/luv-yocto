@@ -75,8 +75,15 @@ function tableInit(ctx){
 
     if (tableData.total === 0){
       tableContainer.hide();
-      $("#new-search-input-"+ctx.tableName).val(tableParams.search);
-      $("#no-results-"+ctx.tableName).show();
+      if ($("#no-results-special-"+ctx.tableName).length > 0) {
+        /* use this page's special no-results form instead of the default */
+        $("#no-results-search-input-"+ctx.tableName).val(tableParams.search);
+        $("#no-results-special-"+ctx.tableName).show();
+        $("#results-found-"+ctx.tableName).hide();
+      } else {
+        $("#new-search-input-"+ctx.tableName).val(tableParams.search);
+        $("#no-results-"+ctx.tableName).show();
+      }
       table.trigger("table-done", [tableData.total, tableParams]);
 
       return;
@@ -232,6 +239,10 @@ function tableInit(ctx){
           }
         }
 
+       if (col.field_name === tableData.default_orderby){
+         title.addClass("default-orderby");
+       }
+
       } else {
         /* Not orderable */
         header.css("font-weight", "normal");
@@ -377,7 +388,7 @@ function tableInit(ctx){
       if (col === tableParams.orderby ||
           '-' + col === tableParams.orderby){
         tableParams.orderby = null;
-        loadData(tableParams);
+        $("#"+ctx.tableName +" .default-orderby").click();
       }
     }
 
@@ -671,6 +682,13 @@ function tableInit(ctx){
     });
   }
 
+  /* Allow pages to trigger reload event */
+  table.on('reload', function(e, newTableParams){
+    if (newTableParams)
+      loadData(newTableParams);
+    else
+      loadData(tableParams)
+  });
 
   $(".get-help").tooltip({container:'body', html:true, delay:{show:300}});
 

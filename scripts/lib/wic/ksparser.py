@@ -29,6 +29,7 @@ import os
 import shlex
 from argparse import ArgumentParser, ArgumentError, ArgumentTypeError
 
+from wic import msger
 from wic.partition import Partition
 from wic.utils.misc import find_canned
 
@@ -112,7 +113,7 @@ class KickStart(object):
         part.add_argument('--fsoptions', dest='fsopts')
         part.add_argument('--fstype')
         part.add_argument('--label')
-        part.add_argument('--no-table')
+        part.add_argument('--no-table', action='store_true')
         part.add_argument('--ondisk', '--ondrive', dest='disk')
         part.add_argument("--overhead-factor", type=overheadtype, default=1.3)
         part.add_argument('--part-type')
@@ -135,6 +136,9 @@ class KickStart(object):
         include.add_argument('path', type=cannedpathtype)
 
         self._parse(parser, confpath)
+        if not self.bootloader:
+            msger.warning('bootloader config not specified, using defaults')
+            self.bootloader = bootloader.parse_args([])
 
     def _parse(self, parser, confpath):
         """

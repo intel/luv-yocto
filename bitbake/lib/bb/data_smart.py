@@ -40,7 +40,7 @@ logger = logging.getLogger("BitBake.Data")
 
 __setvar_keyword__ = ["_append", "_prepend", "_remove"]
 __setvar_regexp__ = re.compile('(?P<base>.*?)(?P<keyword>_append|_prepend|_remove)(_(?P<add>.*))?$')
-__expand_var_regexp__ = re.compile(r"\${[^{}@\n\t ]+}")
+__expand_var_regexp__ = re.compile(r"\${[^{}@\n\t :]+}")
 __expand_python_regexp__ = re.compile(r"\${@.+?}")
 
 def infer_caller_details(loginfo, parent = False, varval = True):
@@ -147,7 +147,7 @@ class DataContext(dict):
 
     def __missing__(self, key):
         value = self.metadata.getVar(key, True)
-        if value is None or self.metadata.getVarFlag(key, 'func'):
+        if value is None or self.metadata.getVarFlag(key, 'func', False):
             raise KeyError(key)
         else:
             return value
@@ -480,7 +480,7 @@ class DataSmart(MutableMapping):
             base = match.group('base')
             keyword = match.group("keyword")
             override = match.group('add')
-            l = self.getVarFlag(base, keyword) or []
+            l = self.getVarFlag(base, keyword, False) or []
             l.append([value, override])
             self.setVarFlag(base, keyword, l, ignore=True)
             # And cause that to be recorded:
@@ -566,7 +566,7 @@ class DataSmart(MutableMapping):
                 if len(shortvar) == 0:
                     override = None
 
-    def getVar(self, var, expand=False, noweakdefault=False, parsing=False):
+    def getVar(self, var, expand, noweakdefault=False, parsing=False):
         return self.getVarFlag(var, "_content", expand, noweakdefault, parsing)
 
     def renameVar(self, key, newkey, **loginfo):
@@ -582,11 +582,11 @@ class DataSmart(MutableMapping):
             self.setVar(newkey, val, ignore=True, parsing=True)
 
         for i in (__setvar_keyword__):
-            src = self.getVarFlag(key, i)
+            src = self.getVarFlag(key, i, False)
             if src is None:
                 continue
 
-            dest = self.getVarFlag(newkey, i) or []
+            dest = self.getVarFlag(newkey, i, False) or []
             dest.extend(src)
             self.setVarFlag(newkey, i, dest, ignore=True)
 
@@ -663,7 +663,7 @@ class DataSmart(MutableMapping):
                 self.dict["__exportlist"]["_content"] = set()
             self.dict["__exportlist"]["_content"].add(var)
 
-    def getVarFlag(self, var, flag, expand=False, noweakdefault=False, parsing=False):
+    def getVarFlag(self, var, flag, expand, noweakdefault=False, parsing=False):
         local_var = self._findVar(var)
         value = None
         if flag == "_content" and var in self.overridedata and not parsing:
@@ -692,7 +692,7 @@ class DataSmart(MutableMapping):
                             match = active[a]
                             del active[a]
             if match:
-                value = self.getVar(match)
+                value = self.getVar(match, False)
 
         if local_var is not None and value is None:
             if flag in local_var:
@@ -962,7 +962,7 @@ class DataSmart(MutableMapping):
 
             if key == "__BBANONFUNCS":
                 for i in bb_list:
-                    value = d.getVar(i, True) or ""
+                    value = d.getVar(i, False) or ""
                     data.update({i:value})
 
         data_str = str([(k, data[k]) for k in sorted(data.keys())])

@@ -45,9 +45,11 @@ RDEPENDS_packagegroup-self-hosted-host-tools = "\
     mc-helpers-perl \
     mc-helpers-python \
     parted \
-    pseudo \
+    ${PSEUDO} \
     screen \
     "
+PSEUDO = "pseudo"
+PSEUDO_libc-musl = ""
 
 RRECOMMENDS_packagegroup-self-hosted-host-tools = "\
     kernel-module-tun \
@@ -150,7 +152,6 @@ RDEPENDS_packagegroup-self-hosted-extended = "\
     perl-dev \
     perl-modules \
     perl-pod \
-    ${PTH} \
     python \
     python-compiler \
     python-git \
@@ -190,7 +191,6 @@ RDEPENDS_packagegroup-self-hosted-graphics = "\
     libsdl \
     libsdl-dev \
     libx11-dev \
-    python-pygtk \
     gtk-theme-clearlooks \
     xdg-utils \
     epiphany \
@@ -198,5 +198,3 @@ RDEPENDS_packagegroup-self-hosted-graphics = "\
     pcmanfm \
     vte \
     "
-PTH = "pth"
-PTH_libc-uclibc = ""

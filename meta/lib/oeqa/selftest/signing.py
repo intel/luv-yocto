@@ -6,6 +6,7 @@ import re
 import shutil
 import tempfile
 from oeqa.utils.decorators import testcase
+from oeqa.utils.ftools import write_file
 
 
 class Signing(oeSelfTest):
@@ -45,6 +46,7 @@ class Signing(oeSelfTest):
         Author:      Daniel Istrate <daniel.alexandrux.istrate@intel.com>
         AutomatedBy: Daniel Istrate <daniel.alexandrux.istrate@intel.com>
         """
+        import oe.packagedata
 
         package_classes = get_bb_var('PACKAGE_CLASSES')
         if 'package_rpm' not in package_classes:
@@ -53,7 +55,7 @@ class Signing(oeSelfTest):
         test_recipe = 'ed'
 
         feature = 'INHERIT += "sign_rpm"\n'
-        feature += 'RPM_GPG_PASSPHRASE_FILE = "%ssecret.txt"\n' % self.gpg_dir
+        feature += 'RPM_GPG_PASSPHRASE = "test123"\n'
         feature += 'RPM_GPG_NAME = "testuser"\n'
         feature += 'RPM_GPG_PUBKEY = "%s%s"\n' % (self.gpg_dir, self.pub_key_name)
         feature += 'GPG_PATH = "%s"\n' % self.gpg_dir
@@ -64,7 +66,12 @@ class Signing(oeSelfTest):
         bitbake(test_recipe)
         self.add_command_to_tearDown('bitbake -c clean %s' % test_recipe)
 
-        pf = get_bb_var('PF', test_recipe)
+        pkgdatadir = get_bb_var('PKGDATA_DIR', test_recipe)
+        pkgdata = oe.packagedata.read_pkgdatafile(pkgdatadir + "/runtime/ed")
+        if 'PKGE' in pkgdata:
+            pf = pkgdata['PN'] + "-" + pkgdata['PKGE'] + pkgdata['PKGV'] + '-' + pkgdata['PKGR']
+        else:
+            pf = pkgdata['PN'] + "-" + pkgdata['PKGV'] + '-' + pkgdata['PKGR']
         deploy_dir_rpm = get_bb_var('DEPLOY_DIR_RPM', test_recipe)
         package_arch = get_bb_var('PACKAGE_ARCH', test_recipe).replace('-', '_')
         staging_bindir_native = get_bb_var('STAGING_BINDIR_NATIVE')
@@ -130,3 +137,50 @@ class Signing(oeSelfTest):
         # gpg: Good signature from "testuser (nocomment) <testuser@email.com>"
         self.assertIn('gpg: Good signature from', ret.output, 'Package signed incorrectly.')
 
+
+class LockedSignatures(oeSelfTest):
+
+    @testcase(1420)
+    def test_locked_signatures(self):
+        """
+        Summary:     Test locked signature mechanism
+        Expected:    Locked signatures will prevent task to run
+        Product:     oe-core
+        Author:      Daniel Istrate <daniel.alexandrux.istrate@intel.com>
+        AutomatedBy: Daniel Istrate <daniel.alexandrux.istrate@intel.com>
+        """
+
+        test_recipe = 'ed'
+        locked_sigs_file = 'locked-sigs.inc'
+
+        self.add_command_to_tearDown('rm -f %s' % os.path.join(self.builddir, locked_sigs_file))
+
+        bitbake(test_recipe)
+        # Generate locked sigs include file
+        bitbake('-S none %s' % test_recipe)
+
+        feature = 'require %s\n' % locked_sigs_file
+        feature += 'SIGGEN_LOCKEDSIGS_TASKSIG_CHECK = "warn"\n'
+        self.write_config(feature)
+
+        # Build a locked recipe
+        bitbake(test_recipe)
+
+        # Make a change that should cause the locked task signature to change
+        recipe_append_file = test_recipe + '_' + get_bb_var('PV', test_recipe) + '.bbappend'
+        recipe_append_path = os.path.join(self.testlayer_path, 'recipes-test', test_recipe, recipe_append_file)
+        feature = 'SUMMARY += "test locked signature"\n'
+
+        os.mkdir(os.path.join(self.testlayer_path, 'recipes-test', test_recipe))
+        write_file(recipe_append_path, feature)
+
+        self.add_command_to_tearDown('rm -rf %s' % os.path.join(self.testlayer_path, 'recipes-test', test_recipe))
+
+        # Build the recipe again
+        ret = bitbake(test_recipe)
+
+        # Verify you get the warning and that the real task *isn't* run (i.e. the locked signature has worked)
+        patt = r'WARNING: The %s:do_package sig is computed to be \S+, but the sig is locked to \S+ in SIGGEN_LOCKEDSIGS\S+' % test_recipe
+        found_warn = re.search(patt, ret.output)
+
+        self.assertIsNotNone(found_warn, "Didn't find the expected warning message. Output: %s" % ret.output)

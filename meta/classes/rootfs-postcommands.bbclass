@@ -112,10 +112,12 @@ zap_empty_root_password () {
 # allow dropbear/openssh to accept root logins and logins from accounts with an empty password string
 #
 ssh_allow_empty_password () {
-	if [ -e ${IMAGE_ROOTFS}${sysconfdir}/ssh/sshd_config ]; then
-		sed -i 's/^[#[:space:]]*PermitRootLogin.*/PermitRootLogin yes/' ${IMAGE_ROOTFS}${sysconfdir}/ssh/sshd_config ${IMAGE_ROOTFS}${sysconfdir}/ssh/sshd_config_readonly
-		sed -i 's/^[#[:space:]]*PermitEmptyPasswords.*/PermitEmptyPasswords yes/' ${IMAGE_ROOTFS}${sysconfdir}/ssh/sshd_config ${IMAGE_ROOTFS}${sysconfdir}/ssh/sshd_config_readonly
-	fi
+	for config in sshd_config sshd_config_readonly; do
+		if [ -e ${IMAGE_ROOTFS}${sysconfdir}/ssh/$config ]; then
+			sed -i 's/^[#[:space:]]*PermitRootLogin.*/PermitRootLogin yes/' ${IMAGE_ROOTFS}${sysconfdir}/ssh/$config
+			sed -i 's/^[#[:space:]]*PermitEmptyPasswords.*/PermitEmptyPasswords yes/' ${IMAGE_ROOTFS}${sysconfdir}/ssh/$config
+		fi
+	done
 
 	if [ -e ${IMAGE_ROOTFS}${sbindir}/dropbear ] ; then
 		if grep -q DROPBEAR_EXTRA_ARGS ${IMAGE_ROOTFS}${sysconfdir}/default/dropbear 2>/dev/null ; then
@@ -213,14 +215,17 @@ python write_image_manifest () {
     link_name = d.getVar('IMAGE_LINK_NAME', True)
     manifest_name = d.getVar('IMAGE_MANIFEST', True)
 
+    if not manifest_name:
+        return
+
     pkgs = image_list_installed_packages(d)
     with open(manifest_name, 'w+') as image_manifest:
         image_manifest.write(format_pkg_list(pkgs, "ver"))
         image_manifest.write("\n")
 
-    if manifest_name is not None and os.path.exists(manifest_name):
+    if os.path.exists(manifest_name):
         manifest_link = deploy_dir + "/" + link_name + ".manifest"
-        if os.path.exists(manifest_link):
+        if os.path.lexists(manifest_link):
             if d.getVar('RM_OLD_IMAGE', True) == "1" and \
                     os.path.exists(os.path.realpath(manifest_link)):
                 os.remove(os.path.realpath(manifest_link))
@@ -270,5 +275,3 @@ rootfs_check_host_user_contaminated () {
 rootfs_sysroot_relativelinks () {
 	sysroot-relativelinks.py ${SDK_OUTPUT}/${SDKTARGETSYSROOT}
 }
-
-

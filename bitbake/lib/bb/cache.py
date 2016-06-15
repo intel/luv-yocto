@@ -99,7 +99,7 @@ class CoreRecipeInfo(RecipeInfoCommon):
         self.timestamp = bb.parse.cached_mtime(filename)
         self.variants = self.listvar('__VARIANTS', metadata) + ['']
         self.appends = self.listvar('__BBAPPEND', metadata)
-        self.nocache = self.getvar('__BB_DONT_CACHE', metadata)
+        self.nocache = self.getvar('BB_DONT_CACHE', metadata)
 
         self.skipreason = self.getvar('__SKIPPED', metadata)
         if self.skipreason:
@@ -755,13 +755,14 @@ class MultiProcessCache(object):
         self.cachedata = self.create_cachedata()
         self.cachedata_extras = self.create_cachedata()
 
-    def init_cache(self, d):
+    def init_cache(self, d, cache_file_name=None):
         cachedir = (d.getVar("PERSISTENT_DIR", True) or
                     d.getVar("CACHE", True))
         if cachedir in [None, '']:
             return
         bb.utils.mkdirhier(cachedir)
-        self.cachefile = os.path.join(cachedir, self.__class__.cache_file_name)
+        self.cachefile = os.path.join(cachedir,
+                                      cache_file_name or self.__class__.cache_file_name)
         logger.debug(1, "Using cache in '%s'", self.cachefile)
 
         glf = bb.utils.lockfile(self.cachefile + ".lock")
@@ -785,7 +786,7 @@ class MultiProcessCache(object):
         data = [{}]
         return data
 
-    def save_extras(self, d):
+    def save_extras(self):
         if not self.cachefile:
             return
 
@@ -815,7 +816,7 @@ class MultiProcessCache(object):
                 if h not in dest[j]:
                     dest[j][h] = source[j][h]
 
-    def save_merge(self, d):
+    def save_merge(self):
         if not self.cachefile:
             return
 

@@ -27,13 +27,32 @@ def exec_watch(cmd, **options):
 
     return process.returncode, buf
 
+def check_unexpected(lines, recipes):
+    """Check for unexpected output lines from dry run"""
+    unexpected = []
+    for line in lines.splitlines():
+        if 'Running task' in line:
+            for recipe in recipes:
+                if recipe in line:
+                    break
+            else:
+                line = line.split('Running', 1)[-1]
+                if 'do_rm_work' not in line:
+                    unexpected.append(line.rstrip())
+        elif 'Running setscene' in line:
+            unexpected.append(line.rstrip())
+    return unexpected
 
 def main():
     if len(sys.argv) < 2:
-        print('Please specify target to prepare with')
-        return 1
+        sdk_targets = []
+    else:
+        sdk_targets = ' '.join(sys.argv[1:]).split()
+    if not sdk_targets:
+        # Just do a parse so the cache is primed
+        ret, _ = exec_watch('bitbake -p')
+        return ret
 
-    sdk_targets = ' '.join(sys.argv[1:]).split()
     print('Preparing SDK for %s...' % ', '.join(sdk_targets))
 
     ret, out = exec_watch('bitbake %s --setscene-only' % ' '.join(sdk_targets))
@@ -63,21 +82,13 @@ def main():
 
     try:
         out = subprocess.check_output('bitbake %s -n' % ' '.join(sdk_targets), stderr=subprocess.STDOUT, shell=True)
-        unexpected = []
-        for line in out.splitlines():
-            if 'Running task' in line:
-                for recipe in recipes:
-                    if recipe in line:
-                        break
-                else:
-                    line = line.split('Running', 1)[-1]
-                    unexpected.append(line.rstrip())
+        unexpected = check_unexpected(out, recipes)
     except subprocess.CalledProcessError as e:
         print('ERROR: Failed to execute dry-run:\n%s' % e.output)
         return 1
 
     if unexpected:
-        print('ERROR: Unexpected tasks left over to be executed:')
+        print('ERROR: Unexpected tasks or setscene left over to be executed:')
         for line in unexpected:
             print('  ' + line)
         return 1
@@ -88,5 +99,5 @@ if __name__ == "__main__":
     except Exception:
         ret = 1
         import traceback
-        traceback.print_exc(5)
+        traceback.print_exc()
     sys.exit(ret)

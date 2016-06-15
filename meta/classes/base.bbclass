@@ -292,6 +292,7 @@ base_do_configure() {
 		fi
 	fi
 	if [ -n "${CONFIGURESTAMPFILE}" ]; then
+		mkdir -p `dirname ${CONFIGURESTAMPFILE}`
 		echo ${BB_TASKHASH} > ${CONFIGURESTAMPFILE}
 	fi
 }
@@ -397,11 +398,11 @@ python () {
             if not appends:
                 return
             if varname.find("DEPENDS") != -1:
-                if pn.startswith("nativesdk-"):
+                if bb.data.inherits_class('nativesdk', d) or bb.data.inherits_class('cross-canadian', d) :
                     appends = expandFilter(appends, "", "nativesdk-")
-                if pn.endswith("-native"):
+                elif bb.data.inherits_class('native', d):
                     appends = expandFilter(appends, "-native", "")
-                if mlprefix:
+                elif mlprefix:
                     appends = expandFilter(appends, "", mlprefix)
             varname = d.expand(varname)
             d.appendVar(varname, " " + " ".join(appends))
@@ -427,9 +428,12 @@ python () {
                     extraconf.append(items[1])
         appendVar('DEPENDS', extradeps)
         appendVar('RDEPENDS_${PN}', extrardeps)
-        if bb.data.inherits_class('cmake', d):
-            appendVar('EXTRA_OECMAKE', extraconf)
-        else:
+        appendVar('PACKAGECONFIG_CONFARGS', extraconf)
+
+        # TODO: once all recipes/classes abusing EXTRA_OECONF
+        # to get PACKAGECONFIG options are fixed to use PACKAGECONFIG_CONFARGS
+        # move this appendVar to autotools.bbclass.
+        if not bb.data.inherits_class('cmake', d):
             appendVar('EXTRA_OECONF', extraconf)
 
     pn = d.getVar('PN', True)
@@ -462,6 +466,17 @@ python () {
         d.appendVarFlag('do_package_setscene', 'depends', ' virtual/fakeroot-native:do_populate_sysroot')
         d.setVarFlag('do_devshell', 'fakeroot', '1')
         d.appendVarFlag('do_devshell', 'depends', ' virtual/fakeroot-native:do_populate_sysroot')
+
+    need_machine = d.getVar('COMPATIBLE_MACHINE', True)
+    if need_machine:
+        import re
+        compat_machines = (d.getVar('MACHINEOVERRIDES', True) or "").split(":")
+        for m in compat_machines:
+            if re.match(need_machine, m):
+                break
+        else:
+            raise bb.parse.SkipPackage("incompatible with machine %s (not in COMPATIBLE_MACHINE)" % d.getVar('MACHINE', True))
+
     source_mirror_fetch = d.getVar('SOURCE_MIRROR_FETCH', 0)
     if not source_mirror_fetch:
         need_host = d.getVar('COMPATIBLE_HOST', True)
@@ -470,17 +485,6 @@ python () {
             this_host = d.getVar('HOST_SYS', True)
             if not re.match(need_host, this_host):
                 raise bb.parse.SkipPackage("incompatible with host %s (not in COMPATIBLE_HOST)" % this_host)
-
-        need_machine = d.getVar('COMPATIBLE_MACHINE', True)
-        if need_machine:
-            import re
-            compat_machines = (d.getVar('MACHINEOVERRIDES', True) or "").split(":")
-            for m in compat_machines:
-                if re.match(need_machine, m):
-                    break
-            else:
-                raise bb.parse.SkipPackage("incompatible with machine %s (not in COMPATIBLE_MACHINE)" % d.getVar('MACHINE', True))
-
 
         bad_licenses = (d.getVar('INCOMPATIBLE_LICENSE', True) or "").split()
 
@@ -498,31 +502,23 @@ python () {
 
             whitelist = []
             incompatwl = []
-            htincompatwl = []
             for lic in bad_licenses:
                 spdx_license = return_spdx(d, lic)
-                for w in ["HOSTTOOLS_WHITELIST_", "LGPLv2_WHITELIST_", "WHITELIST_"]:
+                for w in ["LGPLv2_WHITELIST_", "WHITELIST_"]:
                     whitelist.extend((d.getVar(w + lic, True) or "").split())
                     if spdx_license:
                         whitelist.extend((d.getVar(w + spdx_license, True) or "").split())
                     '''
-                    We need to track what we are whitelisting and why. If pn is 
-                    incompatible and is not HOSTTOOLS_WHITELIST_ we need to be 
-                    able to note that the image that is created may infact 
-                    contain incompatible licenses despite INCOMPATIBLE_LICENSE 
-                    being set.
+                    We need to track what we are whitelisting and why. If pn is
+                    incompatible we need to be able to note that the image that
+                    is created may infact contain incompatible licenses despite
+                    INCOMPATIBLE_LICENSE being set.
                     '''
-                    if "HOSTTOOLS" in w:
-                        htincompatwl.extend((d.getVar(w + lic, True) or "").split())
-                        if spdx_license:
-                            htincompatwl.extend((d.getVar(w + spdx_license, True) or "").split())
-                    else:
-                        incompatwl.extend((d.getVar(w + lic, True) or "").split())
-                        if spdx_license:
-                            incompatwl.extend((d.getVar(w + spdx_license, True) or "").split())
+                    incompatwl.extend((d.getVar(w + lic, True) or "").split())
+                    if spdx_license:
+                        incompatwl.extend((d.getVar(w + spdx_license, True) or "").split())
 
             if not pn in whitelist:
-                recipe_license = d.getVar('LICENSE', True)
                 pkgs = d.getVar('PACKAGES', True).split()
                 skipped_pkgs = []
                 unskipped_pkgs = []
@@ -534,39 +530,48 @@ python () {
                 all_skipped = skipped_pkgs and not unskipped_pkgs
                 if unskipped_pkgs:
                     for pkg in skipped_pkgs:
-                        bb.debug(1, "SKIPPING the package " + pkg + " at do_rootfs because it's " + recipe_license)
+                        bb.debug(1, "SKIPPING the package " + pkg + " at do_rootfs because it's " + license)
                         mlprefix = d.getVar('MLPREFIX', True)
                         d.setVar('LICENSE_EXCLUSION-' + mlprefix + pkg, 1)
                     for pkg in unskipped_pkgs:
                         bb.debug(1, "INCLUDING the package " + pkg)
                 elif all_skipped or incompatible_license(d, bad_licenses):
-                    bb.debug(1, "SKIPPING recipe %s because it's %s" % (pn, recipe_license))
-                    raise bb.parse.SkipPackage("incompatible with license %s" % recipe_license)
+                    bb.debug(1, "SKIPPING recipe %s because it's %s" % (pn, license))
+                    raise bb.parse.SkipPackage("incompatible with license %s" % license)
             elif pn in whitelist:
                 if pn in incompatwl:
                     bb.note("INCLUDING " + pn + " as buildable despite INCOMPATIBLE_LICENSE because it has been whitelisted")
-                elif pn in htincompatwl:
-                    bb.note("INCLUDING " + pn + " as buildable despite INCOMPATIBLE_LICENSE because it has been whitelisted for HOSTTOOLS")
 
+    needsrcrev = False
     srcuri = d.getVar('SRC_URI', True)
     for uri in srcuri.split():
         (scheme, _ , path) = bb.fetch.decodeurl(uri)[:3]
 
+        # HTTP/FTP use the wget fetcher
+        if scheme in ("http", "https", "ftp"):
+            d.appendVarFlag('do_fetch', 'depends', ' wget-native:do_populate_sysroot')
+
         # Svn packages should DEPEND on subversion-native
         if scheme == "svn":
+            needsrcrev = True
             d.appendVarFlag('do_fetch', 'depends', ' subversion-native:do_populate_sysroot')
 
         # Git packages should DEPEND on git-native
-        elif scheme == "git":
+        elif scheme in ("git", "gitsm"):
+            needsrcrev = True
             d.appendVarFlag('do_fetch', 'depends', ' git-native:do_populate_sysroot')
 
         # Mercurial packages should DEPEND on mercurial-native
         elif scheme == "hg":
+            needsrcrev = True
             d.appendVarFlag('do_fetch', 'depends', ' mercurial-native:do_populate_sysroot')
 
         # OSC packages should DEPEND on osc-native
         elif scheme == "osc":
             d.appendVarFlag('do_fetch', 'depends', ' osc-native:do_populate_sysroot')
+
+        elif scheme == "npm":
+            d.appendVarFlag('do_fetch', 'depends', ' nodejs-native:do_populate_sysroot')
 
         # *.lz4 should DEPEND on lz4-native for unpacking
         if path.endswith('.lz4'):
@@ -587,6 +592,9 @@ python () {
         # file is needed by rpm2cpio.sh
         elif path.endswith('.src.rpm'):
             d.appendVarFlag('do_unpack', 'depends', ' file-native:do_populate_sysroot')
+
+    if needsrcrev:
+        d.setVar("SRCPV", "${@bb.fetch2.get_srcrev(d)}")
 
     set_packagetriplet(d)
 
@@ -639,8 +647,9 @@ addtask cleansstate after do_clean
 python do_cleansstate() {
         sstate_clean_cachefiles(d)
 }
-
 addtask cleanall after do_cleansstate
+do_cleansstate[nostamp] = "1"
+
 python do_cleanall() {
     src_uri = (d.getVar('SRC_URI', True) or "").split()
     if len(src_uri) == 0:

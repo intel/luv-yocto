@@ -247,7 +247,7 @@ class BitBakeConfigParameters(cookerdata.ConfigParameters):
         if "BBTOKEN" in os.environ:
             options.xmlrpctoken = os.environ["BBTOKEN"]
 
-        if "BBEVENTLOG" is os.environ:
+        if "BBEVENTLOG" in os.environ:
             options.writeeventlog = os.environ["BBEVENTLOG"]
 
         # fill in proper log name if not supplied
@@ -282,12 +282,13 @@ class BitBakeConfigParameters(cookerdata.ConfigParameters):
 
 def start_server(servermodule, configParams, configuration, features):
     server = servermodule.BitBakeServer()
+    single_use = not configParams.server_only
     if configParams.bind:
         (host, port) = configParams.bind.split(':')
-        server.initServer((host, int(port)))
+        server.initServer((host, int(port)), single_use)
         configuration.interface = [ server.serverImpl.host, server.serverImpl.port ]
     else:
-        server.initServer()
+        server.initServer(single_use=single_use)
         configuration.interface = []
 
     try:

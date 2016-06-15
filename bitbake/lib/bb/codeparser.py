@@ -167,11 +167,11 @@ codeparsercache = CodeParserCache()
 def parser_cache_init(d):
     codeparsercache.init_cache(d)
 
-def parser_cache_save(d):
-    codeparsercache.save_extras(d)
+def parser_cache_save():
+    codeparsercache.save_extras()
 
-def parser_cache_savemerge(d):
-    codeparsercache.save_merge(d)
+def parser_cache_savemerge():
+    codeparsercache.save_merge()
 
 Logger = logging.getLoggerClass()
 class BufferedLogger(Logger):
@@ -221,6 +221,17 @@ class PythonParser():
                     self.references.add(node.args[0].s)
             else:
                 self.warn(node.func, node.args[0])
+        elif name and name.endswith(".expand"):
+            if isinstance(node.args[0], ast.Str):
+                value = node.args[0].s
+                d = bb.data.init()
+                parser = d.expandWithRefs(value, self.name)
+                self.references |= parser.references
+                self.execs |= parser.execs
+                for varname in parser.contains:
+                    if varname not in self.contains:
+                        self.contains[varname] = set()
+                    self.contains[varname] |= parser.contains[varname]
         elif name in self.execfuncs:
             if isinstance(node.args[0], ast.Str):
                 self.var_execs.add(node.args[0].s)
@@ -243,6 +254,7 @@ class PythonParser():
                 break
 
     def __init__(self, name, log):
+        self.name = name
         self.var_execs = set()
         self.contains = {}
         self.execs = set()

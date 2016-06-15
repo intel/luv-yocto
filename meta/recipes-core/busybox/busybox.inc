@@ -258,7 +258,8 @@ do_install () {
 	if grep "CONFIG_UDHCPC=y" ${B}/.config; then
 		install -d ${D}${sysconfdir}/udhcpc.d
 		install -d ${D}${datadir}/udhcpc
-                install -m 0755 ${WORKDIR}/simple.script ${D}${sysconfdir}/udhcpc.d/50default
+		install -m 0755 ${WORKDIR}/simple.script ${D}${sysconfdir}/udhcpc.d/50default
+		sed -i "s:/SBIN_DIR/:${base_sbindir}/:" ${D}${sysconfdir}/udhcpc.d/50default
 		install -m 0755 ${WORKDIR}/default.script ${D}${datadir}/udhcpc/default.script
 	fi
 	if grep "CONFIG_INETD=y" ${B}/.config; then
@@ -346,6 +347,8 @@ python do_package_prepend () {
     dvar = d.getVar('D', True)
     pn = d.getVar('PN', True)
     def set_alternative_vars(links, target):
+        links = d.expand(links)
+        target = d.expand(target)
         f = open('%s%s' % (dvar, links), 'r')
         for alt_link_name in f:
             alt_link_name = alt_link_name.strip()
@@ -412,6 +415,7 @@ pkg_prerm_${PN} () {
 	ln -s ${base_bindir}/busybox $tmpdir/sed
 	ln -s ${base_bindir}/busybox $tmpdir/sort
 	ln -s ${base_bindir}/busybox $tmpdir/grep
+	ln -s ${base_bindir}/busybox $tmpdir/tail
 	export PATH=$PATH:$tmpdir
 }
 

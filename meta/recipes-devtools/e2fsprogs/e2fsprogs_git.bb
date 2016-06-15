@@ -6,6 +6,8 @@ SRC_URI += "file://acinclude.m4 \
             file://run-ptest \
             file://ptest.patch \
             file://mkdir.patch \
+            file://xattr_ordering.patch \
+            file://Revert-mke2fs-enable-the-metadata_csum-and-64bit-fea.patch \
 "
 
 SRCREV = "0f26747167cc9d82df849b0aad387bf824f04544"
@@ -50,10 +52,25 @@ do_install () {
 	install -v -m 755 ${S}/contrib/populate-extfs.sh ${D}${base_sbindir}/
 }
 
+# Need to find the right mke2fs.conf file
+e2fsprogs_conf_fixup () {
+	for i in mke2fs mkfs.ext2 mkfs.ext3 mkfs.ext4 mkfs.ext4dev; do
+		create_wrapper ${D}${base_sbindir}/$i MKE2FS_CONFIG=${sysconfdir}/mke2fs.conf
+	done
+}
+
 do_install_append_class-target() {
 	# Clean host path in compile_et, mk_cmds
 	sed -i -e "s,ET_DIR=\"${S}/lib/et\",ET_DIR=\"${datadir}/et\",g" ${D}${bindir}/compile_et
 	sed -i -e "s,SS_DIR=\"${S}/lib/ss\",SS_DIR=\"${datadir}/ss\",g" ${D}${bindir}/mk_cmds
+}
+
+do_install_append_class-native() {
+	e2fsprogs_conf_fixup
+}
+
+do_install_append_class-nativesdk() {
+	e2fsprogs_conf_fixup
 }
 
 RDEPENDS_e2fsprogs = "e2fsprogs-badblocks"

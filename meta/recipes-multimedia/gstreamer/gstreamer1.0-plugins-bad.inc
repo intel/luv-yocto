@@ -6,6 +6,10 @@ DEPENDS += "gstreamer1.0-plugins-base libpng jpeg"
 
 inherit gettext bluetooth
 
+SRC_URI_append = " \
+    file://0001-Makefile.am-don-t-hardcode-libtool-name-when-running.patch \
+"
+
 # opengl packageconfig factored out to make it easy for distros
 # and BSP layers to pick either (desktop) opengl, gles2, or no GL
 PACKAGECONFIG_GL ?= "${@bb.utils.contains('DISTRO_FEATURES', 'opengl', 'gles2', '', d)}"
@@ -13,11 +17,12 @@ PACKAGECONFIG_GL ?= "${@bb.utils.contains('DISTRO_FEATURES', 'opengl', 'gles2', 
 # gtk is not in the PACKAGECONFIG variable by default until
 # the transition to gtk+3 is finished
 PACKAGECONFIG ??= " \
+    ${GSTREAMER_ORC} \
     ${PACKAGECONFIG_GL} \
     ${@bb.utils.contains('DISTRO_FEATURES', 'bluetooth', 'bluez', '', d)} \
     ${@bb.utils.contains('DISTRO_FEATURES', 'directfb', 'directfb', '', d)} \
     ${@bb.utils.contains('DISTRO_FEATURES', 'wayland', 'wayland', '', d)} \
-    bz2 curl dash dtls hls neon orc rsvg sbc smoothstreaming sndfile uvch264 \
+    bz2 curl dash dtls hls neon rsvg sbc smoothstreaming sndfile uvch264 webp \
 "
 
 PACKAGECONFIG[assrender]       = "--enable-assrender,--disable-assrender,libass"
@@ -37,7 +42,6 @@ PACKAGECONFIG[hls]             = "--enable-hls,--disable-hls,nettle"
 PACKAGECONFIG[libmms]          = "--enable-libmms,--disable-libmms,libmms"
 PACKAGECONFIG[libssh2]         = "--enable-libssh2,--disable-libssh2,libssh2"
 PACKAGECONFIG[modplug]         = "--enable-modplug,--disable-modplug,libmodplug"
-PACKAGECONFIG[mpg123]          = "--enable-mpg123,--disable-mpg123,mpg123"
 PACKAGECONFIG[neon]            = "--enable-neon,--disable-neon,neon"
 PACKAGECONFIG[openal]          = "--enable-openal,--disable-openal,openal-soft"
 PACKAGECONFIG[opencv]          = "--enable-opencv,--disable-opencv,opencv"
@@ -93,7 +97,6 @@ EXTRA_OECONF += " \
     --disable-directsound \
     --disable-dts \
     --disable-gme \
-    --disable-gsettings \
     --disable-gsm \
     --disable-kate \
     --disable-ladspa \
@@ -136,7 +139,8 @@ EXTRA_OECONF += " \
 
 export OPENCV_PREFIX = "${STAGING_DIR_TARGET}${prefix}"
 
-ARM_INSTRUCTION_SET = "arm"
+ARM_INSTRUCTION_SET_armv4 = "arm"
+ARM_INSTRUCTION_SET_armv5 = "arm"
 
 FILES_${PN}-dev += "${libdir}/gstreamer-${LIBV}/include/gst/gl/gstglconfig.h"
 FILES_${PN}-freeverb += "${datadir}/gstreamer-${LIBV}/presets/GstFreeverb.prs"

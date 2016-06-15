@@ -181,8 +181,10 @@ def license_deployed_manifest(d):
                 key,val = line.split(": ", 1)
                 man_dic[dep][key] = val[:-1]
 
-    image_license_manifest = os.path.join(d.getVar('LICENSE_DIRECTORY', True),
-            d.getVar('IMAGE_NAME', True), 'image_license.manifest')
+    lic_manifest_dir = os.path.join(d.getVar('LICENSE_DIRECTORY', True),
+                                    d.getVar('IMAGE_NAME', True))
+    bb.utils.mkdirhier(lic_manifest_dir)
+    image_license_manifest = os.path.join(lic_manifest_dir, 'image_license.manifest')
     write_license_files(d, image_license_manifest, man_dic)
 
 def get_deployed_dependencies(d):
@@ -312,6 +314,7 @@ python perform_packagecopy_prepend () {
         copy_license_files(lic_files_paths, destdir)
         add_package_and_files(d)
 }
+perform_packagecopy[vardeps] += "LICENSE_CREATE_PACKAGE"
 
 def get_recipe_info(d):
     info = {}
@@ -349,6 +352,18 @@ def copy_license_files(lic_files_paths, destdir):
                 os.remove(dst)
             if os.access(src, os.W_OK) and (os.stat(src).st_dev == os.stat(destdir).st_dev):
                 os.link(src, dst)
+                try:
+                    os.chown(dst,0,0)
+                except OSError as err:
+                    import errno
+                    if err.errno in (errno.EPERM, errno.EINVAL):
+                        # Suppress "Operation not permitted" error, as
+                        # sometimes this function is not executed under pseudo.
+                        # Also ignore "Invalid argument" errors that happen in
+                        # some (unprivileged) container environments (no root).
+                        pass
+                    else:
+                        raise
             else:
                 shutil.copyfile(src, dst)
         except Exception as e:
@@ -416,10 +431,10 @@ def find_license_files(d):
 
         for lic_dir in license_source_dirs:
             if not os.path.isfile(os.path.join(lic_dir, license_type)):
-                if d.getVarFlag('SPDXLICENSEMAP', license_type) != None:
+                if d.getVarFlag('SPDXLICENSEMAP', license_type, True) != None:
                     # Great, there is an SPDXLICENSEMAP. We can copy!
                     bb.debug(1, "We need to use a SPDXLICENSEMAP for %s" % (license_type))
-                    spdx_generic = d.getVarFlag('SPDXLICENSEMAP', license_type)
+                    spdx_generic = d.getVarFlag('SPDXLICENSEMAP', license_type, True)
                     license_source = lic_dir
                     break
             elif os.path.isfile(os.path.join(lic_dir, license_type)):
@@ -435,14 +450,14 @@ def find_license_files(d):
 
             # The user may attempt to use NO_GENERIC_LICENSE for a generic license which doesn't make sense
             # and should not be allowed, warn the user in this case.
-            if d.getVarFlag('NO_GENERIC_LICENSE', license_type):
+            if d.getVarFlag('NO_GENERIC_LICENSE', license_type, True):
                 bb.warn("%s: %s is a generic license, please don't use NO_GENERIC_LICENSE for it." % (pn, license_type))
 
-        elif d.getVarFlag('NO_GENERIC_LICENSE', license_type):
+        elif d.getVarFlag('NO_GENERIC_LICENSE', license_type, True):
             # if NO_GENERIC_LICENSE is set, we copy the license files from the fetched source
             # of the package rather than the license_source_dirs.
             for (basename, path) in lic_files_paths:
-                if d.getVarFlag('NO_GENERIC_LICENSE', license_type) == basename:
+                if d.getVarFlag('NO_GENERIC_LICENSE', license_type, True) == basename:
                     lic_files_paths.append(("generic_" + license_type, path))
                     break
         else:
@@ -510,7 +525,7 @@ def expand_wildcard_licenses(d, wildcard_licenses):
     spdxmapkeys = d.getVarFlags('SPDXLICENSEMAP').keys()
     for wld_lic in wildcard_licenses:
         spdxflags = fnmatch.filter(spdxmapkeys, wld_lic)
-        licenses += [d.getVarFlag('SPDXLICENSEMAP', flag) for flag in spdxflags]
+        licenses += [d.getVarFlag('SPDXLICENSEMAP', flag, True) for flag in spdxflags]
 
     spdx_lics = (d.getVar('SRC_DISTRIBUTE_LICENSES', False) or '').split()
     for wld_lic in wildcard_licenses:
@@ -637,8 +652,11 @@ SSTATETASKS += "do_populate_lic"
 do_populate_lic[sstate-inputdirs] = "${LICSSTATEDIR}"
 do_populate_lic[sstate-outputdirs] = "${LICENSE_DIRECTORY}/"
 
-ROOTFS_POSTPROCESS_COMMAND_prepend = "write_package_manifest; write_deploy_manifest; license_create_manifest; "
+ROOTFS_POSTPROCESS_COMMAND_prepend = "write_package_manifest; license_create_manifest; "
 do_rootfs[recrdeptask] += "do_populate_lic"
+
+IMAGE_POSTPROCESS_COMMAND_prepend = "write_deploy_manifest; "
+do_image[recrdeptask] += "do_populate_lic"
 
 do_populate_lic_setscene[dirs] = "${LICSSTATEDIR}/${PN}"
 do_populate_lic_setscene[cleandirs] = "${LICSSTATEDIR}"
