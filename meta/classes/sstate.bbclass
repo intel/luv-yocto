@@ -95,7 +95,7 @@ python () {
         scan_cmd = "grep -Irl ${STAGING_DIR} ${SSTATE_BUILDDIR}"
         d.setVar('SSTATE_SCAN_CMD', scan_cmd)
 
-    unique_tasks = set((d.getVar('SSTATETASKS', True) or "").split())
+    unique_tasks = sorted(set((d.getVar('SSTATETASKS', True) or "").split()))
     d.setVar('SSTATETASKS', " ".join(unique_tasks))
     for task in unique_tasks:
         d.prependVarFlag(task, 'prefuncs', "sstate_task_prefunc ")
@@ -623,22 +623,16 @@ def pstaging_fetch(sstatefetch, sstatepkg, d):
 
     # Try a fetch from the sstate mirror, if it fails just return and
     # we will build the package
-    uris = ['file://{0}'.format(sstatefetch),
-            'file://{0}.siginfo'.format(sstatefetch)]
+    uris = ['file://{0};downloadfilename={0}'.format(sstatefetch),
+            'file://{0}.siginfo;downloadfilename={0}.siginfo'.format(sstatefetch)]
     if bb.utils.to_boolean(d.getVar("SSTATE_VERIFY_SIG", True), False):
-        uris += ['file://{0}.sig'.format(sstatefetch)]
+        uris += ['file://{0}.sig;downloadfilename={0}.sig'.format(sstatefetch)]
 
     for srcuri in uris:
         localdata.setVar('SRC_URI', srcuri)
         try:
             fetcher = bb.fetch2.Fetch([srcuri], localdata, cache=False)
             fetcher.download()
-
-            # Need to optimise this, if using file:// urls, the fetcher just changes the local path
-            # For now work around by symlinking
-            localpath = bb.data.expand(fetcher.localpath(srcuri), localdata)
-            if localpath != sstatepkg and os.path.exists(localpath) and not os.path.exists(sstatepkg):
-                os.symlink(localpath, sstatepkg)
 
         except bb.fetch2.BBFetchException:
             break
@@ -661,9 +655,9 @@ python sstate_task_postfunc () {
     sstate_install(shared_state, d)
     for intercept in shared_state['interceptfuncs']:
         bb.build.exec_func(intercept, d, (d.getVar("WORKDIR", True),))
-    omask = os.umask(002)
-    if omask != 002:
-       bb.note("Using umask 002 (not %0o) for sstate packaging" % omask)
+    omask = os.umask(0o002)
+    if omask != 0o002:
+       bb.note("Using umask 0o002 (not %0o) for sstate packaging" % omask)
     sstate_package(shared_state, d)
     os.umask(omask)
 }

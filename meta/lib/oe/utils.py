@@ -46,7 +46,7 @@ def both_contain(variable1, variable2, checkvalue, d):
     val2 = d.getVar(variable2, True)
     val1 = set(val1.split())
     val2 = set(val2.split())
-    if isinstance(checkvalue, basestring):
+    if isinstance(checkvalue, str):
         checkvalue = set(checkvalue.split())
     else:
         checkvalue = set(checkvalue)
@@ -85,11 +85,11 @@ def prune_suffix(var, suffixes, d):
 
 def str_filter(f, str, d):
     from re import match
-    return " ".join(filter(lambda x: match(f, x, 0), str.split()))
+    return " ".join([x for x in str.split() if match(f, x, 0)])
 
 def str_filter_out(f, str, d):
     from re import match
-    return " ".join(filter(lambda x: not match(f, x, 0), str.split()))
+    return " ".join([x for x in str.split() if not match(f, x, 0)])
 
 def param_bool(cfg, field, dflt = None):
     """Lookup <field> in <cfg> map and convert it to a boolean; take
@@ -134,7 +134,7 @@ def packages_filter_out_system(d):
     PN-dbg PN-doc PN-locale-eb-gb removed.
     """
     pn = d.getVar('PN', True)
-    blacklist = map(lambda suffix: pn + suffix, ('', '-dbg', '-dev', '-doc', '-locale', '-staticdev'))
+    blacklist = [pn + suffix for suffix in ('', '-dbg', '-dev', '-doc', '-locale', '-staticdev')]
     localepkg = pn + "-locale-"
     pkgs = []
 
@@ -235,7 +235,7 @@ def format_pkg_list(pkg_dict, ret_format=None):
 # so implement a version here
 #
 
-from Queue import Queue
+from queue import Queue
 from threading import Thread
 
 class ThreadedWorker(Thread):
@@ -249,7 +249,7 @@ class ThreadedWorker(Thread):
         self.worker_end = worker_end
 
     def run(self):
-        from Queue import Empty
+        from queue import Empty
 
         if self.worker_init is not None:
             self.worker_init(self)
@@ -264,8 +264,8 @@ class ThreadedWorker(Thread):
 
             try:
                 func(self, *args, **kargs)
-            except Exception, e:
-                print e
+            except Exception as e:
+                print(e)
             finally:
                 self.tasks.task_done()
 

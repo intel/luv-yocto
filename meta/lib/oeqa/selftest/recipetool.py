@@ -1,7 +1,7 @@
 import os
 import logging
 import tempfile
-import urlparse
+import urllib.parse
 
 from oeqa.utils.commands import runCmd, bitbake, get_bb_var, create_temp_layer
 from oeqa.utils.decorators import testcase
@@ -278,7 +278,7 @@ class RecipetoolTests(RecipetoolBase):
                          '}\n']
         _, output = self._try_recipetool_appendfile('selftest-recipetool-appendfile', '/etc/selftest-replaceme-patched', self.testfile, '', expectedlines, ['testfile'])
         for line in output.splitlines():
-            if line.startswith('WARNING: '):
+            if 'WARNING: ' in line:
                 self.assertIn('add-file.patch', line, 'Unexpected warning found in output:\n%s' % line)
                 break
         else:
@@ -471,7 +471,7 @@ class RecipetoolAppendsrcBase(RecipetoolBase):
         '''Return the first file:// in SRC_URI for the specified recipe.'''
         src_uri = get_bb_var('SRC_URI', recipe).split()
         for uri in src_uri:
-            p = urlparse.urlparse(uri)
+            p = urllib.parse.urlparse(uri)
             if p.scheme == 'file':
                 return p.netloc + p.path
 

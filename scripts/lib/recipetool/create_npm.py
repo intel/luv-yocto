@@ -45,7 +45,7 @@ class NpmRecipeHandler(RecipeHandler):
             license = data['license']
             if isinstance(license, dict):
                 license = license.get('type', None)
-        return None
+        return license
 
     def _shrinkwrap(self, srctree, localfilesdir, extravalues, lines_before):
         try:
@@ -104,9 +104,9 @@ class NpmRecipeHandler(RecipeHandler):
                 classes.append('npm')
                 handled.append('buildsystem')
                 if 'description' in data:
-                    lines_before.append('SUMMARY = "%s"' % data['description'])
+                    extravalues['SUMMARY'] = data['description']
                 if 'homepage' in data:
-                    lines_before.append('HOMEPAGE = "%s"' % data['homepage'])
+                    extravalues['HOMEPAGE'] = data['homepage']
 
                 # Shrinkwrap
                 localfilesdir = tempfile.mkdtemp(prefix='recipetool-npm')
@@ -128,7 +128,7 @@ class NpmRecipeHandler(RecipeHandler):
                     license = self._handle_license(data)
                     if license:
                         licenses['${PN}'] = license
-                    for pkgname, pkgitem in npmpackages.iteritems():
+                    for pkgname, pkgitem in npmpackages.items():
                         _, pdata = pkgitem
                         license = self._handle_license(pdata)
                         if license:
@@ -136,7 +136,7 @@ class NpmRecipeHandler(RecipeHandler):
                     # Now write out the package-specific license values
                     # We need to strip out the json data dicts for this since split_pkg_licenses
                     # isn't expecting it
-                    packages = OrderedDict((x,y[0]) for x,y in npmpackages.iteritems())
+                    packages = OrderedDict((x,y[0]) for x,y in npmpackages.items())
                     packages['${PN}'] = ''
                     pkglicenses = split_pkg_licenses(licvalues, packages, lines_after, licenses)
                     all_licenses = list(set([item for pkglicense in pkglicenses.values() for item in pkglicense]))

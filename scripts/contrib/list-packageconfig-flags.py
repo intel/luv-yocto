@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -86,7 +86,7 @@ def collect_flags(pkg_dict):
     ''' Collect available PACKAGECONFIG flags and all affected pkgs '''
     # flag_dict = {'flag': ['pkg1', 'pkg2',...]}
     flag_dict = {}
-    for pkgname, flaglist in pkg_dict.iteritems():
+    for pkgname, flaglist in pkg_dict.items():
         for flag in flaglist:
             if flag in flag_dict:
                 flag_dict[flag].append(pkgname)
@@ -104,8 +104,8 @@ def display_pkgs(pkg_dict):
     pkgname_len += 1
 
     header = '%-*s%s' % (pkgname_len, str("RECIPE NAME"), str("PACKAGECONFIG FLAGS"))
-    print header
-    print str("").ljust(len(header), '=')
+    print(header)
+    print(str("").ljust(len(header), '='))
     for pkgname in sorted(pkg_dict):
         print('%-*s%s' % (pkgname_len, pkgname, ' '.join(pkg_dict[pkgname])))
 
@@ -115,28 +115,28 @@ def display_flags(flag_dict):
     flag_len = len("PACKAGECONFIG FLAG") + 5
 
     header = '%-*s%s' % (flag_len, str("PACKAGECONFIG FLAG"), str("RECIPE NAMES"))
-    print header
-    print str("").ljust(len(header), '=')
+    print(header)
+    print(str("").ljust(len(header), '='))
 
     for flag in sorted(flag_dict):
         print('%-*s%s' % (flag_len, flag, '  '.join(sorted(flag_dict[flag]))))
 
 def display_all(data_dict):
     ''' Display all pkgs and PACKAGECONFIG information '''
-    print str("").ljust(50, '=')
+    print(str("").ljust(50, '='))
     for fn in data_dict:
         print('%s' % data_dict[fn].getVar("P", True))
-        print fn
+        print(fn)
         packageconfig = data_dict[fn].getVar("PACKAGECONFIG", True) or ''
         if packageconfig.strip() == '':
             packageconfig = 'None'
         print('PACKAGECONFIG %s' % packageconfig)
 
-        for flag,flag_val in data_dict[fn].getVarFlags("PACKAGECONFIG").iteritems():
+        for flag,flag_val in data_dict[fn].getVarFlags("PACKAGECONFIG").items():
             if flag == "doc":
                 continue
             print('PACKAGECONFIG[%s] %s' % (flag, flag_val))
-        print ''
+        print('')
 
 def main():
     pkg_dict = {}

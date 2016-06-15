@@ -26,9 +26,13 @@ SDK_RECRDEP_TASKS ?= ""
 SDK_LOCAL_CONF_WHITELIST ?= ""
 SDK_LOCAL_CONF_BLACKLIST ?= "CONF_VERSION \
                              BB_NUMBER_THREADS \
+                             BB_NUMBER_PARSE_THREADS \
                              PARALLEL_MAKE \
                              PRSERV_HOST \
                              SSTATE_MIRRORS \
+                             DL_DIR \
+                             SSTATE_DIR \
+                             TMPDIR \
                             "
 SDK_INHERIT_BLACKLIST ?= "buildhistory icecc"
 SDK_UPDATE_URL ?= ""
@@ -41,7 +45,7 @@ def get_sdk_install_targets(d):
         sdk_install_targets = d.getVar('SDK_TARGETS', True)
 
         depd = d.getVar('BB_TASKDEPDATA', False)
-        for v in depd.itervalues():
+        for v in depd.values():
             if v[1] == 'do_image_complete':
                 if v[0] not in sdk_install_targets:
                     sdk_install_targets += ' {}'.format(v[0])
@@ -125,8 +129,8 @@ python copy_buildsystem () {
     d.setVar('scriptrelpath', scriptrelpath)
 
     # Write out config file for devtool
-    import ConfigParser
-    config = ConfigParser.SafeConfigParser()
+    import configparser
+    config = configparser.SafeConfigParser()
     config.add_section('General')
     config.set('General', 'bitbake_subdir', conf_bbpath)
     config.set('General', 'init_path', conf_initpath)
@@ -221,7 +225,7 @@ python copy_buildsystem () {
 
             # Error if the sigs in the locked-signature file don't match
             # the sig computed from the metadata.
-            f.write('SIGGEN_LOCKEDSIGS_TASKSIG_CHECK = "error"\n\n')
+            f.write('SIGGEN_LOCKEDSIGS_TASKSIG_CHECK = "warn"\n\n')
 
             # Hide the config information from bitbake output (since it's fixed within the SDK)
             f.write('BUILDCFG_HEADER = ""\n')
@@ -263,7 +267,7 @@ python copy_buildsystem () {
     # Ensure any variables set from the external environment (by way of
     # BB_ENV_EXTRAWHITE) are set in the SDK's configuration
     extralines = []
-    for name, value in env_whitelist_values.iteritems():
+    for name, value in env_whitelist_values.items():
         actualvalue = d.getVar(name, True) or ''
         if value != actualvalue:
             extralines.append('%s = "%s"\n' % (name, actualvalue))
@@ -420,7 +424,7 @@ sdk_ext_postinst() {
 		# current working directory when first ran, nor will it set $1 when
 		# sourcing a script. That is why this has to look so ugly.
 		LOGFILE="$target_sdk_dir/preparing_build_system.log"
-		sh -c ". buildtools/environment-setup* > $LOGFILE && cd $target_sdk_dir/`dirname ${oe_init_build_env_path}` && set $target_sdk_dir && . $target_sdk_dir/${oe_init_build_env_path} $target_sdk_dir >> $LOGFILE && python $target_sdk_dir/ext-sdk-prepare.py '${SDK_INSTALL_TARGETS}' >> $LOGFILE 2>&1" || { echo "ERROR: SDK preparation failed: see $LOGFILE"; echo "printf 'ERROR: this SDK was not fully installed and needs reinstalling\n'" >> $env_setup_script ; exit 1 ; }
+		sh -c ". buildtools/environment-setup* > $LOGFILE && cd $target_sdk_dir/`dirname ${oe_init_build_env_path}` && set $target_sdk_dir && . $target_sdk_dir/${oe_init_build_env_path} $target_sdk_dir >> $LOGFILE && python $target_sdk_dir/ext-sdk-prepare.py '${SDK_INSTALL_TARGETS}' >> $LOGFILE 2>&1" || { echo "ERROR: SDK preparation failed: see $LOGFILE"; cat "$LOGFILE"; echo "printf 'ERROR: this SDK was not fully installed and needs reinstalling\n'" >> $env_setup_script ; exit 1 ; }
 		rm $target_sdk_dir/ext-sdk-prepare.py
 	fi
 	echo done

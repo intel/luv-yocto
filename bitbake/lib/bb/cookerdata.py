@@ -22,9 +22,11 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-import os, sys
-from functools import wraps
 import logging
+import os
+import re
+import sys
+from functools import wraps
 import bb
 from bb import data
 import bb.parse
@@ -192,7 +194,8 @@ def catch_parse_error(func):
                 fn, _, _, _ = traceback.extract_tb(tb, 1)[0]
                 if not fn.startswith(bbdir):
                     break
-            parselog.critical("Unable to parse %s", fn, exc_info=(exc_class, exc, tb))
+            parselog.critical("Unable to parse %s" % fn, exc_info=(exc_class, exc, tb))
+            sys.exit(1)
         except bb.parse.ParseError as exc:
             parselog.critical(str(exc))
             sys.exit(1)
@@ -289,15 +292,22 @@ class CookerDataBuilder(object):
             data = bb.data.createCopy(data)
             approved = bb.utils.approved_variables()
             for layer in layers:
+                if not os.path.isdir(layer):
+                    parselog.critical("Layer directory '%s' does not exist! "
+                                      "Please check BBLAYERS in %s" % (layer, layerconf))
+                    sys.exit(1)
                 parselog.debug(2, "Adding layer %s", layer)
                 if 'HOME' in approved and '~' in layer:
                     layer = os.path.expanduser(layer)
                 if layer.endswith('/'):
                     layer = layer.rstrip('/')
                 data.setVar('LAYERDIR', layer)
+                data.setVar('LAYERDIR_RE', re.escape(layer))
                 data = parse_config_file(os.path.join(layer, "conf", "layer.conf"), data)
                 data.expandVarref('LAYERDIR')
+                data.expandVarref('LAYERDIR_RE')
 
+            data.delVar('LAYERDIR_RE')
             data.delVar('LAYERDIR')
 
         if not data.getVar("BBPATH", True):

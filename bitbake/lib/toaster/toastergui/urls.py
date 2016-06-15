@@ -21,6 +21,7 @@ from django.views.generic import RedirectView, TemplateView
 
 from django.http import HttpResponseBadRequest
 from toastergui import tables
+from toastergui import buildtables
 from toastergui import typeaheads
 from toastergui import api
 
@@ -34,17 +35,28 @@ urlpatterns = patterns('toastergui.views',
 
         # build info navigation
         url(r'^build/(?P<build_id>\d+)$', 'builddashboard', name="builddashboard"),
+        url(r'^build/(?P<build_id>\d+)/tasks/$',
+            buildtables.BuildTasksTable.as_view(
+                template_name="buildinfo-toastertable.html"),
+            name='tasks'),
 
-        url(r'^build/(?P<build_id>\d+)/tasks/$', 'tasks', name='tasks'),
-        url(r'^build/(?P<build_id>\d+)/tasks/(?P<task_id>\d+)/$', 'tasks_task', name='tasks_task'),
         url(r'^build/(?P<build_id>\d+)/task/(?P<task_id>\d+)$', 'task', name='task'),
 
-        url(r'^build/(?P<build_id>\d+)/recipes/$', 'recipes', name='recipes'),
+        url(r'^build/(?P<build_id>\d+)/recipes/$',
+            buildtables.BuiltRecipesTable.as_view(
+                template_name="buildinfo-toastertable.html"),
+            name='recipes'),
+
         url(r'^build/(?P<build_id>\d+)/recipe/(?P<recipe_id>\d+)/active_tab/(?P<active_tab>\d{1})$', 'recipe', name='recipe'),
+
         url(r'^build/(?P<build_id>\d+)/recipe/(?P<recipe_id>\d+)$', 'recipe', name='recipe'),
         url(r'^build/(?P<build_id>\d+)/recipe_packages/(?P<recipe_id>\d+)$', 'recipe_packages', name='recipe_packages'),
 
-        url(r'^build/(?P<build_id>\d+)/packages/$', 'bpackage', name='packages'),
+        url(r'^build/(?P<build_id>\d+)/packages/$',
+            buildtables.BuiltPackagesTable.as_view(
+                template_name="buildinfo-toastertable.html"),
+            name='packages'),
+
         url(r'^build/(?P<build_id>\d+)/package/(?P<package_id>\d+)$', 'package_built_detail',
                 name='package_built_detail'),
         url(r'^build/(?P<build_id>\d+)/package_built_dependencies/(?P<package_id>\d+)$',
@@ -56,17 +68,31 @@ urlpatterns = patterns('toastergui.views',
         url(r'^build/(?P<build_id>\d+)/package_included_reverse_dependencies/(?P<target_id>\d+)/(?P<package_id>\d+)$',
             'package_included_reverse_dependencies', name='package_included_reverse_dependencies'),
 
-        # images are known as targets in the internal model
-        url(r'^build/(?P<build_id>\d+)/target/(?P<target_id>\d+)$', 'target', name='target'),
-        url(r'^build/(?P<build_id>\d+)/target/(?P<target_id>\d+)/targetpkg$', 'targetpkg', name='targetpkg'),
+        url(r'^build/(?P<build_id>\d+)/target/(?P<target_id>\d+)$',
+            buildtables.InstalledPackagesTable.as_view(
+                template_name="target.html"),
+            name='target'),
+
+
         url(r'^dentries/build/(?P<build_id>\d+)/target/(?P<target_id>\d+)$', 'xhr_dirinfo', name='dirinfo_ajax'),
         url(r'^build/(?P<build_id>\d+)/target/(?P<target_id>\d+)/dirinfo$', 'dirinfo', name='dirinfo'),
         url(r'^build/(?P<build_id>\d+)/target/(?P<target_id>\d+)/dirinfo_filepath/_(?P<file_path>(?:/[^/\n]+)*)$', 'dirinfo', name='dirinfo_filepath'),
         url(r'^build/(?P<build_id>\d+)/configuration$', 'configuration', name='configuration'),
         url(r'^build/(?P<build_id>\d+)/configvars$', 'configvars', name='configvars'),
-        url(r'^build/(?P<build_id>\d+)/buildtime$', 'buildtime', name='buildtime'),
-        url(r'^build/(?P<build_id>\d+)/cputime$', 'cputime', name='cputime'),
-        url(r'^build/(?P<build_id>\d+)/diskio$', 'diskio', name='diskio'),
+        url(r'^build/(?P<build_id>\d+)/buildtime$',
+            buildtables.BuildTimeTable.as_view(
+                template_name="buildinfo-toastertable.html"),
+            name='buildtime'),
+
+        url(r'^build/(?P<build_id>\d+)/cputime$',
+            buildtables.BuildCPUTimeTable.as_view(
+                template_name="buildinfo-toastertable.html"),
+            name='cputime'),
+
+        url(r'^build/(?P<build_id>\d+)/diskio$',
+            buildtables.BuildIOTable.as_view(
+                template_name="buildinfo-toastertable.html"),
+            name='diskio'),
 
         # image information dir
         url(r'^build/(?P<build_id>\d+)/target/(?P<target_id>\d+)/packagefile/(?P<packagefile_id>\d+)$',

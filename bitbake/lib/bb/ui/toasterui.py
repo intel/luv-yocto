@@ -39,7 +39,7 @@ import os
 # module properties for UI modules are read by bitbake and the contract should not be broken
 
 
-featureSet = [bb.cooker.CookerFeatures.HOB_EXTRA_CACHES, bb.cooker.CookerFeatures.SEND_DEPENDS_TREE, bb.cooker.CookerFeatures.BASEDATASTORE_TRACKING, bb.cooker.CookerFeatures.SEND_SANITYEVENTS]
+featureSet = [bb.cooker.CookerFeatures.HOB_EXTRA_CACHES, bb.cooker.CookerFeatures.BASEDATASTORE_TRACKING, bb.cooker.CookerFeatures.SEND_SANITYEVENTS]
 
 logger = logging.getLogger("ToasterLogger")
 interactive = sys.stdout.isatty()
@@ -163,7 +163,7 @@ def main(server, eventHandler, params):
     inheritlist, _ = server.runCommand(["getVariable", "INHERIT"])
 
     if not "buildhistory" in inheritlist.split(" "):
-        logger.warn("buildhistory is not enabled. Please enable INHERIT += \"buildhistory\" to see image details.")
+        logger.warning("buildhistory is not enabled. Please enable INHERIT += \"buildhistory\" to see image details.")
         build_history_enabled = False
 
     if not params.observe_only:
@@ -433,7 +433,7 @@ def main(server, eventHandler, params):
                 buildinfohelper.store_dependency_information(event)
                 continue
 
-            logger.warn("Unknown event: %s", event)
+            logger.warning("Unknown event: %s", event)
             return_value += 1
 
         except EnvironmentError as ioerror:
@@ -441,7 +441,22 @@ def main(server, eventHandler, params):
             if ioerror.args[0] == 4:
                 pass
         except KeyboardInterrupt:
-            main.shutdown = 1
+            if params.observe_only:
+                print("\nKeyboard Interrupt, exiting observer...")
+                main.shutdown = 2
+            if not params.observe_only and main.shutdown == 1:
+                print("\nSecond Keyboard Interrupt, stopping...\n")
+                _, error = server.runCommand(["stateForceShutdown"])
+                if error:
+                    logger.error("Unable to cleanly stop: %s" % error)
+            if not params.observe_only and main.shutdown == 0:
+                print("\nKeyboard Interrupt, closing down...\n")
+                interrupted = True
+                _, error = server.runCommand(["stateShutdown"])
+                if error:
+                    logger.error("Unable to cleanly shutdown: %s" % error)
+            buildinfohelper.cancel_cli_build()
+            main.shutdown = main.shutdown + 1
         except Exception as e:
             # print errors to log
             import traceback
@@ -461,5 +476,5 @@ def main(server, eventHandler, params):
     if interrupted and return_value == 0:
         return_value += 1
 
-    logger.warn("Return value is %d", return_value)
+    logger.warning("Return value is %d", return_value)
     return return_value

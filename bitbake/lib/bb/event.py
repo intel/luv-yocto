@@ -24,10 +24,7 @@ BitBake build tools.
 
 import os, sys
 import warnings
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
+import pickle
 import logging
 import atexit
 import traceback
@@ -72,11 +69,16 @@ _catchall_handlers = {}
 _eventfilter = None
 _uiready = False
 
+if hasattr(__builtins__, '__setitem__'):
+    builtins = __builtins__
+else:
+    builtins = __builtins__.__dict__
+
 def execute_handler(name, handler, event, d):
     event.data = d
     addedd = False
-    if 'd' not in __builtins__:
-        __builtins__['d'] = d
+    if 'd' not in builtins:
+        builtins['d'] = d
         addedd = True
     try:
         ret = handler(event)
@@ -94,7 +96,7 @@ def execute_handler(name, handler, event, d):
     finally:
         del event.data
         if addedd:
-            del __builtins__['d']
+            del builtins['d']
 
 def fire_class_handlers(event, d):
     if isinstance(event, logging.LogRecord):
@@ -102,7 +104,7 @@ def fire_class_handlers(event, d):
 
     eid = str(event.__class__)[8:-2]
     evt_hmap = _event_handler_map.get(eid, {})
-    for name, handler in _handlers.iteritems():
+    for name, handler in list(_handlers.items()):
         if name in _catchall_handlers or name in evt_hmap:
             if _eventfilter:
                 if not _eventfilter(name, handler, event, d):
@@ -187,7 +189,7 @@ def register(name, handler, mask=None, filename=None, lineno=None):
 
     if handler is not None:
         # handle string containing python code
-        if isinstance(handler, basestring):
+        if isinstance(handler, str):
             tmp = "def %s(e):\n%s" % (name, handler)
             try:
                 code = bb.methodpool.compile_cache(tmp)
@@ -224,6 +226,13 @@ def register(name, handler, mask=None, filename=None, lineno=None):
 def remove(name, handler):
     """Remove an Event handler"""
     _handlers.pop(name)
+
+def get_handlers():
+    return _handlers
+
+def set_handlers(handlers):
+    global _handlers
+    _handlers = handlers
 
 def set_eventfilter(func):
     global _eventfilter
@@ -605,8 +614,9 @@ class LogHandler(logging.Handler):
             if hasattr(tb, 'tb_next'):
                 tb = list(bb.exceptions.extract_traceback(tb, context=3))
             # Need to turn the value into something the logging system can pickle
-            value = str(value)
             record.bb_exc_info = (etype, value, tb)
+            record.bb_exc_formatted = bb.exceptions.format_exception(etype, value, tb, limit=5)
+            value = str(value)
             record.exc_info = None
         fire(record, None)
 

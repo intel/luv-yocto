@@ -22,7 +22,7 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-from __future__ import print_function
+
 import sys, os, glob, os.path, re, time
 import atexit
 import itertools
@@ -30,13 +30,13 @@ import logging
 import multiprocessing
 import sre_constants
 import threading
-from cStringIO import StringIO
+from io import StringIO
 from contextlib import closing
 from functools import wraps
 from collections import defaultdict
 import bb, bb.exceptions, bb.command
 from bb import utils, data, parse, event, cache, providers, taskdata, runqueue, build
-import Queue
+import queue
 import signal
 import subprocess
 import errno
@@ -65,7 +65,7 @@ class CollectionError(bb.BBHandledException):
     """
 
 class state:
-    initial, parsing, running, shutdown, forceshutdown, stopped, error = range(7)
+    initial, parsing, running, shutdown, forceshutdown, stopped, error = list(range(7))
 
     @classmethod
     def get_name(cls, code):
@@ -93,7 +93,7 @@ class SkippedPackage:
 
 
 class CookerFeatures(object):
-    _feature_list = [HOB_EXTRA_CACHES, SEND_DEPENDS_TREE, BASEDATASTORE_TRACKING, SEND_SANITYEVENTS] = range(4)
+    _feature_list = [HOB_EXTRA_CACHES, BASEDATASTORE_TRACKING, SEND_SANITYEVENTS] = list(range(3))
 
     def __init__(self):
         self._features=set()
@@ -110,8 +110,8 @@ class CookerFeatures(object):
     def __iter__(self):
         return self._features.__iter__()
 
-    def next(self):
-        return self._features.next()
+    def __next__(self):
+        return next(self._features)
 
 
 #============================================================================#
@@ -360,14 +360,8 @@ class BBCooker:
                 # set our handler's event processor
                 event = EventWriter(self)       # self is the cooker here
 
-
-            # set up cooker features for this mock UI handler
-
-            # we need to write the dependency tree in the log
-            self.featureset.setFeature(CookerFeatures.SEND_DEPENDS_TREE)
             # register the log file writer as UI Handler
             bb.event.register_UIHhandler(EventLogWriteHandler())
-
 
         #
         # Copy of the data store which has been expanded.
@@ -629,9 +623,7 @@ class BBCooker:
 
             taskdata, runlist, pkgs_to_build = self.buildTaskData(pkgs_to_build, None, self.configuration.abort, allowincomplete=True)
 
-            targetid = taskdata.getbuild_id(pkgs_to_build[0])
-            fnid = taskdata.build_targets[targetid][0]
-            fn = taskdata.fn_index[fnid]
+            fn = taskdata.build_targets[pkgs_to_build[0]][0]
         else:
             envdata = self.data
 
@@ -656,7 +648,7 @@ class BBCooker:
         # emit the metadata which isnt valid shell
         data.expandKeys(envdata)
         for e in envdata.keys():
-            if data.getVarFlag( e, 'python', envdata ):
+            if envdata.getVarFlag(e, 'func', False) and envdata.getVarFlag(e, 'python', False):
                 logger.plain("\npython %s () {\n%s}\n", e, envdata.getVar(e, False))
 
 
@@ -720,7 +712,7 @@ class BBCooker:
 
 
     def buildDependTree(self, rq, taskdata):
-        seen_fnids = []
+        seen_fns = []
         depend_tree = {}
         depend_tree["depends"] = {}
         depend_tree["tdepends"] = {}
@@ -732,16 +724,15 @@ class BBCooker:
         depend_tree['providermap'] = {}
         depend_tree["layer-priorities"] = self.recipecache.bbfile_config_priorities
 
-        for name, fn in taskdata.get_providermap().iteritems():
+        for name, fn in list(taskdata.get_providermap().items()):
             pn = self.recipecache.pkg_fn[fn]
             if name != pn:
                 version = "%s:%s-%s" % self.recipecache.pkg_pepvpr[fn]
                 depend_tree['providermap'][name] = (pn, version)
 
-        for task in xrange(len(rq.rqdata.runq_fnid)):
-            taskname = rq.rqdata.runq_task[task]
-            fnid = rq.rqdata.runq_fnid[task]
-            fn = taskdata.fn_index[fnid]
+        for tid in rq.rqdata.runtaskentries:
+            taskname = bb.runqueue.taskname_from_tid(tid)
+            fn = bb.runqueue.fn_from_tid(tid)
             pn = self.recipecache.pkg_fn[fn]
             version  = "%s:%s-%s" % self.recipecache.pkg_pepvpr[fn]
             if pn not in depend_tree["pn"]:
@@ -762,24 +753,24 @@ class BBCooker:
                     depend_tree["pn"][pn][ei] = vars(self.recipecache)[ei][fn]
 
 
-            for dep in rq.rqdata.runq_depends[task]:
-                depfn = taskdata.fn_index[rq.rqdata.runq_fnid[dep]]
+            for dep in rq.rqdata.runtaskentries[tid].depends:
+                depfn = bb.runqueue.fn_from_tid(dep)
                 deppn = self.recipecache.pkg_fn[depfn]
-                dotname = "%s.%s" % (pn, rq.rqdata.runq_task[task])
+                dotname = "%s.%s" % (pn, bb.runqueue.taskname_from_tid(dep))
                 if not dotname in depend_tree["tdepends"]:
                     depend_tree["tdepends"][dotname] = []
-                depend_tree["tdepends"][dotname].append("%s.%s" % (deppn, rq.rqdata.runq_task[dep]))
-            if fnid not in seen_fnids:
-                seen_fnids.append(fnid)
+                depend_tree["tdepends"][dotname].append("%s.%s" % (deppn, bb.runqueue.taskname_from_tid(dep)))
+            if fn not in seen_fns:
+                seen_fns.append(fn)
                 packages = []
 
                 depend_tree["depends"][pn] = []
-                for dep in taskdata.depids[fnid]:
-                    depend_tree["depends"][pn].append(taskdata.build_names_index[dep])
+                for dep in taskdata.depids[fn]:
+                    depend_tree["depends"][pn].append(dep)
 
                 depend_tree["rdepends-pn"][pn] = []
-                for rdep in taskdata.rdepids[fnid]:
-                    depend_tree["rdepends-pn"][pn].append(taskdata.run_names_index[rdep])
+                for rdep in taskdata.rdepids[fn]:
+                    depend_tree["rdepends-pn"][pn].append(rdep)
 
                 rdepends = self.recipecache.rundeps[fn]
                 for package in rdepends:
@@ -811,12 +802,8 @@ class BBCooker:
         Create a dependency tree of pkgs_to_build, returning the data.
         """
         _, taskdata = self.prepareTreeData(pkgs_to_build, task)
-        tasks_fnid = []
-        if len(taskdata.tasks_name) != 0:
-            for task in xrange(len(taskdata.tasks_name)):
-                tasks_fnid.append(taskdata.tasks_fnid[task])
 
-        seen_fnids = []
+        seen_fns = []
         depend_tree = {}
         depend_tree["depends"] = {}
         depend_tree["pn"] = {}
@@ -831,9 +818,8 @@ class BBCooker:
                 cachefields = getattr(cache_class, 'cachefields', [])
                 extra_info = extra_info + cachefields
 
-        for task in xrange(len(tasks_fnid)):
-            fnid = tasks_fnid[task]
-            fn = taskdata.fn_index[fnid]
+        for tid in taskdata.taskentries:
+            fn = bb.runqueue.fn_from_tid(tid)
             pn = self.recipecache.pkg_fn[fn]
 
             if pn not in depend_tree["pn"]:
@@ -849,33 +835,27 @@ class BBCooker:
                 for ei in extra_info:
                     depend_tree["pn"][pn][ei] = vars(self.recipecache)[ei][fn]
 
-            if fnid not in seen_fnids:
-                seen_fnids.append(fnid)
+            if fn not in seen_fns:
+                seen_fns.append(fn)
 
                 depend_tree["depends"][pn] = []
-                for dep in taskdata.depids[fnid]:
-                    item = taskdata.build_names_index[dep]
+                for item in taskdata.depids[fn]:
                     pn_provider = ""
-                    targetid = taskdata.getbuild_id(item)
-                    if targetid in taskdata.build_targets and taskdata.build_targets[targetid]:
-                        id = taskdata.build_targets[targetid][0]
-                        fn_provider = taskdata.fn_index[id]
+                    if dep in taskdata.build_targets and taskdata.build_targets[dep]:
+                        fn_provider = taskdata.build_targets[dep][0]
                         pn_provider = self.recipecache.pkg_fn[fn_provider]
                     else:
                         pn_provider = item
                     depend_tree["depends"][pn].append(pn_provider)
 
                 depend_tree["rdepends-pn"][pn] = []
-                for rdep in taskdata.rdepids[fnid]:
-                    item = taskdata.run_names_index[rdep]
+                for rdep in taskdata.rdepids[fn]:
                     pn_rprovider = ""
-                    targetid = taskdata.getrun_id(item)
-                    if targetid in taskdata.run_targets and taskdata.run_targets[targetid]:
-                        id = taskdata.run_targets[targetid][0]
-                        fn_rprovider = taskdata.fn_index[id]
+                    if rdep in taskdata.run_targets and taskdata.run_targets[rdep]:
+                        fn_rprovider = taskdata.run_targets[rdep][0]
                         pn_rprovider = self.recipecache.pkg_fn[fn_rprovider]
                     else:
-                        pn_rprovider = item
+                        pn_rprovider = rdep
                     depend_tree["rdepends-pn"][pn].append(pn_rprovider)
 
                 depend_tree["rdepends-pkg"].update(rdepends)
@@ -900,8 +880,8 @@ class BBCooker:
         depgraph = self.generateTaskDepTreeData(pkgs_to_build, task)
 
         # Prints a flattened form of package-depends below where subpackages of a package are merged into the main pn
-        depends_file = file('pn-depends.dot', 'w' )
-        buildlist_file = file('pn-buildlist', 'w' )
+        depends_file = open('pn-depends.dot', 'w' )
+        buildlist_file = open('pn-buildlist', 'w' )
         print("digraph depends {", file=depends_file)
         for pn in depgraph["pn"]:
             fn = depgraph["pn"][pn]["filename"]
@@ -917,9 +897,10 @@ class BBCooker:
             for rdepend in depgraph["rdepends-pn"][pn]:
                 print('"%s" -> "%s" [style=dashed]' % (pn, rdepend), file=depends_file)
         print("}", file=depends_file)
+        depends_file.close()
         logger.info("PN dependencies saved to 'pn-depends.dot'")
 
-        depends_file = file('package-depends.dot', 'w' )
+        depends_file = open('package-depends.dot', 'w' )
         print("digraph depends {", file=depends_file)
         for package in depgraph["packages"]:
             pn = depgraph["packages"][package]["pn"]
@@ -938,9 +919,10 @@ class BBCooker:
             for rdepend in depgraph["rrecs-pkg"][package]:
                 print('"%s" -> "%s" [style=dotted]' % (package, rdepend), file=depends_file)
         print("}", file=depends_file)
+        depends_file.close()
         logger.info("Package dependencies saved to 'package-depends.dot'")
 
-        tdepends_file = file('task-depends.dot', 'w' )
+        tdepends_file = open('task-depends.dot', 'w' )
         print("digraph depends {", file=tdepends_file)
         for task in depgraph["tdepends"]:
             (pn, taskname) = task.rsplit(".", 1)
@@ -950,13 +932,14 @@ class BBCooker:
             for dep in depgraph["tdepends"][task]:
                 print('"%s" -> "%s"' % (task, dep), file=tdepends_file)
         print("}", file=tdepends_file)
+        tdepends_file.close()
         logger.info("Task dependencies saved to 'task-depends.dot'")
 
     def show_appends_with_no_recipes(self):
         # Determine which bbappends haven't been applied
 
         # First get list of recipes, including skipped
-        recipefns = self.recipecache.pkg_fn.keys()
+        recipefns = list(self.recipecache.pkg_fn.keys())
         recipefns.extend(self.skiplist.keys())
 
         # Work out list of bbappends that have been applied
@@ -1155,7 +1138,7 @@ class BBCooker:
                         deplist = bb.utils.explode_dep_versions2(deps)
                     except bb.utils.VersionStringException as vse:
                         bb.fatal('Error parsing LAYERDEPENDS_%s: %s' % (c, str(vse)))
-                    for dep, oplist in deplist.iteritems():
+                    for dep, oplist in list(deplist.items()):
                         if dep in collection_list:
                             for opstr in oplist:
                                 layerver = self.data.getVar("LAYERVERSION_%s" % dep, True)
@@ -1353,7 +1336,7 @@ class BBCooker:
                 return False
 
             if not retval:
-                bb.event.fire(bb.event.BuildCompleted(len(rq.rqdata.runq_fnid), buildname, item, failures, interrupted), self.expanded_data)
+                bb.event.fire(bb.event.BuildCompleted(len(rq.rqdata.runtaskentries), buildname, item, failures, interrupted), self.expanded_data)
                 self.command.finishAsyncCommand(msg)
                 return False
             if retval is True:
@@ -1389,7 +1372,7 @@ class BBCooker:
                 return False
 
             if not retval:
-                bb.event.fire(bb.event.BuildCompleted(len(rq.rqdata.runq_fnid), buildname, targets, failures, interrupted), self.data)
+                bb.event.fire(bb.event.BuildCompleted(len(rq.rqdata.runtaskentries), buildname, targets, failures, interrupted), self.data)
                 self.command.finishAsyncCommand(msg)
                 return False
             if retval is True:
@@ -1579,7 +1562,7 @@ class BBCooker:
         ignore = (self.expanded_data.getVar("ASSUME_PROVIDED", True) or "").split()
         for pkg in pkgs_to_build:
             if pkg in ignore:
-                parselog.warn("Explicit target \"%s\" is in ASSUME_PROVIDED, ignoring" % pkg)
+                parselog.warning("Explicit target \"%s\" is in ASSUME_PROVIDED, ignoring" % pkg)
 
         if 'world' in pkgs_to_build:
             bb.providers.buildWorldTargetList(self.recipecache)
@@ -1588,7 +1571,7 @@ class BBCooker:
                 pkgs_to_build.append(t)
 
         if 'universe' in pkgs_to_build:
-            parselog.warn("The \"universe\" target is only intended for testing and may produce errors.")
+            parselog.warning("The \"universe\" target is only intended for testing and may produce errors.")
             parselog.debug(1, "collating packages for \"universe\"")
             pkgs_to_build.remove('universe')
             for t in self.recipecache.universe_target:
@@ -1870,7 +1853,7 @@ class CookerCollectFiles(object):
         for collection, pattern, regex, _ in self.bbfile_config_priorities:
             if regex in unmatched:
                 if d.getVar('BBFILE_PATTERN_IGNORE_EMPTY_%s' % collection, True) != '1':
-                    collectlog.warn("No bb files matched BBFILE_PATTERN_%s '%s'" % (collection, pattern))
+                    collectlog.warning("No bb files matched BBFILE_PATTERN_%s '%s'" % (collection, pattern))
 
         return priorities
 
@@ -1891,7 +1874,7 @@ class Feeder(multiprocessing.Process):
         while True:
             try:
                 quit = self.quit.get_nowait()
-            except Queue.Empty:
+            except queue.Empty:
                 pass
             else:
                 if quit == 'cancel':
@@ -1905,7 +1888,7 @@ class Feeder(multiprocessing.Process):
 
             try:
                 self.to_parsers.put(job, timeout=0.5)
-            except Queue.Full:
+            except queue.Full:
                 self.jobs.insert(0, job)
                 continue
 
@@ -1945,7 +1928,7 @@ class Parser(multiprocessing.Process):
         while True:
             try:
                 self.quit.get_nowait()
-            except Queue.Empty:
+            except queue.Empty:
                 pass
             else:
                 self.results.cancel_join_thread()
@@ -1956,7 +1939,7 @@ class Parser(multiprocessing.Process):
             else:
                 try:
                     job = self.jobs.get(timeout=0.25)
-                except Queue.Empty:
+                except queue.Empty:
                     continue
 
                 if job is None:
@@ -1965,7 +1948,7 @@ class Parser(multiprocessing.Process):
 
             try:
                 self.results.put(result, timeout=0.25)
-            except Queue.Full:
+            except queue.Full:
                 pending.append(result)
 
     def parse(self, filename, appends, caches_array):
@@ -2023,7 +2006,7 @@ class CookerParser(object):
             else:
                 self.fromcache.append((filename, appends))
         self.toparse = self.total - len(self.fromcache)
-        self.progress_chunk = max(self.toparse / 100, 1)
+        self.progress_chunk = int(max(self.toparse / 100, 1))
 
         self.num_processes = min(int(self.cfgdata.getVar("BB_NUMBER_PARSE_THREADS", True) or
                                  multiprocessing.cpu_count()), len(self.willparse))
@@ -2118,7 +2101,7 @@ class CookerParser(object):
 
             try:
                 result = self.result_queue.get(timeout=0.25)
-            except Queue.Empty:
+            except queue.Empty:
                 pass
             else:
                 value = result[1]
@@ -2131,7 +2114,7 @@ class CookerParser(object):
         result = []
         parsed = None
         try:
-            parsed, result = self.results.next()
+            parsed, result = next(self.results)
         except StopIteration:
             self.shutdown()
             return False
@@ -2153,15 +2136,18 @@ class CookerParser(object):
             return False
         except bb.data_smart.ExpansionError as exc:
             self.error += 1
-            _, value, _ = sys.exc_info()
-            logger.error('ExpansionError during parsing %s: %s', value.recipe, str(exc))
+            bbdir = os.path.dirname(__file__) + os.sep
+            etype, value, _ = sys.exc_info()
+            tb = list(itertools.dropwhile(lambda e: e.filename.startswith(bbdir), exc.traceback))
+            logger.error('ExpansionError during parsing %s', value.recipe,
+                         exc_info=(etype, value, tb))
             self.shutdown(clean=False)
             return False
         except Exception as exc:
             self.error += 1
             etype, value, tb = sys.exc_info()
             if hasattr(value, "recipe"):
-                logger.error('Unable to parse %s', value.recipe,
+                logger.error('Unable to parse %s' % value.recipe,
                             exc_info=(etype, value, exc.traceback))
             else:
                 # Most likely, an exception occurred during raising an exception

@@ -35,6 +35,7 @@ SRCREV_FORMAT ?= "meta_machine"
 #   2: report options that are not hardware related, but set by a BSP
 KCONF_AUDIT_LEVEL ?= "1"
 KCONF_BSP_AUDIT_LEVEL ?= "0"
+KMETA_AUDIT ?= "yes"
 
 LINUX_VERSION_EXTENSION ?= "-yocto-${LINUX_KERNEL_TYPE}"
 
@@ -52,6 +53,6 @@ do_install_append(){
 }
 
 # extra tasks
-addtask kernel_link_vmlinux after do_compile before do_install
+addtask kernel_link_images after do_compile before do_install
 addtask validate_branches before do_patch after do_kernel_checkout
 addtask kernel_configcheck after do_configure before do_compile

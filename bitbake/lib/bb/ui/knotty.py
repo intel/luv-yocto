@@ -22,7 +22,7 @@ from __future__ import division
 
 import os
 import sys
-import xmlrpclib
+import xmlrpc.client as xmlrpclib
 import logging
 import progressbar
 import signal
@@ -184,8 +184,9 @@ class TerminalFilter(object):
     def clearFooter(self):
         if self.footer_present:
             lines = self.footer_present
-            sys.stdout.write(self.curses.tparm(self.cuu, lines))
-            sys.stdout.write(self.curses.tparm(self.ed))
+            sys.stdout.buffer.write(self.curses.tparm(self.cuu, lines))
+            sys.stdout.buffer.write(self.curses.tparm(self.ed))
+            sys.stdout.flush()
         self.footer_present = False
 
     def updateFooter(self):
@@ -278,6 +279,7 @@ def main(server, eventHandler, params, tf = TerminalFilter):
         server.terminateServer()
         return
 
+    consolelog = None
     if consolelogfile and not params.options.show_environment and not params.options.show_versions:
         bb.utils.mkdirhier(os.path.dirname(consolelogfile))
         conlogformat = bb.msg.BBLogFormatter(format_str)
@@ -350,7 +352,7 @@ def main(server, eventHandler, params, tf = TerminalFilter):
                         tries -= 1
                     if tries:
                         continue
-                logger.warn(event.msg)
+                logger.warning(event.msg)
                 continue
 
             if isinstance(event, logging.LogRecord):
@@ -377,7 +379,7 @@ def main(server, eventHandler, params, tf = TerminalFilter):
                 continue
 
             if isinstance(event, bb.build.TaskFailedSilent):
-                logger.warn("Logfile for failed setscene task is %s" % event.logfile)
+                logger.warning("Logfile for failed setscene task is %s" % event.logfile)
                 continue
             if isinstance(event, bb.build.TaskFailed):
                 return_value = 1
@@ -509,8 +511,8 @@ def main(server, eventHandler, params, tf = TerminalFilter):
                 continue
 
             if isinstance(event, bb.runqueue.sceneQueueTaskFailed):
-                logger.warn("Setscene task %s (%s) failed with exit code '%s' - real task will be run instead",
-                             event.taskid, event.taskstring, event.exitcode)
+                logger.warning("Setscene task %s (%s) failed with exit code '%s' - real task will be run instead",
+                               event.taskid, event.taskstring, event.exitcode)
                 continue
 
             if isinstance(event, bb.event.DepTreeGenerated):
@@ -567,6 +569,7 @@ def main(server, eventHandler, params, tf = TerminalFilter):
             main.shutdown = 2
             return_value = 1
     try:
+        termfilter.clearFooter()
         summary = ""
         if taskfailures:
             summary += pluralise("\nSummary: %s task failed:",
@@ -590,5 +593,9 @@ def main(server, eventHandler, params, tf = TerminalFilter):
         import errno
         if e.errno == errno.EPIPE:
             pass
+
+    if consolelog:
+        logger.removeHandler(consolelog)
+        consolelog.close()
 
     return return_value

@@ -19,6 +19,7 @@ SRC_URI = "http://downloads.yoctoproject.org/mirror/sources/DirectFB-${PV}.tar.g
            file://compar_fn_t.patch \
            file://union-sigval.patch \
            file://use-PTHREAD_MUTEX_RECURSIVE.patch \
+           file://fix-client-gfx_state-initialisation.patch \
           "
 
 S = "${WORKDIR}/DirectFB-${PV}"
@@ -26,7 +27,7 @@ S = "${WORKDIR}/DirectFB-${PV}"
 LDFLAGS_append =" -lts -lm"
 
 # Workaround for linking issues seen with armv7a + gold
-LDFLAGS_append_arm = "${@base_contains('DISTRO_FEATURES', 'ld-is-gold', ' -fuse-ld=bfd ', '', d)}"
+LDFLAGS_append_arm = "${@bb.utils.contains('DISTRO_FEATURES', 'ld-is-gold', ' -fuse-ld=bfd ', '', d)}"
 
 BINCONFIG = "${bindir}/directfb-config"
 

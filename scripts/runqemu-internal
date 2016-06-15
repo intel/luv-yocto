@@ -491,13 +491,32 @@ config_qemush4() {
 config_qemuzynq() {
     set_mem_size 1024
     QEMU=qemu-system-arm
-    QEMU_SYSTEM_OPTIONS="$QEMU_NETWORK_CMD -M xilinx-zynq-a9 -serial null -serial mon:stdio -dtb $KERNEL-$MACHINE.dtb"
+    QEMU_NETWORK_CMD="-net nic -net nic $QEMU_TAP_CMD"
+    QEMU_SYSTEM_OPTIONS="$QEMU_NETWORK_CMD -M xilinx-zynq-a9 -serial null -serial mon:stdio -nographic -dtb $KERNEL-$MACHINE.dtb"
     # zynq serial ports are named 'ttyPS0' and 'ttyPS1', fixup the default values
     SCRIPT_KERNEL_OPT=$(echo "$SCRIPT_KERNEL_OPT" | sed 's/console=ttyS/console=ttyPS/g')
     if [ "${FSTYPE:0:3}" = "ext" -o "${FSTYPE:0:4}" = "cpio" ]; then
         KERNCMDLINE="earlyprintk root=/dev/ram rw $KERNEL_NETWORK_CMD mem=$QEMU_MEMORY"
         QEMUOPTIONS="$QEMU_SYSTEM_OPTIONS -initrd $ROOTFS"
     fi
+}
+
+config_qemuzynqmp() {
+    set_mem_size 2048
+    QEMU=qemu-system-aarch64
+
+    export QEMU_AUDIO_DRV="none"
+    if [ "x$SERIALSTDIO" = "x" ] ; then
+        QEMU_UI_OPTIONS="-nographic"
+    else
+        QEMU_UI_OPTIONS=""
+    fi
+
+    # Networking and system options required for QEMU ZynqMP machine
+    QEMU_NETWORK_CMD="-net nic -net nic -net nic -net nic -net user,net=10.10.70.0,dhcpstart=10.10.70.1,host=10.10.70.101"
+    QEMU_SYSTEM_OPTIONS="$QEMU_NETWORK_CMD -M xlnx-ep108 -serial mon:stdio -dtb $DEPLOY_DIR_IMAGE/${QEMU_DTB}.dtb"
+
+    QEMUOPTIONS="$QEMU_SYSTEM_OPTIONS $QEMU_UI_OPTIONS -tftp $DEPLOY_DIR_IMAGE"
 }
 
 config_qemumicroblaze() {
@@ -534,6 +553,9 @@ case "$MACHINE" in
         ;;
     "qemuzynq")
         config_qemuzynq
+        ;;
+    "qemuzynqmp")
+        config_qemuzynqmp
         ;;
     "qemumicroblaze")
         config_qemumicroblaze

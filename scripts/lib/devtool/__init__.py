@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Development tool - utility functions for plugins
 #
@@ -59,7 +59,7 @@ def exec_build_env_command(init_path, builddir, cmd, watch=False, **options):
 def exec_watch(cmd, **options):
     """Run program with stdout shown on sys.stdout"""
     import bb
-    if isinstance(cmd, basestring) and not "shell" in options:
+    if isinstance(cmd, str) and not "shell" in options:
         options["shell"] = True
 
     process = subprocess.Popen(
@@ -69,6 +69,7 @@ def exec_watch(cmd, **options):
     buf = ''
     while True:
         out = process.stdout.read(1)
+        out = out.decode('utf-8')
         if out:
             sys.stdout.write(out)
             sys.stdout.flush()
@@ -155,7 +156,7 @@ def check_workspace_recipe(workspace, pn, checksrc=True, bbclassextend=False):
 
     workspacepn = pn
 
-    for recipe, value in workspace.iteritems():
+    for recipe, value in workspace.items():
         if recipe == pn:
             break
         if bbclassextend:

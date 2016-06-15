@@ -20,7 +20,7 @@ Usage in the recipe:
 
 import os
 import sys
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import json
 import subprocess
 import signal
@@ -196,9 +196,9 @@ class Npm(FetchMethod):
                 optdepsfound[dep] = dependencies[dep]
             else:
                 depsfound[dep] = dependencies[dep]
-        for dep, version in optdepsfound.iteritems():
+        for dep, version in optdepsfound.items():
             self._getdependencies(dep, data[pkg]['deps'], version, d, ud, optional=True)
-        for dep, version in depsfound.iteritems():
+        for dep, version in depsfound.items():
             self._getdependencies(dep, data[pkg]['deps'], version, d, ud)
 
     def _getshrinkeddependencies(self, pkg, data, version, d, ud, lockdown, manifest):
@@ -251,14 +251,14 @@ class Npm(FetchMethod):
             with open(shwrf) as datafile:
                 shrinkobj = json.load(datafile)
         except:
-            logger.warn('Missing shrinkwrap file in NPM_SHRINKWRAP for %s, this will lead to unreliable builds!' % ud.pkgname)
+            logger.warning('Missing shrinkwrap file in NPM_SHRINKWRAP for %s, this will lead to unreliable builds!' % ud.pkgname)
         lckdf = d.getVar('NPM_LOCKDOWN', True)
         logger.debug(2, "NPM lockdown file is %s" % lckdf)
         try:
             with open(lckdf) as datafile:
                 lockdown = json.load(datafile)
         except:
-            logger.warn('Missing lockdown file in NPM_LOCKDOWN for %s, this will lead to unreproducible builds!' % ud.pkgname)
+            logger.warning('Missing lockdown file in NPM_LOCKDOWN for %s, this will lead to unreproducible builds!' % ud.pkgname)
 
         if ('name' not in shrinkobj):
             self._getdependencies(ud.pkgname, jsondepobj, ud.version, d, ud)

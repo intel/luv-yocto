@@ -4,6 +4,7 @@ def update_useradd_static_config(d):
     import argparse
     import itertools
     import re
+    import errno
 
     class myArgumentParser( argparse.ArgumentParser ):
         def _print_message(self, message, file=None):
@@ -30,19 +31,22 @@ def update_useradd_static_config(d):
         are set)."""
         id_table = dict()
         for conf in file_list.split():
-            if os.path.exists(conf):
-                f = open(conf, "r")
-                for line in f:
-                    if line.startswith('#'):
-                        continue
-                    # Make sure there always are at least exp_fields elements in
-                    # the field list. This allows for leaving out trailing
-                    # colons in the files.
-                    fields = list_extend(line.rstrip().split(":"), exp_fields)
-                    if fields[0] not in id_table:
-                        id_table[fields[0]] = fields
-                    else:
-                        id_table[fields[0]] = list(itertools.imap(lambda x, y: x or y, fields, id_table[fields[0]]))
+            try:
+                with open(conf, "r") as f:
+                    for line in f:
+                        if line.startswith('#'):
+                            continue
+                        # Make sure there always are at least exp_fields
+                        # elements in the field list. This allows for leaving
+                        # out trailing colons in the files.
+                        fields = list_extend(line.rstrip().split(":"), exp_fields)
+                        if fields[0] not in id_table:
+                            id_table[fields[0]] = fields
+                        else:
+                            id_table[fields[0]] = list(itertools.imap(lambda x, y: x or y, fields, id_table[fields[0]]))
+            except IOError as e:
+                if e.errno == errno.ENOENT:
+                    pass
 
         return id_table
 
@@ -93,7 +97,7 @@ def update_useradd_static_config(d):
             if not param:
                 continue
             try:
-                uaargs = parser.parse_args(re.split('''[ \t]*(?=(?:[^'"]|'[^']*'|"[^"]*")*$)''', param))
+                uaargs = parser.parse_args(re.split('''[ \t]+(?=(?:[^'"]|'[^']*'|"[^"]*")*$)''', param))
             except:
                 raise bb.build.FuncFailed("%s: Unable to parse arguments for USERADD_PARAM_%s: '%s'" % (d.getVar('PN', True), pkg, param))
 
@@ -227,7 +231,7 @@ def update_useradd_static_config(d):
                 continue
             try:
                 # If we're processing multiple lines, we could have left over values here...
-                gaargs = parser.parse_args(re.split('''[ \t]*(?=(?:[^'"]|'[^']*'|"[^"]*")*$)''', param))
+                gaargs = parser.parse_args(re.split('''[ \t]+(?=(?:[^'"]|'[^']*'|"[^"]*")*$)''', param))
             except:
                 raise bb.build.FuncFailed("%s: Unable to parse arguments for GROUPADD_PARAM_%s: '%s'" % (d.getVar('PN', True), pkg, param))
 

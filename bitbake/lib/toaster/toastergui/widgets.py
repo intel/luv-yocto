@@ -29,6 +29,8 @@ from django.core.paginator import Paginator, EmptyPage
 from django.db.models import Q
 from orm.models import Project, ProjectLayer, Layer_Version
 from django.template import Context, Template
+from django.template import VariableDoesNotExist
+from django.template import TemplateSyntaxError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.exceptions import FieldError
 from django.conf.urls import url, patterns
@@ -38,13 +40,20 @@ import json
 import collections
 import operator
 import re
-import urllib
+
+try:
+    from urllib import unquote_plus
+except ImportError:
+    from urllib.parse import unquote_plus
 
 import logging
 logger = logging.getLogger("toaster")
 
-from toastergui.views import objtojson
 from toastergui.tablefilter import TableFilterMap
+
+
+class NoFieldOrDataName(Exception):
+    pass
 
 class ToasterTable(TemplateView):
     def __init__(self, *args, **kwargs):
@@ -63,14 +72,9 @@ class ToasterTable(TemplateView):
         self.empty_state = "Sorry - no data found"
         self.default_orderby = ""
 
-        # add the "id" column, undisplayable, by default
-        self.add_column(title="Id",
-                        displayable=False,
-                        orderable=True,
-                        field_name="id")
-
     # prevent HTTP caching of table data
-    @cache_control(must_revalidate=True, max_age=0, no_store=True, no_cache=True)
+    @cache_control(must_revalidate=True,
+                   max_age=0, no_store=True, no_cache=True)
     def dispatch(self, *args, **kwargs):
         return super(ToasterTable, self).dispatch(*args, **kwargs)
 
@@ -78,9 +82,9 @@ class ToasterTable(TemplateView):
         context = super(ToasterTable, self).get_context_data(**kwargs)
         context['title'] = self.title
         context['table_name'] =  type(self).__name__.lower()
+        context['empty_state'] = self.empty_state
 
         return context
-
 
     def get(self, request, *args, **kwargs):
         if request.GET.get('format', None) == 'json':
@@ -102,8 +106,6 @@ class ToasterTable(TemplateView):
         return super(ToasterTable, self).get(request, *args, **kwargs)
 
     def get_filter_info(self, request, **kwargs):
-        data = None
-
         self.setup_filters(**kwargs)
 
         search = request.GET.get("search", None)
@@ -117,13 +119,18 @@ class ToasterTable(TemplateView):
                           cls=DjangoJSONEncoder)
 
     def setup_columns(self, *args, **kwargs):
-        """ function to implement in the subclass which sets up the columns """
+        """ function to implement in the subclass which sets up
+        the columns """
         pass
+
     def setup_filters(self, *args, **kwargs):
-        """ function to implement in the subclass which sets up the filters """
+        """ function to implement in the subclass which sets up the
+        filters """
         pass
+
     def setup_queryset(self, *args, **kwargs):
-        """ function to implement in the subclass which sets up the queryset"""
+        """ function to implement in the subclass which sets up the
+        queryset"""
         pass
 
     def add_filter(self, table_filter):
@@ -137,7 +144,6 @@ class ToasterTable(TemplateView):
     def add_column(self, title="", help_text="",
                    orderable=False, hideable=True, hidden=False,
                    field_name="", filter_name=None, static_data_name=None,
-                   displayable=True, computation=None,
                    static_data_template=None):
         """Add a column to the table.
 
@@ -155,18 +161,15 @@ class ToasterTable(TemplateView):
                 as data
         """
 
-        self.columns.append({'title' : title,
-                             'help_text' : help_text,
-                             'orderable' : orderable,
-                             'hideable' : hideable,
-                             'hidden' : hidden,
-                             'field_name' : field_name,
-                             'filter_name' : filter_name,
+        self.columns.append({'title': title,
+                             'help_text': help_text,
+                             'orderable': orderable,
+                             'hideable': hideable,
+                             'hidden': hidden,
+                             'field_name': field_name,
+                             'filter_name': filter_name,
                              'static_data_name': static_data_name,
-                             'static_data_template': static_data_template,
-                             'displayable': displayable,
-                             'computation': computation,
-                            })
+                             'static_data_template': static_data_template})
 
     def set_column_hidden(self, title, hidden):
         """
@@ -190,8 +193,8 @@ class ToasterTable(TemplateView):
         """Utility function to render the static data template"""
 
         context = {
-          'extra' : self.static_context_extra,
-          'data' : row,
+          'extra': self.static_context_extra,
+          'data': row,
         }
 
         context = Context(context)
@@ -216,7 +219,7 @@ class ToasterTable(TemplateView):
 
         try:
             filter_name, action_name = filters.split(':')
-            action_params = urllib.unquote_plus(filter_value)
+            action_params = unquote_plus(filter_value)
         except ValueError:
             return
 
@@ -241,19 +244,24 @@ class ToasterTable(TemplateView):
 
         if not hasattr(self.queryset.model, 'search_allowed_fields'):
             raise Exception("Search fields aren't defined in the model %s"
-                           % self.queryset.model)
+                            % self.queryset.model)
 
-        search_queries = []
+        search_queries = None
         for st in search_term.split(" "):
-            q_map = [Q(**{field + '__icontains': st})
-                     for field in self.queryset.model.search_allowed_fields]
+            queries = None
+            for field in self.queryset.model.search_allowed_fields:
+                query = Q(**{field + '__icontains': st})
+                if queries:
+                    queries |= query
+                else:
+                    queries = query
 
-            search_queries.append(reduce(operator.or_, q_map))
-
-        search_queries = reduce(operator.and_, search_queries)
+            if search_queries:
+               search_queries &= queries
+            else:
+               search_queries = queries
 
         self.queryset = self.queryset.filter(search_queries)
-
 
     def get_data(self, request, **kwargs):
         """
@@ -262,7 +270,8 @@ class ToasterTable(TemplateView):
 
         filters: filter and action name, e.g. "outcome:build_succeeded"
         filter_value: value to pass to the named filter+action, e.g. "on"
-        (for a toggle filter) or "2015-12-11,2015-12-12" (for a date range filter)
+        (for a toggle filter) or "2015-12-11,2015-12-12"
+        (for a date range filter)
         """
 
         page_num = request.GET.get("page", 1)
@@ -276,12 +285,12 @@ class ToasterTable(TemplateView):
         # Make a unique cache name
         cache_name = self.__class__.__name__
 
-        for key, val in request.GET.iteritems():
+        for key, val in request.GET.items():
             if key == 'nocache':
                 continue
             cache_name = cache_name + str(key) + str(val)
 
-        for key, val in kwargs.iteritems():
+        for key, val in kwargs.items():
             cache_name = cache_name + str(key) + str(val)
 
         # No special chars allowed in the cache name apart from dash
@@ -313,16 +322,16 @@ class ToasterTable(TemplateView):
             page = paginator.page(1)
 
         data = {
-            'total' : self.queryset.count(),
-            'default_orderby' : self.default_orderby,
-            'columns' : self.columns,
-            'rows' : [],
-            'error' : "ok",
+            'total': self.queryset.count(),
+            'default_orderby': self.default_orderby,
+            'columns': self.columns,
+            'rows': [],
+            'error': "ok",
         }
 
         try:
-            for row in page.object_list:
-                #Use collection to maintain the order
+            for model_obj in page.object_list:
+                # Use collection to maintain the order
                 required_data = collections.OrderedDict()
 
                 for col in self.columns:
@@ -330,38 +339,68 @@ class ToasterTable(TemplateView):
                     if not field:
                         field = col['static_data_name']
                     if not field:
-                        raise Exception("Must supply a field_name or static_data_name for column %s.%s" % (self.__class__.__name__,col))
+                        raise NoFieldOrDataName("Must supply a field_name or"
+                                                "static_data_name for column"
+                                                "%s.%s" %
+                                                (self.__class__.__name__, col)
+                                                )
+
                     # Check if we need to process some static data
                     if "static_data_name" in col and col['static_data_name']:
-                        required_data["static:%s" % col['static_data_name']] = self.render_static_data(col['static_data_template'], row)
-
                         # Overwrite the field_name with static_data_name
                         # so that this can be used as the html class name
-
                         col['field_name'] = col['static_data_name']
 
-                    # compute the computation on the raw data if needed
-                    model_data = row
-                    if col['computation']:
-                        model_data = col['computation'](row)
-                    else:
-                        # Traverse to any foriegn key in the object hierachy
-                        for subfield in field.split("__"):
-                            if hasattr(model_data, subfield):
-                                model_data = getattr(model_data, subfield)
-                        # The field could be a function on the model so check
-                        # If it is then call it
-                        if isinstance(model_data, types.MethodType):
-                          model_data = model_data()
+                        try:
+                            # Render the template given
+                            required_data[col['static_data_name']] = \
+                                    self.render_static_data(
+                                        col['static_data_template'], model_obj)
+                        except (TemplateSyntaxError,
+                                VariableDoesNotExist) as e:
+                            logger.error("could not render template code"
+                                         "%s %s %s",
+                                         col['static_data_template'],
+                                         e, self.__class__.__name__)
+                            required_data[col['static_data_name']] =\
+                                '<!--error-->'
 
-                    required_data[col['field_name']] = model_data
+                    else:
+                        # Traverse to any foriegn key in the field
+                        # e.g. recipe__layer_version__name
+                        model_data = None
+
+                        if "__" in field:
+                            for subfield in field.split("__"):
+                                if not model_data:
+                                    # The first iteration is always going to
+                                    # be on the actual model object instance.
+                                    # Subsequent ones are on the result of
+                                    # that. e.g. forieng key objects
+                                    model_data = getattr(model_obj,
+                                                         subfield)
+                                else:
+                                    model_data = getattr(model_data,
+                                                         subfield)
+
+                        else:
+                            model_data = getattr(model_obj,
+                                                 col['field_name'])
+
+                        # We might have a model function as the field so
+                        # call it to return the data needed
+                        if isinstance(model_data, types.MethodType):
+                            model_data = model_data()
+
+                        required_data[col['field_name']] = model_data
 
                 data['rows'].append(required_data)
 
         except FieldError:
             # pass  it to the user - programming-error here
             raise
-        data = json.dumps(data, indent=2, default=objtojson)
+
+        data = json.dumps(data, indent=2, cls=DjangoJSONEncoder)
         cache.set(cache_name, data, 60*30)
 
         return data

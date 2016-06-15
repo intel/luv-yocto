@@ -197,6 +197,11 @@ class BootimgEFIPlugin(SourcePlugin):
         except KeyError:
             msger.error("bootimg-efi requires a loader, none specified")
 
+        startup = os.path.join(bootimg_dir, "startup.nsh")
+        if os.path.exists(startup):
+            cp_cmd = "cp %s %s/" % (startup, hdddir)
+            exec_cmd(cp_cmd, True)
+
         du_cmd = "du -bks %s" % hdddir
         out = exec_cmd(du_cmd)
         blocks = int(out.split()[0])
@@ -210,12 +215,6 @@ class BootimgEFIPlugin(SourcePlugin):
 
         msger.debug("Added %d extra blocks to %s to get to %d total blocks" % \
                     (extra_blocks, part.mountpoint, blocks))
-
-        # Ensure total sectors is an integral number of sectors per
-        # track or mcopy will complain. Sectors are 512 bytes, and we
-        # generate images with 32 sectors per track. This calculation is
-        # done in blocks, thus the mod by 16 instead of 32.
-        blocks += (16 - (blocks % 16))
 
         # dosfs image, created by mkdosfs
         bootimg = "%s/boot.img" % cr_workdir

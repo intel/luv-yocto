@@ -57,6 +57,7 @@ class skipIfFailure(object):
         self.testcase = testcase
 
     def __call__(self,f):
+        @wraps(f)
         def wrapped_f(*args, **kwargs):
             res = getResults()
             if self.testcase in (res.getFailList() or res.getErrorList()):
@@ -71,6 +72,7 @@ class skipIfSkipped(object):
         self.testcase = testcase
 
     def __call__(self,f):
+        @wraps(f)
         def wrapped_f(*args, **kwargs):
             res = getResults()
             if self.testcase in res.getSkipList():
@@ -85,6 +87,7 @@ class skipUnlessPassed(object):
         self.testcase = testcase
 
     def __call__(self,f):
+        @wraps(f)
         def wrapped_f(*args, **kwargs):
             res = getResults()
             if self.testcase in res.getSkipList() or \
@@ -97,11 +100,11 @@ class skipUnlessPassed(object):
         return wrapped_f
 
 class testcase(object):
-
     def __init__(self, test_case):
         self.test_case = test_case
 
     def __call__(self, func):
+        @wraps(func)
         def wrapped_f(*args, **kwargs):
             return func(*args, **kwargs)
         wrapped_f.test_case = self.test_case
@@ -112,6 +115,8 @@ class NoParsingFilter(logging.Filter):
     def filter(self, record):
         return record.levelno == 100
 
+import inspect
+
 def LogResults(original_class):
     orig_method = original_class.run
 
@@ -120,6 +125,19 @@ def LogResults(original_class):
     timestamp = strftime('%Y%m%d%H%M%S',gmtime())
     logfile = os.path.join(os.getcwd(),'results-'+caller+'.'+timestamp+'.log')
     linkfile = os.path.join(os.getcwd(),'results-'+caller+'.log')
+
+    def get_class_that_defined_method(meth):
+        if inspect.ismethod(meth):
+            for cls in inspect.getmro(meth.__self__.__class__):
+               if cls.__dict__.get(meth.__name__) is meth:
+                    return cls
+            meth = meth.__func__ # fallback to __qualname__ parsing
+        if inspect.isfunction(meth):
+            cls = getattr(inspect.getmodule(meth),
+                          meth.__qualname__.split('.<locals>', 1)[0].rsplit('.', 1)[0])
+            if isinstance(cls, type):
+               return cls
+        return None
 
     #rewrite the run method of unittest.TestCase to add testcase logging
     def run(self, result, *args, **kws):
@@ -132,7 +150,7 @@ def LogResults(original_class):
         except AttributeError:
             test_case = self._testMethodName
 
-        class_name = str(testMethod.im_class).split("'")[1]
+        class_name = str(get_class_that_defined_method(testMethod)).split("'")[1]
 
         #create custom logging level for filtering.
         custom_log_level = 100
@@ -212,7 +230,7 @@ def tag(*args, **kwargs):
     def wrap_ob(ob):
         for name in args:
             setattr(ob, __tag_prefix + name, True)
-        for name, value in kwargs.iteritems():
+        for name, value in kwargs.items():
             setattr(ob, __tag_prefix + name, value)
         return ob
     return wrap_ob

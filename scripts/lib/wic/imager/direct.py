@@ -28,17 +28,36 @@ import os
 import shutil
 
 from wic import msger
-from wic.utils import fs_related
 from wic.utils.oe.misc import get_bitbake_var
 from wic.utils.partitionedfs import Image
 from wic.utils.errors import CreatorError, ImageError
 from wic.imager.baseimager import BaseImageCreator
 from wic.plugin import pluginmgr
-from wic.utils.oe.misc import exec_cmd
+from wic.utils.oe.misc import exec_cmd, exec_native_cmd
 
 disk_methods = {
     "do_install_disk":None,
 }
+
+class DiskImage():
+    """
+    A Disk backed by a file.
+    """
+    def __init__(self, device, size):
+        self.size = size
+        self.device = device
+        self.created = False
+
+    def exists(self):
+        return os.path.exists(self.device)
+
+    def create(self):
+        if self.created:
+            return
+        # create sparse disk image
+        cmd = "truncate %s -s %s" % (self.device, self.size)
+        exec_cmd(cmd)
+        self.created = True
 
 class DirectImageCreator(BaseImageCreator):
     """
@@ -52,7 +71,8 @@ class DirectImageCreator(BaseImageCreator):
     """
 
     def __init__(self, oe_builddir, image_output_dir, rootfs_dir, bootimg_dir,
-                 kernel_dir, native_sysroot, compressor, creatoropts=None):
+                 kernel_dir, native_sysroot, compressor, creatoropts=None,
+                 bmap=False):
         """
         Initialize a DirectImageCreator instance.
 
@@ -74,6 +94,7 @@ class DirectImageCreator(BaseImageCreator):
         self.kernel_dir = kernel_dir
         self.native_sysroot = native_sysroot
         self.compressor = compressor
+        self.bmap = bmap
 
     def __get_part_num(self, num, parts):
         """calculate the real partition number, accounting for partitions not
@@ -267,7 +288,8 @@ class DirectImageCreator(BaseImageCreator):
                                        align=part.align,
                                        no_table=part.no_table,
                                        part_type=part.part_type,
-                                       uuid=part.uuid)
+                                       uuid=part.uuid,
+                                       system_id=part.system_id)
 
         if fstab_path:
             shutil.move(fstab_path + ".orig", fstab_path)
@@ -279,7 +301,7 @@ class DirectImageCreator(BaseImageCreator):
             full_path = self._full_path(self.__imgdir, disk_name, "direct")
             msger.debug("Adding disk %s as %s with size %s bytes" \
                         % (disk_name, full_path, disk['min_size']))
-            disk_obj = fs_related.DiskImage(full_path, disk['min_size'])
+            disk_obj = DiskImage(full_path, disk['min_size'])
             self.__disks[disk_name] = disk_obj
             self.__image.add_disk(disk_name, disk_obj)
 
@@ -313,12 +335,17 @@ class DirectImageCreator(BaseImageCreator):
                                                         self.bootimg_dir,
                                                         self.kernel_dir,
                                                         self.native_sysroot)
-        # Compress the image
-        if self.compressor:
-            for disk_name, disk in self.__image.disks.items():
-                full_path = self._full_path(self.__imgdir, disk_name, "direct")
-                msger.debug("Compressing disk %s with %s" % \
-                            (disk_name, self.compressor))
+
+        for disk_name, disk in self.__image.disks.items():
+            full_path = self._full_path(self.__imgdir, disk_name, "direct")
+            # Generate .bmap
+            if self.bmap:
+                msger.debug("Generating bmap file for %s" % disk_name)
+                exec_native_cmd("bmaptool create %s -o %s.bmap" % (full_path, full_path),
+                                self.native_sysroot)
+            # Compress the image
+            if self.compressor:
+                msger.debug("Compressing disk %s with %s" % (disk_name, self.compressor))
                 exec_cmd("%s %s" % (self.compressor, full_path))
 
     def print_outimage_info(self):
@@ -375,6 +402,6 @@ class DirectImageCreator(BaseImageCreator):
         if not self.__image is None:
             try:
                 self.__image.cleanup()
-            except ImageError, err:
+            except ImageError as err:
                 msger.warning("%s" % err)
 

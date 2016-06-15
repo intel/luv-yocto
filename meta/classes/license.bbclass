@@ -200,7 +200,7 @@ def get_deployed_dependencies(d):
     # it might contain the bootloader.
     taskdata = d.getVar("BB_TASKDEPDATA", False)
     depends = list(set([dep[0] for dep
-                    in taskdata.itervalues()
+                    in list(taskdata.values())
                     if not dep[0].endswith("-native")]))
     extra_depends = d.getVar("EXTRA_IMAGEDEPENDS", True)
     boot_depends = get_boot_dependencies(d)
@@ -261,7 +261,7 @@ def get_boot_dependencies(d):
             depends.append(dep)
         # We need to search for the provider of the dependency
         else:
-            for taskdep in taskdepdata.itervalues():
+            for taskdep in taskdepdata.values():
                 # The fifth field contains what the task provides
                 if dep in taskdep[4]:
                     info_file = os.path.join(
@@ -342,6 +342,7 @@ def add_package_and_files(d):
 
 def copy_license_files(lic_files_paths, destdir):
     import shutil
+    import errno
 
     bb.utils.mkdirhier(destdir)
     for (basename, path) in lic_files_paths:
@@ -350,12 +351,21 @@ def copy_license_files(lic_files_paths, destdir):
             dst = os.path.join(destdir, basename)
             if os.path.exists(dst):
                 os.remove(dst)
-            if os.access(src, os.W_OK) and (os.stat(src).st_dev == os.stat(destdir).st_dev):
-                os.link(src, dst)
+            canlink = os.access(src, os.W_OK) and (os.stat(src).st_dev == os.stat(destdir).st_dev)
+            if canlink:
                 try:
-                    os.chown(dst,0,0)
+                    os.link(src, dst)
                 except OSError as err:
-                    import errno
+                    if err.errno == errno.EXDEV:
+                        # Copy license files if hard-link is not possible even if st_dev is the
+                        # same on source and destination (docker container with device-mapper?)
+                        canlink = False
+                    else:
+                        raise
+                try:
+                    if canlink:
+                        os.chown(dst,0,0)
+                except OSError as err:
                     if err.errno in (errno.EPERM, errno.EINVAL):
                         # Suppress "Operation not permitted" error, as
                         # sometimes this function is not executed under pseudo.
@@ -364,7 +374,7 @@ def copy_license_files(lic_files_paths, destdir):
                         pass
                     else:
                         raise
-            else:
+            if not canlink:
                 shutil.copyfile(src, dst)
         except Exception as e:
             bb.warn("Could not copy license file %s to %s: %s" % (src, dst, e))
@@ -635,7 +645,7 @@ def check_license_format(d):
     licenses = d.getVar('LICENSE', True)
     from oe.license import license_operator, license_operator_chars, license_pattern
 
-    elements = filter(lambda x: x.strip(), license_operator.split(licenses))
+    elements = list(filter(lambda x: x.strip(), license_operator.split(licenses)))
     for pos, element in enumerate(elements):
         if license_pattern.match(element):
             if pos > 0 and license_pattern.match(elements[pos - 1]):

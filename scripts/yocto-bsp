@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # ex:ts=4:sw=4:sts=4:et
 # -*- tab-width: 4; c-basic-offset: 4; indent-tabs-mode: nil -*-
 #
@@ -76,15 +76,15 @@ def yocto_bsp_create_subcommand(args, usage_str):
         bsp_output_dir = "meta-" + machine
 
     if options.git_check and not options.properties_file:
-        print "Checking basic git connectivity..."
+        print("Checking basic git connectivity...")
         if not verify_git_repo(GIT_CHECK_URI):
-            print "Couldn't verify git connectivity, exiting\n"
-            print "Details: couldn't access %s" % GIT_CHECK_URI
-            print "         (this most likely indicates a network connectivity problem or"
-            print "         a misconfigured git intallation)"
+            print("Couldn't verify git connectivity, exiting\n")
+            print("Details: couldn't access %s" % GIT_CHECK_URI)
+            print("         (this most likely indicates a network connectivity problem or")
+            print("         a misconfigured git intallation)")
             sys.exit(1)
         else:
-            print "Done.\n"
+            print("Done.\n")
 
     yocto_bsp_create(machine, karch, scripts_path, bsp_output_dir, options.codedump, options.properties_file)
 
@@ -118,7 +118,7 @@ subcommands = {
 
 
 def start_logging(loglevel):
-    logging.basicConfig(filname = 'yocto-bsp.log', filemode = 'w', level=loglevel)
+    logging.basicConfig(filename = 'yocto-bsp.log', filemode = 'w', level=loglevel)
 
 
 def main():

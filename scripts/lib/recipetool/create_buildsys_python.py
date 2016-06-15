@@ -238,14 +238,14 @@ class PythonRecipeHandler(RecipeHandler):
 
         # Map PKG-INFO & setup.py fields to bitbake variables
         bbinfo = {}
-        for field, values in info.iteritems():
+        for field, values in info.items():
             if field in self.excluded_fields:
                 continue
 
             if field not in self.bbvar_map:
                 continue
 
-            if isinstance(values, basestring):
+            if isinstance(values, str):
                 value = values
             else:
                 value = ' '.join(str(v) for v in values if v)
@@ -294,8 +294,8 @@ class PythonRecipeHandler(RecipeHandler):
                 lines_after.append('# The upstream names may not correspond exactly to bitbake package names.')
                 lines_after.append('#')
                 lines_after.append('# Uncomment this line to enable all the optional features.')
-                lines_after.append('#PACKAGECONFIG ?= "{}"'.format(' '.join(k.lower() for k in extras_req.iterkeys())))
-                for feature, feature_reqs in extras_req.iteritems():
+                lines_after.append('#PACKAGECONFIG ?= "{}"'.format(' '.join(k.lower() for k in extras_req)))
+                for feature, feature_reqs in extras_req.items():
                     unmapped_deps.difference_update(feature_reqs)
 
                     feature_req_deps = ('python-' + r.replace('.', '-').lower() for r in sorted(feature_reqs))
@@ -361,7 +361,7 @@ class PythonRecipeHandler(RecipeHandler):
 
         # Naive mapping of setup() arguments to PKG-INFO field names
         for d in [info, non_literals]:
-            for key, value in d.items():
+            for key, value in list(d.items()):
                 new_key = _map(key)
                 if new_key != key:
                     del d[key]
@@ -436,14 +436,14 @@ class PythonRecipeHandler(RecipeHandler):
                 return value
 
             value = info[variable]
-            if isinstance(value, basestring):
+            if isinstance(value, str):
                 new_value = replace_value(search, replace, value)
                 if new_value is None:
                     del info[variable]
                 elif new_value != value:
                     info[variable] = new_value
-            elif hasattr(value, 'iteritems'):
-                for dkey, dvalue in value.iteritems():
+            elif hasattr(value, 'items'):
+                for dkey, dvalue in list(value.items()):
                     new_list = []
                     for pos, a_value in enumerate(dvalue):
                         new_value = replace_value(search, replace, a_value)
@@ -516,7 +516,7 @@ class PythonRecipeHandler(RecipeHandler):
         except (OSError, subprocess.CalledProcessError):
             pass
         else:
-            for line in dep_output.splitlines():
+            for line in dep_output.decode('utf-8').splitlines():
                 line = line.rstrip()
                 dep, filename = line.split('\t', 1)
                 if filename.endswith('/setup.py'):
@@ -558,7 +558,7 @@ class PythonRecipeHandler(RecipeHandler):
                 else:
                     continue
 
-            for fn in files_info.iterkeys():
+            for fn in files_info:
                 for suffix in suffixes:
                     if fn.endswith(suffix):
                         break
@@ -608,7 +608,7 @@ def gather_setup_info(fileobj):
     visitor.visit(parsed)
 
     non_literals, extensions = {}, []
-    for key, value in visitor.keywords.items():
+    for key, value in list(visitor.keywords.items()):
         if key == 'ext_modules':
             if isinstance(value, list):
                 for ext in value:
@@ -640,7 +640,7 @@ class SetupScriptVisitor(ast.NodeVisitor):
     def visit_setup(self, node):
         call = LiteralAstTransform().visit(node)
         self.keywords = call.keywords
-        for k, v in self.keywords.iteritems():
+        for k, v in self.keywords.items():
             if has_non_literals(v):
                self.non_literals.append(k)
 
@@ -706,10 +706,10 @@ class LiteralAstTransform(ast.NodeTransformer):
 def has_non_literals(value):
     if isinstance(value, ast.AST):
         return True
-    elif isinstance(value, basestring):
+    elif isinstance(value, str):
         return False
-    elif hasattr(value, 'itervalues'):
-        return any(has_non_literals(v) for v in value.itervalues())
+    elif hasattr(value, 'values'):
+        return any(has_non_literals(v) for v in value.values())
     elif hasattr(value, '__iter__'):
         return any(has_non_literals(v) for v in value)
 

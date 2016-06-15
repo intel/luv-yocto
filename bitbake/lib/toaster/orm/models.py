@@ -32,6 +32,7 @@ from django.core import validators
 from django.conf import settings
 import django.db.models.signals
 
+import sys
 import os.path
 import re
 import itertools
@@ -102,7 +103,7 @@ class GitURLValidator(validators.URLValidator):
 
 def GitURLField(**kwargs):
     r = models.URLField(**kwargs)
-    for i in xrange(len(r.validators)):
+    for i in range(len(r.validators)):
         if isinstance(r.validators[i], validators.URLValidator):
             r.validators[i] = GitURLValidator()
     return r
@@ -415,6 +416,7 @@ class Build(models.Model):
         # to show build progress in mrb_section.html
         for build in recent_builds:
             build.percentDone = build.completeper()
+            build.outcomeText = build.get_outcome_text()
 
         return recent_builds
 
@@ -422,7 +424,7 @@ class Build(models.Model):
         tf = Task.objects.filter(build = self)
         tfc = tf.count()
         if tfc > 0:
-            completeper = tf.exclude(order__isnull=True).count()*100/tfc
+            completeper = tf.exclude(order__isnull=True).count()*100 // tfc
         else:
             completeper = 0
         return completeper
@@ -860,30 +862,69 @@ class CustomImagePackage(Package):
                                             related_name='appends_set')
 
 
-
 class Package_DependencyManager(models.Manager):
     use_for_related_fields = True
+    TARGET_LATEST = "use-latest-target-for-target"
 
     def get_queryset(self):
         return super(Package_DependencyManager, self).get_queryset().exclude(package_id = F('depends_on__id'))
 
-    def get_total_source_deps_size(self):
-        """ Returns the total file size of all the packages that depend on
-        thispackage.
-        """
-        return self.all().aggregate(Sum('depends_on__size'))
+    def for_target_or_none(self, target):
+        """ filter the dependencies to be displayed by the supplied target
+        if no dependences are found for the target then try None as the target
+        which will return the dependences calculated without the context of a
+        target e.g. non image recipes.
 
-    def get_total_revdeps_size(self):
-        """ Returns the total file size of all the packages that depend on
-        this package.
+        returns: { size, packages }
         """
-        return self.all().aggregate(Sum('package_id__size'))
+        package_dependencies = self.all_depends().order_by('depends_on__name')
 
+        if target is self.TARGET_LATEST:
+            installed_deps =\
+                    package_dependencies.filter(~Q(target__target=None))
+        else:
+            installed_deps =\
+                    package_dependencies.filter(Q(target__target=target))
+
+        packages_list = None
+        total_size = 0
+
+        # If we have installed depdencies for this package and target then use
+        # these to display
+        if installed_deps.count() > 0:
+            packages_list = installed_deps
+            total_size = installed_deps.aggregate(
+                Sum('depends_on__size'))['depends_on__size__sum']
+        else:
+            new_list = []
+            package_names = []
+
+            # Find dependencies for the package that we know about even if
+            # it's not installed on a target e.g. from a non-image recipe
+            for p in package_dependencies.filter(Q(target=None)):
+                if p.depends_on.name in package_names:
+                    continue
+                else:
+                    package_names.append(p.depends_on.name)
+                    new_list.append(p.pk)
+                    # while we're here we may as well total up the size to
+                    # avoid iterating again
+                    total_size += p.depends_on.size
+
+            # We want to return a queryset here for consistency so pick the
+            # deps from the new_list
+            packages_list = package_dependencies.filter(Q(pk__in=new_list))
+
+        return {'packages': packages_list,
+                'size': total_size}
 
     def all_depends(self):
-        """ Returns just the depends packages and not any other dep_type """
+        """ Returns just the depends packages and not any other dep_type
+        Note that this is for any target
+        """
         return self.filter(Q(dep_type=Package_Dependency.TYPE_RDEPENDS) |
                            Q(dep_type=Package_Dependency.TYPE_TRDEPENDS))
+
 
 class Package_Dependency(models.Model):
     TYPE_RDEPENDS = 0
@@ -1145,21 +1186,29 @@ class LayerIndexLayerSource(LayerSource):
         assert self.apiurl is not None
         from django.db import transaction, connection
 
-        import urllib2, urlparse, json
+        import json
         import os
+
+        try:
+            from urllib.request import urlopen, URLError
+            from urllib.parse import urlparse
+        except ImportError:
+            from urllib2 import urlopen, URLError
+            from urlparse import urlparse
+
         proxy_settings = os.environ.get("http_proxy", None)
         oe_core_layer = 'openembedded-core'
 
         def _get_json_response(apiurl = self.apiurl):
-            _parsedurl = urlparse.urlparse(apiurl)
+            _parsedurl = urlparse(apiurl)
             path = _parsedurl.path
 
             try:
-                res = urllib2.urlopen(apiurl)
-            except urllib2.URLError as e:
+                res = urlopen(apiurl)
+            except URLError as e:
                 raise Exception("Failed to read %s: %s" % (path, e.reason))
 
-            return json.loads(res.read())
+            return json.loads(res.read().decode('utf-8'))
 
         # verify we can get the basic api
         try:
@@ -1168,12 +1217,12 @@ class LayerIndexLayerSource(LayerSource):
             import traceback
             if proxy_settings is not None:
                 logger.info("EE: Using proxy %s" % proxy_settings)
-            logger.warning("EE: could not connect to %s, skipping update: %s\n%s" % (self.apiurl, e, traceback.format_exc(e)))
+            logger.warning("EE: could not connect to %s, skipping update: %s\n%s" % (self.apiurl, e, traceback.format_exc()))
             return
 
         # update branches; only those that we already have names listed in the
         # Releases table
-        whitelist_branch_names = map(lambda x: x.branch_name, Release.objects.all())
+        whitelist_branch_names = [rel.branch_name for rel in Release.objects.all()]
         if len(whitelist_branch_names) == 0:
             raise Exception("Failed to make list of branches to fetch")
 
@@ -1585,6 +1634,21 @@ class CustomImageRecipe(Recipe):
                                                   Q(recipe_includes=self)) &
                                                  ~Q(recipe_excludes=self))
 
+    def get_base_recipe_file(self):
+        """Get the base recipe file path if it exists on the file system"""
+        path_schema_one = "%s/%s" % (self.base_recipe.layer_version.dirpath,
+                                     self.base_recipe.file_path)
+
+        path_schema_two = self.base_recipe.file_path
+
+        if os.path.exists(path_schema_one):
+            return path_schema_one
+
+        # The path may now be the full path if the recipe has been built
+        if os.path.exists(path_schema_two):
+            return path_schema_two
+
+        return None
 
     def generate_recipe_file_contents(self):
         """Generate the contents for the recipe file."""
@@ -1599,17 +1663,16 @@ class CustomImageRecipe(Recipe):
             # We add all the known packages to be built by this recipe apart
             # from locale packages which are are controlled with IMAGE_LINGUAS.
             for pkg in self.get_all_packages().exclude(
-                name__icontains="locale"):
+                    name__icontains="locale"):
                 packages_conf += pkg.name+' '
 
         packages_conf += "\""
-        try:
-            base_recipe = open("%s/%s" %
-                               (self.base_recipe.layer_version.dirpath,
-                                self.base_recipe.file_path), 'r').read()
-        except IOError:
-            # The path may now be the full path if the recipe has been built
-            base_recipe = open(self.base_recipe.file_path, 'r').read()
+
+        base_recipe_path = self.get_base_recipe_file()
+        if base_recipe_path:
+            base_recipe = open(base_recipe_path, 'r').read()
+        else:
+            raise IOError("Based on recipe file not found")
 
         # Add a special case for when the recipe we have based a custom image
         # recipe on requires another recipe.
@@ -1618,8 +1681,8 @@ class CustomImageRecipe(Recipe):
         # "require recipes-core/images/core-image-minimal.bb"
 
         req_search = re.search(r'(require\s+)(.+\.bb\s*$)',
-                                   base_recipe,
-                                   re.MULTILINE)
+                               base_recipe,
+                               re.MULTILINE)
         if req_search:
             require_filename = req_search.group(2).strip()
 
@@ -1629,19 +1692,19 @@ class CustomImageRecipe(Recipe):
 
             new_require_line = "require %s" % corrected_location
 
-            base_recipe = \
-                    base_recipe.replace(req_search.group(0), new_require_line)
+            base_recipe = base_recipe.replace(req_search.group(0),
+                                              new_require_line)
 
-
-        info = {"date" : timezone.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "base_recipe" : base_recipe,
-                "recipe_name" : self.name,
-                "base_recipe_name" : self.base_recipe.name,
-                "license" : self.license,
-                "summary" : self.summary,
-                "description" : self.description,
-                "packages_conf" : packages_conf.strip(),
-               }
+        info = {
+            "date": timezone.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "base_recipe": base_recipe,
+            "recipe_name": self.name,
+            "base_recipe_name": self.base_recipe.name,
+            "license": self.license,
+            "summary": self.summary,
+            "description": self.description,
+            "packages_conf": packages_conf.strip()
+        }
 
         recipe_contents = ("# Original recipe %(base_recipe_name)s \n"
                            "%(base_recipe)s\n\n"

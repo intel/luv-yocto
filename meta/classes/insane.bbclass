@@ -177,9 +177,8 @@ def package_qa_write_error(type, error, d):
     logfile = d.getVar('QA_LOGFILE', True)
     if logfile:
         p = d.getVar('P', True)
-        f = file( logfile, "a+")
-        print >> f, "%s: %s [%s]" % (p, error, type)
-        f.close()
+        with open(logfile, "a+") as f:
+            f.write("%s: %s [%s]\n" % (p, error, type))
 
 def package_qa_handle_error(error_class, error_msg, d):
     package_qa_write_error(error_class, error_msg, d)
@@ -400,7 +399,7 @@ def package_qa_check_unsafe_references_in_binaries(path, name, d, elf, messages)
         sysroot_path_usr = sysroot_path + exec_prefix
 
         try:
-            ldd_output = bb.process.Popen(["prelink-rtld", "--root", sysroot_path, path], stdout=sub.PIPE).stdout.read()
+            ldd_output = bb.process.Popen(["prelink-rtld", "--root", sysroot_path, path], stdout=sub.PIPE).stdout.read().decode("utf-8")
         except bb.process.CmdError:
             error_msg = pn + ": prelink-rtld aborted when processing %s" % path
             package_qa_handle_error("unsafe-references-in-binaries", error_msg, d)
@@ -672,22 +671,24 @@ def package_qa_check_symlink_to_sysroot(path, name, d, elf, messages):
                 trimmed = path.replace(os.path.join (d.getVar("PKGDEST", True), name), "")
                 package_qa_add_message(messages, "symlink-to-sysroot", "Symlink %s in %s points to TMPDIR" % (trimmed, name))
 
-def package_qa_check_license(workdir, d):
+# Check license variables
+do_populate_lic[postfuncs] += "populate_lic_qa_checksum"
+python populate_lic_qa_checksum() {
     """
     Check for changes in the license files 
     """
     import tempfile
     sane = True
 
-    lic_files = d.getVar('LIC_FILES_CHKSUM', True)
+    lic_files = d.getVar('LIC_FILES_CHKSUM', True) or ''
     lic = d.getVar('LICENSE', True)
     pn = d.getVar('PN', True)
 
     if lic == "CLOSED":
         return
 
-    if not lic_files:
-        package_qa_handle_error("license-checksum", pn + ": Recipe file does not have license file information (LIC_FILES_CHKSUM)", d)
+    if not lic_files and d.getVar('SRC_URI', True):
+        package_qa_handle_error("license-checksum", pn + ": Recipe file fetches files and does not have license file information (LIC_FILES_CHKSUM)", d)
         return
 
     srcdir = d.getVar('S', True)
@@ -753,6 +754,7 @@ def package_qa_check_license(workdir, d):
                 msg = pn + ": LIC_FILES_CHKSUM is not specified for " +  url
                 msg = msg + "\n" + pn + ": The md5 checksum is " + md5chksum
             package_qa_handle_error("license-checksum", msg, d)
+}
 
 def package_qa_check_staged(path,d):
     """
@@ -984,12 +986,12 @@ def package_qa_check_expanded_d(path,name,d,elf,messages):
     return sane
 
 def package_qa_check_encoding(keys, encode, d):
-    def check_encoding(key,enc):
+    def check_encoding(key, enc):
         sane = True
         value = d.getVar(key, True)
         if value:
             try:
-                s = unicode(value, enc)
+                s = value.encode(enc)
             except UnicodeDecodeError as e:
                 error_msg = "%s has non %s characters" % (key,enc)
                 sane = False
@@ -1208,12 +1210,6 @@ Rerun configure task after fixing this.""")
 Missing inherit gettext?""" % (gt, config))
 
     ###########################################################################
-    # Check license variables
-    ###########################################################################
-
-    package_qa_check_license(workdir, d)
-
-    ###########################################################################
     # Check unrecognised configure options (with a white list)
     ###########################################################################
     if bb.data.inherits_class("autotools", d):
@@ -1221,7 +1217,7 @@ Missing inherit gettext?""" % (gt, config))
         try:
             flag = "WARNING: unrecognized options:"
             log = os.path.join(d.getVar('B', True), 'config.log')
-            output = subprocess.check_output(['grep', '-F', flag, log]).replace(', ', ' ')
+            output = subprocess.check_output(['grep', '-F', flag, log]).decode("utf-8").replace(', ', ' ')
             options = set()
             for line in output.splitlines():
                 options |= set(line.partition(flag)[2].split())
@@ -1261,8 +1257,8 @@ python do_qa_unpack() {
 #addtask qa_staging after do_populate_sysroot before do_build
 do_populate_sysroot[postfuncs] += "do_qa_staging "
 
-# Check broken config.log files, for packages requiring Gettext which don't
-# have it in DEPENDS and for correct LIC_FILES_CHKSUM
+# Check broken config.log files, for packages requiring Gettext which
+# don't have it in DEPENDS.
 #addtask qa_configure after do_configure before do_compile
 do_configure[postfuncs] += "do_qa_configure "
 

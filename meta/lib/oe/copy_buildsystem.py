@@ -124,7 +124,7 @@ class BuildSystem(object):
 def generate_locked_sigs(sigfile, d):
     bb.utils.mkdirhier(os.path.dirname(sigfile))
     depd = d.getVar('BB_TASKDEPDATA', False)
-    tasks = ['%s.%s' % (v[2], v[1]) for v in depd.itervalues()]
+    tasks = ['%s.%s' % (v[2], v[1]) for v in depd.values()]
     bb.parse.siggen.dump_lockedsigs(sigfile, tasks)
 
 def prune_lockedsigs(excluded_tasks, excluded_targets, lockedsigs, pruned_output):
@@ -195,7 +195,7 @@ def merge_lockedsigs(copy_tasks, lockedsigs_main, lockedsigs_extra, merged_outpu
                     fulltypes.append(typename)
             f.write('SIGGEN_LOCKEDSIGS_TYPES = "%s"\n' % ' '.join(fulltypes))
 
-    write_sigs_file(copy_output, tocopy.keys(), tocopy)
+    write_sigs_file(copy_output, list(tocopy.keys()), tocopy)
     if merged_output:
         write_sigs_file(merged_output, arch_order, merged)
 

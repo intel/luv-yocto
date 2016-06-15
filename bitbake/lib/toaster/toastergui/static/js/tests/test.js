@@ -2,7 +2,6 @@
 /* Unit tests for Toaster's JS */
 
 /* libtoaster tests */
-
 QUnit.test("Layer alert notification", function(assert) {
   var layer = {
     "layerdetailurl":"/toastergui/project/1/layer/22",
@@ -135,10 +134,10 @@ QUnit.test("Make typeaheads", function(assert){
   libtoaster.makeTypeahead(recipesT,
     libtoaster.ctx.recipesTypeAheadUrl, {}, function(){});
 
-  assert.ok(recipesT.data('typeahead'));
-  assert.ok(layersT.data('typeahead'));
-  assert.ok(projectsT.data('typeahead'));
-  assert.ok(recipesT.data('typeahead'));
+  assert.ok(recipesT.data('ttTypeahead'));
+  assert.ok(layersT.data('ttTypeahead'));
+  assert.ok(projectsT.data('ttTypeahead'));
+  assert.ok(recipesT.data('ttTypeahead'));
 });
 
 

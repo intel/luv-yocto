@@ -3,7 +3,7 @@
 
 require musl.inc
 
-SRCREV = "5978eb703ce0e64dd778a88c1ffffb76fe5e2202"
+SRCREV = "63e3a1661f1fa5552e2023683617ce09fac3248b"
 
 PV = "1.1.14+git${SRCPV}"
 
@@ -52,6 +52,10 @@ do_install() {
 
 	install -d ${D}${bindir}
 	ln -s ../../${libdir}/libc.so ${D}${bindir}/ldd
+	for l in crypt dl m pthread resolv rt util xnet
+	do
+		ln -s libc.so ${D}${libdir}/lib$l.so
+	done
 }
 
 RDEPENDS_${PN}-dev += "linux-libc-headers-dev bsd-headers-dev"

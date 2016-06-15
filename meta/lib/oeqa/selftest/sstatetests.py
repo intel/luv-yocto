@@ -264,7 +264,7 @@ SDKMACHINE = "i686"
         files2 = get_files(topdir + "/tmp-sstatesamehash2/stamps/")
         files2 = [x.replace("tmp-sstatesamehash2", "tmp-sstatesamehash").replace("i686-linux", "x86_64-linux").replace("i686" + targetvendor + "-linux", "x86_64" + targetvendor + "-linux", ) for x in files2]
         self.maxDiff = None
-        self.assertItemsEqual(files1, files2)
+        self.assertCountEqual(files1, files2)
 
 
     @testcase(1271)
@@ -298,7 +298,7 @@ NATIVELSBSTRING = \"DistroB\"
         files2 = get_files(topdir + "/tmp-sstatesamehash2/stamps/")
         files2 = [x.replace("tmp-sstatesamehash2", "tmp-sstatesamehash") for x in files2]
         self.maxDiff = None
-        self.assertItemsEqual(files1, files2)
+        self.assertCountEqual(files1, files2)
 
     @testcase(1368)
     def test_sstate_allarch_samesigs(self):
@@ -393,7 +393,7 @@ DEFAULTTUNE_virtclass-multilib-lib32 = "x86"
         files2 = get_files(topdir + "/tmp-sstatesamehash2/stamps")
         files2 = [x.replace("tmp-sstatesamehash2", "tmp-sstatesamehash") for x in files2]
         self.maxDiff = None
-        self.assertItemsEqual(files1, files2)
+        self.assertCountEqual(files1, files2)
 
 
     def test_sstate_noop_samesigs(self):
@@ -411,9 +411,11 @@ PARALLEL_MAKE = "-j 1"
 DL_DIR = "${TOPDIR}/download1"
 TIME = "111111"
 DATE = "20161111"
-INHERIT_remove = "buildstats-summary buildhistory"
+INHERIT_remove = "buildstats-summary buildhistory uninative"
+http_proxy = ""
 """)
         self.track_for_cleanup(topdir + "/tmp-sstatesamehash")
+        self.track_for_cleanup(topdir + "/download1")
         bitbake("world meta-toolchain -S none")
         self.write_config("""
 TMPDIR = "${TOPDIR}/tmp-sstatesamehash2"
@@ -422,9 +424,13 @@ PARALLEL_MAKE = "-j 2"
 DL_DIR = "${TOPDIR}/download2"
 TIME = "222222"
 DATE = "20161212"
+# Always remove uninative as we're changing proxies
+INHERIT_remove = "uninative"
 INHERIT += "buildstats-summary buildhistory"
+http_proxy = "http://example.com/"
 """)
         self.track_for_cleanup(topdir + "/tmp-sstatesamehash2")
+        self.track_for_cleanup(topdir + "/download2")
         bitbake("world meta-toolchain -S none")
 
         def get_files(d):
@@ -439,23 +445,23 @@ INHERIT += "buildstats-summary buildhistory"
         files1 = get_files(topdir + "/tmp-sstatesamehash/stamps/")
         files2 = get_files(topdir + "/tmp-sstatesamehash2/stamps/")
         # Remove items that are identical in both sets
-        for k,v in files1.viewitems() & files2.viewitems():
+        for k,v in files1.items() & files2.items():
             del files1[k]
             del files2[k]
         if not files1 and not files2:
             # No changes, so we're done
             return
 
-        for k in files1.viewkeys() | files2.viewkeys():
+        for k in files1.keys() | files2.keys():
             if k in files1 and k in files2:
-                print "%s differs:" % k
-                print subprocess.check_output(("bitbake-diffsigs",
+                print("%s differs:" % k)
+                print(subprocess.check_output(("bitbake-diffsigs",
                                                topdir + "/tmp-sstatesamehash/stamps/" + k + "." + files1[k],
-                                               topdir + "/tmp-sstatesamehash2/stamps/" + k + "." + files2[k]))
+                                               topdir + "/tmp-sstatesamehash2/stamps/" + k + "." + files2[k])))
             elif k in files1 and k not in files2:
-                print "%s in files1" % k
+                print("%s in files1" % k)
             elif k not in files1 and k in files2:
-                print "%s in files2" % k
+                print("%s in files2" % k)
             else:
                 assert "shouldn't reach here"
         self.fail("sstate hashes not identical.")

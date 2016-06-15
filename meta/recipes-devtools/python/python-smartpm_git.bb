@@ -15,14 +15,16 @@ SRC_URI = "\
           git://github.com/smartpm/smart.git \
           file://smartpm-rpm5-nodig.patch \
           file://smart-recommends.patch \
-          file://smart-improve-error-reporting.patch \
           file://smart-channelsdir.patch \
+          file://smart-rpm-transaction-failure-check.patch \
           file://smart-attempt.patch \
           file://smart-attempt-fix.patch \
           file://smart-add-for-rpm-ignoresize-check.patch \
           file://smart-already-installed-message.patch \
           file://smart-set-noprogress-for-pycurl.patch \
           file://smart-cache.py-getPackages-matches-name-version.patch \
+          file://smart-channel-remove-all.patch \
+          file://smart-locale.patch \
          "
 
 SRCREV = "407a7eca766431257dcd1da15175cc36a1bb22d0"

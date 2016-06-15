@@ -25,7 +25,6 @@ BitBake build tools.
 #
 # Based on functions from the base bb module, Copyright 2003 Holger Schurig
 
-from future_builtins import zip
 import os
 import subprocess
 import logging
@@ -62,7 +61,7 @@ class Perforce(FetchMethod):
                     keys.append(key)
                     values.append(value)
 
-            parm = dict(zip(keys, values))
+            parm = dict(list(zip(keys, values)))
         path = "//" + path.split(';')[0]
         host += ":%s" % (port)
         parm["cset"] = Perforce.getcset(d, path, host, user, pswd, parm)

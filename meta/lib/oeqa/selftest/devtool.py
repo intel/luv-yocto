@@ -50,7 +50,7 @@ class DevtoolBase(oeSelfTest):
 
 
         missingvars = {}
-        for var, value in checkvars.iteritems():
+        for var, value in checkvars.items():
             if value is not None:
                 missingvars[var] = value
         self.assertEqual(missingvars, {}, 'Some expected variables not found in recipe: %s' % checkvars)
@@ -207,12 +207,14 @@ class DevtoolTests(DevtoolBase):
         tempdir = tempfile.mkdtemp(prefix='devtoolqa')
         self.track_for_cleanup(tempdir)
         pn = 'dbus-wait'
+        srcrev = '6cc6077a36fe2648a5f993fe7c16c9632f946517'
         # We choose an https:// git URL here to check rewriting the URL works
         url = 'https://git.yoctoproject.org/git/dbus-wait'
         # Force fetching to "noname" subdir so we verify we're picking up the name from autoconf
         # instead of the directory name
         result = runCmd('git clone %s noname' % url, cwd=tempdir)
         srcdir = os.path.join(tempdir, 'noname')
+        result = runCmd('git reset --hard %s' % srcrev, cwd=srcdir)
         self.assertTrue(os.path.isfile(os.path.join(srcdir, 'configure.ac')), 'Unable to find configure script in source directory')
         # Test devtool add
         self.track_for_cleanup(self.workspacedir)
@@ -235,7 +237,7 @@ class DevtoolTests(DevtoolBase):
         checkvars['S'] = '${WORKDIR}/git'
         checkvars['PV'] = '0.1+git${SRCPV}'
         checkvars['SRC_URI'] = 'git://git.yoctoproject.org/git/dbus-wait;protocol=https'
-        checkvars['SRCREV'] = '${AUTOREV}'
+        checkvars['SRCREV'] = srcrev
         checkvars['DEPENDS'] = set(['dbus'])
         self._test_recipe_contents(recipefile, checkvars, [])
 
@@ -345,7 +347,7 @@ class DevtoolTests(DevtoolBase):
         self.track_for_cleanup(self.workspacedir)
         self.add_command_to_tearDown('bitbake -c cleansstate %s' % testrecipe)
         self.add_command_to_tearDown('bitbake-layers remove-layer */workspace')
-        result = runCmd('devtool add %s %s -f %s' % (testrecipe, srcdir, url))
+        result = runCmd('devtool add %s %s -a -f %s' % (testrecipe, srcdir, url))
         self.assertTrue(os.path.exists(os.path.join(self.workspacedir, 'conf', 'layer.conf')), 'Workspace directory not created: %s' % result.output)
         self.assertTrue(os.path.isfile(os.path.join(srcdir, 'configure.ac')), 'Unable to find configure.ac in source directory')
         # Test devtool status
@@ -465,12 +467,11 @@ class DevtoolTests(DevtoolBase):
         testrecipes = 'perf kernel-devsrc package-index core-image-minimal meta-toolchain packagegroup-core-sdk meta-ide-support'.split()
         # Find actual name of gcc-source since it now includes the version - crude, but good enough for this purpose
         result = runCmd('bitbake-layers show-recipes gcc-source*')
-        reading = False
         for line in result.output.splitlines():
-            if line.startswith('=='):
-                reading = True
-            elif reading and not line.startswith(' '):
-                testrecipes.append(line.split(':')[0])
+            # just match those lines that contain a real target
+            m = re.match('(?P<recipe>^[a-zA-Z0-9.-]+)(?P<colon>:$)', line)
+            if m:
+                testrecipes.append(m.group('recipe'))
         for testrecipe in testrecipes:
             # Check it's a valid recipe
             bitbake('%s -e' % testrecipe)
@@ -816,28 +817,28 @@ class DevtoolTests(DevtoolBase):
 
         # Check bbappend contents
         result = runCmd('git rev-parse HEAD', cwd=tempsrcdir)
-        expectedlines = ['SRCREV = "%s"\n' % result.output,
-                         '\n',
-                         'SRC_URI = "%s"\n' % git_uri,
-                         '\n']
+        expectedlines = set(['SRCREV = "%s"\n' % result.output,
+                             '\n',
+                             'SRC_URI = "%s"\n' % git_uri,
+                             '\n'])
         with open(bbappendfile, 'r') as f:
-            self.assertEqual(expectedlines, f.readlines())
+            self.assertEqual(expectedlines, set(f.readlines()))
 
         # Check we can run it again and bbappend isn't modified
         result = runCmd('devtool update-recipe -m srcrev %s -a %s' % (testrecipe, templayerdir))
         with open(bbappendfile, 'r') as f:
-            self.assertEqual(expectedlines, f.readlines())
+            self.assertEqual(expectedlines, set(f.readlines()))
         # Drop new commit and check SRCREV changes
         result = runCmd('git reset HEAD^', cwd=tempsrcdir)
         result = runCmd('devtool update-recipe -m srcrev %s -a %s' % (testrecipe, templayerdir))
         self.assertFalse(os.path.exists(os.path.join(appenddir, testrecipe)), 'Patch directory should not be created')
         result = runCmd('git rev-parse HEAD', cwd=tempsrcdir)
-        expectedlines = ['SRCREV = "%s"\n' % result.output,
-                         '\n',
-                         'SRC_URI = "%s"\n' % git_uri,
-                         '\n']
+        expectedlines = set(['SRCREV = "%s"\n' % result.output,
+                             '\n',
+                             'SRC_URI = "%s"\n' % git_uri,
+                             '\n'])
         with open(bbappendfile, 'r') as f:
-            self.assertEqual(expectedlines, f.readlines())
+            self.assertEqual(expectedlines, set(f.readlines()))
         # Put commit back and check we can run it if layer isn't in bblayers.conf
         os.remove(bbappendfile)
         result = runCmd('git commit -a -m "Change the Makefile"', cwd=tempsrcdir)
@@ -846,12 +847,12 @@ class DevtoolTests(DevtoolBase):
         self.assertIn('WARNING: Specified layer is not currently enabled in bblayers.conf', result.output)
         self.assertFalse(os.path.exists(os.path.join(appenddir, testrecipe)), 'Patch directory should not be created')
         result = runCmd('git rev-parse HEAD', cwd=tempsrcdir)
-        expectedlines = ['SRCREV = "%s"\n' % result.output,
-                         '\n',
-                         'SRC_URI = "%s"\n' % git_uri,
-                         '\n']
+        expectedlines = set(['SRCREV = "%s"\n' % result.output,
+                             '\n',
+                             'SRC_URI = "%s"\n' % git_uri,
+                             '\n'])
         with open(bbappendfile, 'r') as f:
-            self.assertEqual(expectedlines, f.readlines())
+            self.assertEqual(expectedlines, set(f.readlines()))
         # Deleting isn't expected to work under these circumstances
 
     @testcase(1370)

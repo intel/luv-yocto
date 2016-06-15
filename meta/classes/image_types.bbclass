@@ -11,36 +11,34 @@ IMAGE_ROOTFS_ALIGNMENT ?= "1"
 
 def imagetypes_getdepends(d):
     def adddep(depstr, deps):
-        for i in (depstr or "").split():
-            if i not in deps:
-                deps.append(i)
+        for d in (depstr or "").split():
+            # Add task dependency if not already present
+            if ":" not in d:
+                d += ":do_populate_sysroot"
+            deps.add(d)
 
-    deps = []
-    ctypes = d.getVar('COMPRESSIONTYPES', True).split()
     fstypes = set((d.getVar('IMAGE_FSTYPES', True) or "").split())
     fstypes |= set((d.getVar('IMAGE_FSTYPES_DEBUGFS', True) or "").split())
-    for type in fstypes:
-        if type in ["vmdk", "vdi", "qcow2", "hdddirect", "live", "iso", "hddimg"]:
-            type = "ext4"
-        basetype = type
-        for ctype in ctypes:
-            if type.endswith("." + ctype):
-                basetype = type[:-len("." + ctype)]
-                adddep(d.getVar("COMPRESS_DEPENDS_%s" % ctype, True), deps)
-                break
+
+    deps = set()
+    for typestring in fstypes:
+        types = typestring.split(".")
+        basetype, resttypes = types[0], types[1:]
+
+        adddep(d.getVar('IMAGE_DEPENDS_%s' % basetype, True) , deps)
         for typedepends in (d.getVar("IMAGE_TYPEDEP_%s" % basetype, True) or "").split():
             adddep(d.getVar('IMAGE_DEPENDS_%s' % typedepends, True) , deps)
-        adddep(d.getVar('IMAGE_DEPENDS_%s' % basetype, True) , deps)
+        for ctype in resttypes:
+            adddep(d.getVar("COMPRESS_DEPENDS_%s" % ctype, True), deps)
 
-    depstr = ""
-    for dep in deps:
-        depstr += " " + dep + ":do_populate_sysroot"
-    return depstr
+    # Sort the set so that ordering is consistant
+    return " ".join(sorted(deps))
 
-
-XZ_COMPRESSION_LEVEL ?= "-e -6"
+XZ_COMPRESSION_LEVEL ?= "-3"
 XZ_INTEGRITY_CHECK ?= "crc32"
 XZ_THREADS ?= "-T 0"
+
+ZIP_COMPRESSION_LEVEL ?= "-9"
 
 JFFS2_SUM_EXTRA_ARGS ?= ""
 IMAGE_CMD_jffs2 = "mkfs.jffs2 --root=${IMAGE_ROOTFS} --faketime --output=${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.jffs2 ${EXTRA_IMAGECMD}"
@@ -103,13 +101,20 @@ IMAGE_CMD_tar = "${IMAGE_CMD_TAR} -cvf ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}${IMAGE_
 do_image_cpio[cleandirs] += "${WORKDIR}/cpio_append"
 IMAGE_CMD_cpio () {
 	(cd ${IMAGE_ROOTFS} && find . | cpio -o -H newc >${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.cpio)
-	if [ ! -L ${IMAGE_ROOTFS}/init -a ! -e ${IMAGE_ROOTFS}/init ]; then
-		if [ -L ${IMAGE_ROOTFS}/sbin/init -o -e ${IMAGE_ROOTFS}/sbin/init ]; then
-			ln -sf /sbin/init ${WORKDIR}/cpio_append/init
-		else
-			touch ${WORKDIR}/cpio_append/init
+	# We only need the /init symlink if we're building the real
+	# image. The -dbg image doesn't need it! By being clever
+	# about this we also avoid 'touch' below failing, as it
+	# might be trying to touch /sbin/init on the host since both
+	# the normal and the -dbg image share the same WORKDIR
+	if [ "${IMAGE_BUILDING_DEBUGFS}" != "true" ]; then
+		if [ ! -L ${IMAGE_ROOTFS}/init ] && [ ! -e ${IMAGE_ROOTFS}/init ]; then
+			if [ -L ${IMAGE_ROOTFS}/sbin/init ] || [ -e ${IMAGE_ROOTFS}/sbin/init ]; then
+				ln -sf /sbin/init ${WORKDIR}/cpio_append/init
+			else
+				touch ${WORKDIR}/cpio_append/init
+			fi
+			(cd  ${WORKDIR}/cpio_append && echo ./init | cpio -oA -H newc -F ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.cpio)
 		fi
-		(cd  ${WORKDIR}/cpio_append && echo ./init | cpio -oA -H newc -F ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.cpio)
 	fi
 }
 
@@ -193,6 +198,8 @@ def wks_search(files, search_path):
             if searched:
                 return searched
 
+WIC_CREATE_EXTRA_ARGS ?= ""
+
 IMAGE_CMD_wic () {
 	out="${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}"
 	wks="${WKS_FULL_PATH}"
@@ -200,7 +207,7 @@ IMAGE_CMD_wic () {
 		bbfatal "No kickstart files from WKS_FILES were found: ${WKS_FILES}. Please set WKS_FILE or WKS_FILES appropriately."
 	fi
 
-	BUILDDIR="${TOPDIR}" wic create "$wks" --vars "${STAGING_DIR_TARGET}/imgdata/" -e "${IMAGE_BASENAME}" -o "$out/"
+	BUILDDIR="${TOPDIR}" wic create "$wks" --vars "${STAGING_DIR_TARGET}/imgdata/" -e "${IMAGE_BASENAME}" -o "$out/" ${WIC_CREATE_EXTRA_ARGS}
 	mv "$out/build/$(basename "${wks%.wks}")"*.direct "$out${IMAGE_NAME_SUFFIX}.wic"
 	rm -rf "$out/"
 }
@@ -262,12 +269,13 @@ IMAGE_TYPES = " \
     wic wic.gz wic.bz2 wic.lzma \
 "
 
-COMPRESSIONTYPES = "gz bz2 lzma xz lz4 sum md5sum sha1sum sha224sum sha256sum sha384sum sha512sum"
+COMPRESSIONTYPES = "gz bz2 lzma xz lz4 zip sum md5sum sha1sum sha224sum sha256sum sha384sum sha512sum bmap"
 COMPRESS_CMD_lzma = "lzma -k -f -7 ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type}"
 COMPRESS_CMD_gz = "gzip -f -9 -c ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type} > ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type}.gz"
 COMPRESS_CMD_bz2 = "pbzip2 -f -k ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type}"
 COMPRESS_CMD_xz = "xz -f -k -c ${XZ_COMPRESSION_LEVEL} ${XZ_THREADS} --check=${XZ_INTEGRITY_CHECK} ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type} > ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type}.xz"
 COMPRESS_CMD_lz4 = "lz4c -9 -c ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type} > ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type}.lz4"
+COMPRESS_CMD_zip = "zip ${ZIP_COMPRESSION_LEVEL} ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type}.zip ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type}"
 COMPRESS_CMD_sum = "sumtool -i ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type} -o ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type}.sum ${JFFS2_SUM_EXTRA_ARGS}"
 COMPRESS_CMD_md5sum = "md5sum ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type} > ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type}.md5sum"
 COMPRESS_CMD_sha1sum = "sha1sum ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type} > ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type}.sha1sum"
@@ -275,12 +283,15 @@ COMPRESS_CMD_sha224sum = "sha224sum ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type} > 
 COMPRESS_CMD_sha256sum = "sha256sum ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type} > ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type}.sha256sum"
 COMPRESS_CMD_sha384sum = "sha384sum ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type} > ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type}.sha384sum"
 COMPRESS_CMD_sha512sum = "sha512sum ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type} > ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type}.sha512sum"
+COMPRESS_CMD_bmap = "bmaptool create ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type} -o ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type}.bmap"
 COMPRESS_DEPENDS_lzma = "xz-native"
 COMPRESS_DEPENDS_gz = ""
 COMPRESS_DEPENDS_bz2 = "pbzip2-native"
 COMPRESS_DEPENDS_xz = "xz-native"
 COMPRESS_DEPENDS_lz4 = "lz4-native"
+COMPRESS_DEPENDS_zip = "zip-native"
 COMPRESS_DEPENDS_sum = "mtd-utils-native"
+COMPRESS_DEPENDS_bmap = "bmap-tools-native"
 
 RUNNABLE_IMAGE_TYPES ?= "ext2 ext3 ext4"
 RUNNABLE_MACHINE_PATTERNS ?= "qemu"

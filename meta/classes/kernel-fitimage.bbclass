@@ -1,8 +1,8 @@
-inherit kernel-uboot
+inherit kernel-uboot uboot-sign
 
 python __anonymous () {
-    kerneltype = d.getVar('KERNEL_IMAGETYPE', True)
-    if kerneltype == 'fitImage':
+    kerneltypes = d.getVar('KERNEL_IMAGETYPES', True) or ""
+    if 'fitImage' in kerneltypes.split():
         depends = d.getVar("DEPENDS", True)
         depends = "%s u-boot-mkimage-native dtc-native" % depends
         d.setVar("DEPENDS", depends)
@@ -10,12 +10,24 @@ python __anonymous () {
 	# Override KERNEL_IMAGETYPE_FOR_MAKE variable, which is internal
 	# to kernel.bbclass . We have to override it, since we pack zImage
 	# (at least for now) into the fitImage .
-        d.setVar("KERNEL_IMAGETYPE_FOR_MAKE", "zImage")
+        typeformake = d.getVar("KERNEL_IMAGETYPE_FOR_MAKE", True) or ""
+        if 'fitImage' in typeformake.split():
+            d.setVar('KERNEL_IMAGETYPE_FOR_MAKE', typeformake.replace('fitImage', 'zImage'))
 
         image = d.getVar('INITRAMFS_IMAGE', True)
         if image:
             d.appendVarFlag('do_assemble_fitimage', 'depends', ' ${INITRAMFS_IMAGE}:do_image_complete')
+
+        # Verified boot will sign the fitImage and append the public key to
+        # U-boot dtb. We ensure the U-Boot dtb is deployed before assembling
+        # the fitImage:
+        if d.getVar('UBOOT_SIGN_ENABLE', True):
+            uboot_pn = d.getVar('PREFERRED_PROVIDER_u-boot', True) or 'u-boot'
+            d.appendVarFlag('do_assemble_fitimage', 'depends', ' %s:do_deploy' % uboot_pn)
 }
+
+# Options for the device tree compiler passed to mkimage '-D' feature:
+UBOOT_MKIMAGE_DTCOPTS ??= ""
 
 #
 # Emit the fitImage ITS header
@@ -129,6 +141,9 @@ EOF
 fitimage_emit_section_config() {
 
 	conf_csum="sha1"
+	if [ -n "${UBOOT_SIGN_ENABLE}" ] ; then
+		conf_sign_keyname="${UBOOT_SIGN_KEYNAME}"
+	fi
 
 	# Test if we have any DTBs at all
 	if [ -z "${2}" ] ; then
@@ -149,15 +164,35 @@ fitimage_emit_section_config() {
                         hash@1 {
                                 algo = "${conf_csum}";
                         };
+EOF
+
+	if [ ! -z "${conf_sign_keyname}" ] ; then
+
+		if [ -z "${2}" ] ; then
+			sign_line="sign-images = \"kernel\";"
+		else
+			sign_line="sign-images = \"fdt\", \"kernel\";"
+		fi
+
+		cat << EOF >> fit-image.its
+                        signature@1 {
+                                algo = "${conf_csum},rsa2048";
+                                key-name-hint = "${conf_sign_keyname}";
+                                sign-images = "fdt", "kernel";
+                        };
+EOF
+	fi
+
+	cat << EOF >> fit-image.its
                 };
 EOF
 }
 
 do_assemble_fitimage() {
-	if test "x${KERNEL_IMAGETYPE}" = "xfitImage" ; then
+	if echo ${KERNEL_IMAGETYPES} | grep -wq "fitImage"; then
 		kernelcount=1
 		dtbcount=""
-		rm -f fit-image.its
+		rm -f fit-image.its arch/${ARCH}/boot/fitImage
 
 		fitimage_emit_fit_header
 
@@ -209,7 +244,21 @@ do_assemble_fitimage() {
 		#
 		# Step 4: Assemble the image
 		#
-		uboot-mkimage -f fit-image.its arch/${ARCH}/boot/fitImage
+		uboot-mkimage \
+			${@'-D "${UBOOT_MKIMAGE_DTCOPTS}"' if len('${UBOOT_MKIMAGE_DTCOPTS}') else ''} \
+			-f fit-image.its \
+			arch/${ARCH}/boot/fitImage
+
+		#
+		# Step 5: Sign the image and add public key to U-Boot dtb
+		#
+		if [ "x${UBOOT_SIGN_ENABLE}" = "x1" ] ; then
+			uboot-mkimage \
+				${@'-D "${UBOOT_MKIMAGE_DTCOPTS}"' if len('${UBOOT_MKIMAGE_DTCOPTS}') else ''} \
+				-F -k "${UBOOT_SIGN_KEYDIR}" \
+				-K "${DEPLOY_DIR_IMAGE}/${UBOOT_DTB_BINARY}" \
+				-r arch/${ARCH}/boot/fitImage
+		fi
 	fi
 }
 
@@ -218,14 +267,14 @@ addtask assemble_fitimage before do_install after do_compile
 kernel_do_deploy[vardepsexclude] = "DATETIME"
 kernel_do_deploy_append() {
 	# Update deploy directory
-	if test "x${KERNEL_IMAGETYPE}" = "xfitImage" ; then
+	if echo ${KERNEL_IMAGETYPES} | grep -wq "fitImage"; then
 		cd ${B}
 		echo "Copying fit-image.its source file..."
-		its_base_name="${KERNEL_IMAGETYPE}-its-${PV}-${PR}-${MACHINE}-${DATETIME}"
-		its_symlink_name=${KERNEL_IMAGETYPE}-its-${MACHINE}
+		its_base_name="fitImage-its-${PV}-${PR}-${MACHINE}-${DATETIME}"
+		its_symlink_name=fitImage-its-${MACHINE}
 		install -m 0644 fit-image.its ${DEPLOYDIR}/${its_base_name}.its
-		linux_bin_base_name="${KERNEL_IMAGETYPE}-linux.bin-${PV}-${PR}-${MACHINE}-${DATETIME}"
-		linux_bin_symlink_name=${KERNEL_IMAGETYPE}-linux.bin-${MACHINE}
+		linux_bin_base_name="fitImage-linux.bin-${PV}-${PR}-${MACHINE}-${DATETIME}"
+		linux_bin_symlink_name=fitImage-linux.bin-${MACHINE}
 		install -m 0644 linux.bin ${DEPLOYDIR}/${linux_bin_base_name}.bin
 
 		cd ${DEPLOYDIR}

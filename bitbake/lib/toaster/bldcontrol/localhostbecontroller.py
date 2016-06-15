@@ -32,7 +32,7 @@ import subprocess
 
 from toastermain import settings
 
-from bbcontroller import BuildEnvironmentController, ShellCmdException, BuildSetupException, BitbakeController
+from bldcontrol.bbcontroller import BuildEnvironmentController, ShellCmdException, BuildSetupException, BitbakeController
 
 import logging
 logger = logging.getLogger("toaster")
@@ -66,11 +66,11 @@ class LocalhostBEController(BuildEnvironmentController):
                 err = "command: %s \n%s" % (command, out)
             else:
                 err = "command: %s \n%s" % (command, err)
-            logger.warn("localhostbecontroller: shellcmd error %s" % err)
+            logger.warning("localhostbecontroller: shellcmd error %s" % err)
             raise ShellCmdException(err)
         else:
             logger.debug("localhostbecontroller: shellcmd success")
-            return out
+            return out.decode('utf-8')
 
     def getGitCloneDirectory(self, url, branch):
         """Construct unique clone directory name out of url and branch."""
@@ -287,7 +287,7 @@ class LocalhostBEController(BuildEnvironmentController):
 
         # run bitbake server from the clone
         bitbake = os.path.join(self.pokydirname, 'bitbake', 'bin', 'bitbake')
-        self._shellcmd('bash -c \"source %s %s; BITBAKE_UI="" %s --read %s '
+        self._shellcmd('bash -c \"source %s %s; BITBAKE_UI="knotty" %s --read %s '
                        '--server-only -t xmlrpc -B 0.0.0.0:0\"' % (oe_init,
                        builddir, bitbake, confpath), self.be.sourcedir)
 
@@ -324,7 +324,7 @@ class LocalhostBEController(BuildEnvironmentController):
                                      'bitbake')
         self._shellcmd(['bash -c \"(TOASTER_BRBE="%s" BBSERVER="0.0.0.0:-1" '
                         '%s %s -u toasterui --token="" >>%s 2>&1;'
-                        'BITBAKE_UI="" BBSERVER=0.0.0.0:-1 %s -m)&\"' \
+                        'BITBAKE_UI="knotty" BBSERVER=0.0.0.0:-1 %s -m)&\"' \
                         % (brbe, local_bitbake, bbtargets, log, bitbake)],
                         builddir, nowait=True)
 

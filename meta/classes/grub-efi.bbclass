@@ -48,8 +48,9 @@ efi_populate() {
 		GRUB_IMAGE="grubaa64.efi"
 		;;
 	esac
-
-	install -m 0644 -D ${DEPLOY_DIR_IMAGE}/${GRUB_IMAGE} ${DEST}${EFIDIR}
+	install -m 0644 ${DEPLOY_DIR_IMAGE}/${GRUB_IMAGE} ${DEST}${EFIDIR}
+	EFIPATH=$(echo "${EFIDIR}" | sed 's/\//\\/g')
+	printf 'fs0:%s\%s\n' "$EFIPATH" "$GRUB_IMAGE" >${DEST}/startup.nsh
 
 	install -m 0644 ${GRUB_CFG} ${DEST}${EFIDIR}/grub.cfg
 }
@@ -96,7 +97,7 @@ python build_efi_cfg() {
         raise bb.build.FuncFailed('Unable to read GRUB_CFG')
 
     try:
-         cfgfile = file(cfile, 'w')
+         cfgfile = open(cfile, 'w')
     except OSError:
         raise bb.build.funcFailed('Unable to open %s' % (cfile))
 
