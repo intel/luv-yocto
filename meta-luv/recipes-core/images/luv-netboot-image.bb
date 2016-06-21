@@ -33,7 +33,7 @@ do_mkimage[depends] += "${EXTRABOOTIMGDEPS} \
                         mtools-native:do_populate_sysroot \
                         cdrtools-native:do_populate_sysroot \
                         virtual/kernel:do_deploy \
-                        bits:do_deploy"
+			${_BITSDEPENDS}"
 
 do_bootimg[noexec] = "1"
 
