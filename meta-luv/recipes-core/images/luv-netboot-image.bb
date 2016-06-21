@@ -65,5 +65,5 @@ addtask do_mkimage before do_build
 addtask do_deploy before do_build after do_mkimage
 
 do_mkimage[depends] += "${INITRD_IMAGE}:do_build"
-do_deploy[depends] += "grub-efi:do_deploy"
+do_deploy[depends] += "${_RDEPENDS}:do_deploy"
 
