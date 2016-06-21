@@ -6,6 +6,16 @@
 # Also, we sign the grub2 so that it can be launched by shim
 #
 
+# The x86 luv-netboot-image depend on bits package.  But the AArch64 is not.
+def get_bits_depends(bb, d):
+         import re
+         deps = bb.data.getVar('TARGET_PREFIX', d, True)
+         if re.search("(x86_64|i.86).*",deps):
+                 return "bits:do_deploy"
+         if re.search("aarch64",deps):
+                 return ""
+_BITSDEPENDS = "${@get_bits_depends(bb, d)}"
+
 def bootimg_depends(bb, d):
          import re
          deps = bb.data.getVar('TARGET_PREFIX', d, True)
