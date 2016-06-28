@@ -803,7 +803,8 @@ def runfetchcmd(cmd, d, quiet=False, cleanup=None):
                   'GIT_SMART_HTTP',
                   'SSH_AUTH_SOCK', 'SSH_AGENT_PID',
                   'SOCKS5_USER', 'SOCKS5_PASSWD',
-                  'DBUS_SESSION_BUS_ADDRESS']
+                  'DBUS_SESSION_BUS_ADDRESS',
+                  'P4CONFIG']
 
     if not cleanup:
         cleanup = []
@@ -1395,7 +1396,7 @@ class FetchMethod(object):
                 output = subprocess.check_output('ar -t %s' % file, preexec_fn=subprocess_setup, shell=True)
                 datafile = None
                 if output:
-                    for line in output.splitlines():
+                    for line in output.decode().splitlines():
                         if line.startswith('data.tar.'):
                             datafile = line
                             break

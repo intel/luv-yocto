@@ -7528,27 +7528,48 @@
                 <title>Build Considerations</title>
 
                 <para>
-                    This section describes build considerations that you need
-                    to be aware of in order to provide support for runtime
+                    This section describes build considerations of which you
+                    need to be aware in order to provide support for runtime
                     package management.
                 </para>
 
                 <para>
-                    When BitBake generates packages it needs to know
+                    When BitBake generates packages, it needs to know
                     what format or formats to use.
                     In your configuration, you use the
                     <ulink url='&YOCTO_DOCS_REF_URL;#var-PACKAGE_CLASSES'><filename>PACKAGE_CLASSES</filename></ulink>
-                    variable to specify the format.
-                    <note>
-                        You can choose to have more than one format but you must
-                        provide at least one.
-                    </note>
+                    variable to specify the format:
+                    <orderedlist>
+                        <listitem><para>
+                            Open the <filename>local.conf</filename> file
+                            inside your
+                            <link linkend='build-directory'>Build Directory</link>
+                            (e.g. <filename>~/poky/build/conf/local.conf</filename>).
+                            </para></listitem>
+                        <listitem><para>
+                            Select the desired package format as follows:
+                            <literallayout class='monospaced'>
+     PACKAGE_CLASSES ?= “package_<replaceable>packageformat</replaceable>”
+                            </literallayout>
+                            where <replaceable>packageformat</replaceable>
+                            can be "ipk", "rpm", and "deb", which are the
+                            supported package formats.
+                            <note>
+                                Because the Yocto Project supports three
+                                different package formats, you can set the
+                                variable with more than one argument.
+                                However, the OpenEmbedded build system only
+                                uses the first argument when creating an image
+                                or Software Development Kit (SDK).
+                            </note>
+                            </para></listitem>
+                    </orderedlist>
                 </para>
 
                 <para>
                     If you would like your image to start off with a basic
-                    package database of the packages in your current build
-                    as well as have the relevant tools available on the
+                    package database containing the packages in your current
+                    build as well as to have the relevant tools available on the
                     target for runtime package management, you can include
                     "package-management" in the
                     <ulink url='&YOCTO_DOCS_REF_URL;#var-IMAGE_FEATURES'><filename>IMAGE_FEATURES</filename></ulink>
@@ -7583,9 +7604,9 @@
                     <literallayout class='monospaced'>
     $ bitbake <replaceable>some-package</replaceable> package-index
                     </literallayout>
-                    This is because BitBake does not properly schedule the
-                    <filename>package-index</filename> target fully after any
-                    other target has completed.
+                    The reason for this restriction is because BitBake does not
+                    properly schedule the <filename>package-index</filename>
+                    target fully after any other target has completed.
                     Thus, be sure to run the package update step separately.
                 </para>
 
@@ -7601,9 +7622,10 @@
 
                 <para>
                     When your build is complete, your packages reside in the
-                    <filename>${TMPDIR}/deploy/<replaceable>package-format</replaceable></filename>
+                    <filename>${TMPDIR}/deploy/<replaceable>packageformat</replaceable></filename>
                     directory.
-                    For example, if <filename>${TMPDIR}</filename>
+                    For example, if
+                    <filename>${</filename><ulink url='&YOCTO_DOCS_REF_URL;#var-TMPDIR'><filename>TMPDIR</filename></ulink><filename>}</filename>
                     is <filename>tmp</filename> and your selected package type
                     is IPK, then your IPK packages are available in
                     <filename>tmp/deploy/ipk</filename>.
@@ -7614,121 +7636,38 @@
                 <title>Host or Server Machine Setup</title>
 
                 <para>
-                    Typically, packages are served from a server using
-                    HTTP.
-                    However, other protocols are possible.
-                    If you want to use HTTP, then setup and configure a
-                    web server, such as Apache 2 or lighttpd, on the machine
-                    serving the packages.
+                    Although other protocols are possible, a server using HTTP
+                    typically serves packages.
+                    If you want to use HTTP, then set up and configure a
+                    web server such as Apache 2, lighttpd, or
+                    SimpleHTTPServer on the machine serving the packages.
                 </para>
 
                 <para>
-                    As previously mentioned, the build machine can act as the
-                    package server.
-                    In the following sections that describe server machine
-                    setups, the build machine is assumed to also be the server.
+                    To keep things simple, this section describes how to set
+                    up a SimpleHTTPServer web server to share package feeds
+                    from the developer's machine.
+                    Although this server might not be the best for a production
+                    environment, the setup is simple and straight forward.
+                    Should you want to use a different server more suited for
+                    production (e.g. Apache 2, Lighttpd, or Nginx), take the
+                    appropriate steps to do so.
                 </para>
 
-                <section id='package-server-apache'>
-                    <title>Serving Packages via Apache 2</title>
-
-                    <para>
-                        This example assumes you are using the Apache 2
-                        server:
-                        <orderedlist>
-                            <listitem><para>
-                                Add the directory to your Apache
-                                configuration, which you can find at
-                                <filename>/etc/httpd/conf/httpd.conf</filename>.
-                                Use commands similar to these on the
-                                development system.
-                                These example commands assume a top-level
-                                <link linkend='source-directory'>Source Directory</link>
-                                named <filename>poky</filename> in your home
-                                directory.
-                                The example also assumes an RPM package type.
-                                If you are using a different package type, such
-                                as IPK, use "ipk" in the pathnames:
-                                <literallayout class='monospaced'>
-     &lt;VirtualHost *:80&gt;
-       ....
-         Alias /rpm ~/poky/build/tmp/deploy/rpm
-         &lt;Directory "~/poky/build/tmp/deploy/rpm"&gt;
-           Options +Indexes
-         &lt;/Directory&gt;
-     &lt;/VirtualHost&gt;
-                                </literallayout></para></listitem>
-                            <listitem><para>
-                                Reload the Apache configuration as described
-                                in this step.
-                                For all commands, be sure you have root
-                                privileges.
-                                </para>
-
-                                <para>
-                                If your development system is using Fedora or
-                                CentOS, use the following:
-                                <literallayout class='monospaced'>
-     # service httpd reload
-                                </literallayout>
-                                For Ubuntu and Debian, use the following:
-                                <literallayout class='monospaced'>
-     # /etc/init.d/apache2 reload
-                                </literallayout>
-                                For OpenSUSE, use the following:
-                                <literallayout class='monospaced'>
-     # /etc/init.d/apache2 reload
-                                </literallayout></para></listitem>
-                            <listitem><para>
-                                If you are using Security-Enhanced Linux
-                                (SELinux), you need to label the files as
-                                being accessible through Apache.
-                                Use the following command from the development
-                                host.
-                                This example assumes RPM package types:
-                                <literallayout class='monospaced'>
-     # chcon -R -h -t httpd_sys_content_t tmp/deploy/rpm
-                                </literallayout></para></listitem>
-                        </orderedlist>
-                    </para>
-                </section>
-
-                <section id='package-server-lighttpd'>
-                    <title>Serving Packages via lighttpd</title>
-
-                    <para>
-                        If you are using lighttpd, all you need
-                        to do is to provide a link from your
-                        <filename>${TMPDIR}/deploy/<replaceable>package-format</replaceable></filename>
-                        directory to lighttpd's document-root.
-                        You can determine the specifics of your lighttpd
-                        installation by looking through its configuration file,
-                        which is usually found at:
-                        <filename>/etc/lighttpd/lighttpd.conf</filename>.
-                    </para>
-
-                    <para>
-                        For example, if you are using IPK, lighttpd's
-                        document-root is set to
-                        <filename>/var/www/lighttpd</filename>, and you had
-                        packages for a target named "BOARD",
-                        then you might create a link from your build location
-                        to lighttpd's document-root as follows:
-                        <literallayout class='monospaced'>
-    # ln -s $(PWD)/tmp/deploy/ipk /var/www/lighttpd/BOARD-dir
-                        </literallayout>
-                    </para>
-
-                    <para>
-                        At this point, you need to start the lighttpd server.
-                        The method used to start the server varies by
-                        distribution.
-                        However, one basic method that starts it by hand is:
-                        <literallayout class='monospaced'>
-    # lighttpd -f /etc/lighttpd/lighttpd.conf
-                        </literallayout>
-                    </para>
-                </section>
+                <para>
+                    From within the build directory where you have built an
+                    image based on your packaging choice (i.e. the
+                    <ulink url='&YOCTO_DOCS_REF_URL;#var-PACKAGE_CLASSES'><filename>PACKAGE_CLASSES</filename></ulink>
+                    setting), simply start the server.
+                    The following example assumes a build directory of
+                    <filename>~/poky/build/tmp/deploy/rpm</filename> and a
+                    <filename>PACKAGE_CLASSES</filename> setting of
+                    "package_rpm":
+                    <literallayout class='monospaced'>
+     $ cd ~/poky/build/tmp/deploy/rpm
+     $ python -m SimpleHTTPServer
+                    </literallayout>
+                </para>
             </section>
 
             <section id='runtime-package-management-target'>
@@ -7737,42 +7676,40 @@
                 <para>
                     Setting up the target differs depending on the
                     package management system.
-                    This section provides information for RPM and IPK.
+                    This section provides information for RPM, IPK, and DEB.
                 </para>
 
                 <section id='runtime-package-management-target-rpm'>
                     <title>Using RPM</title>
 
                     <para>
-                        The application for performing runtime package
-                        management of RPM packages on the target is called
-                        <filename>smart</filename>.
+                        The <filename>smart</filename> application performs
+                        runtime package management of RPM packages.
+                        You must perform an initial setup for
+                        <filename>smart</filename> on the target machine.
                     </para>
 
                     <para>
-                        On the target machine, you need to inform
-                        <filename>smart</filename> of every package database
-                        you want to use.
-                        As an example, suppose your target device can use the
-                        following three package databases from a server named
-                        <filename>server.name</filename>:
+                        As an example, assume the target is able to use the
+                        following package databases:
                         <filename>all</filename>, <filename>i586</filename>,
-                        and <filename>qemux86</filename>.
-                        Given this example, issue the following commands on the
-                        target:
+                        and <filename>qemux86</filename> from a server named
+                        <filename>my.server</filename>.
+                        You must inform <filename>smart</filename> of the
+                        availability of these databases by issuing the
+                        following commands on the target:
                         <literallayout class='monospaced'>
-     # smart channel --add all type=rpm-md baseurl=http://server.name/rpm/all
-     # smart channel --add i585 type=rpm-md baseurl=http://server.name/rpm/i586
-     # smart channel --add qemux86 type=rpm-md baseurl=http://server.name/rpm/qemux86
+     # smart channel --add i585 type=rpm-md baseurl=http://my.server/rpm/i586
+     # smart channel --add qemux86 type=rpm-md baseurl=http://my.server/rpm/qemux86
+     # smart channel --add all type=rpm-md baseurl=http://my.server/rpm/all
                         </literallayout>
-                        Also from the target machine, fetch the repository
-                        information using this command:
+                        From the target machine, fetch the repository:
                         <literallayout class='monospaced'>
      # smart update
                         </literallayout>
-                        You can now use the <filename>smart query</filename>
-                        and <filename>smart install</filename> commands to
-                        find and install packages from the repositories.
+                        After everything is set up, <filename>smart</filename>
+                        is able to find, install, and upgrade packages from
+                        the specified repository.
                     </para>
                 </section>
 
@@ -7780,61 +7717,87 @@
                     <title>Using IPK</title>
 
                     <para>
-                        The application for performing runtime package
-                        management of IPK packages on the target is called
-                        <filename>opkg</filename>.
+                        The <filename>opkg</filename> application performs
+                        runtime package management of IPK packages.
+                        You must perform an initial setup for
+                        <filename>opkg</filename> on the target machine.
                     </para>
 
                     <para>
-                        In order to inform <filename>opkg</filename> of the
-                        package databases you want to use, simply create one
-                        or more <filename>*.conf</filename> files in the
-                        <filename>/etc/opkg</filename> directory on the target.
-                        The <filename>opkg</filename> application uses them
-                        to find its available package databases.
-                        As an example, suppose you configured your HTTP server
-                        on your machine named
-                        <filename>www.mysite.com</filename> to serve files
-                        from a <filename>BOARD-dir</filename> directory under
-                        its document-root.
-                        In this case, you might create a configuration
-                        file on the target called
-                        <filename>/etc/opkg/base-feeds.conf</filename> that
-                        contains:
+                        The <filename>opkg</filename> application uses
+                        configuration files to find available package
+                        databases.
+                        Thus, you need to create a configuration file inside
+                        the <filename>/etc/opkg/</filename> direction, which
+                        informs <filename>opkg</filename> of any repository
+                        you want to use.
+                    </para>
+
+                    <para>
+                        As an example, suppose you are serving packages from a
+                        <filename>ipk/</filename> directory containing the
+                        <filename>i586</filename>,
+                        <filename>all</filename>, and
+                        <filename>qemux86</filename> databases through an
+                        HTTP server named <filename>my.server</filename>.
+                        On the target, create a configuration file
+                        (e.g. <filename>my_repo.conf</filename>) inside the
+                        <filename>/etc/opkg/</filename> directory containing
+                        the following:
                         <literallayout class='monospaced'>
-     src/gz all http://www.mysite.com/BOARD-dir/all
-     src/gz armv7a http://www.mysite.com/BOARD-dir/armv7a
-     src/gz beaglebone http://www.mysite.com/BOARD-dir/beaglebone
+     src/gz all http://my.server/ipk/all
+     src/gz i586 http://my.server/ipk/i586
+     src/gz qemux86 http://my.server/ipk/qemux86
                         </literallayout>
-                    </para>
-
-                    <para>
-                        As a way of making it easier to generate and make
-                        these IPK configuration files available on your
-                        target, simply define
-                        <ulink url='&YOCTO_DOCS_REF_URL;#var-FEED_DEPLOYDIR_BASE_URI'><filename>FEED_DEPLOYDIR_BASE_URI</filename></ulink>
-                        to point to your server and the location within the
-                        document-root which contains the databases.
-                        For example: if you are serving your packages over
-                        HTTP, your server's IP address is 192.168.7.1, and
-                        your databases are located in a directory called
-                        <filename>BOARD-dir</filename> underneath your HTTP
-                        server's document-root, you need to set
-                        <filename>FEED_DEPLOYDIR_BASE_URI</filename> to
-                        <filename>http://192.168.7.1/BOARD-dir</filename> and
-                        a set of configuration files will be generated for you
-                        in your target to work with this feed.
-                    </para>
-
-                    <para>
-                        On the target machine, fetch (or refresh) the
-                        repository information using this command:
+                        Next, instruct <filename>opkg</filename> to fetch
+                        the repository information:
                         <literallayout class='monospaced'>
      # opkg update
                         </literallayout>
-                        You can now use the <filename>opkg list</filename> and
-                        <filename>opkg install</filename> commands to find and
-                        install packages from the repositories.
+                        The <filename>opkg</filename> application is now able
+                        to find, install, and upgrade packages from the
+                        specified repository.
+                    </para>
+                </section>
+
+                <section id='runtime-package-management-target-deb'>
+                    <title>Using DEB</title>
+
+                    <para>
+                        The <filename>apt</filename> application performs
+                        runtime package management of DEB packages.
+                        This application uses a source list file to find
+                        available package databases.
+                        You must perform an initial setup for
+                        <filename>apt</filename> on the target machine.
+                    </para>
+
+                    <para>
+                        To inform <filename>apt</filename> of the repository
+                        you want to use, you might create a list file (e.g.
+                        <filename>my_repo.list</filename>) inside the
+                        <filename>/etc/apt/sources.list.d/</filename>
+                        directory.
+                        As an example, suppose you are serving packages from a
+                        <filename>deb/</filename> directory containing the
+                        <filename>i586</filename>,
+                        <filename>all</filename>, and
+                        <filename>qemux86</filename> databases through an
+                        HTTP server named <filename>my.server</filename>.
+                        The list file should contain:
+                        <literallayout class='monospaced'>
+     deb http://my.server/deb/all ./
+     deb http://my.server/deb/i586 ./
+     deb http://my.server/deb/qemux86 ./
+                        </literallayout>
+                        Next, instruct the <filename>apt</filename>
+                        application to fetch the repository information:
+                        <literallayout class='monospaced'>
+     # apt-get update
+                        </literallayout>
+                        After this step, <filename>apt</filename> is able
+                        to find, install, and upgrade packages from the
+                        specified repository.
                     </para>
                 </section>
             </section>
@@ -9198,18 +9161,17 @@
                 in your <filename>local.conf</filename> file.
                 Be sure to provide the IP address you need:
                 <literallayout class='monospaced'>
-     TEST_EXPORT_ONLY = "1"
-     TEST_TARGET = "simpleremote"
+     INHERIT +="testexport"
      TEST_TARGET_IP = "192.168.7.2"
      TEST_SERVER_IP = "192.168.7.1"
                 </literallayout>
                 You can then export the tests with the following:
                 <literallayout class='monospaced'>
-     $ bitbake core-image-sato -c testimage
+     $ bitbake core-image-sato -c testexport
                 </literallayout>
                 Exporting the tests places them in the
                 <link linkend='build-directory'>Build Directory</link> in
-                <filename>tmp/testimage/core-image-sato</filename>, which
+                <filename>tmp/testexport/core-image-sato</filename>, which
                 is controlled by the
                 <filename>TEST_EXPORT_DIR</filename> variable.
             </para>
@@ -9217,37 +9179,9 @@
             <para>
                 You can now run the tests outside of the build environment:
                 <literallayout class='monospaced'>
-     $ cd tmp/testimage/core-image-sato
+     $ cd tmp/testexport/core-image-sato
      $ ./runexported.py testdata.json
                 </literallayout>
-                <note>
-                    This "export" feature does not deploy or boot the target
-                    image.
-                    Your target (be it a Qemu or hardware one)
-                    has to already be up and running when you call
-                    <filename>runexported.py</filename>
-                </note>
-            </para>
-
-            <para>
-                The exported data (i.e. <filename>testdata.json</filename>)
-                contains paths to the Build Directory.
-                Thus, the contents of the directory can be moved
-                to another machine as long as you update some paths in the
-                JSON.
-                Usually, you only care about the
-                <filename>${DEPLOY_DIR}/rpm</filename> directory
-                (assuming the RPM and Smart tests are enabled).
-                Consequently, running the tests on other machine
-                means that you have to move the contents and call
-                <filename>runexported.py</filename> with
-                "--deploy-dir <replaceable>path</replaceable>" as
-                follows:
-                <literallayout class='monospaced'>
-     ./runexported.py --deploy-dir /new/path/on/this/machine testdata.json
-                </literallayout>
-                <filename>runexported.py</filename> accepts other arguments
-                as well as described using <filename>--help</filename>.
             </para>
         </section>
 
@@ -9421,6 +9355,78 @@
                     <filename>oeRuntimeTest.tc.target.run(cmd)</filename>.
                 </para>
             </section>
+        </section>
+
+        <section id='installing-packages-in-the-dut-without-the-package-manager'>
+            <title>Installing Packages in the DUT Without the Package Manager</title>
+
+            <para>
+                When a test requires a package built by BitBake, it is possible
+                to install that package.
+                Installing the package does not require a package manager be
+                installed in the device under test (DUT).
+                It does, however, require an SSH connection and the target must
+                be using the <filename>sshcontrol</filename> class.
+                <note>
+                    This method uses <filename>scp</filename> to copy files
+                    from the host to the target, which causes permissions and
+                    special attributes to be lost.
+                </note>
+            </para>
+
+            <para>
+                A JSON file is used to define the packages needed by a test.
+                This file must be in the same path as the file used to define
+                the tests.
+                Furthermore, the filename must map directory to the test
+                module name with a <filename>.json</filename> extension.
+            </para>
+
+            <para>
+                The JSON file must include an object with the test name as
+                keys of an object or an array.
+                This object (or array of objects) uses the following data:
+                <itemizedlist>
+                    <listitem><para>"pkg" - A mandatory string that is the
+                        name of the package to be installed.
+                        </para></listitem>
+                    <listitem><para>"rm" - An optional boolean, which defaults
+                        to "false", that specifies to remove the package after
+                        the test.
+                        </para></listitem>
+                    <listitem><para>"extract" - An optional boolean, which
+                        defaults to "false", that specifies if the package must
+                        be extracted from the package format.
+                        When set to "true", the package is not automatically
+                        installed into the DUT.
+                        </para></listitem>
+                </itemizedlist>
+            </para>
+
+            <para>
+                Following is an example JSON file that handles test "foo"
+                installing package "bar" and test "foobar" installing
+                packages "foo" and "bar".
+                Once the test is complete, the packages are removed from the
+                DUT.
+                <literallayout class='monospaced'>
+     {
+         "": {
+             "pkg": "bar"
+         },
+         "foobar": [
+             {
+                 "pkg": "foo",
+                 "rm": true
+             },
+             {
+                 "pkg": "bar",
+                 "rm": true
+             }
+         ]
+     }
+                </literallayout>
+            </para>
         </section>
     </section>
 

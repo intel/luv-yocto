@@ -5976,7 +5976,19 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
             <glossdef>
                 <para role="glossdeffirst">
 <!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
-                    If set to "1", causes the build to not strip binaries in resulting packages.
+                    If set to "1", causes the build to not strip binaries in
+                    resulting packages and prevents the
+                    <filename>-dbg</filename> package from containing the
+                    source files.
+                </para>
+
+                <para>
+                     By default, the OpenEmbedded build system strips
+                     binaries and puts the debugging symbols into
+                     <filename>${</filename><link linkend='var-PN'><filename>PN</filename></link><filename>}-dbg</filename>.
+                     Consequently, you should not set
+                     <filename>INHIBIT_PACKAGE_STRIP</filename> when you plan
+                     to debug in general.
                 </para>
             </glossdef>
         </glossentry>
@@ -11982,7 +11994,7 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     directory structure.
                     <literallayout class='monospaced'>
      SSTATE_MIRRORS ?= "\
-     file://.* http://<replaceable>someserver</replaceable>.tld/share/sstate/PATH \n \
+     file://.* http://<replaceable>someserver</replaceable>.tld/share/sstate/PATH;downloadfilename=PATH \n \
      file://.* file:///<replaceable>some-local-dir</replaceable>/sstate/PATH"
                     </literallayout>
                 </para>
@@ -14296,6 +14308,84 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     Given that almost all recipes that install initscripts
                     package them in the main package for the recipe, you
                     rarely need to set this variable in individual recipes.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-UPSTREAM_CHECK_GITTAGREGEX'><glossterm>UPSTREAM_CHECK_GITTAGREGEX</glossterm>
+            <info>
+               UPSTREAM_CHECK_GITTAGREGEX[doc] = "Filters relevant Git tags when fetching source from an upstream Git repository."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    When the
+                    <link linkend='ref-classes-distrodata'><filename>distrodata</filename></link>
+                    class is enabled globally, you can perform a per-recipe
+                    check for what the latest upstream source code version is
+                    by calling
+                    <filename>bitbake -c checkpkg</filename> <replaceable>recipe</replaceable>.
+                    If the recipe source code is provided from Git
+                    repositories, the OpenEmbedded build system determines the
+                    latest upstream version by picking the latest tag from the
+                    list of all repository tags.
+                    You can use the
+                    <filename>UPSTREAM_CHECK_GITTAGREGEX</filename>
+                    variable to provide a regular expression to filter only the
+                    relevant tags should the default filter not work
+                    correctly.
+                    <literallayout class='monospaced'>
+     UPSTREAM_CHECK_GITTAGREGEX = "git_tag_regex"
+                    </literallayout>
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-UPSTREAM_CHECK_REGEX'><glossterm>UPSTREAM_CHECK_REGEX</glossterm>
+            <info>
+               UPSTREAM_CHECK_REGEX[doc] = "The regular expression the package checking system uses to parse the page pointed to by UPSTREAM_CHECK_URI."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    When the
+                    <link linkend='ref-classes-distrodata'><filename>distrodata</filename></link>
+                    class is enabled globally, use the
+                    <filename>UPSTREAM_CHECK_REGEX</filename> variable to
+                    specify a different regular expression instead of the
+                    default one when the package checking system is parsing
+                    the page found using
+                    <link linkend='var-UPSTREAM_CHECK_URI'><filename>UPSTREAM_CHECK_URI</filename></link>.
+                    <literallayout class='monospaced'>
+     UPSTREAM_CHECK_REGEX = "package_regex"
+                    </literallayout>
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-UPSTREAM_CHECK_URI'><glossterm>UPSTREAM_CHECK_URI</glossterm>
+            <info>
+               UPSTREAM_CHECK_URI[doc] = "The URL used by the package checking system to get the latest version of the package when source files are fetched from an upstream Git repository."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    When the
+                    <link linkend='ref-classes-distrodata'><filename>distrodata</filename></link>
+                    class is enabled globally, you can perform a per-recipe
+                    check for what the latest upstream source code version is
+                    by calling <filename>bitbake -c checkpkg</filename>
+                    <replaceable>recipe</replaceable>.
+                    If the source code is provided from tarballs, the latest
+                    version is determined by fetching the directory listing
+                    where the tarball is and attempting to find a later tarball.
+                    When this approach does not work, you can use
+                    <filename>UPSTREAM_CHECK_URI</filename> to
+                    provide a different URI that contains the link to the
+                    latest tarball.
+                    <literallayout class='monospaced'>
+     UPSTREAM_CHECK_URI = "recipe_url"
+                    </literallayout>
                 </para>
             </glossdef>
         </glossentry>
