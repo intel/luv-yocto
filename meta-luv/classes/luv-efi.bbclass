@@ -151,7 +151,7 @@ python build_efi_cfg() {
         raise bb.build.FuncFailed('Unable to read GRUBCFG')
 
     try:
-        cfgfile = file(path, 'w')
+        cfgfile = open(path, 'w')
     except OSError:
         raise bb.build.funcFailed('Unable to open %s' % (cfgfile))
 
