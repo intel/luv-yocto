@@ -497,42 +497,42 @@ index 3f3e6e3..bd83859 100644
 +        /* section has EFI_IMAGE_SCN_MEM_DISCARDABLE attr set */
 +        continue;
 +
-+	sect_size = section->virtual_size;
++      sect_size = section->virtual_size;
 +
-+        if (sect_size > section->raw_data_size)
-+	  sect_size = section->raw_data_size;
++      if (sect_size > section->raw_data_size)
++        sect_size = section->raw_data_size;
 +
-+	base = (grub_int8_t *)
-+	       grub_shim_image_address (shim_buffer, context->image_size,
-+					section->virtual_address);
-+	end = (grub_int8_t *)
-+	      grub_shim_image_address (shim_buffer, context->image_size,
-+				       section->virtual_address
-+				       + sect_size - 1);
-+	if (!base || !end)
-+	  {
-+	    grub_printf("Invalid section base\n");
-+	    status = GRUB_ERR_BAD_FILE_TYPE;
-+	    goto fail;
-+	 }
++      base = (grub_int8_t *)
++      grub_shim_image_address (shim_buffer, context->image_size,
++				section->virtual_address);
++      end = (grub_int8_t *)
++            grub_shim_image_address (shim_buffer, context->image_size,
++                                     section->virtual_address
++                                     + sect_size - 1);
++      if (!base || !end)
++        {
++          grub_printf("Invalid section base\n");
++          status = GRUB_ERR_BAD_FILE_TYPE;
++          goto fail;
++        }
 +
-+	if (section->virtual_address < context->header_size
-+	    || section->raw_data_offset < context->header_size)
-+	  {
-+	    grub_printf("Section is inside image headers\n");
-+	    status = GRUB_ERR_BAD_FILE_TYPE;
-+	    goto fail;
-+	  }
++      if (section->virtual_address < context->header_size
++         || section->raw_data_offset < context->header_size)
++        {
++           grub_printf("Section is inside image headers\n");
++           status = GRUB_ERR_BAD_FILE_TYPE;
++           goto fail;
++        }
 +
-+	if (section->raw_data_size > 0)
-+	  /* TODO: do we need the double cast? */
-+	  grub_memcpy ((void *)base,
-+		       (void *) (((grub_addr_t) addr)
-+		       + section->raw_data_offset), sect_size);
++      if (section->raw_data_size > 0)
++      /* TODO: do we need the double cast? */
++      grub_memcpy ((void *)base,
++                    (void *) (((grub_addr_t) addr)
++                    + section->raw_data_offset), sect_size);
 +
-+	if (sect_size < section->virtual_size)
-+	  grub_memset ((void *)(base + sect_size), 0,
-+		       section->virtual_size - sect_size);
++      if (sect_size < section->virtual_size)
++        grub_memset ((void *)(base + sect_size), 0,
++                     section->virtual_size - sect_size);
 +    }
 +
 +  if (context->number_of_rva_and_sizes <= EFI_IMAGE_DIRECTORY_ENTRY_BASERELOC)

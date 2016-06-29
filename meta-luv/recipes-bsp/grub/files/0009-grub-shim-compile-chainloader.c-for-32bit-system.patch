@@ -1,6 +1,6 @@
-From ee9d8dbb0e22450bb2b291b34b01538962303f82 Mon Sep 17 00:00:00 2001
+From 403aff424fbf504a9f4dea233a71e95e6617b065 Mon Sep 17 00:00:00 2001
 From: Megha Dey <megha.dey@intel.com>
-Date: Wed, 3 Feb 2016 11:17:54 -0800
+Date: Tue, 28 Jun 2016 18:22:54 -0700
 Subject: [PATCH] grub: shim: compile chainloader.c for 32bit system
 
 Modify variable sizes, edit pointer indirections and casts to
@@ -13,11 +13,11 @@ within the grub context) use the grub_addr_t.
 
 Signed-off-by: Megha Dey <megha.dey@intel.com>
 ---
- grub-core/loader/efi/chainloader.c | 58 +++++++++++++++++++-------------------
- 1 file changed, 29 insertions(+), 29 deletions(-)
+ grub-core/loader/efi/chainloader.c | 60 ++++++++++++++--------------
+ 1 file changed, 30 insertions(+), 30 deletions(-)
 
 diff --git a/grub-core/loader/efi/chainloader.c b/grub-core/loader/efi/chainloader.c
-index e35f36a..4f793ba 100644
+index c559025..50767c1 100644
 --- a/grub-core/loader/efi/chainloader.c
 +++ b/grub-core/loader/efi/chainloader.c
 @@ -149,12 +149,12 @@ grub_shim_image_is_loadable (union grub_shim_optional_header_union *pe_hdr)
@@ -95,29 +95,30 @@ index e35f36a..4f793ba 100644
     * Copy the executable's sections to their desired offsets
    */
 @@ -509,11 +509,11 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
-         if (sect_size > section->raw_data_size)
- 	  sect_size = section->raw_data_size;
+       if (sect_size > section->raw_data_size)
+         sect_size = section->raw_data_size;
  
--	base = (grub_int8_t *)
--	       grub_shim_image_address (shim_buffer, context->image_size,
-+	base = grub_shim_image_address ((void *)(grub_addr_t)shim_buffer,
-+					context->image_size,
- 					section->virtual_address);
--	end = (grub_int8_t *)
--	      grub_shim_image_address (shim_buffer, context->image_size,
-+	end = grub_shim_image_address ((void *)(grub_addr_t)shim_buffer,
-+				       context->image_size,
- 				       section->virtual_address
- 				       + sect_size - 1);
- 	if (!base || !end)
+-      base = (grub_int8_t *)
+-      grub_shim_image_address (shim_buffer, context->image_size,
+-				section->virtual_address);
+-      end = (grub_int8_t *)
+-            grub_shim_image_address (shim_buffer, context->image_size,
++      base = grub_shim_image_address ((void *)(grub_addr_t)shim_buffer,
++                                      context->image_size,
++                                      section->virtual_address);
++      end = grub_shim_image_address ((void *)(grub_addr_t)shim_buffer,
++                                     context->image_size,
+                                      section->virtual_address
+                                      + sect_size - 1);
+       if (!base || !end)
 @@ -532,7 +532,6 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
- 	  }
+         }
  
- 	if (section->raw_data_size > 0)
--	  /* TODO: do we need the double cast? */
- 	  grub_memcpy ((void *)base,
- 		       (void *) (((grub_addr_t) addr)
- 		       + section->raw_data_offset), sect_size);
+       if (section->raw_data_size > 0)
+-      /* TODO: do we need the double cast? */
+       grub_memcpy ((void *)base,
+                     (void *) (((grub_addr_t) addr)
+                     + section->raw_data_offset), sect_size);
 @@ -552,7 +551,7 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
    if (context->reloc_dir->size)
      {
@@ -162,5 +163,5 @@ index e35f36a..4f793ba 100644
      }
    else
 -- 
-1.9.1
+2.8.1
 
