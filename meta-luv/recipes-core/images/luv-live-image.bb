@@ -5,10 +5,10 @@ DEPENDS_${PN} = "grub-efi bits"
 
 HDDDIR = "${S}/hddimg"
 HDDIMG_ID = "423cc2c8"
-LABELS = "luv"
+LABELS_LIVE = "luv"
 
 INITRD_IMAGE = "core-image-efi-initramfs"
-INITRD = "${DEPLOY_DIR_IMAGE}/${INITRD_IMAGE}-${MACHINE}.cpio.gz"
+INITRD_LIVE = "${DEPLOY_DIR_IMAGE}/${INITRD_IMAGE}-${MACHINE}.cpio.gz"
 MACHINE_FEATURES += "efi"
 APPEND = "debug crashkernel=256M console=ttyS0,115200 console=ttyPCH0,115200 ip=dhcp log_buf_len=1M"
 APPEND_netconsole = "luv_netconsole=10.11.12.13,64001"
@@ -18,11 +18,14 @@ SPLASH_IMAGE = "blue-luv.jpg"
 
 GRUB_TIMEOUT = "2"
 
-inherit bootimg
+inherit image-live
 
 SRC_URI = "file://blue-luv.jpg"
 
 S = "${WORKDIR}"
+
+do_image_ext4(){
+}
 
 build_img() {
     IMG="${DEPLOY_DIR_IMAGE}/${PN}.img"
@@ -82,3 +85,4 @@ do_bootimg[depends] += "shim-signed:do_deploy"
 
 addtask create_img after do_bootimg before do_build
 addtask do_unpack before do_build
+addtask do_image_ext4 before do_bootimg
