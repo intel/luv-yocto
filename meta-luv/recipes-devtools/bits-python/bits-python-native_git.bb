@@ -20,12 +20,12 @@ inherit native
 LICENSE = "GPLv3"
 LIC_FILES_CHKSUM = "file://COPYING;md5=71a9ec458a3c65c2bfb461b227ef3049"
 
-BITSVERSION="2005"
+BITSVERSION="2073"
 PV="${BITSVERSION}+git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
-SRCREV ="6026f6460fee9dff3897191a2b972c9536f23e53"
+SRCREV ="5931fde3bc7da376a33411e07423722977502259"
 SRC_URI = "gitsm://github.com/biosbits/bits.git;protocol=http  \
            file://BITS-python-_ctypes-do-not-use-the-WIN-64-EFI64-call.patch \
            file://BITS-python-configure-customize-Python-version.patch \
