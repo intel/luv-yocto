@@ -15,6 +15,7 @@ hob-image-*.bb
 *.rej
 *~
 !meta-poky
+!meta-luv
 !meta-yocto
 !meta-yocto-bsp
 !meta-yocto-imported

@@ -60,6 +60,7 @@ Table of Contents
  III. Executing ACPI NFIT destructive tests
   IV. Use of Netconsole in LUV
    V. Obtaining debug information
+  VI. Other LUV boot parameters
 
 
 I. Adding the meta-luv layer to your build
@@ -142,8 +143,8 @@ to narrow down the causes and provide support to its users.
 
 Usage in LUV
 ------------
-In order to make use of the netconsole feature in LUV users must aware
-of its usage.
+In order to make use of the netconsole feature in LUV users must be
+aware of its usage.
 
 The current release of luv-netconsole could support Linux and Microsoft
 Windows hosts and remote machines. However, at the moment it is only
@@ -201,3 +202,21 @@ first partition you see in the LUV disk).
 When luv.debug is enabled, the LUV test manager will leave a file
 named luv-debug.log inside the time-stamped directory luv-results-
 yyyy-mm-dd--hh-mm--ss with the debug data it collected.
+
+VI. Other LUV boot parameters
+=================================================
+
+These parameters can be also added to the linux kernel command line
+to alter the default behaviour of LUV.
+  noluv
+    Do not start the LUV test suite after booting
+  luv.netboot
+    Force LUV to believe it has been booted over a network.
+    (Currently this only sets test output to /tmp/luv-storage)
+  luv.halt
+    Halts the machine after tests have completed. (Calls /sbin/halt)
+  luv.reboot
+    Reboots the machine after tests have completed (Calls /sbin/reboot)
+  luv.poweroff
+    Halts and powers off the machine after tests have completed.
+    (Calls /sbin/poweroff)

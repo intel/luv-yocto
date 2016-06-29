@@ -33,13 +33,16 @@ do_mkimage[depends] += "${EXTRABOOTIMGDEPS} \
                         mtools-native:do_populate_sysroot \
                         cdrtools-native:do_populate_sysroot \
                         virtual/kernel:do_deploy \
-                        bits:do_deploy"
+			${_BITSDEPENDS}"
 
 do_bootimg[noexec] = "1"
 
 do_populate_image() {
-	efi_populate_bits ${HDDDIR}
-	install -m 0644 ${GRUBCFG} ${DEST}${EFIDIR}
+	install -d  ${HDDDIR}${EFIDIR}
+	if [ "${TARGET_ARCH}" != "aarch64" ]; then
+		efi_populate_bits ${HDDDIR}
+	fi
+	install -m 0644 ${GRUBCFG} ${HDDDIR}${EFIDIR}
 	build_hddimg
 }
 
@@ -51,12 +54,16 @@ python do_mkimage() {
 
 do_deploy() {
 	rm -f ${DEPLOY_DIR_IMAGE}/${PN}.efi
-	ln -s ${DEPLOY_DIR_IMAGE}/bootx64.efi ${DEPLOY_DIR_IMAGE}/${PN}.efi
+	if [ "${TARGET_ARCH}" == "aarch64" ]; then
+		ln -s ${DEPLOY_DIR_IMAGE}/bootaa64.efi ${DEPLOY_DIR_IMAGE}/${PN}.efi
+	else
+		ln -s ${DEPLOY_DIR_IMAGE}/bootx64.efi ${DEPLOY_DIR_IMAGE}/${PN}.efi
+	fi
 }
 
 addtask do_mkimage before do_build
 addtask do_deploy before do_build after do_mkimage
 
 do_mkimage[depends] += "${INITRD_IMAGE}:do_build"
-do_deploy[depends] += "grub-efi:do_deploy"
+do_deploy[depends] += "${_RDEPENDS}:do_deploy"
 

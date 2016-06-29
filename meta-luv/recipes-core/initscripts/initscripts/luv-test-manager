@@ -281,7 +281,7 @@ fi
 
 grep -q luv.halt /proc/cmdline
 if [ $? -ne 1 ]; then
-    halt -p
+    halt
 fi
 
 REBOOT_TIMEOUT=$((5*60))
@@ -295,6 +295,12 @@ grep -q luv.reboot /proc/cmdline
 if [ $? -ne 1 ]; then
     # Put reboot task into background and drop to a shell
     $(sleep ${REBOOT_TIMEOUT} ; reboot)&
+fi
+
+grep -q luv.poweroff /proc/cmdline
+if [ $? -ne 1 ]; then
+    # Put poweroff task into background and drop to a shell
+    $(sleep ${REBOOT_TIMEOUT} ; poweroff)&
 fi
 
 set +x
