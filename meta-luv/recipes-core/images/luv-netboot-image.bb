@@ -20,7 +20,7 @@ APPEND_aarch64 = "crashkernel=256M console=ttyAMA0 uefi_debug acpi=force luv.net
 HDDDIR = "${S}/hddimg"
 
 inherit luv-efi
-inherit bootimg
+inherit image-live
 inherit deploy
 
 # reuse the same splash screen as in the disk live image
