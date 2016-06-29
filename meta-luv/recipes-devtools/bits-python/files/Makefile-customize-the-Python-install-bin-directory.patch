@@ -22,7 +22,7 @@ index c5f94d4..b3ff0e4 100644
  build-python-host: setup
  	$(Q)tar -cf - --exclude=.git -C $(BITS)/deps/python . | tar -xf - -C $(python-host-src)
 -	$(Q)cd '$(python-host-src)' && ./configure
-+	$(Q)cd '$(python-host-src)' && ./configure --bindir=BINDIR/PN
++	$(Q)cd '$(python-host-src)' && ./configure --bindir=BINDIR/PN --prefix=CUSTOM_PREFIX_DIR
  	$(Q)cd '$(python-host-src)' && $(MAKE)
  
  pylibtmp:=$(workdir)/python-lib

@@ -34,6 +34,13 @@ SRC_URI = "gitsm://github.com/biosbits/bits.git;protocol=http  \
 
 S = "${WORKDIR}/git"
 
+#EXTRA_OEMAKE = '\
+#  LIBC="" \
+#  STAGING_LIBDIR=${STAGING_LIBDIR_NATIVE} \
+#  STAGING_INCDIR=${STAGING_INCDIR_NATIVE} \
+#'
+
+
 DEPENDS = "virtual/gettext autogen-native gettext-native sqlite3-native"
 
 COMPATIBLE_HOST = '(x86_64.*|i.86.*)-(linux|freebsd.*)'
@@ -41,6 +48,7 @@ COMPATIBLE_HOST = '(x86_64.*|i.86.*)-(linux|freebsd.*)'
 do_compile() {
 	# adjust the install bin directory
 	sed -i 's|BINDIR/PN|${bindir}/${PN}|' Makefile
+	sed -i 's|CUSTOM_PREFIX_DIR|${STAGING_DIR_NATIVE}/usr|' Makefile
 	oe_runmake build-python-host
 }
 
