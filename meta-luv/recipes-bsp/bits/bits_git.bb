@@ -42,6 +42,12 @@ SRC_URI = "gitsm://github.com/biosbits/bits.git;protocol=http  \
            file://GRUB-core-handle-loader-options.patch \
            file://BITS-GRUB-prepare-to-use-a-memdisk.patch \
            file://GRUB-efidisk-Respect-block_io_protocol-buffer-alignment.patch \
+           file://0001-grub-core-gettext-gettext.c-main_context-secondary_c.patch \
+           file://0001-BITS-python-fix-error-handling-in-lseek.patch \
+           file://0001-python-use-unsigned-number-for-inflate-function.patch \
+           file://0001-fdlibm-e_asin-correct-indentation.patch \
+           file://0001-fdlibm-k_rem_pio2-correct-indentation.patch \
+           file://0001-python-ast-correct-indentation.-This-is-to-fix-this-.patch \
            file://luv-test-bits \
            file://luv-parser-bits \
            file://0001-only-output-to-log.patch;apply=no \

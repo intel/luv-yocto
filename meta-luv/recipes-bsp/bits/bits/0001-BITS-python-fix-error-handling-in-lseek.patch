@@ -1,0 +1,44 @@
+From 76a751537d028051785b78fdcccd73957a7a7d27 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Tue, 28 Jun 2016 19:19:06 -0700
+Subject: [PATCH] BITS: python: fix error handling in lseek
+
+This code is misleading. It prints an error message but it appears
+that the intention is to return. Thus, wrap in curvy brackets.
+
+This causes gcc 6 to issue the following warning:
+
+  ./git/build/grub/grub-core/contrib/python/compat.c: In function 'lseek':
+  ./git/build/grub/grub-core/contrib/python/compat.c:420:5: error:
+       this 'if' clause does not guard... [-Werror=misleading-indentation]
+          if (fd >= 0 && fd < 3)
+          ^~
+  ./git/build/grub/grub-core/contrib/python/compat.c:422:9:
+   note: ...this statement, but the latter is misleadingly indented
+   as if it is guarded by the 'if'
+           return (off_t)-1;
+           ^~~~~~
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ rc/python/compat.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/rc/python/compat.c b/rc/python/compat.c
+index 6e2ea47..85927d9 100644
+--- a/rc/python/compat.c
++++ b/rc/python/compat.c
+@@ -418,8 +418,10 @@ off_t lseek(int fd, off_t offset, int whence)
+     grub_file_t file;
+ 
+     if (fd >= 0 && fd < 3)
++      {
+         grub_printf("Internal error: Python attempted to seek on stdin, stdout, or stderr.\n");
+         return (off_t)-1;
++      }
+ 
+     file = fd_to_file(fd);
+     if (!file)
+-- 
+2.8.1
+

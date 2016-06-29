@@ -1,0 +1,32 @@
+From 178fd98bfedcd72d588d4a9763a497efd6db8d21 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Tue, 28 Jun 2016 19:37:04 -0700
+Subject: [PATCH] python: use unsigned number for inflate function
+
+This is to correct:
+
+/git/build/grub/grub-core/contrib-deps/python/Modules/zlib/inflate.c: In function 'inflateMark':
+/git/build/grub/grub-core/contrib-deps/python/Modules/zlib/inflate.c:1507:61: error: left shift of negative value [-Werror=shift-negative-value]
+      if (strm == Z_NULL || strm->state == Z_NULL) return -1L << 16;
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ Modules/zlib/inflate.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/deps/python/Modules/zlib/inflate.c b/deps/python/Modules/zlib/inflate.c
+index 870f89b..4b82f52 100644
+--- a/deps/python/Modules/zlib/inflate.c
++++ b/deps/python/Modules/zlib/inflate.c
+@@ -1504,7 +1504,7 @@ z_streamp strm;
+ {
+     struct inflate_state FAR *state;
+ 
+-    if (strm == Z_NULL || strm->state == Z_NULL) return -1L << 16;
++    if (strm == Z_NULL || strm->state == Z_NULL) return -1LU << 16;
+     state = (struct inflate_state FAR *)strm->state;
+     return ((long)(state->back) << 16) +
+         (state->mode == COPY ? state->length :
+-- 
+2.8.1
+

@@ -1,0 +1,41 @@
+From 3c9d014c062b924ec655a86c41b2f52c71ba5505 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Tue, 28 Jun 2016 19:50:55 -0700
+Subject: [PATCH] fdlibm: e_asin: correct indentation
+
+No functional changes, only indentation to avoid this warning:
+
+./git/build/grub/grub-core/contrib-deps/fdlibm/e_asin.c:88:8: error: this 'else' clause does not guard... [-Werror=misleading-indentation]
+       } else
+         ^~~~
+./git/build/grub/grub-core/contrib-deps/fdlibm/e_asin.c:90:3: note: ...this statement, but the latter is misleadingly indented as if it is guarded by the 'else'
+    p = t*(pS0+t*(pS1+t*(pS2+t*(pS3+t*(pS4+t*pS5)))));
+    ^
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ e_asin.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/deps/fdlibm/e_asin.c b/deps/fdlibm/e_asin.c
+index 8e37e22..f29ebdf 100644
+--- a/deps/fdlibm/e_asin.c
++++ b/deps/fdlibm/e_asin.c
+@@ -87,10 +87,10 @@ qS4 =  7.70381505559019352791e-02; /* 0x3FB3B8C5, 0xB12E9282 */
+ 		if(huge+x>one) return x;/* return x with inexact if x!=0*/
+ 	    } else 
+ 		t = x*x;
+-		p = t*(pS0+t*(pS1+t*(pS2+t*(pS3+t*(pS4+t*pS5)))));
+-		q = one+t*(qS1+t*(qS2+t*(qS3+t*qS4)));
+-		w = p/q;
+-		return x+x*w;
++	    p = t*(pS0+t*(pS1+t*(pS2+t*(pS3+t*(pS4+t*pS5)))));
++	    q = one+t*(qS1+t*(qS2+t*(qS3+t*qS4)));
++	    w = p/q;
++	    return x+x*w;
+ 	}
+ 	/* 1> |x|>= 0.5 */
+ 	w = one-fabs(x);
+-- 
+2.8.1
+

@@ -1,0 +1,36 @@
+From 1fb4daa38c25b9a71eabb90dc6caab7f73377a91 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Wed, 29 Jun 2016 08:35:18 -0700
+Subject: [PATCH] fdlibm: k_rem_pio2: correct indentation
+
+./git/build/grub/grub-core/contrib-deps/fdlibm/k_rem_pio2.c: In function '__kernel_rem_pio2':
+./git/build/grub/grub-core/contrib-deps/fdlibm/k_rem_pio2.c:188:6:
+        error: this 'for' clause does not guard... [-Werror=misleading-indentation]
+        for(j=0,fw=0.0;j<=jx;j++) fw += x[j]*f[jx+i-j]; q[i] = fw;
+        ^~~
+./git/build/grub/grub-core/contrib-deps/fdlibm/k_rem_pio2.c:188:54:
+note: ...this statement, but the latter is misleadingly indented as if it is guarded by the 'for'
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ k_rem_pio2.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/deps/fdlibm/k_rem_pio2.c b/deps/fdlibm/k_rem_pio2.c
+index ec473ac..342869b 100644
+--- a/deps/fdlibm/k_rem_pio2.c
++++ b/deps/fdlibm/k_rem_pio2.c
+@@ -185,7 +185,9 @@ twon24  =  5.96046447753906250000e-08; /* 0x3E700000, 0x00000000 */
+ 
+     /* compute q[0],q[1],...q[jk] */
+ 	for (i=0;i<=jk;i++) {
+-	    for(j=0,fw=0.0;j<=jx;j++) fw += x[j]*f[jx+i-j]; q[i] = fw;
++	    for(j=0,fw=0.0;j<=jx;j++)
++	        fw += x[j]*f[jx+i-j];
++	    q[i] = fw;
+ 	}
+ 
+ 	jz = jk;
+-- 
+2.8.1
+
