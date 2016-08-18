@@ -4,9 +4,9 @@ HOMEPAGE = "https://wiki.ubuntu.com/Kernel/Reference/fwts"
 LICENSE = "GPLv2+"
 LIC_FILES_CHKSUM = "file://src/main.c;beginline=1;endline=16;md5=31da590f3e9f3bd34dcdb9e4db568519"
 
-PV = "V16.07.00+git${SRCPV}"
+PV = "V16.08.01+git${SRCPV}"
 
-SRCREV = "3d7ce24d224a7ca35baede5ca2c8dc806decf66e"
+SRCREV = "57c2725ecf57e2249a662543651d9d8458b471c2"
 SRC_URI = "git://kernel.ubuntu.com/hwe/fwts.git \
            file://luv-parser-fwts \
           "
