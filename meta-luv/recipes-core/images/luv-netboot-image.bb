@@ -38,7 +38,7 @@ do_mkimage[depends] += "${EXTRABOOTIMGDEPS} \
 do_bootimg[noexec] = "1"
 
 do_populate_image() {
-	install -d  ${HDDDIR}${EFIDIR}
+	install -d ${HDDDIR}${EFIDIR}
 	if [ "${TARGET_ARCH}" != "aarch64" ]; then
 		efi_populate_bits ${HDDDIR}
 	fi
