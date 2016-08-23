@@ -41,6 +41,9 @@ do_populate_image() {
 	install -d ${HDDDIR}${EFIDIR}
 	if [ "${TARGET_ARCH}" != "aarch64" ]; then
 		efi_populate_bits ${HDDDIR}
+	else
+		echo "bootaa64.efi" > ${HDDDIR}${EFIDIR}/startup.nsh
+		install -m 0644 ${DEPLOY_DIR_IMAGE}/bootaa64.efi ${HDDDIR}${EFIDIR}
 	fi
 	install -m 0644 ${GRUBCFG} ${HDDDIR}${EFIDIR}
 	build_hddimg
