@@ -104,13 +104,13 @@ SRC_URI_append_aarch64 = "file://${MACHINE}/defconfig \
 
 # Override KCONFIG_MODE to '--alldefconfig' from the default '--allnoconfig'
 KCONFIG_MODE = '--alldefconfig'
-LINUX_VERSION ?= "4.6"
+LINUX_VERSION ?= "4.7"
 LINUX_VERSION_EXTENSION ?= "-efitest"
 
 # Override SRCREV to point to a different commit in a bbappend file to
 # build a different release of the Linux kernel.
-# tag: v4.6 2dcd0af568b0cf583645c8a317dd12e344b1c72a
-SRCREV = "2dcd0af568b0cf583645c8a317dd12e344b1c72a"
+# tag: v4.7 523d939ef98fd712632d93a5a2b588e477a7565e
+SRCREV = "523d939ef98fd712632d93a5a2b588e477a7565e"
 
 PR = "r5"
 PV = "${LINUX_VERSION}+git${SRCPV}"
