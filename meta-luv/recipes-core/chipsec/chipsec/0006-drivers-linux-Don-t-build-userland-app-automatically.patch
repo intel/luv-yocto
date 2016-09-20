@@ -11,27 +11,28 @@ user to do that manually.
 
 Signed-off-by: Matt Fleming <matt.fleming@intel.com>
 ---
- source/drivers/linux/Makefile | 4 ++--
+ source/tool/drivers/linux/Makefile | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/source/drivers/linux/Makefile b/source/drivers/linux/Makefile
-index 4342977..e2fe2be 100644
---- a/source/drivers/linux/Makefile
-+++ b/source/drivers/linux/Makefile
-@@ -24,11 +24,11 @@ chipsec64 : clean
- 	echo $(chipsec-objs)
+diff --git a/source/tool/drivers/linux/Makefile b/source/tool/drivers/linux/Makefile
+index 0435737..f71a2d9 100644
+--- a/source/tool/drivers/linux/Makefile
++++ b/source/tool/drivers/linux/Makefile
+@@ -19,12 +19,12 @@ endif
+ chipsec64: clean
  	nasm -f elf64 -o amd64/cpu.o amd64/cpu.asm;
  	make -C $(KERNEL_SRC_DIR) SUBDIRS=`pwd` modules
--	cd ../../tool/chipsec/helper/linux; make
-+#	cd ../../tool/chipsec/helper/linux; make
- chipsec32 : clean
+-	make -C ../../chipsec/helper/linux/
++#	make -C ../../chipsec/helper/linux/
+ 
+ chipsec32: clean
  	nasm -f elf32 -o i386/cpu.o i386/cpu.asm;
  	make -C $(KERNEL_SRC_DIR) SUBDIRS=`pwd` modules
--	cd ../../tool/chipsec/helper/linux; make
-+#	cd ../../tool/chipsec/helper/linux; make
+-	make -C ../../chipsec/helper/linux/
++#	make -C ../../chipsec/helper/linux/
  
  install:
  	./run.sh
 -- 
-1.9.1
+2.9.3
 
