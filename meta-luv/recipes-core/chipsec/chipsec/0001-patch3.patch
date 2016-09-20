@@ -1,0 +1,25 @@
+From ae780b8612384e9994a552f4c95e641aea5c9607 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Tue, 20 Sep 2016 15:41:44 -0700
+Subject: [PATCH] patch3
+
+---
+ source/tool/chipsec/helper/linux/cores.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/source/tool/chipsec/helper/linux/cores.c b/source/tool/chipsec/helper/linux/cores.c
+index 55cdd63..5de865f 100644
+--- a/source/tool/chipsec/helper/linux/cores.c
++++ b/source/tool/chipsec/helper/linux/cores.c
+@@ -50,7 +50,7 @@ int setaffinity(int thread_id, int *errno_var){
+ }
+    
+  void print_cpu_set_t(cpu_set_t mask){
+-    int i=0;
++    unsigned int i=0;
+     for(i;i<sizeof(mask);i++){
+         printf("%lu ",(unsigned long)mask.__bits[i]);
+     }
+-- 
+2.9.3
+
