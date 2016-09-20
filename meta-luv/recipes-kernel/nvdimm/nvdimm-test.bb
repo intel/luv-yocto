@@ -12,3 +12,4 @@ SRC_URI = "file://Makefile"
 S = "${WORKDIR}"
 
 EXTRA_OEMAKE += "KERNEL=${STAGING_KERNEL_DIR}"
+KERNEL_MODULE_PACKAGE_PREFIX = "nvdimm-test"
