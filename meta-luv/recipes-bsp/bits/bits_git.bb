@@ -16,14 +16,14 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=71a9ec458a3c65c2bfb461b227ef3049"
 
 BBCLASSEXTEND = "native"
 
-BITSVERSION="2073"
+BITSVERSION="2079"
 PV="${BITSVERSION}+git${SRCPV}"
 
 inherit deploy
 inherit luv-test
 
 # TODO: add patch for a CPIO log file
-SRCREV ="5931fde3bc7da376a33411e07423722977502259"
+SRCREV ="19da7046a7303f1de8b53165eea1a6f486757c03"
 SRC_URI = "gitsm://github.com/biosbits/bits.git;protocol=http  \
            file://GRUB-core-lib-crypto-complete-handling-fgets-return-.patch \
            file://GRUB-util-of-complete-handling-of-read-return-values.patch \
