@@ -11,4 +11,4 @@ fi
 
 # The below is replaced with the python site packages path during
 # do_patch().
-python PYTHONPATH/chipsec_main.py -i -v
+python PYTHONPATH/chipsec/chipsec_main.py -i -v
