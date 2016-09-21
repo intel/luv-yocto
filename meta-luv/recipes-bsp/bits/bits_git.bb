@@ -90,6 +90,9 @@ do_deploy() {
        cp -r ${B}/build/bits-${BITSVERSION}/efi ${DEPLOYDIR}/bits/
 }
 
+do_deploy_class-native() {
+        :
+}
 
 addtask deploy before do_build after do_install
 
