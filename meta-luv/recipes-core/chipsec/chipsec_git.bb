@@ -46,6 +46,9 @@ def get_target_arch(d):
 
 EXTRA_OEMAKE += "ARCH="${@get_target_arch(d)}""
 
+DISTUTILS_INSTALL_ARGS = "--root=${D}${PYTHON_SITEPACKAGES_DIR} \
+    --install-data=${D}/${datadir}"
+
 fix_mod_path() {
     sed -i -e "s:^INSTALL_MOD_PATH_PREFIX = .*:INSTALL_MOD_PATH_PREFIX = \"${PYTHON_SITEPACKAGES_DIR}\":" ${S}/source/tool/chipsec_main.py
     sed -i -e "s:PYTHONPATH:${PYTHON_SITEPACKAGES_DIR}:" ${WORKDIR}/chipsec
@@ -63,6 +66,19 @@ do_patch_append() {
 do_install_append() {
     install -d ${D}${bindir}
     install -m 0755 ${WORKDIR}/chipsec ${D}${bindir}
+
+    #
+    # FIXME: for some reason chipsec ends up installed in a repeated
+    # directory structure. Thus, we need to move it to its proper location
+    # under PYTHON_SITEPACKAGES_DIR
+    #
+
+    install -d ${D}${PYTHON_SITEPACKAGES_DIR}/${PN}
+    mv ${D}${PYTHON_SITEPACKAGES_DIR}${D}${PYTHON_SITEPACKAGES_DIR}/* ${D}${PYTHON_SITEPACKAGES_DIR}/${PN}
+    # remove old files
+    cd ${D}${PYTHON_SITEPACKAGES_DIR}
+    ls | grep -v chipsec | xargs rm -fr
+    cd $OLDPWD
 }
 
 LUV_TEST_LOG_PARSER="luv-parser-chipsec"
