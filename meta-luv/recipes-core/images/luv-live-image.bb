@@ -1,7 +1,7 @@
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=4d92cd373abda3937c2bc47fbc49d690"
 
-DEPENDS_${PN} = "grub-efi bits"
+DEPENDS_${PN} = "grub-efi bits python-native"
 
 HDDDIR = "${S}/hddimg"
 HDDIMG_ID = "423cc2c8"
@@ -37,45 +37,73 @@ build_img() {
 
     # Parameters of the vfat partition for test results
     # Sectors: 512 bytes
-    # Blocks: 1024 bytes
+    # MiB: 1024 * 1024 bytes
+    BYTES_PER_SECTOR=512
+    MiB=$(expr 1024 \* 1024)
     VFAT_RESULTS=${DEPLOY_DIR_IMAGE}/${PN}-results.hddimg
-    # 16MB of space for test results
-    VFAT_RESULTS_SPACE=16777216
+    # 16MB of space to store test results
+    VFAT_RESULTS_SPACE_MiB=16
+    VFAT_RESULTS_SPACE=$(expr $VFAT_RESULTS_SPACE_MiB \* $MiB)
     VFAT_RESULTS_BLOCKS=$(expr $VFAT_RESULTS_SPACE / 1024)
     # TODO: do we need to dynamically generate the UUID?
     # For now, every time this UUID changes, the file etc/init.d/luv-test-manager
     # needs to be updated accordingly.
-    VFAT_RESULTS_UUID=05d61523
-    VFAT_RESULTS_LABEL="luv-results"
+    VFAT_RESULTS_UUID=05D61523
+    VFAT_RESULTS_LABEL="LUV-RESULTS"
+    # Extra space at the front and rear of luv-live-image.img
+    EXTRA_SPACE_MiB=2
+    NUM_OF_PARTITIONS=2
 
     if [ -e ${VFAT_RESULTS} ]; then
         rm ${VFAT_RESULTS}
     fi
 
-    mkdosfs -C ${VFAT_RESULTS} -S 512 -i ${VFAT_RESULTS_UUID} \
+    mkdosfs -C ${VFAT_RESULTS} -S ${BYTES_PER_SECTOR} -i ${VFAT_RESULTS_UUID} \
             -n ${VFAT_RESULTS_LABEL} $VFAT_RESULTS_BLOCKS
 
-    dd if=/dev/zero of=$IMG bs=512 count=1
+    dd if=/dev/zero of=${IMG} bs=${BYTES_PER_SECTOR} count=1
 
-    VFAT_SIZE=$(du -L --apparent-size -bs $VFAT | cut -f 1)
-    VFAT_RESULTS_SIZE=$(du -L --apparent-size -bs $VFAT_RESULTS | cut -f 1)
+    # Now that we are calculating sizes in MiB make sure that the value
+    # is ceiled (rounded to nearest upper bound integer)
+    VFAT_SIZE=$(du -L -h --apparent-size $VFAT | cut -f 1 | tr -dc '0-9.')
+    VFAT_SIZE_CEILED=$(python -c "from math import ceil; print ceil($VFAT_SIZE)")
+    VFAT_SIZE_MiB=${VFAT_SIZE_CEILED%.*}
+    VFAT_RESULTS_SIZE_MiB=$(du -L -h --apparent-size $VFAT_RESULTS \
+                            | cut -f 1 | tr -dc '0-9.')
 
-    IMG_SIZE=$(expr $VFAT_SIZE + $VFAT_RESULTS_SIZE + 512)
+    IMG_SIZE_MiB=$(expr $VFAT_RESULTS_SIZE_MiB + $VFAT_SIZE_MiB + $EXTRA_SPACE_MiB)
 
-    dd if=/dev/zero of=$IMG bs=1 seek=$IMG_SIZE count=0
+    dd if=/dev/zero of=${IMG} bs=1 seek=${IMG_SIZE_MiB}MiB count=0
 
-    parted $IMG mklabel msdos
+    # Let "parted" tool take care of any alignment issues, if any arises
+    parted --align optimal ${IMG} mklabel msdos
 
-    parted $IMG mkpart primary fat32 0% "${VFAT_RESULTS_SIZE}B"
+    # even though MBR occupies only 512 bytes we start
+    # first partition after 1MiB because the default size that
+    # parted tool uses is MiB and using this will inherently take
+    # care of alignment issues, if any arises
+    parted --align optimal ${IMG} mkpart primary fat32 1MiB \
+                           "$(expr 1 + $VFAT_RESULTS_SIZE_MiB)MiB"
 
     # start second partition on the first sector after the first partition
-    parted $IMG mkpart primary fat32 "$(expr $VFAT_RESULTS_SIZE + 512)B" \
-           "$(expr $VFAT_SIZE + $VFAT_RESULTS_SIZE)B"
+    parted --align optimal ${IMG} mkpart primary fat32 \
+                           "$(expr 1 + $VFAT_RESULTS_SIZE_MiB)MiB" \
+                           "$(expr 1 + $VFAT_RESULTS_SIZE_MiB + $VFAT_SIZE_MiB)MiB"
 
-    parted $IMG set 2 boot on
+    # copy "LUV-RESULTS" file into first partition
+    SECTOR=$(fdisk -l ${IMG} | tail -${NUM_OF_PARTITIONS} | awk 'NR==1{print $2}')
+    dd conv=notrunc if=${VFAT_RESULTS} of=${IMG} seek=1 \
+                    obs=$(expr $SECTOR \* $BYTES_PER_SECTOR)
 
-    dd conv=notrunc if=${VFAT_RESULTS} of=$IMG seek=1 bs=512
-    dd if=${VFAT} of=$IMG seek=$(expr $(expr $VFAT_RESULTS_SIZE / 512) + 1) bs=512
+    # copy "LUV_BOOT" file into second partition without truncating output file
+    SECTOR=$(fdisk -l ${IMG} | tail -${NUM_OF_PARTITIONS} | awk 'NR==2{print $2}')
+    dd conv=notrunc if=${VFAT} of=${IMG} seek=1 \
+                    obs=$(expr $SECTOR \* $BYTES_PER_SECTOR)
+
+    # mark second partition as boot partition only after calculating
+    # starting sector of each partition (which is already done above)
+    # because fdisk will list partitions differently for MBR and GPT.
+    parted ${IMG} set 2 boot on
 
 }
 
