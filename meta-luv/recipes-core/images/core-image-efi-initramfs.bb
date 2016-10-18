@@ -7,10 +7,10 @@ IMAGE_INSTALL = "\
     kernel-image fwts bash coreutils gawk grep util-linux-agetty \
     util-linux-mount util-linux-umount kmod sed tar net-tools \
     shadow util-linux procps efivarfs-test \
-    psplash kernel-efi-warnings linux-firmware \
+    psplash kernel-efi-warnings linux-firmware kexec \
     "
 
-X86_ADDITIONS = "chipsec python-codecs python-subprocess kexec vmcore-dmesg bits \
+X86_ADDITIONS = "chipsec python-codecs python-subprocess vmcore-dmesg bits \
                  kernel-modules"
 
 IMAGE_INSTALL_append_qemux86 = "${X86_ADDITIONS}"
