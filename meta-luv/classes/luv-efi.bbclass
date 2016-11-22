@@ -175,7 +175,7 @@ python build_efi_cfg() {
 
     cfgfile.write('menuentry \'luv\' {\n')
     if re.search("(x86_64|i.86)", target):
-       cfgfile.write('linux /vmlinuz')
+       cfgfile.write('linux /vmlinuz ')
     if "${TARGET_ARCH}" == "aarch64":
         cfgfile.write('linux /Image')
 
