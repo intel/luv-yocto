@@ -76,6 +76,12 @@ python do_create_img() {
     bb.build.exec_func('build_img', d)
 }
 
+do_image_ext4() {
+        :
+}
+
+do_image_ext4[noexec] = "1"
+
 do_bootimg[depends] += "${INITRD_IMAGE}:do_build"
 do_bootimg[depends] += "virtual/kernel:do_populate_sysroot"
 do_bootimg[depends] += "shim-signed:do_deploy"
@@ -83,3 +89,4 @@ do_create_img[fakeroot]= "1"
 
 addtask create_img after do_bootimg before do_build
 addtask do_unpack before do_build
+addtask image_ext4 before do_bootimg before do_build

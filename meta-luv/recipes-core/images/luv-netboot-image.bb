@@ -64,8 +64,15 @@ do_deploy() {
 	fi
 }
 
+do_image_ext4() {
+        :
+}
+
+do_image_ext4[noexec] = "1"
+
 addtask do_mkimage before do_build
 addtask do_deploy before do_build after do_mkimage
+addtask image_ext4 before do_bootimg before do_build
 
 do_mkimage[depends] += "${INITRD_IMAGE}:do_build"
 do_deploy[depends] += "${_RDEPENDS}:do_deploy"
