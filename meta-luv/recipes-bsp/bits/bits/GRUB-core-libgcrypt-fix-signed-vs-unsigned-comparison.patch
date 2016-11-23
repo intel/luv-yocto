@@ -1,0 +1,40 @@
+From 3a7d8309d1dcbfa71ef00687e4b10b10754487ea Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Sun, 20 Nov 2016 17:47:18 -0800
+Subject: [PATCH] core: libgcrypt: fix signed vs unsigned comparison
+
+With Wsign-compare enabled, gcc will complain that i is compared
+against unsigned variables:
+
+|[...]/build/grub/grub-core/lib/libgcrypt-grub/cipher/rijndael.c:
+| In function 'do_setkey':
+|[...]/build/grub/grub-core/lib/libgcrypt-grub/cipher/rijndael.c:173:21:
+| warning: comparison between signed and unsigned integer expressions [-Wsign-compare]
+|        for (i = 0; i < keylen; i++)
+|                      ^
+
+Since i is only a loop index that takes only positive values, we can
+safely make it unsigned.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ grub-core/lib/libgcrypt/cipher/rijndael.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/deps/grub/grub-core/lib/libgcrypt/cipher/rijndael.c b/deps/grub/grub-core/lib/libgcrypt/cipher/rijndael.c
+index d43b349..207813f 100644
+--- a/deps/grub/grub-core/lib/libgcrypt/cipher/rijndael.c
++++ b/deps/grub/grub-core/lib/libgcrypt/cipher/rijndael.c
+@@ -97,7 +97,8 @@ do_setkey (RIJNDAEL_context *ctx, const byte *key, const unsigned keylen)
+   static int initialized = 0;
+   static const char *selftest_failed=0;
+   int ROUNDS;
+-  int i,j, r, t, rconpointer = 0;
++  int j, r, t, rconpointer = 0;
++  unsigned int i;
+   int KC;
+   union
+   {
+-- 
+2.9.3
+
