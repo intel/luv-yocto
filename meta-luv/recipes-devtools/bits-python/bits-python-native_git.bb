@@ -39,8 +39,25 @@ DEPENDS = "virtual/gettext autogen-native gettext-native sqlite3-native"
 COMPATIBLE_HOST = '(x86_64.*|i.86.*)-(linux|freebsd.*)'
 
 do_compile() {
-	# adjust the install bin directory
-	sed -i 's|BINDIR/PN|${bindir}/${PN}|' Makefile
+	# adjust the target directories
+	sed -i 's|BUILD_SYS|${BUILD_SYS}|' ${S}/Makefile
+	sed -i 's|HOST_SYS|${HOST_SYS}|' ${S}/Makefile
+	sed -i 's|TARGET_SYS|${TARGET_SYS}|' ${S}/Makefile
+	sed -i 's|_PREFIX_|${prefix}|' ${S}/Makefile
+	sed -i 's|EXEC_PREFIX|${exec_prefix}|' ${S}/Makefile
+	sed -i 's|_BINDIR/PN|${bindir}/${PN}|' ${S}/Makefile
+	sed -i 's|SBINDIR|${sbindir}/${PN}|' ${S}/Makefile
+	sed -i 's|LIBEXECDIR|${libexecdir}|' ${S}/Makefile
+	sed -i 's|DATADIR|${datadir}|' ${S}/Makefile
+	sed -i 's|SYSCONFDIR|${sysconfdir}|' ${S}/Makefile
+	sed -i 's|SHAREDSTATEDIR|${sharedstatedir}|' ${S}/Makefile
+	sed -i 's|LOCALSTATEDIR|${localstatedir}|' ${S}/Makefile
+	sed -i 's|LIBDIR|${libdir}|' ${S}/Makefile
+	sed -i 's|_INCLUDEDIR|${includedir}|' ${S}/Makefile
+	sed -i 's|OLDINCLUDEDIR|${oldincludedir}|' ${S}/Makefile
+	sed -i 's|INFODIR|${infodir}|' ${S}/Makefile
+	sed -i 's|MANDIR|${mandir}|' ${S}/Makefile
+
 	oe_runmake build-python-host
 }
 
