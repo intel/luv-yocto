@@ -1,0 +1,376 @@
+From f3fd9bbe2d30002fbef924e6cc5bf4f2fa868acf Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Mon, 21 Nov 2016 12:18:08 -0800
+Subject: [PATCH] core: libgcrypt: respect aliasing rules
+
+Respect aliasing rules coming in gcc 4.4
+
+This is a backport of mainline grub:
+
+commit d1307d873a1c18a1e4344b71c027c072311a3c14
+Author: Vladimir Serbinenko <phcoder@gmail.com>
+Date:   Thu Nov 7 06:35:50 2013 +0100
+
+            Import libgcrypt 1.5.3.
+
+commit 412720689678934c0dd15595086759a228d154dc
+Author: Vladimir Serbinenko <phcoder@gmail.com>
+Date:   Tue Dec 24 16:57:28 2013 +0100
+
+            Make rijndael.c respect aliasing rules.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ grub-core/lib/libgcrypt/cipher/rijndael.c | 236 +++++++++++++++---------------
+ 1 file changed, 121 insertions(+), 115 deletions(-)
+
+diff --git a/deps/grub/grub-core/lib/libgcrypt/cipher/rijndael.c b/deps/grub/grub-core/lib/libgcrypt/cipher/rijndael.c
+index d43b349..dbe5c6d 100644
+--- a/deps/grub/grub-core/lib/libgcrypt/cipher/rijndael.c
++++ b/deps/grub/grub-core/lib/libgcrypt/cipher/rijndael.c
+@@ -89,6 +89,12 @@ typedef struct
+ /* All the numbers.  */
+ #include "rijndael-tables.h"
+ 
++/* Define an u32 variant for the sake of gcc 4.4's strict aliasing.  */
++#if __GNUC__ > 4 || ( __GNUC__ == 4 && __GNUC_MINOR__ >= 4 )
++typedef u32           __attribute__ ((__may_alias__)) u32_a_t;
++#else
++typedef u32           u32_a_t;
++#endif
+ 
+ /* Perform the key setup.  */  
+ static gcry_err_code_t
+@@ -178,7 +184,7 @@ do_setkey (RIJNDAEL_context *ctx, const byte *key, const unsigned keylen)
+       
+       for (j = KC-1; j >= 0; j--) 
+         {
+-          *((u32*)tk[j]) = *((u32*)k[j]);
++          *((u32_a_t*)tk[j]) = *((u32_a_t*)k[j]);
+         }
+       r = 0;
+       t = 0;
+@@ -187,7 +193,7 @@ do_setkey (RIJNDAEL_context *ctx, const byte *key, const unsigned keylen)
+         {
+           for (; (j < KC) && (t < 4); j++, t++)
+             {
+-              *((u32*)W[r][t]) = *((u32*)tk[j]);
++              *((u32_a_t*)W[r][t]) = *((u32_a_t*)tk[j]);
+             }
+           if (t == 4)
+             {
+@@ -210,14 +216,14 @@ do_setkey (RIJNDAEL_context *ctx, const byte *key, const unsigned keylen)
+             {
+               for (j = 1; j < KC; j++) 
+                 {
+-                  *((u32*)tk[j]) ^= *((u32*)tk[j-1]);
++                  *((u32_a_t*)tk[j]) ^= *((u32_a_t*)tk[j-1]);
+                 }
+             } 
+           else 
+             {
+               for (j = 1; j < KC/2; j++)
+                 {
+-                  *((u32*)tk[j]) ^= *((u32*)tk[j-1]);
++                  *((u32_a_t*)tk[j]) ^= *((u32_a_t*)tk[j-1]);
+                 }
+               tk[KC/2][0] ^= S[tk[KC/2 - 1][0]];
+               tk[KC/2][1] ^= S[tk[KC/2 - 1][1]];
+@@ -225,7 +231,7 @@ do_setkey (RIJNDAEL_context *ctx, const byte *key, const unsigned keylen)
+               tk[KC/2][3] ^= S[tk[KC/2 - 1][3]];
+               for (j = KC/2 + 1; j < KC; j++)
+                 {
+-                  *((u32*)tk[j]) ^= *((u32*)tk[j-1]);
++                  *((u32_a_t*)tk[j]) ^= *((u32_a_t*)tk[j-1]);
+                 }
+             }
+           
+@@ -234,7 +240,7 @@ do_setkey (RIJNDAEL_context *ctx, const byte *key, const unsigned keylen)
+             {
+               for (; (j < KC) && (t < 4); j++, t++)
+                 {
+-                  *((u32*)W[r][t]) = *((u32*)tk[j]);
++                  *((u32_a_t*)W[r][t]) = *((u32_a_t*)tk[j]);
+                 }
+               if (t == 4)
+                 {
+@@ -277,29 +283,29 @@ prepare_decryption( RIJNDAEL_context *ctx )
+ 
+   for (r=0; r < MAXROUNDS+1; r++ )
+     {
+-      *((u32*)ctx->keySched2[r][0]) = *((u32*)ctx->keySched[r][0]);
+-      *((u32*)ctx->keySched2[r][1]) = *((u32*)ctx->keySched[r][1]);
+-      *((u32*)ctx->keySched2[r][2]) = *((u32*)ctx->keySched[r][2]);
+-      *((u32*)ctx->keySched2[r][3]) = *((u32*)ctx->keySched[r][3]);
++      *((u32_a_t*)ctx->keySched2[r][0]) = *((u32_a_t*)ctx->keySched[r][0]);
++      *((u32_a_t*)ctx->keySched2[r][1]) = *((u32_a_t*)ctx->keySched[r][1]);
++      *((u32_a_t*)ctx->keySched2[r][2]) = *((u32_a_t*)ctx->keySched[r][2]);
++      *((u32_a_t*)ctx->keySched2[r][3]) = *((u32_a_t*)ctx->keySched[r][3]);
+     }
+ #define W (ctx->keySched2)
+   for (r = 1; r < ctx->ROUNDS; r++)
+     {
+       w = W[r][0];
+-      *((u32*)w) = *((u32*)U1[w[0]]) ^ *((u32*)U2[w[1]])
+-        ^ *((u32*)U3[w[2]]) ^ *((u32*)U4[w[3]]);
++      *((u32_a_t*)w) = *((u32_a_t*)U1[w[0]]) ^ *((u32_a_t*)U2[w[1]])
++        ^ *((u32_a_t*)U3[w[2]]) ^ *((u32_a_t*)U4[w[3]]);
+        
+       w = W[r][1];
+-      *((u32*)w) = *((u32*)U1[w[0]]) ^ *((u32*)U2[w[1]])
+-        ^ *((u32*)U3[w[2]]) ^ *((u32*)U4[w[3]]);
++      *((u32_a_t*)w) = *((u32_a_t*)U1[w[0]]) ^ *((u32_a_t*)U2[w[1]])
++        ^ *((u32_a_t*)U3[w[2]]) ^ *((u32_a_t*)U4[w[3]]);
+         
+       w = W[r][2];
+-      *((u32*)w) = *((u32*)U1[w[0]]) ^ *((u32*)U2[w[1]])
+-        ^ *((u32*)U3[w[2]]) ^ *((u32*)U4[w[3]]);
++      *((u32_a_t*)w) = *((u32_a_t*)U1[w[0]]) ^ *((u32_a_t*)U2[w[1]])
++        ^ *((u32_a_t*)U3[w[2]]) ^ *((u32_a_t*)U4[w[3]]);
+         
+       w = W[r][3];
+-      *((u32*)w) = *((u32*)U1[w[0]]) ^ *((u32*)U2[w[1]])
+-        ^ *((u32*)U3[w[2]]) ^ *((u32*)U4[w[3]]);
++      *((u32_a_t*)w) = *((u32_a_t*)U1[w[0]]) ^ *((u32_a_t*)U2[w[1]])
++        ^ *((u32_a_t*)U3[w[2]]) ^ *((u32_a_t*)U4[w[3]]);
+     }
+ #undef W
+ #undef w
+@@ -322,57 +328,57 @@ do_encrypt_aligned (const RIJNDAEL_context *ctx,
+     byte temp[4][4];
+   } u;
+ 
+-  *((u32*)u.temp[0]) = *((u32*)(a   )) ^ *((u32*)rk[0][0]);
+-  *((u32*)u.temp[1]) = *((u32*)(a+ 4)) ^ *((u32*)rk[0][1]);
+-  *((u32*)u.temp[2]) = *((u32*)(a+ 8)) ^ *((u32*)rk[0][2]);
+-  *((u32*)u.temp[3]) = *((u32*)(a+12)) ^ *((u32*)rk[0][3]);
+-  *((u32*)(b    ))   = (*((u32*)T1[u.temp[0][0]])
+-                        ^ *((u32*)T2[u.temp[1][1]])
+-                        ^ *((u32*)T3[u.temp[2][2]]) 
+-                        ^ *((u32*)T4[u.temp[3][3]]));
+-  *((u32*)(b + 4))   = (*((u32*)T1[u.temp[1][0]])
+-                        ^ *((u32*)T2[u.temp[2][1]])
+-                        ^ *((u32*)T3[u.temp[3][2]]) 
+-                        ^ *((u32*)T4[u.temp[0][3]]));
+-  *((u32*)(b + 8))   = (*((u32*)T1[u.temp[2][0]])
+-                        ^ *((u32*)T2[u.temp[3][1]])
+-                        ^ *((u32*)T3[u.temp[0][2]]) 
+-                        ^ *((u32*)T4[u.temp[1][3]]));
+-  *((u32*)(b +12))   = (*((u32*)T1[u.temp[3][0]])
+-                        ^ *((u32*)T2[u.temp[0][1]])
+-                        ^ *((u32*)T3[u.temp[1][2]]) 
+-                        ^ *((u32*)T4[u.temp[2][3]]));
++  *((u32_a_t*)u.temp[0]) = *((u32_a_t*)(a   )) ^ *((u32_a_t*)rk[0][0]);
++  *((u32_a_t*)u.temp[1]) = *((u32_a_t*)(a+ 4)) ^ *((u32_a_t*)rk[0][1]);
++  *((u32_a_t*)u.temp[2]) = *((u32_a_t*)(a+ 8)) ^ *((u32_a_t*)rk[0][2]);
++  *((u32_a_t*)u.temp[3]) = *((u32_a_t*)(a+12)) ^ *((u32_a_t*)rk[0][3]);
++  *((u32_a_t*)(b    ))   = (*((u32_a_t*)T1[u.temp[0][0]])
++                            ^ *((u32_a_t*)T2[u.temp[1][1]])
++                            ^ *((u32_a_t*)T3[u.temp[2][2]])
++                            ^ *((u32_a_t*)T4[u.temp[3][3]]));
++  *((u32_a_t*)(b + 4))   = (*((u32_a_t*)T1[u.temp[1][0]])
++                            ^ *((u32_a_t*)T2[u.temp[2][1]])
++                            ^ *((u32_a_t*)T3[u.temp[3][2]])
++                            ^ *((u32_a_t*)T4[u.temp[0][3]]));
++  *((u32_a_t*)(b + 8))   = (*((u32_a_t*)T1[u.temp[2][0]])
++                            ^ *((u32_a_t*)T2[u.temp[3][1]])
++                            ^ *((u32_a_t*)T3[u.temp[0][2]])
++                            ^ *((u32_a_t*)T4[u.temp[1][3]]));
++  *((u32_a_t*)(b +12))   = (*((u32_a_t*)T1[u.temp[3][0]])
++                            ^ *((u32_a_t*)T2[u.temp[0][1]])
++                            ^ *((u32_a_t*)T3[u.temp[1][2]])
++                            ^ *((u32*)T4[u.temp[2][3]]));
+ 
+   for (r = 1; r < ROUNDS-1; r++)
+     {
+-      *((u32*)u.temp[0]) = *((u32*)(b   )) ^ *((u32*)rk[r][0]);
+-      *((u32*)u.temp[1]) = *((u32*)(b+ 4)) ^ *((u32*)rk[r][1]);
+-      *((u32*)u.temp[2]) = *((u32*)(b+ 8)) ^ *((u32*)rk[r][2]);
+-      *((u32*)u.temp[3]) = *((u32*)(b+12)) ^ *((u32*)rk[r][3]);
+-
+-      *((u32*)(b    ))   = (*((u32*)T1[u.temp[0][0]])
+-                            ^ *((u32*)T2[u.temp[1][1]])
+-                            ^ *((u32*)T3[u.temp[2][2]]) 
+-                            ^ *((u32*)T4[u.temp[3][3]]));
+-      *((u32*)(b + 4))   = (*((u32*)T1[u.temp[1][0]])
+-                            ^ *((u32*)T2[u.temp[2][1]])
+-                            ^ *((u32*)T3[u.temp[3][2]]) 
+-                            ^ *((u32*)T4[u.temp[0][3]]));
+-      *((u32*)(b + 8))   = (*((u32*)T1[u.temp[2][0]])
+-                            ^ *((u32*)T2[u.temp[3][1]])
+-                            ^ *((u32*)T3[u.temp[0][2]]) 
+-                            ^ *((u32*)T4[u.temp[1][3]]));
+-      *((u32*)(b +12))   = (*((u32*)T1[u.temp[3][0]])
+-                            ^ *((u32*)T2[u.temp[0][1]])
+-                            ^ *((u32*)T3[u.temp[1][2]]) 
+-                            ^ *((u32*)T4[u.temp[2][3]]));
++      *((u32_a_t*)u.temp[0]) = *((u32_a_t*)(b   )) ^ *((u32_a_t*)rk[r][0]);
++      *((u32_a_t*)u.temp[1]) = *((u32_a_t*)(b+ 4)) ^ *((u32_a_t*)rk[r][1]);
++      *((u32_a_t*)u.temp[2]) = *((u32_a_t*)(b+ 8)) ^ *((u32_a_t*)rk[r][2]);
++      *((u32_a_t*)u.temp[3]) = *((u32_a_t*)(b+12)) ^ *((u32_a_t*)rk[r][3]);
++
++      *((u32_a_t*)(b    ))   = (*((u32_a_t*)T1[u.temp[0][0]])
++                                ^ *((u32_a_t*)T2[u.temp[1][1]])
++                                ^ *((u32_a_t*)T3[u.temp[2][2]])
++                                ^ *((u32_a_t*)T4[u.temp[3][3]]));
++      *((u32_a_t*)(b + 4))   = (*((u32_a_t*)T1[u.temp[1][0]])
++                                ^ *((u32_a_t*)T2[u.temp[2][1]])
++                                ^ *((u32_a_t*)T3[u.temp[3][2]])
++                                ^ *((u32_a_t*)T4[u.temp[0][3]]));
++      *((u32_a_t*)(b + 8))   = (*((u32_a_t*)T1[u.temp[2][0]])
++                                ^ *((u32_a_t*)T2[u.temp[3][1]])
++                                ^ *((u32_a_t*)T3[u.temp[0][2]])
++                                ^ *((u32_a_t*)T4[u.temp[1][3]]));
++      *((u32_a_t*)(b +12))   = (*((u32_a_t*)T1[u.temp[3][0]])
++                                ^ *((u32_a_t*)T2[u.temp[0][1]])
++                                ^ *((u32_a_t*)T3[u.temp[1][2]])
++                                ^ *((u32_a_t*)T4[u.temp[2][3]]));
+     }
+ 
+   /* Last round is special. */   
+-  *((u32*)u.temp[0]) = *((u32*)(b   )) ^ *((u32*)rk[ROUNDS-1][0]);
+-  *((u32*)u.temp[1]) = *((u32*)(b+ 4)) ^ *((u32*)rk[ROUNDS-1][1]);
+-  *((u32*)u.temp[2]) = *((u32*)(b+ 8)) ^ *((u32*)rk[ROUNDS-1][2]);
+-  *((u32*)u.temp[3]) = *((u32*)(b+12)) ^ *((u32*)rk[ROUNDS-1][3]);
++  *((u32_a_t*)u.temp[0]) = *((u32_a_t*)(b   )) ^ *((u32_a_t*)rk[ROUNDS-1][0]);
++  *((u32_a_t*)u.temp[1]) = *((u32_a_t*)(b+ 4)) ^ *((u32_a_t*)rk[ROUNDS-1][1]);
++  *((u32_a_t*)u.temp[2]) = *((u32_a_t*)(b+ 8)) ^ *((u32_a_t*)rk[ROUNDS-1][2]);
++  *((u32_a_t*)u.temp[3]) = *((u32_a_t*)(b+12)) ^ *((u32_a_t*)rk[ROUNDS-1][3]);
+   b[ 0] = T1[u.temp[0][0]][1];
+   b[ 1] = T1[u.temp[1][1]][1];
+   b[ 2] = T1[u.temp[2][2]][1];
+@@ -389,10 +395,10 @@ do_encrypt_aligned (const RIJNDAEL_context *ctx,
+   b[13] = T1[u.temp[0][1]][1];
+   b[14] = T1[u.temp[1][2]][1];
+   b[15] = T1[u.temp[2][3]][1];
+-  *((u32*)(b   )) ^= *((u32*)rk[ROUNDS][0]);
+-  *((u32*)(b+ 4)) ^= *((u32*)rk[ROUNDS][1]);
+-  *((u32*)(b+ 8)) ^= *((u32*)rk[ROUNDS][2]);
+-  *((u32*)(b+12)) ^= *((u32*)rk[ROUNDS][3]);
++  *((u32_a_t*)(b   )) ^= *((u32_a_t*)rk[ROUNDS][0]);
++  *((u32_a_t*)(b+ 4)) ^= *((u32_a_t*)rk[ROUNDS][1]);
++  *((u32_a_t*)(b+ 8)) ^= *((u32_a_t*)rk[ROUNDS][2]);
++  *((u32_a_t*)(b+12)) ^= *((u32_a_t*)rk[ROUNDS][3]);
+ #undef rk
+ }
+ 
+@@ -583,57 +589,57 @@ do_decrypt_aligned (RIJNDAEL_context *ctx,
+   } u;
+ 
+ 
+-  *((u32*)u.temp[0]) = *((u32*)(a   )) ^ *((u32*)rk[ROUNDS][0]);
+-  *((u32*)u.temp[1]) = *((u32*)(a+ 4)) ^ *((u32*)rk[ROUNDS][1]);
+-  *((u32*)u.temp[2]) = *((u32*)(a+ 8)) ^ *((u32*)rk[ROUNDS][2]);
+-  *((u32*)u.temp[3]) = *((u32*)(a+12)) ^ *((u32*)rk[ROUNDS][3]);
++  *((u32_a_t*)u.temp[0]) = *((u32_a_t*)(a   )) ^ *((u32_a_t*)rk[ROUNDS][0]);
++  *((u32_a_t*)u.temp[1]) = *((u32_a_t*)(a+ 4)) ^ *((u32_a_t*)rk[ROUNDS][1]);
++  *((u32_a_t*)u.temp[2]) = *((u32_a_t*)(a+ 8)) ^ *((u32_a_t*)rk[ROUNDS][2]);
++  *((u32_a_t*)u.temp[3]) = *((u32_a_t*)(a+12)) ^ *((u32_a_t*)rk[ROUNDS][3]);
+   
+-  *((u32*)(b   ))    = (*((u32*)T5[u.temp[0][0]])
+-                        ^ *((u32*)T6[u.temp[3][1]])
+-                        ^ *((u32*)T7[u.temp[2][2]]) 
+-                        ^ *((u32*)T8[u.temp[1][3]]));
+-  *((u32*)(b+ 4))    = (*((u32*)T5[u.temp[1][0]])
+-                        ^ *((u32*)T6[u.temp[0][1]])
+-                        ^ *((u32*)T7[u.temp[3][2]]) 
+-                        ^ *((u32*)T8[u.temp[2][3]]));
+-  *((u32*)(b+ 8))    = (*((u32*)T5[u.temp[2][0]])
+-                        ^ *((u32*)T6[u.temp[1][1]])
+-                        ^ *((u32*)T7[u.temp[0][2]]) 
+-                        ^ *((u32*)T8[u.temp[3][3]]));
+-  *((u32*)(b+12))    = (*((u32*)T5[u.temp[3][0]])
+-                        ^ *((u32*)T6[u.temp[2][1]])
+-                        ^ *((u32*)T7[u.temp[1][2]]) 
+-                        ^ *((u32*)T8[u.temp[0][3]]));
++  *((u32_a_t*)(b   ))    = (*((u32_a_t*)T5[u.temp[0][0]])
++                            ^ *((u32_a_t*)T6[u.temp[3][1]])
++                            ^ *((u32_a_t*)T7[u.temp[2][2]])
++                            ^ *((u32_a_t*)T8[u.temp[1][3]]));
++  *((u32_a_t*)(b+ 4))    = (*((u32_a_t*)T5[u.temp[1][0]])
++                            ^ *((u32_a_t*)T6[u.temp[0][1]])
++                            ^ *((u32_a_t*)T7[u.temp[3][2]])
++                            ^ *((u32_a_t*)T8[u.temp[2][3]]));
++  *((u32_a_t*)(b+ 8))    = (*((u32_a_t*)T5[u.temp[2][0]])
++                            ^ *((u32_a_t*)T6[u.temp[1][1]])
++                            ^ *((u32_a_t*)T7[u.temp[0][2]])
++                            ^ *((u32_a_t*)T8[u.temp[3][3]]));
++  *((u32_a_t*)(b+12))    = (*((u32_a_t*)T5[u.temp[3][0]])
++                            ^ *((u32_a_t*)T6[u.temp[2][1]])
++                            ^ *((u32_a_t*)T7[u.temp[1][2]])
++                            ^ *((u32_a_t*)T8[u.temp[0][3]]));
+ 
+   for (r = ROUNDS-1; r > 1; r--)
+     {
+-      *((u32*)u.temp[0]) = *((u32*)(b   )) ^ *((u32*)rk[r][0]);
+-      *((u32*)u.temp[1]) = *((u32*)(b+ 4)) ^ *((u32*)rk[r][1]);
+-      *((u32*)u.temp[2]) = *((u32*)(b+ 8)) ^ *((u32*)rk[r][2]);
+-      *((u32*)u.temp[3]) = *((u32*)(b+12)) ^ *((u32*)rk[r][3]);
+-      *((u32*)(b   ))    = (*((u32*)T5[u.temp[0][0]])
+-                            ^ *((u32*)T6[u.temp[3][1]])
+-                            ^ *((u32*)T7[u.temp[2][2]]) 
+-                            ^ *((u32*)T8[u.temp[1][3]]));
+-      *((u32*)(b+ 4))    = (*((u32*)T5[u.temp[1][0]])
+-                            ^ *((u32*)T6[u.temp[0][1]])
+-                            ^ *((u32*)T7[u.temp[3][2]]) 
+-                            ^ *((u32*)T8[u.temp[2][3]]));
+-      *((u32*)(b+ 8))    = (*((u32*)T5[u.temp[2][0]])
+-                            ^ *((u32*)T6[u.temp[1][1]])
+-                            ^ *((u32*)T7[u.temp[0][2]]) 
+-                            ^ *((u32*)T8[u.temp[3][3]]));
+-      *((u32*)(b+12))    = (*((u32*)T5[u.temp[3][0]])
+-                            ^ *((u32*)T6[u.temp[2][1]])
+-                            ^ *((u32*)T7[u.temp[1][2]]) 
+-                            ^ *((u32*)T8[u.temp[0][3]]));
++      *((u32_a_t*)u.temp[0]) = *((u32_a_t*)(b   )) ^ *((u32_a_t*)rk[r][0]);
++      *((u32_a_t*)u.temp[1]) = *((u32_a_t*)(b+ 4)) ^ *((u32_a_t*)rk[r][1]);
++      *((u32_a_t*)u.temp[2]) = *((u32_a_t*)(b+ 8)) ^ *((u32_a_t*)rk[r][2]);
++      *((u32_a_t*)u.temp[3]) = *((u32_a_t*)(b+12)) ^ *((u32_a_t*)rk[r][3]);
++      *((u32_a_t*)(b   ))    = (*((u32_a_t*)T5[u.temp[0][0]])
++                                ^ *((u32_a_t*)T6[u.temp[3][1]])
++                                ^ *((u32_a_t*)T7[u.temp[2][2]])
++                                ^ *((u32_a_t*)T8[u.temp[1][3]]));
++      *((u32_a_t*)(b+ 4))    = (*((u32_a_t*)T5[u.temp[1][0]])
++                                ^ *((u32_a_t*)T6[u.temp[0][1]])
++                                ^ *((u32_a_t*)T7[u.temp[3][2]])
++                                ^ *((u32_a_t*)T8[u.temp[2][3]]));
++      *((u32_a_t*)(b+ 8))    = (*((u32_a_t*)T5[u.temp[2][0]])
++                                ^ *((u32_a_t*)T6[u.temp[1][1]])
++                                ^ *((u32_a_t*)T7[u.temp[0][2]])
++                                ^ *((u32_a_t*)T8[u.temp[3][3]]));
++      *((u32_a_t*)(b+12))    = (*((u32_a_t*)T5[u.temp[3][0]])
++                                ^ *((u32_a_t*)T6[u.temp[2][1]])
++                                ^ *((u32_a_t*)T7[u.temp[1][2]])
++                                ^ *((u32_a_t*)T8[u.temp[0][3]]));
+     }
+ 
+   /* Last round is special. */   
+-  *((u32*)u.temp[0]) = *((u32*)(b   )) ^ *((u32*)rk[1][0]);
+-  *((u32*)u.temp[1]) = *((u32*)(b+ 4)) ^ *((u32*)rk[1][1]);
+-  *((u32*)u.temp[2]) = *((u32*)(b+ 8)) ^ *((u32*)rk[1][2]);
+-  *((u32*)u.temp[3]) = *((u32*)(b+12)) ^ *((u32*)rk[1][3]);
++  *((u32_a_t*)u.temp[0]) = *((u32_a_t*)(b   )) ^ *((u32_a_t*)rk[1][0]);
++  *((u32_a_t*)u.temp[1]) = *((u32_a_t*)(b+ 4)) ^ *((u32_a_t*)rk[1][1]);
++  *((u32_a_t*)u.temp[2]) = *((u32_a_t*)(b+ 8)) ^ *((u32_a_t*)rk[1][2]);
++  *((u32_a_t*)u.temp[3]) = *((u32_a_t*)(b+12)) ^ *((u32_a_t*)rk[1][3]);
+   b[ 0] = S5[u.temp[0][0]];
+   b[ 1] = S5[u.temp[3][1]];
+   b[ 2] = S5[u.temp[2][2]];
+@@ -650,10 +656,10 @@ do_decrypt_aligned (RIJNDAEL_context *ctx,
+   b[13] = S5[u.temp[2][1]];
+   b[14] = S5[u.temp[1][2]];
+   b[15] = S5[u.temp[0][3]];
+-  *((u32*)(b   )) ^= *((u32*)rk[0][0]);
+-  *((u32*)(b+ 4)) ^= *((u32*)rk[0][1]);
+-  *((u32*)(b+ 8)) ^= *((u32*)rk[0][2]);
+-  *((u32*)(b+12)) ^= *((u32*)rk[0][3]);
++  *((u32_a_t*)(b   )) ^= *((u32_a_t*)rk[0][0]);
++  *((u32_a_t*)(b+ 4)) ^= *((u32_a_t*)rk[0][1]);
++  *((u32_a_t*)(b+ 8)) ^= *((u32_a_t*)rk[0][2]);
++  *((u32_a_t*)(b+12)) ^= *((u32_a_t*)rk[0][3]);
+ #undef rk
+ }
+ 
+-- 
+2.9.3
+
