@@ -94,12 +94,12 @@ do_deploy() {
 addtask deploy before do_build after do_install
 
 patch() {
-	sed -i s/BUILD_SYS/${BUILD_SYS}/ Makefile
-	sed -i s/TARGET_SYS/${TARGET_SYS}/ Makefile
-	sed -i s/HOST_SYS/${HOST_SYS}/ Makefile
-	sed -i s'/BITS_PARALLEL_JOBS/${PARALLEL_MAKE}/g' Makefile
-	sed -i s'/LUV_NETBOOT_MODULES/${LUV_NETBOOT_MODULES}/' Makefile
-	sed -i s'/LUV_NETBOOT_ROOT/${LUV_NETBOOT_ROOT}/' Makefile
+	sed -i s/BUILD_SYS/${BUILD_SYS}/ ${S}/Makefile
+	sed -i s/TARGET_SYS/${TARGET_SYS}/ ${S}/Makefile
+	sed -i s/HOST_SYS/${HOST_SYS}/ ${S}/Makefile
+	sed -i s'/BITS_PARALLEL_JOBS/${PARALLEL_MAKE}/g' ${S}/Makefile
+	sed -i s'/LUV_NETBOOT_MODULES/${LUV_NETBOOT_MODULES}/' ${S}/Makefile
+	sed -i s'/LUV_NETBOOT_ROOT/${LUV_NETBOOT_ROOT}/' ${S}/Makefile
 
 }
 
