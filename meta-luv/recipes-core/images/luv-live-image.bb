@@ -5,10 +5,14 @@ DEPENDS_${PN} = "grub-efi bits"
 
 HDDDIR = "${S}/hddimg"
 HDDIMG_ID = "423cc2c8"
-LABELS = "luv"
+LABELS_LIVE = "luv"
+# Remove when Yocto Project morty is merged into LUV
+LABELS = "${LABELS_LIVE}"
 
-INITRD_IMAGE = "core-image-efi-initramfs"
-INITRD = "${DEPLOY_DIR_IMAGE}/${INITRD_IMAGE}-${MACHINE}.cpio.gz"
+INITRD_IMAGE_LIVE = "core-image-efi-initramfs"
+# Remove when Yocto Project morty is merged into LUV
+INITRD_IMAGE = "${INITRD_IMAGE_LIVE}"
+IMGDEPLOYDIR = "${DEPLOY_DIR_IMAGE}"
 MACHINE_FEATURES += "efi"
 APPEND = "debug crashkernel=256M console=ttyS0,115200 console=ttyPCH0,115200 ip=dhcp log_buf_len=1M"
 APPEND_netconsole = "luv_netconsole=10.11.12.13,64001"
@@ -18,7 +22,7 @@ SPLASH_IMAGE = "blue-luv.jpg"
 
 GRUB_TIMEOUT = "2"
 
-inherit bootimg
+inherit image-live
 
 SRC_URI = "file://blue-luv.jpg"
 
@@ -82,7 +86,7 @@ do_image_ext4() {
 
 do_image_ext4[noexec] = "1"
 
-do_bootimg[depends] += "${INITRD_IMAGE}:do_build"
+do_bootimg[depends] += "${INITRD_IMAGE_LIVE}:do_build"
 do_bootimg[depends] += "virtual/kernel:do_populate_sysroot"
 do_bootimg[depends] += "shim-signed:do_deploy"
 do_create_img[fakeroot]= "1"

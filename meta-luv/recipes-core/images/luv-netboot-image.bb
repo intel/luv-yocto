@@ -3,8 +3,10 @@ LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=4d92cd373abda3937c2bc47fbc49d
 
 DEPENDS_${PN} = "bits"
 
-INITRD_IMAGE = "core-image-efi-initramfs"
-INITRD = "${DEPLOY_DIR_IMAGE}/${INITRD_IMAGE}-${MACHINE}.cpio.gz"
+INITRD_IMAGE_LIVE = "core-image-efi-initramfs"
+# Remove when Yocto Project morty is merged into LUV
+INITRD_IMAGE = "${INITRD_IMAGE_LIVE}"
+IMGDEPLOYDIR = "${DEPLOY_DIR_IMAGE}"
 
 # bootimg.bbclass will set PCBIOS="1" if efi is not found in the MACHINE_FEATURES. For
 # netboot we don't include 'efi' as a machine feature; this would imply the creation
@@ -20,7 +22,7 @@ APPEND_aarch64 = "crashkernel=256M console=ttyAMA0 uefi_debug acpi=force luv.net
 HDDDIR = "${S}/hddimg"
 
 inherit luv-efi
-inherit bootimg
+inherit image-live
 inherit deploy
 
 # reuse the same splash screen as in the disk live image
@@ -73,6 +75,6 @@ addtask do_mkimage before do_build
 addtask do_deploy before do_build after do_mkimage
 addtask image_ext4 before do_bootimg before do_build
 
-do_mkimage[depends] += "${INITRD_IMAGE}:do_build"
+do_mkimage[depends] += "${INITRD_IMAGE_LIVE}:do_build"
 do_deploy[depends] += "${_RDEPENDS}:do_deploy"
 
