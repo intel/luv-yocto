@@ -19,3 +19,5 @@ do_install_prepend() {
 }
 
 do_populate_lic[depends] += "virtual/kernel:do_populate_lic"
+
+RPROVIDES_${PN} = "kernel-module-libnvdimm"
