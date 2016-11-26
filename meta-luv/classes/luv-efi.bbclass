@@ -138,13 +138,12 @@ efi_iso_populate() {
 
     if [ "${TARGET_ARCH}" = "aarch64" ] ; then
         echo "bootaa64.efi" > ${EFIIMGDIR}/startup.nsh
-        cp $iso_dir/Image ${EFIIMGDIR}
     fi
     if echo "${TARGET_ARCH}" | grep -q "i.86" || [ "${TARGET_ARCH}" = "x86_64" ]; then
         echo "${GRUB_IMAGE}" > ${EFIIMGDIR}/startup.nsh
-        cp $iso_dir/vmlinuz ${EFIIMGDIR}
     fi
 
+    cp $iso_dir/vmlinuz ${EFIIMGDIR}
     if [ -f "$iso_dir/initrd" ] ; then
         cp $iso_dir/initrd ${EFIIMGDIR}
     fi
@@ -174,10 +173,7 @@ python build_efi_cfg() {
        cfgfile.write('fallback=0\n')
 
     cfgfile.write('menuentry \'luv\' {\n')
-    if re.search("(x86_64|i.86)", target):
-       cfgfile.write('linux /vmlinuz ')
-    if "${TARGET_ARCH}" == "aarch64":
-        cfgfile.write('linux /Image')
+    cfgfile.write('linux /vmlinuz ')
 
     append = d.getVar('APPEND', True)
     if append:

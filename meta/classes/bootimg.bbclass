@@ -71,15 +71,13 @@ populate() {
 	DEST=$1
 	install -d ${DEST}
 
-        DEST_KERNEL_IMAGE=vmlinuz
 
         if [ "${TARGET_ARCH}" = "aarch64" ]; then
                 KERNEL_IMAGETYPE=Image
-                DEST_KERNEL_IMAGE=Image
         fi
 
         # Install kernel, initrd, and rootfs.img in DEST for all loaders to use.
-        install -m 0644 -D ${DEPLOY_DIR_IMAGE}/${KERNEL_IMAGETYPE} ${DEST}/${DEST_KERNEL_IMAGE}
+        install -m 0644 -D ${DEPLOY_DIR_IMAGE}/${KERNEL_IMAGETYPE} ${DEST}/vmlinuz
 	
 	# initrd is made of concatenation of multiple filesystem images
 	if [ -n "${INITRD}" ]; then
