@@ -28,8 +28,7 @@ FILESEXTRAPATHS_append := "${THISDIR}/luv-live-image:"
 SPLASH_IMAGE = "blue-luv.jpg"
 SRC_URI = "file://blue-luv.jpg"
 
-do_mkimage[depends] += "${EXTRABOOTIMGDEPS} \
-                        dosfstools-native:do_populate_sysroot \
+do_mkimage[depends] += "dosfstools-native:do_populate_sysroot \
                         mtools-native:do_populate_sysroot \
                         cdrtools-native:do_populate_sysroot \
                         virtual/kernel:do_deploy \
