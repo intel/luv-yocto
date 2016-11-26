@@ -20,6 +20,7 @@
 # External variables (also used by syslinux.bbclass)
 # ${INITRD} - indicates a list of filesystem images to concatenate and use as an initrd (optional)
 # ${COMPRESSISO} - Transparent compress ISO, reduce size ~40% if set to 1
+# ${EFI_USEXORRISO} - For EFI images, use xorriso instead of mkisofs if set to 1. Useful when syslinux is not supported.
 # ${NOISO}  - skip building the ISO image if set to 1
 # ${NOHDD}  - skip building the HDD image if set to 1
 # ${HDDIMG_ID} - FAT image volume-id
@@ -31,12 +32,11 @@ do_bootimg[depends] += "dosfstools-native:do_populate_sysroot \
                         mtools-native:do_populate_sysroot \
                         cdrtools-native:do_populate_sysroot \
                         virtual/kernel:do_deploy \
-                        ${MLPREFIX}syslinux:do_populate_sysroot \
-                        syslinux-native:do_populate_sysroot \
+                        ${@oe.utils.ifelse(d.getVar('EFI_USEXORRISO', False),'xorriso-native:do_populate_sysroot','syslinux-native:do_populate_sysroot')} \
+                        ${@oe.utils.ifelse(d.getVar('EFI_USEXORRISO', False),'','${MLPREFIX}syslinux:do_populate_sysroot')} \
                         ${@oe.utils.ifelse(d.getVar('COMPRESSISO', False),'zisofs-tools-native:do_populate_sysroot','')} \
                         ${PN}:do_image_ext4 \
                         "
-
 
 LABELS_LIVE ?= "boot install"
 ROOT_LIVE ?= "root=/dev/ram0"
@@ -106,7 +106,7 @@ build_iso() {
 	fi
 
 	# EFI only
-	if [ "${PCBIOS}" != "1" ] && [ "${EFI}" = "1" ] ; then
+	if [ "${PCBIOS}" != "1" ] && [ "${EFI}" = "1" ] && [ "${EFI_USEXORRISO}" != "1" ]; then
 		# Work around bug in isohybrid where it requires isolinux.bin
 		# In the boot catalog, even though it is not used
 		mkdir -p ${ISODIR}/${ISOLINUXDIR}
@@ -148,18 +148,27 @@ build_iso() {
 			$mkisofs_compress_opts \
 			${MKISOFS_OPTIONS} $mkisofs_iso_level ${ISODIR}
 	else
+		if [ "${EFI_USEXORRISO}" = "1" ]; then
+			xorriso -as mkisofs -A ${BOOTIMG_VOLUME_ID} -V ${BOOTIMG_VOLUME_ID} \
+				-o ${IMGDEPLOYDIR}/${IMAGE_NAME}.iso \
+				-r -J -joliet-long -c boot.cat -efi-boot-part \
+				--efi-boot-image -e efi.img -no-emul-boot ${ISODIR}
+		else
 		# EFI only OR EFI+PCBIOS
-		mkisofs -A ${BOOTIMG_VOLUME_ID} -V ${BOOTIMG_VOLUME_ID} \
-		        -o ${IMGDEPLOYDIR}/${IMAGE_NAME}.iso \
-			-b ${ISO_BOOTIMG} -c ${ISO_BOOTCAT} \
-			$mkisofs_compress_opts ${MKISOFS_OPTIONS} $mkisofs_iso_level \
-			-eltorito-alt-boot -eltorito-platform efi \
-			-b efi.img -no-emul-boot \
-			${ISODIR}
-		isohybrid_args="-u"
+			mkisofs -A ${BOOTIMG_VOLUME_ID} -V ${BOOTIMG_VOLUME_ID} \
+			        -o ${IMGDEPLOYDIR}/${IMAGE_NAME}.iso \
+				-b ${ISO_BOOTIMG} -c ${ISO_BOOTCAT} \
+				$mkisofs_compress_opts ${MKISOFS_OPTIONS} $mkisofs_iso_level \
+				-eltorito-alt-boot -eltorito-platform efi \
+				-b efi.img -no-emul-boot \
+				${ISODIR}
+			isohybrid_args="-u"
+		fi
 	fi
 
-	isohybrid $isohybrid_args ${IMGDEPLOYDIR}/${IMAGE_NAME}.iso
+	if [ "${EFI_USEXORRISO}" != "1" ]; then
+		isohybrid $isohybrid_args ${IMGDEPLOYDIR}/${IMAGE_NAME}.iso
+	fi
 }
 
 build_fat_img() {
