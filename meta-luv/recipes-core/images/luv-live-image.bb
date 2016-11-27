@@ -18,6 +18,13 @@ APPEND = "debug crashkernel=256M console=ttyS0,115200 console=ttyPCH0,115200 ip=
 APPEND_netconsole = "luv_netconsole=10.11.12.13,64001"
 APPEND_aarch64 = "crashkernel=256M console=ttyAMA0 uefi_debug acpi=force"
 
+python() {
+    import re
+    target = d.getVar('TARGET_ARCH', True)
+    if re.match('aarch64', target):
+        d.setVar('EFI_USEXORRISO', '1')
+}
+
 SPLASH_IMAGE = "blue-luv.jpg"
 
 GRUB_TIMEOUT = "2"
