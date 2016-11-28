@@ -12,7 +12,7 @@ SRCREV="3e43396b3506b9fdaf71ffb69ed160f2e108894b"
 
 S = "${WORKDIR}/git"
 
-DEPENDS_class-native="util-linux-native iasl-native"
+DEPENDS_class-native="util-linux-native iasl-native ossp-uuid-native"
 
 DEPENDS_class-target="ovmf-native"
 
