@@ -64,7 +64,6 @@ HDDDIR = "${S}/hddimg"
 ISODIR = "${S}/iso"
 EFIIMGDIR = "${S}/efi_img"
 COMPACT_ISODIR = "${S}/iso.z"
-COMPRESSISO ?= "0"
 
 ISOLINUXDIR ?= "/isolinux"
 ISO_BOOTIMG = "isolinux/isolinux.bin"
