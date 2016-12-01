@@ -69,39 +69,39 @@ SRC_URI += "file://0001-Add-function-to-fixup-page-faults-in-BOOT_SERVICES_-.pat
            "
 
 # Add the defconfig from v4.6 kernel and the configuration x86 fragments
-SRC_URI_append_x86 = "file://defconfig \
-                      file://modules.cfg \
-                      file://display.cfg \
-                      file://ram_block.cfg \
-                      file://debug.cfg \
-                      file://efi.cfg \
-                      file://usb_hcd.cfg \
-                      file://ndctl.cfg \
-                      file://network.cfg \
-                      file://network-devices.cfg \
-                      file://linux_quirks.cfg \
-                      file://usb_ethernet.cfg \
+SRC_URI_append_x86 = " file://defconfig \
+                       file://modules.cfg \
+                       file://display.cfg \
+                       file://ram_block.cfg \
+                       file://debug.cfg \
+                       file://efi.cfg \
+                       file://usb_hcd.cfg \
+                       file://ndctl.cfg \
+                       file://network.cfg \
+                       file://network-devices.cfg \
+                       file://linux_quirks.cfg \
+                       file://usb_ethernet.cfg \
                      "
 
 # Add the defconfig from v4.6 kernel and the configuration x86-64 fragments
-SRC_URI_append_x86-64 = "file://defconfig \
-                         file://modules.cfg \
-                         file://display.cfg \
-                         file://ram_block.cfg \
-                         file://debug.cfg \
-                         file://efi.cfg \
-                         file://usb_hcd.cfg \
-                         file://ndctl.cfg \
-                         file://network.cfg \
-                         file://network-devices.cfg \
-                         file://linux_quirks.cfg \
-                         file://usb_ethernet.cfg \
+SRC_URI_append_x86-64 = " file://defconfig \
+                          file://modules.cfg \
+                          file://display.cfg \
+                          file://ram_block.cfg \
+                          file://debug.cfg \
+                          file://efi.cfg \
+                          file://usb_hcd.cfg \
+                          file://ndctl.cfg \
+                          file://network.cfg \
+                          file://network-devices.cfg \
+                          file://linux_quirks.cfg \
+                          file://usb_ethernet.cfg \
                         "
 
 # Add the defconfig from v4.6 kernel and the configuration arm64 fragments
-SRC_URI_append_aarch64 = "file://${MACHINE}/defconfig \
-                          file://${MACHINE}/acpi.cfg \
-                          file://${MACHINE}/network.cfg \
+SRC_URI_append_aarch64 = " file://${MACHINE}/defconfig \
+                           file://${MACHINE}/acpi.cfg \
+                           file://${MACHINE}/network.cfg \
                          "
 
 # Override KCONFIG_MODE to '--alldefconfig' from the default '--allnoconfig'
