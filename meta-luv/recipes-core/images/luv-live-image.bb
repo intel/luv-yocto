@@ -32,7 +32,13 @@ SRC_URI = "file://blue-luv.jpg"
 S = "${WORKDIR}"
 
 build_img() {
-    IMG="${DEPLOY_DIR_IMAGE}/${PN}.img"
+
+    if [ "$1" = "mbr" ]; then
+        IMG="${DEPLOY_DIR_IMAGE}/${PN}-mbr.img"
+    else
+        IMG="${DEPLOY_DIR_IMAGE}/${PN}-gpt.img"
+    fi
+
     VFAT="${DEPLOY_DIR_IMAGE}/${IMAGE_LINK_NAME}.hddimg"
 
     # Parameters of the vfat partition for test results
@@ -76,7 +82,12 @@ build_img() {
     dd if=/dev/zero of=${IMG} bs=1 seek=${IMG_SIZE_MiB}MiB count=0
 
     # Let "parted" tool take care of any alignment issues, if any arises
-    parted --align optimal ${IMG} mklabel msdos
+    # Support both MBR type and GPT type images
+    if [ "$1" = "mbr" ]; then
+        parted --align optimal ${IMG} mklabel msdos
+    else
+        parted --align optimal ${IMG} mklabel gpt
+    fi
 
     # even though MBR occupies only 512 bytes we start
     # first partition after 1MiB because the default size that
@@ -103,12 +114,24 @@ build_img() {
     # mark second partition as boot partition only after calculating
     # starting sector of each partition (which is already done above)
     # because fdisk will list partitions differently for MBR and GPT.
-    parted ${IMG} set 2 boot on
+    # Also mark second partition as boot partition only for mbr type
+    # image because some distros do not automatically mount
+    # "EFI System Partition"
+
+    parted ${IMG} set 1 boot off
+    if [ "$1" = "mbr" ]; then
+        parted ${IMG} set 2 boot on
+    fi
 
 }
 
+build_imgs() {
+    build_img mbr
+    build_img gpt
+}
+
 python do_create_img() {
-    bb.build.exec_func('build_img', d)
+    bb.build.exec_func('build_imgs', d)
 }
 
 do_image_ext4() {
