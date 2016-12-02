@@ -12,6 +12,7 @@ IMGDEPLOYDIR = "${DEPLOY_DIR_IMAGE}"
 MACHINE_FEATURES += "efi"
 APPEND = "debug crashkernel=256M console=ttyS0,115200 console=ttyPCH0,115200 ip=dhcp log_buf_len=1M"
 APPEND_netconsole = "luv_netconsole=10.11.12.13,64001"
+LUVCFG_netconsole = "LUV_NETCONSOLE=10.11.12.13,64001"
 APPEND_aarch64 = "crashkernel=256M console=ttyAMA0 uefi_debug acpi=force"
 
 python() {
