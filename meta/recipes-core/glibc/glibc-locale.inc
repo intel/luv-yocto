@@ -19,7 +19,7 @@ do_package[depends] += "${BINUTILSDEP}"
 
 # default to disabled 
 ENABLE_BINARY_LOCALE_GENERATION ?= "0"
-ENABLE_BINARY_LOCALE_GENERATION_pn-nativesdk-glibc-locale = "0"
+ENABLE_BINARY_LOCALE_GENERATION_pn-nativesdk-glibc-locale = "1"
 
 #enable locale generation on these arches
 # BINARY_LOCALE_ARCHES is a space separated list of regular expressions
@@ -86,7 +86,7 @@ do_install () {
 	if [ -e ${LOCALETREESRC}/${datadir}/locale ]; then
 		cp -fpPR ${LOCALETREESRC}/${datadir}/locale ${D}${datadir}
 	fi
-	chown root.root -R ${D}
+	chown root:root -R ${D}
 	cp -fpPR ${LOCALETREESRC}/SUPPORTED ${WORKDIR}
 }
 

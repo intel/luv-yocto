@@ -23,7 +23,6 @@ SRC_URI = "${GNU_MIRROR}/coreutils/${BP}.tar.bz2 \
            file://coreutils-fix-install.patch \
            file://man-touch.patch \
            file://coreutils_fix_for_automake-1.12.patch \
-           file://coreutils-build-with-acl.patch \
            file://coreutils-fix-texinfo.patch \
            file://fix_for_manpage_building.patch \
            file://loadavg.patch \
@@ -41,7 +40,7 @@ PACKAGECONFIG ??= "${@bb.utils.contains('DISTRO_FEATURES', 'acl', 'acl', '', d)}
 
 # with, without, depends, rdepends
 #
-PACKAGECONFIG[acl] = "ac_cv_header_sys_acl_h=yes,ac_cv_header_sys_acl_h=no,acl,"
+PACKAGECONFIG[acl] = "ac_cv_header_sys_acl_h=yes ac_cv_header_acl_libacl_h=yes ac_cv_search_acl_get_file=-lacl,ac_cv_header_sys_acl_h=no ac_cv_header_acl_libacl_h=no ac_cv_search_acl_get_file=,acl,"
 
 
 # [ gets a special treatment and is not included in this
@@ -88,6 +87,10 @@ inherit update-alternatives
 ALTERNATIVE_PRIORITY = "100"
 
 ALTERNATIVE_${PN} = "lbracket ${bindir_progs} ${base_bindir_progs} ${sbindir_progs}"
+
+ALTERNATIVE_${PN}-doc = "su.1 hostname.1"
+ALTERNATIVE_LINK_NAME[su.1] = "${mandir}/man1/su.1"
+ALTERNATIVE_LINK_NAME[hostname.1] = "${mandir}/man1/hostname.1"
 
 ALTERNATIVE_PRIORITY[uptime] = "10"
 ALTERNATIVE_PRIORITY[hostname] = "10"

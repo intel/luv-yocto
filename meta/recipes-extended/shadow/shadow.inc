@@ -22,16 +22,17 @@ SRC_URI = "http://pkg-shadow.alioth.debian.org/releases/${BPN}-${PV}.tar.xz \
 SRC_URI_append_class-target = " \
            file://login_defs_pam.sed \
            file://shadow-update-pam-conf.patch \
+           file://shadow-relaxed-usernames.patch \
            "
 
 SRC_URI_append_class-native = " \
-           file://disable-syslog.patch \
+           file://0001-Disable-use-of-syslog-for-sysroot.patch \
            file://allow-for-setting-password-in-clear-text.patch \
            file://commonio.c-fix-unexpected-open-failure-in-chroot-env.patch \
            file://0001-useradd.c-create-parent-directories-when-necessary.patch \
            "
 SRC_URI_append_class-nativesdk = " \
-           file://disable-syslog.patch \
+           file://0001-Disable-use-of-syslog-for-sysroot.patch \
            "
 
 SRC_URI[md5sum] = "2bfafe7d4962682d31b5eba65dba4fc8"
@@ -179,10 +180,11 @@ ALTERNATIVE_${PN}-base = "newgrp groups login su"
 ALTERNATIVE_LINK_NAME[login] = "${base_bindir}/login"
 ALTERNATIVE_LINK_NAME[su] = "${base_bindir}/su"
 
-ALTERNATIVE_${PN}-doc = "passwd.5 getspnam.3 groups.1"
+ALTERNATIVE_${PN}-doc = "passwd.5 getspnam.3 groups.1 su.1"
 ALTERNATIVE_LINK_NAME[passwd.5] = "${mandir}/man5/passwd.5"
 ALTERNATIVE_LINK_NAME[getspnam.3] = "${mandir}/man3/getspnam.3"
 ALTERNATIVE_LINK_NAME[groups.1] = "${mandir}/man1/groups.1"
+ALTERNATIVE_LINK_NAME[su.1] = "${mandir}/man1/su.1"
 
 pkg_postinst_${PN} () {
 	if [ "x$D" != "x" ]; then

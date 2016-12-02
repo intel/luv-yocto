@@ -24,6 +24,7 @@ import tempfile
 import logging
 import argparse
 import subprocess
+import scriptutils
 from devtool import exec_build_env_command, setup_tinfoil, check_workspace_recipe, DevtoolError
 from devtool import parse_recipe
 
@@ -48,17 +49,7 @@ def edit_recipe(args, config, basepath, workspace):
             raise DevtoolError("Recipe file for %s is not under the workspace" %
                                args.recipename)
 
-    editor = os.environ.get('EDITOR', None)
-    if not editor:
-        raise DevtoolError("EDITOR environment variable not set")
-
-    import subprocess
-    try:
-        subprocess.check_call('%s "%s"' % (editor, recipefile), shell=True)
-    except subprocess.CalledProcessError as e:
-        return e.returncode
-
-    return 0
+    return scriptutils.run_editor(recipefile)
 
 
 def configure_help(args, config, basepath, workspace):
@@ -95,7 +86,7 @@ def configure_help(args, config, basepath, workspace):
         logger.info('Running do_configure to generate configure script')
         try:
             stdout, _ = exec_build_env_command(config.init_path, basepath,
-                                               'bitbake -c configure %s' % msg, args.recipename,
+                                               'bitbake -c configure %s' % args.recipename,
                                                stderr=subprocess.STDOUT)
         except bb.process.ExecutionError:
             pass
@@ -223,7 +214,8 @@ The ./configure %s output for %s follows.
 def register_commands(subparsers, context):
     """Register devtool subcommands from this plugin"""
     parser_edit_recipe = subparsers.add_parser('edit-recipe', help='Edit a recipe file in your workspace',
-                                         description='Runs the default editor (as specified by the EDITOR variable) on the specified recipe. Note that the recipe file itself must be in the workspace (i.e. as a result of "devtool add" or "devtool upgrade"); you can override this with the -a/--any-recipe option.')
+                                         description='Runs the default editor (as specified by the EDITOR variable) on the specified recipe. Note that the recipe file itself must be in the workspace (i.e. as a result of "devtool add" or "devtool upgrade"); you can override this with the -a/--any-recipe option.',
+                                         group='working')
     parser_edit_recipe.add_argument('recipename', help='Recipe to edit')
     parser_edit_recipe.add_argument('--any-recipe', '-a', action="store_true", help='Edit any recipe, not just where the recipe file itself is in the workspace')
     parser_edit_recipe.set_defaults(func=edit_recipe)
@@ -232,7 +224,8 @@ def register_commands(subparsers, context):
     # gets the order wrong - recipename must come before --arg
     parser_configure_help = subparsers.add_parser('configure-help', help='Get help on configure script options',
                                          usage='devtool configure-help [options] recipename [--arg ...]',
-                                         description='Displays the help for the configure script for the specified recipe (i.e. runs ./configure --help) prefaced by a header describing the current options being specified. Output is piped through less (or whatever PAGER is set to, if set) for easy browsing.')
+                                         description='Displays the help for the configure script for the specified recipe (i.e. runs ./configure --help) prefaced by a header describing the current options being specified. Output is piped through less (or whatever PAGER is set to, if set) for easy browsing.',
+                                         group='working')
     parser_configure_help.add_argument('recipename', help='Recipe to show configure help for')
     parser_configure_help.add_argument('-p', '--no-pager', help='Disable paged output', action="store_true")
     parser_configure_help.add_argument('-n', '--no-header', help='Disable explanatory header text', action="store_true")

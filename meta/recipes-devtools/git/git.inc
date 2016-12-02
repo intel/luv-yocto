@@ -17,7 +17,8 @@ EXTRA_OECONF = "--with-perl=${STAGING_BINDIR_NATIVE}/perl-native/perl \
 		--without-tcltk \
 "
 
-inherit autotools-brokensep perlnative
+# Needs brokensep as this doesn't use automake
+inherit autotools-brokensep perlnative bash-completion
 
 EXTRA_OEMAKE = "NO_PYTHON=1 CFLAGS='${CFLAGS}' LDFLAGS='${LDFLAGS}'"
 EXTRA_OEMAKE += "'PERL_PATH=/usr/bin/env perl'"
@@ -31,8 +32,7 @@ do_compile_prepend () {
 
 do_install () {
 	oe_runmake install DESTDIR="${D}" bindir=${bindir} \
-		template_dir=${datadir}/git-core/templates \
-		GIT_PYTHON_DIR=${D}${datadir}/git-core/python
+		template_dir=${datadir}/git-core/templates
 	install -d ${D}/${mandir}/man1
 	install -d ${D}/${mandir}/man5
 	install -d ${D}/${mandir}/man7
@@ -50,6 +50,8 @@ perl_native_fixup () {
 
 	# ${libdir} is not applicable here, perl-native files are always
 	# installed to /usr/lib on both 32/64 bits targets.
+
+	mkdir -p ${D}${libdir}
 	mv ${D}${exec_prefix}/lib/perl-native/perl ${D}${libdir}
 	rmdir -p ${D}${exec_prefix}/lib/perl-native || true
 }
@@ -96,10 +98,6 @@ PERLTOOLS = " \
     ${datadir}/git-core/templates/hooks/pre-rebase.sample \
 "
 
-# Basic tab completion support
-PACKAGES =+ "${PN}-bash-completion"
-FILES_${PN}-bash-completion = "${datadir}/bash-completion/completions/*"
-
 # Git tools requiring perl
 PACKAGES =+ "${PN}-perltools"
 FILES_${PN}-perltools += " \
@@ -108,10 +106,6 @@ FILES_${PN}-perltools += " \
     ${datadir}/perl \
 "
 RDEPENDS_${PN}-perltools = "${PN} perl perl-module-file-path findutils"
-
-PACKAGES =+ "${PN}-python"
-FILES_${PN}-python = "${libdir}/python*"
-
 
 # git-tk package with gitk and git-gui
 PACKAGES =+ "${PN}-tk"

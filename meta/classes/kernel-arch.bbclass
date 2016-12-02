@@ -14,20 +14,18 @@ valid_archs = "alpha cris ia64 \
                parisc s390  v850 \
                avr32 blackfin \
                microblaze \
-               nios2"
+               nios2 arc xtensa"
 
 def map_kernel_arch(a, d):
     import re
 
     valid_archs = d.getVar('valid_archs', True).split()
 
-    if   re.match('i.86$', a):                  return 'i386'
-    elif re.match('x86.64$', a):                return 'x86_64'
-    elif re.match('athlon$', a):                return 'x86'
+    if   re.match('(i.86|athlon|x86.64)$', a):  return 'x86'
     elif re.match('armeb$', a):                 return 'arm'
     elif re.match('aarch64$', a):               return 'arm64'
     elif re.match('aarch64_be$', a):            return 'arm64'
-    elif re.match('mips(el|64|64el)$', a):      return 'mips'
+    elif re.match('mips(isa|)(32|64|)(r6|)(el|)$', a):      return 'mips'
     elif re.match('p(pc|owerpc)(|64)', a):      return 'powerpc'
     elif re.match('sh(3|4)$', a):               return 'sh'
     elif re.match('bfin', a):                   return 'blackfin'

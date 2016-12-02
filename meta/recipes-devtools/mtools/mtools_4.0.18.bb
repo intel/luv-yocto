@@ -29,7 +29,9 @@ SRC_URI[sha256sum] = "59e9cf80885399c4f229e5d87e49c0c2bfeec044e1386d59fcd0b0aead
 
 SRC_URI = "${GNU_MIRROR}/mtools/mtools-${PV}.tar.bz2 \
            file://mtools-makeinfo.patch \
-           file://no-x11.gplv3.patch"
+           file://no-x11.gplv3.patch \
+           file://0001-Continue-even-if-fs-size-is-not-divisible-by-sectors.patch \
+           "
 
 
 inherit autotools texinfo
@@ -47,9 +49,4 @@ do_install_prepend () {
     # Create bindir to fix parallel installation issues
     mkdir -p ${D}/${bindir}
     mkdir -p ${D}/${datadir}
-}
-
-do_install_append_class-native () {
-    create_wrapper ${D}${bindir}/mcopy \
-        GCONV_PATH=${libdir}/gconv
 }

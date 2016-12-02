@@ -7,7 +7,7 @@ LICENSE_FLAGS = "commercial"
 
 DEPENDS = "gstreamer1.0 gstreamer1.0-plugins-base zlib bzip2 xz"
 
-inherit autotools pkgconfig upstream-version-is-even
+inherit autotools pkgconfig upstream-version-is-even gtk-doc
 
 # CAUTION: Using the system libav is not recommended. Since the libav API is changing all the time,
 # compilation errors (and other, more subtle bugs) can happen. It is usually better to rely on the
@@ -18,10 +18,18 @@ PACKAGECONFIG[gpl] = "--enable-gpl,--disable-gpl,"
 PACKAGECONFIG[libav] = "--with-system-libav,,libav"
 PACKAGECONFIG[orc] = "--enable-orc,--disable-orc,orc"
 PACKAGECONFIG[yasm] = "--enable-yasm,--disable-yasm,yasm-native"
+PACKAGECONFIG[valgrind] = "--enable-valgrind,--disable-valgrind,valgrind"
 
 GSTREAMER_1_0_DEBUG ?= "--disable-debug"
 
 LIBAV_EXTRA_CONFIGURE = "--with-libav-extra-configure"
+
+LIBAV_EXTRA_CONFIGURE_COMMON_ARG = "--target-os=linux \
+  --cc='${CC}' --as='${CC}' --ld='${CC}' --nm='${NM}' --ar='${AR}' \
+  --ranlib='${RANLIB}' \
+  ${GSTREAMER_1_0_DEBUG} \
+  --cross-prefix='${HOST_PREFIX}'"
+
 LIBAV_EXTRA_CONFIGURE_COMMON = \
 '${LIBAV_EXTRA_CONFIGURE}="${LIBAV_EXTRA_CONFIGURE_COMMON_ARG}"'
 
@@ -34,3 +42,6 @@ FILES_${PN}-staticdev += "${libdir}/gstreamer-1.0/*.a"
 # http://errors.yoctoproject.org/Errors/Details/20493/
 ARM_INSTRUCTION_SET_armv4 = "arm"
 ARM_INSTRUCTION_SET_armv5 = "arm"
+
+# ffmpeg/libav disables PIC on some platforms (e.g. x86-32)
+INSANE_SKIP_${PN} = "textrel"

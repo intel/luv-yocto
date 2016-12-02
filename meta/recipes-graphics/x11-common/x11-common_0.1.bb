@@ -16,8 +16,7 @@ S = "${WORKDIR}"
 do_install() {
 	cp -R ${S}/etc ${D}${sysconfdir}
 	chmod -R 755 ${D}${sysconfdir}
-	find ${D}${sysconfdir} -type f -name \*~ -exec rm -rf {} \;
 }
 
-RDEPENDS_${PN} = "dbus-x11 xmodmap xdpyinfo xtscal xinit formfactor"
+RDEPENDS_${PN} = "dbus-x11 xmodmap xdpyinfo xinput-calibrator formfactor"
 
