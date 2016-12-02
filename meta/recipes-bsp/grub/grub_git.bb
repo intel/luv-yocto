@@ -49,7 +49,7 @@ do_install_append_class-target() {
     grub-mkimage -c ../cfg -p /EFI/BOOT -d ./grub-core/ \
         -O ${GRUB_TARGET}-${GRUBPLATFORM} -o ./${GRUB_IMAGE} \
         boot linux ext2 fat serial part_msdos part_gpt \
-        normal efi_gop iso9660 search efinet tftp all_video chain \
+        normal efi_gop iso9660 configfile search efinet tftp all_video chain \
         gfxmenu jpeg gfxterm
 
     install -m 0755 -D ${B}/${GRUB_IMAGE} ${D}${bindir}
