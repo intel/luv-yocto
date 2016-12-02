@@ -4,8 +4,6 @@ LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=4d92cd373abda3937c2bc47fbc49d
 DEPENDS_${PN} = "bits"
 
 INITRD_IMAGE_LIVE = "core-image-efi-initramfs"
-# Remove when Yocto Project morty is merged into LUV
-INITRD_IMAGE = "${INITRD_IMAGE_LIVE}"
 IMGDEPLOYDIR = "${DEPLOY_DIR_IMAGE}"
 
 # bootimg.bbclass will set PCBIOS="1" if efi is not found in the MACHINE_FEATURES. For

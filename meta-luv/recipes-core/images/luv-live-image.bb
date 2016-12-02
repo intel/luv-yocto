@@ -6,12 +6,8 @@ DEPENDS_${PN} = "grub-efi bits"
 HDDDIR = "${S}/hddimg"
 HDDIMG_ID = "423cc2c8"
 LABELS_LIVE = "luv"
-# Remove when Yocto Project morty is merged into LUV
-LABELS = "${LABELS_LIVE}"
 
 INITRD_IMAGE_LIVE = "core-image-efi-initramfs"
-# Remove when Yocto Project morty is merged into LUV
-INITRD_IMAGE = "${INITRD_IMAGE_LIVE}"
 IMGDEPLOYDIR = "${DEPLOY_DIR_IMAGE}"
 MACHINE_FEATURES += "efi"
 APPEND = "debug crashkernel=256M console=ttyS0,115200 console=ttyPCH0,115200 ip=dhcp log_buf_len=1M"
