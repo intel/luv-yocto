@@ -35,6 +35,7 @@ EFIDIR = "/EFI/BOOT"
 LUV_FOR_NETBOOT="${@bb.utils.contains('DISTRO_FEATURES', 'luv-netboot','1' , '0', d)}"
 
 GRUBCFG = "${S}/grub.cfg"
+LUV_CFG = "${S}/luv.cfg"
 
 def extra_initrd(d):
     import re
@@ -92,6 +93,9 @@ efi_populate() {
     install -m 0644 ${GRUBCFG} ${DEST}${EFIDIR}
 
     install -m 0644 ${WORKDIR}/${SPLASH_IMAGE} ${DEST}${EFIDIR}
+
+    # Install luv.cfg file in to the boot parition.
+    install -m 0644 ${LUV_CFG} ${DEST}
 }
 
 efi_populate_bits() {
@@ -201,6 +205,54 @@ python build_efi_cfg() {
        cfgfile.write('}\n')
 
     cfgfile.close()
+}
+
+# define a function that takes name and comment as arguments
+def insert_var(name, comment, d):
+    name = d.getVar(name, True)
+    if name:
+        value = ('%s' %(name))
+    else:
+        value = ' '
+    var = '# ' + comment + '\n'
+    var = var + 'set ' + value + '\n'
+    return var
+
+python build_luv_cfg() {
+    import re
+
+    path = d.getVar('LUV_CFG', True)
+    if not path:
+        raise bb.build.FuncFailed('Unable to read LUV_CFG variable')
+
+    try:
+        luvcfg = open(path, 'w')
+    except OSError:
+        raise bb.build.funcFailed('Unable to open %s' % (luvcfg))
+
+    # Beginning of the file luv.cfg
+    luvcfg.write('## Start of luv.cfg ##\n\n')
+
+    comment = 'This is the parameter to listen to the client that boots LUV'
+    name = 'LUVCFG_netconsole'
+    luvcfg.write(insert_var(name, comment, d))
+
+    comment= "This is the parameter for url of the server/website"
+    name = 'LUVCFG_storage_url'
+    luvcfg.write(insert_var(name, comment, d))
+
+    # pad with spaces only if luv-netboot is present, so to make EFI binary
+    # bootable even after making changes to it
+    luvcfg_luv_netboot = d.getVar('DISTRO_FEATURES', True)
+    if luvcfg_luv_netboot:
+        if re.search('luv-netboot', luvcfg_luv_netboot):
+            x = ' '
+            luvcfg.write(1000*x)
+
+    # end of the file luv.cfg
+    luvcfg.write('\n## END of luv.cfg ##')
+
+    luvcfg.close()
 }
 
 create_symlinks() {
