@@ -172,6 +172,7 @@ python build_efi_cfg() {
     target = d.getVar('TARGET_ARCH', True)
 
     if re.search("(x86_64|i.86)", target):
+       cfgfile.write('source /luv.cfg\n')
        cfgfile.write('default=bits\n')
        cfgfile.write('timeout=0\n')
        cfgfile.write('fallback=0\n')
@@ -183,10 +184,8 @@ python build_efi_cfg() {
     if append:
         cfgfile.write('%s' % (append))
 
-    append_var = d.getVar('APPEND_netconsole', True)
-    if append_var:
-        cfgfile.write(" ")
-        cfgfile.write('%s' % (append_var))
+    cfgfile.write(' luv_netconsole=${LUV_NETCONSOLE}')
+    cfgfile.write(' luv_storage=${LUV_STORAGE_URL}')
 
     cfgfile.write('\n')
 

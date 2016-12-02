@@ -14,7 +14,6 @@ PCBIOS_remove = "1"
 PCBIOS_append = "0"
 
 APPEND = "debug crashkernel=256M console=ttyS0,115200 console=ttyPCH0,115200 luv.netboot ip=dhcp log_buf_len=1M"
-APPEND_netconsole = "luv_netconsole=10.11.12.13,64001"
 LUVCFG_netconsole = "LUV_NETCONSOLE=10.11.12.13,64001"
 LUVCFG_storage_url = "LUV_STORAGE_URL=http://ipaddress/cgi-bin/upload.php"
 APPEND_aarch64 = "crashkernel=256M console=ttyAMA0 uefi_debug acpi=force luv.netboot"
@@ -47,11 +46,13 @@ do_populate_image() {
 		install -m 0644 ${DEPLOY_DIR_IMAGE}/bootaa64.efi ${HDDDIR}${EFIDIR}
 	fi
 	install -m 0644 ${GRUBCFG} ${HDDDIR}${EFIDIR}
+	install -m 0644 ${LUV_CFG} ${HDDDIR}
 	build_hddimg
 }
 
 python do_mkimage() {
     bb.build.exec_func('build_efi_cfg', d)
+    bb.build.exec_func('build_luv_cfg', d)
     bb.build.exec_func('do_populate_image', d)
     bb.build.exec_func('create_symlinks', d)
 }
