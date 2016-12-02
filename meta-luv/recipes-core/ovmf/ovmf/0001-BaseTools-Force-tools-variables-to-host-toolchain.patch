@@ -40,7 +40,7 @@ index 82005e1..5ac5f7e 100644
 +AS = gcc
 +AR = ar
 +LD = ld
- LINKER = $(CXX)
+ LINKER = $(BUILD_CXX)
  
  EXTRA_CLEAN_OBJECTS = EfiVfrParser.cpp EfiVfrParser.h VfrParser.dlg VfrTokens.h VfrLexer.cpp VfrLexer.h VfrSyntax.cpp tokens.h
 -- 
