@@ -13,8 +13,8 @@ IMAGE_INSTALL = "\
 
 X86_ADDITIONS = ""
 
-IMAGE_INSTALL_append_qemux86 = "${X86_ADDITIONS}"
-IMAGE_INSTALL_append_qemux86-64 = "${X86_ADDITIONS}"
+IMAGE_INSTALL_append_qemux86 = "${X86_ADDITIONS} umip-tests"
+IMAGE_INSTALL_append_qemux86-64 = "${X86_ADDITIONS} umip-tests lib32-umip-tests"
 
 export IMAGE_BASENAME = "core-image-efi-initramfs"
 
