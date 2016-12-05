@@ -5,13 +5,13 @@ EFI tests."
 IMAGE_INSTALL = "\
     base-files base-passwd udev sysvinit initscripts keymaps \
     kernel-image bash coreutils util-linux-agetty  util-linux-mount \
-    util-linux-umount kmod shadow util-linux procps umip-tests \
+    util-linux-umount kmod shadow util-linux procps grep \
     "
 
 X86_ADDITIONS = ""
 
-IMAGE_INSTALL_append_qemux86 = "${X86_ADDITIONS}"
-IMAGE_INSTALL_append_qemux86-64 = "${X86_ADDITIONS}"
+IMAGE_INSTALL_append_qemux86 = "${X86_ADDITIONS} umip-tests"
+IMAGE_INSTALL_append_qemux86-64 = "${X86_ADDITIONS} umip-tests lib32-umip-tests"
 
 export IMAGE_BASENAME = "core-image-efi-initramfs"
 
