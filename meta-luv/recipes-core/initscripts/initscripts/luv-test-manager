@@ -264,6 +264,9 @@ if [ ! -z ${LUVDEBUG} ]; then
     exec &> /dev/console
 fi
 
+# invoke the script that saves/submits the results to a webserver.
+submit_results ${LUV_SAVE_RESULTS_DIR}
+
 mountpoint -q ${LUV_STORAGE}
 if [ $? -eq 0 ]; then
     umount ${LUV_STORAGE}
