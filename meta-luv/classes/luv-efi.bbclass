@@ -170,9 +170,9 @@ python build_efi_cfg() {
         raise bb.build.funcFailed('Unable to open %s' % (cfgfile))
 
     target = d.getVar('TARGET_ARCH', True)
+    cfgfile.write('source /luv.cfg\n')
 
     if re.search("(x86_64|i.86)", target):
-       cfgfile.write('source /luv.cfg\n')
        cfgfile.write('default=bits\n')
        cfgfile.write('timeout=0\n')
        cfgfile.write('fallback=0\n')
