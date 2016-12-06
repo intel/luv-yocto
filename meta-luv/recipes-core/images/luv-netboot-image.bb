@@ -24,6 +24,15 @@ inherit luv-efi
 inherit image-live
 inherit deploy
 
+# Fool image-live into depend in xorriso instead of mkisofs to remove
+# a dependency on syslinux, which does not build for aarch64.
+python() {
+    import re
+    target = d.getVar('TARGET_ARCH', True)
+    if re.match('aarch64', target):
+        d.setVar('EFI_USEXORRISO', '1')
+}
+
 # reuse the same splash screen as in the disk live image
 FILESEXTRAPATHS_append := "${THISDIR}/luv-live-image:"
 SPLASH_IMAGE = "blue-luv.jpg"
