@@ -5,9 +5,10 @@ SRC_URI += "file://luv-test-manager file://luv-test-parser \
             file://luv-netconsole \
             file://luv-netconsole-params \
             file://luv-scripts \
-            file://luv-css-styles"
+            file://luv-css-styles \
+            file://submit_results"
 
-RDEPENDS_${PN}+= "kernel-modules iputils iproute2 bash init-ifupdown dhcp-client"
+RDEPENDS_${PN}+= "kernel-modules curl iputils iproute2 bash init-ifupdown dhcp-client"
 
 do_install_append() {
 	install -m 755 ${WORKDIR}/luv-test-manager ${D}${sysconfdir}/init.d/
@@ -34,6 +35,10 @@ do_install_append() {
         # Install luv-netconsole-params in bin directory
         install -d ${D}${bindir}
         install -m 0755 ${WORKDIR}/luv-netconsole-params ${D}${bindir}
+
+        # Install submit_results in bin directory
+        install -d ${D}${bindir}
+        install -m 0755 ${WORKDIR}/submit_results ${D}${bindir}
 
         # Install HTML base code files
         echo "data dir is ${datadir}"
