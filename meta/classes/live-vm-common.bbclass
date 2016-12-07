@@ -58,5 +58,9 @@ populate_kernel() {
 		done
 		chmod 0644 $dest/initrd
 	fi
+
+	# bloat the boot partition with a big file with newlines.
+	echo dest is $dest
+	yes '' | head -c 52428800 > $dest/empty.space
 }
 
