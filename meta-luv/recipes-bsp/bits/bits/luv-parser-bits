@@ -29,7 +29,9 @@ awk '/\=\=\=/ {
 }
 
 {
-	printf ("1.0 bits %s INFO %s \n", test, $0);
+	if (parsing_tests) {
+		printf ("1.0 bits %s INFO %s \n", test, $0);
+	}
 }
 
 /^Summary/ {
