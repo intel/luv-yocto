@@ -62,13 +62,13 @@ KERNEL_FEATURES_remove= " features/debug/printk.scc"
 SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git;protocol=git;branch=${KBRANCH};name=machine"
 
 # Detect illegal access to UEFI Boot Services memory regions.
-SRC_URI += "file://0001-Add-function-to-fixup-page-faults-in-BOOT_SERVICES_-.patch \
-            file://0002-efi-allow-efi_mem_desc_lookup-find-EFI_BOOT_SERVICES.patch \
-            file://0003-x86-efi-Fixup-faults-from-UEFI-firmware.patch \
-            file://0004-x86-efi-Introduce-EFI_BOOT_SERVICES_WARN.patch \
-           "
+#SRC_URI += "file://0001-Add-function-to-fixup-page-faults-in-BOOT_SERVICES_-.patch \
+#            file://0002-efi-allow-efi_mem_desc_lookup-find-EFI_BOOT_SERVICES.patch \
+#            file://0003-x86-efi-Fixup-faults-from-UEFI-firmware.patch \
+#            file://0004-x86-efi-Introduce-EFI_BOOT_SERVICES_WARN.patch \
+#           "
 
-# Add the defconfig from v4.6 kernel and the configuration x86 fragments
+# Add the defconfig from v4.9 kernel and the configuration x86 fragments
 SRC_URI_append_x86 = " file://defconfig \
                        file://modules.cfg \
                        file://display.cfg \
@@ -83,7 +83,7 @@ SRC_URI_append_x86 = " file://defconfig \
                        file://usb_ethernet.cfg \
                      "
 
-# Add the defconfig from v4.6 kernel and the configuration x86-64 fragments
+# Add the defconfig from v4.9 kernel and the configuration x86-64 fragments
 SRC_URI_append_x86-64 = " file://defconfig \
                           file://modules.cfg \
                           file://display.cfg \
@@ -98,7 +98,7 @@ SRC_URI_append_x86-64 = " file://defconfig \
                           file://usb_ethernet.cfg \
                         "
 
-# Add the defconfig from v4.6 kernel and the configuration arm64 fragments
+# Add the defconfig from v4.9 kernel and the configuration arm64 fragments
 SRC_URI_append_aarch64 = " file://${MACHINE}/defconfig \
                            file://${MACHINE}/acpi.cfg \
                            file://${MACHINE}/network.cfg \
@@ -106,13 +106,13 @@ SRC_URI_append_aarch64 = " file://${MACHINE}/defconfig \
 
 # Override KCONFIG_MODE to '--alldefconfig' from the default '--allnoconfig'
 KCONFIG_MODE = '--alldefconfig'
-LINUX_VERSION ?= "4.7"
+LINUX_VERSION ?= "4.9"
 LINUX_VERSION_EXTENSION ?= "-efitest"
 
 # Override SRCREV to point to a different commit in a bbappend file to
 # build a different release of the Linux kernel.
-# tag: v4.7 523d939ef98fd712632d93a5a2b588e477a7565e
-SRCREV = "523d939ef98fd712632d93a5a2b588e477a7565e"
+# tag: v4.9 69973b830859bc6529a7a0468ba0d80ee5117826
+SRCREV = "69973b830859bc6529a7a0468ba0d80ee5117826"
 
 PR = "r5"
 PV = "${LINUX_VERSION}+git${SRCPV}"
@@ -126,6 +126,6 @@ do_install_append() {
          # There are 2 copies of the NVDIMM modules which are built. This is a
          # temporary fix to make sure the correct set of modules are used.
          rm -rf ${D}/lib/modules/${LINUX_VERSION}.0-yocto-standard/kernel/drivers/nvdimm/
-         rm ${D}/lib/modules/${LINUX_VERSION}.0-yocto-standard/kernel/drivers/acpi/nfit.ko
+         rm ${D}/lib/modules/${LINUX_VERSION}.0-yocto-standard/kernel/drivers/acpi/nfit/nfit.ko
     fi
 }
