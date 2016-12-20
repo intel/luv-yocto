@@ -1,6 +1,6 @@
-From b21ea85641941ae768014ca06bc61d1fbcea9a70 Mon Sep 17 00:00:00 2001
+From 3fc204d4901a2b55bee8bbf05ada9b0ed0cd1e4d Mon Sep 17 00:00:00 2001
 From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
-Date: Fri, 17 Jul 2015 17:11:23 -0700
+Date: Thu, 1 Dec 2016 14:24:53 -0800
 Subject: [PATCH 2/4] efi: allow efi_mem_desc_lookup find
  EFI_BOOT_SERVICES_CODE regions
 
@@ -17,10 +17,10 @@ Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
  1 file changed, 3 insertions(+)
 
 diff --git a/drivers/firmware/efi/efi.c b/drivers/firmware/efi/efi.c
-index 027ca21..0036cba 100644
+index 501c3f1998e7..5e4cd88edfd7 100644
 --- a/drivers/firmware/efi/efi.c
 +++ b/drivers/firmware/efi/efi.c
-@@ -295,6 +295,9 @@ int __init efi_mem_desc_lookup(u64 phys_addr, efi_memory_desc_t *out_md)
+@@ -372,6 +372,9 @@ int efi_mem_desc_lookup(u64 phys_addr, efi_memory_desc_t *out_md)
  
  		if (!(md->attribute & EFI_MEMORY_RUNTIME) &&
  		    md->type != EFI_BOOT_SERVICES_DATA &&
@@ -28,8 +28,8 @@ index 027ca21..0036cba 100644
 +		    md->type != EFI_BOOT_SERVICES_CODE &&
 +#endif
  		    md->type != EFI_RUNTIME_SERVICES_DATA) {
- 			early_memunmap(md, sizeof (*md));
  			continue;
+ 		}
 -- 
-1.9.1
+2.1.4
 

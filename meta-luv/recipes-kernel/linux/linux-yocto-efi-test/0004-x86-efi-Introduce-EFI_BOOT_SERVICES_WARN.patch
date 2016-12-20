@@ -1,6 +1,6 @@
-From 5565bcfd83003608697ed288cd30f3cd47b46cb7 Mon Sep 17 00:00:00 2001
+From 1f4111cee6a75b41ac0575ad7bad51b0fcfa3d4a Mon Sep 17 00:00:00 2001
 From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
-Date: Tue, 19 Aug 2014 11:56:02 -0700
+Date: Mon, 19 Dec 2016 16:04:29 -0800
 Subject: [PATCH 4/4] x86/efi: Introduce EFI_BOOT_SERVICES_WARN
 
 There may exist buggy implementations of UEFI firmaware that access the
@@ -16,7 +16,8 @@ firmware can proceed further.
 If not selected, EFI_BOOT_SERVICES_CODE/DATA memory regions will be
 mapped along with the runtime memory regions so that the buggy firmware
 does not cause any page faults when trying to accessing such memory
-regions. This is the approach from Matthew Garrett in commit 916f676f8dc0
+regions. This is the approach from Matthew Garrett in commit
+916f676f8dc0
 ("x86, efi: Retain boot service code until after switching to virtual
 mode").
 
@@ -24,16 +25,17 @@ However, firmware developers are less likely to find and avoid such
 illegal access as the kernel silently works around their bug.
 
 Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Signed-off-by: Sai Praneeth Prakhya <sai.praneeth.prakhya@intel.com>
 ---
  arch/x86/Kconfig            | 12 ++++++++++++
- arch/x86/platform/efi/efi.c |  2 +-
- 2 files changed, 13 insertions(+), 1 deletion(-)
+ arch/x86/platform/efi/efi.c |  4 ++++
+ 2 files changed, 16 insertions(+)
 
 diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
-index db3622f..5fde77f 100644
+index bada636d1065..eabba34f9f4c 100644
 --- a/arch/x86/Kconfig
 +++ b/arch/x86/Kconfig
-@@ -1720,6 +1720,18 @@ config EFI_MIXED
+@@ -1786,6 +1786,18 @@ config EFI_MIXED
  
  	   If unsure, say N.
  
@@ -53,18 +55,23 @@ index db3622f..5fde77f 100644
  	def_bool y
  	prompt "Enable seccomp to safely compute untrusted bytecode"
 diff --git a/arch/x86/platform/efi/efi.c b/arch/x86/platform/efi/efi.c
-index c83016c..1907514 100644
+index c86cac7846e6..0eec9f6c2a66 100644
 --- a/arch/x86/platform/efi/efi.c
 +++ b/arch/x86/platform/efi/efi.c
-@@ -782,7 +782,7 @@ static void * __init efi_map_regions(int *count, int *pg_shift)
- 	while ((p = efi_map_next_entry(p))) {
- 		md = p;
- 		if (!(md->attribute & EFI_MEMORY_RUNTIME)) {
--#ifdef CONFIG_X86_64
-+#if defined(CONFIG_X86_64) && !defined(CONFIG_EFI_BOOT_SERVICES_WARN)
- 			if (md->type != EFI_BOOT_SERVICES_CODE &&
- 			    md->type != EFI_BOOT_SERVICES_DATA)
- #endif
+@@ -705,9 +705,13 @@ static bool should_map_region(efi_memory_desc_t *md)
+ 	/*
+ 	 * Map boot services regions as a workaround for buggy
+ 	 * firmware that accesses them even when they shouldn't.
++	 * (only if CONFIG_EFI_BOOT_SERVICES_WARN is disabled)
+ 	 *
+ 	 * See efi_{reserve,free}_boot_services().
+ 	 */
++	if (IS_ENABLED(CONFIG_EFI_BOOT_SERVICES_WARN))
++		return false;
++
+ 	if (md->type == EFI_BOOT_SERVICES_CODE ||
+ 	    md->type == EFI_BOOT_SERVICES_DATA)
+ 		return true;
 -- 
-1.9.1
+2.1.4
 
