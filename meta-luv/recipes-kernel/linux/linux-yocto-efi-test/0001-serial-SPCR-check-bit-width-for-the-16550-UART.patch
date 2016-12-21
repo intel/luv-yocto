@@ -1,0 +1,37 @@
+From 820d66b0362d11462fb5020a2839d58fb26aa252 Mon Sep 17 00:00:00 2001
+From: Aleksey Makarov <aleksey.makarov@linaro.org>
+Date: Thu, 28 Apr 2016 19:52:38 +0300
+Subject: [PATCH] serial: SPCR: check bit width for the 16550 UART
+
+Check the 'Register Bit Width' field of the ACPI Generic Address
+Structure that specifies the address of the UART registers to
+decide if the driver should use "mmio32" access instead of "mmio".
+
+If the driver is other than 16550 the access with is defined
+by the Interface Type field of the SPCR table.
+
+Signed-off-by: Aleksey Makarov <aleksey.makarov@linaro.org>
+Signed-off-by: Graeme Gregory <graeme.gregory@linaro.org>
+Reported-by: Heyi Guo <heyi.guo@linaro.org>
+---
+ drivers/acpi/spcr.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/acpi/spcr.c b/drivers/acpi/spcr.c
+index e8d7bc7..6c6710b 100644
+--- a/drivers/acpi/spcr.c
++++ b/drivers/acpi/spcr.c
+@@ -70,6 +70,10 @@ int __init parse_spcr(bool earlycon)
+ 		break;
+ 	case ACPI_DBG2_16550_COMPATIBLE:
+ 	case ACPI_DBG2_16550_SUBSET:
++		if (table->serial_port.space_id ==
++			ACPI_ADR_SPACE_SYSTEM_MEMORY &&
++		    table->serial_port.bit_width == 32)
++			iotype = "mmio32";
+ 		uart = "uart";
+ 		break;
+ 	default:
+-- 
+2.7.4
+

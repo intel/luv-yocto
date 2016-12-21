@@ -70,6 +70,10 @@ SRC_URI += "file://0001-Add-function-to-fixup-page-faults-in-BOOT_SERVICES_-.pat
             file://0003-x86-efi-Fixup-faults-from-UEFI-firmware.patch \
             file://0004-x86-efi-Introduce-EFI_BOOT_SERVICES_WARN.patch \
            "
+# These patches are under discussion on ML
+SRC_URI += "file://0001-serial-SPCR-check-bit-width-for-the-16550-UART.patch  \
+            file://0001-serial-pl011-add-console-matching-function.patch \
+           "
 
 COMMON_CFG_x86 = " file://${MACHINE}/defconfig \
                    file://qemux86/modules.cfg \
