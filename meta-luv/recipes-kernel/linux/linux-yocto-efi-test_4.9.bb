@@ -71,40 +71,27 @@ SRC_URI += "file://0001-Add-function-to-fixup-page-faults-in-BOOT_SERVICES_-.pat
             file://0004-x86-efi-Introduce-EFI_BOOT_SERVICES_WARN.patch \
            "
 
-# Add the defconfig from v4.9 kernel and the configuration x86 fragments
-SRC_URI_append_x86 = " file://defconfig \
-                       file://modules.cfg \
-                       file://display.cfg \
-                       file://ram_block.cfg \
-                       file://debug.cfg \
-                       file://efi.cfg \
-                       file://usb_hcd.cfg \
-                       file://ndctl.cfg \
-                       file://network.cfg \
-                       file://network-devices.cfg \
-                       file://linux_quirks.cfg \
-                       file://usb_ethernet.cfg \
-                     "
+COMMON_CFG_x86 = " file://${MACHINE}/defconfig \
+                   file://qemux86/modules.cfg \
+                   file://qemux86/display.cfg \
+                   file://qemux86/ram_block.cfg \
+                   file://qemux86/debug.cfg \
+                   file://qemux86/efi.cfg \
+                   file://qemux86/usb_hcd.cfg \
+                   file://qemux86/network.cfg \
+                   file://qemux86/network-devices.cfg \
+                   file://qemux86/linux_quirks.cfg \
+                   file://qemux86/usb_ethernet.cfg \
+                 "
 
-# Add the defconfig from v4.9 kernel and the configuration x86-64 fragments
-SRC_URI_append_x86-64 = " file://defconfig \
-                          file://modules.cfg \
-                          file://display.cfg \
-                          file://ram_block.cfg \
-                          file://debug.cfg \
-                          file://efi.cfg \
-                          file://usb_hcd.cfg \
-                          file://ndctl.cfg \
-                          file://network.cfg \
-                          file://network-devices.cfg \
-                          file://linux_quirks.cfg \
-                          file://usb_ethernet.cfg \
+# Add the kernel configuration fragments for x86/x86-64/arm64
+SRC_URI_append_x86 = "${COMMON_CFG_x86}"
+SRC_URI_append_x86-64 = "${COMMON_CFG_x86} \
+                         file://qemux86/ndctl.cfg \
                         "
-
-# Add the defconfig from v4.9 kernel and the configuration arm64 fragments
-SRC_URI_append_aarch64 = " file://${MACHINE}/defconfig \
-                           file://${MACHINE}/acpi.cfg \
-                           file://${MACHINE}/network.cfg \
+SRC_URI_append_aarch64 = " file://qemuarm64/defconfig \
+                           file://qemuarm64/acpi.cfg \
+                           file://qemuarm64/network.cfg \
                          "
 
 # Override KCONFIG_MODE to '--alldefconfig' from the default '--allnoconfig'
