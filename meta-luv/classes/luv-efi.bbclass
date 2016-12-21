@@ -180,9 +180,9 @@ python build_efi_cfg() {
     cfgfile.write('menuentry \'luv\' {\n')
     cfgfile.write('linux /vmlinuz ')
 
-    append = d.getVar('APPEND', True)
-    if append:
-        cfgfile.write('%s' % (append))
+    cmdline = d.getVar('CMDLINE', True)
+    if cmdline:
+        cfgfile.write('%s' % (cmdline))
 
     cfgfile.write(' luv_netconsole=${LUV_NETCONSOLE}')
     cfgfile.write(' luv_storage=${LUV_STORAGE_URL}')

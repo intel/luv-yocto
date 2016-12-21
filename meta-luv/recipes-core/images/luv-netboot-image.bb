@@ -13,10 +13,17 @@ IMGDEPLOYDIR = "${DEPLOY_DIR_IMAGE}"
 PCBIOS_remove = "1"
 PCBIOS_append = "0"
 
-APPEND = "debug crashkernel=256M console=ttyS0,115200 console=ttyPCH0,115200 luv.netboot ip=dhcp log_buf_len=1M"
+# Kernel commandline for luv netboot
+CMDLINE = "debug crashkernel=256M ip=dhcp log_buf_len=1M luv.netboot efi=debug"
+# Unlike the += operand, _append's do not insert a space between the current value
+# and the appended string. Thus, we add them.
+COMMON_CMDLINE_x86 = " console=ttyS0,115200 console=ttyPCH0,115200"
+CMDLINE_append_aarch64 = " acpi=on"
+CMDLINE_append_x86 = "${COMMON_CMDLINE_x86}"
+CMDLINE_append_x86-64 = "${COMMON_CMDLINE_x86}"
+
 LUVCFG_netconsole = "LUV_NETCONSOLE=10.11.12.13,64001"
 LUVCFG_storage_url = "LUV_STORAGE_URL=http://ipaddress/cgi-bin/upload.php"
-APPEND_aarch64 = "crashkernel=256M console=ttyAMA0 uefi_debug acpi=force luv.netboot"
 
 HDDDIR = "${S}/hddimg"
 
