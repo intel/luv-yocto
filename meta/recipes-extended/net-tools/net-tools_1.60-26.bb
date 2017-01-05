@@ -12,7 +12,12 @@ SRC_URI = "http://snapshot.debian.org/archive/debian/20050312T000000Z/pool/main/
            file://net-tools-config.make \
            file://ifconfig-interface-0-del-IP-will-remove-the-aliased-.patch \
            file://musl-fixes.patch \
-	   "
+           file://net-tools-1.60-sctp1.patch \
+           file://net-tools-1.60-sctp2-quiet.patch \
+           file://net-tools-1.60-sctp3-addrs.patch \
+           file://0001-lib-inet6.c-INET6_rresolve-various-fixes.patch \
+           file://net-tools-fix-building-with-linux-4.8.patch \
+          "
 
 # for this package we're mostly interested in tracking debian patches,
 # and not in the upstream version where all development has effectively stopped
@@ -83,6 +88,10 @@ do_compile() {
 }
 
 do_install() {
+	export COPTS="$CFLAGS"
+	export LOPTS="$LDFLAGS"
+	unset CFLAGS
+	unset LDFLAGS
 	oe_runmake 'BASEDIR=${D}' install
 }
 
@@ -92,6 +101,10 @@ base_sbindir_progs = "arp ifconfig ipmaddr iptunnel mii-tool nameif plipconfig r
 base_bindir_progs  = "dnsdomainname domainname hostname netstat nisdomainname ypdomainname"
 
 ALTERNATIVE_${PN} = "${base_sbindir_progs} ${base_bindir_progs}"
+ALTERNATIVE_${PN}-doc += "hostname.1"
+ALTERNATIVE_LINK_NAME[hostname.1] = "${mandir}/man1/hostname.1"
+ALTERNATIVE_PRIORITY[hostname.1] = "10"
+
 python __anonymous() {
 	for prog in d.getVar('base_sbindir_progs', True).split():
 		d.setVarFlag('ALTERNATIVE_LINK_NAME', prog, '%s/%s' % (d.getVar('base_sbindir', True), prog))

@@ -40,7 +40,7 @@ def sstate_rundepfilter(siggen, fn, recipename, task, dep, depname, dataCache):
     # Only target packages beyond here
 
     # allarch packagegroups are assumed to have well behaved names which don't change between architecures/tunes
-    if isPackageGroup(fn) and isAllArch(fn):
+    if isPackageGroup(fn) and isAllArch(fn) and not isNative(depname):
         return False  
 
     # Exclude well defined machine specific configurations which don't change ABI
@@ -65,12 +65,13 @@ def sstate_lockedsigs(d):
     sigs = {}
     types = (d.getVar("SIGGEN_LOCKEDSIGS_TYPES", True) or "").split()
     for t in types:
-        lockedsigs = (d.getVar("SIGGEN_LOCKEDSIGS_%s" % t, True) or "").split()
+        siggen_lockedsigs_var = "SIGGEN_LOCKEDSIGS_%s" % t
+        lockedsigs = (d.getVar(siggen_lockedsigs_var, True) or "").split()
         for ls in lockedsigs:
             pn, task, h = ls.split(":", 2)
             if pn not in sigs:
                 sigs[pn] = {}
-            sigs[pn][task] = h
+            sigs[pn][task] = [h, siggen_lockedsigs_var]
     return sigs
 
 class SignatureGeneratorOEBasic(bb.siggen.SignatureGeneratorBasic):
@@ -93,6 +94,9 @@ class SignatureGeneratorOEBasicHash(bb.siggen.SignatureGeneratorBasicHash):
         self.lockedhashfn = {}
         self.machine = data.getVar("MACHINE", True)
         self.mismatch_msgs = []
+        self.unlockedrecipes = (data.getVar("SIGGEN_UNLOCKED_RECIPES", True) or
+                                "").split()
+        self.unlockedrecipes = { k: "" for k in self.unlockedrecipes }
         pass
 
     def tasks_resolved(self, virtmap, virtpnmap, dataCache):
@@ -126,7 +130,9 @@ class SignatureGeneratorOEBasicHash(bb.siggen.SignatureGeneratorBasicHash):
         super(bb.siggen.SignatureGeneratorBasicHash, self).set_taskdata(coredata)
 
     def dump_sigs(self, dataCache, options):
-        self.dump_lockedsigs()
+        sigfile = os.getcwd() + "/locked-sigs.inc"
+        bb.plain("Writing locked sigs to %s" % sigfile)
+        self.dump_lockedsigs(sigfile)
         return super(bb.siggen.SignatureGeneratorBasicHash, self).dump_sigs(dataCache, options)
 
     def get_taskhash(self, fn, task, deps, dataCache):
@@ -135,17 +141,37 @@ class SignatureGeneratorOEBasicHash(bb.siggen.SignatureGeneratorBasicHash):
         recipename = dataCache.pkg_fn[fn]
         self.lockedpnmap[fn] = recipename
         self.lockedhashfn[fn] = dataCache.hashfn[fn]
-        if recipename in self.lockedsigs:
+
+        unlocked = False
+        if recipename in self.unlockedrecipes:
+            unlocked = True
+        else:
+            def recipename_from_dep(dep):
+                # The dep entry will look something like
+                # /path/path/recipename.bb.task, virtual:native:/p/foo.bb.task,
+                # ...
+                fn = dep.rsplit('.', 1)[0]
+                return dataCache.pkg_fn[fn]
+
+            # If any unlocked recipe is in the direct dependencies then the
+            # current recipe should be unlocked as well.
+            depnames = [ recipename_from_dep(x) for x in deps ]
+            if any(x in y for y in depnames for x in self.unlockedrecipes):
+                self.unlockedrecipes[recipename] = ''
+                unlocked = True
+
+        if not unlocked and recipename in self.lockedsigs:
             if task in self.lockedsigs[recipename]:
                 k = fn + "." + task
-                h_locked = self.lockedsigs[recipename][task]
+                h_locked = self.lockedsigs[recipename][task][0]
+                var = self.lockedsigs[recipename][task][1]
                 self.lockedhashes[k] = h_locked
                 self.taskhash[k] = h_locked
                 #bb.warn("Using %s %s %s" % (recipename, task, h))
 
                 if h != h_locked:
-                    self.mismatch_msgs.append('The %s:%s sig (%s) changed, use locked sig %s to instead'
-                                          % (recipename, task, h, h_locked))
+                    self.mismatch_msgs.append('The %s:%s sig is computed to be %s, but the sig is locked to %s in %s'
+                                          % (recipename, task, h, h_locked, var))
 
                 return h_locked
         #bb.warn("%s %s %s" % (recipename, task, h))
@@ -157,11 +183,7 @@ class SignatureGeneratorOEBasicHash(bb.siggen.SignatureGeneratorBasicHash):
             return
         super(bb.siggen.SignatureGeneratorBasicHash, self).dump_sigtask(fn, task, stampbase, runtime)
 
-    def dump_lockedsigs(self, sigfile=None, taskfilter=None):
-        if not sigfile:
-            sigfile = os.getcwd() + "/locked-sigs.inc"
-
-        bb.plain("Writing locked sigs to %s" % sigfile)
+    def dump_lockedsigs(self, sigfile, taskfilter=None):
         types = {}
         for k in self.runtaskdeps:
             if taskfilter:
@@ -186,21 +208,38 @@ class SignatureGeneratorOEBasicHash(bb.siggen.SignatureGeneratorBasicHash):
                         continue
                     f.write("    " + self.lockedpnmap[fn] + ":" + task + ":" + self.taskhash[k] + " \\\n")
                 f.write('    "\n')
-            f.write('SIGGEN_LOCKEDSIGS_TYPES_%s = "%s"' % (self.machine, " ".join(types.keys())))
+            f.write('SIGGEN_LOCKEDSIGS_TYPES_%s = "%s"' % (self.machine, " ".join(list(types.keys()))))
 
     def checkhashes(self, missed, ret, sq_fn, sq_task, sq_hash, sq_hashfn, d):
-        checklevel = d.getVar("SIGGEN_LOCKEDSIGS_CHECK_LEVEL", True)
+        warn_msgs = []
+        error_msgs = []
+        sstate_missing_msgs = []
+
         for task in range(len(sq_fn)):
             if task not in ret:
                 for pn in self.lockedsigs:
-                    if sq_hash[task] in self.lockedsigs[pn].itervalues():
-                        self.mismatch_msgs.append("Locked sig is set for %s:%s (%s) yet not in sstate cache?"
+                    if sq_hash[task] in iter(self.lockedsigs[pn].values()):
+                        if sq_task[task] == 'do_shared_workdir':
+                            continue
+                        sstate_missing_msgs.append("Locked sig is set for %s:%s (%s) yet not in sstate cache?"
                                                % (pn, sq_task[task], sq_hash[task]))
 
-        if self.mismatch_msgs and checklevel == 'warn':
-            bb.warn("\n".join(self.mismatch_msgs))
-        elif self.mismatch_msgs and checklevel == 'error':
-            bb.fatal("\n".join(self.mismatch_msgs))
+        checklevel = d.getVar("SIGGEN_LOCKEDSIGS_TASKSIG_CHECK", True)
+        if checklevel == 'warn':
+            warn_msgs += self.mismatch_msgs
+        elif checklevel == 'error':
+            error_msgs += self.mismatch_msgs
+
+        checklevel = d.getVar("SIGGEN_LOCKEDSIGS_SSTATE_EXISTS_CHECK", True)
+        if checklevel == 'warn':
+            warn_msgs += sstate_missing_msgs
+        elif checklevel == 'error':
+            error_msgs += sstate_missing_msgs
+
+        if warn_msgs:
+            bb.warn("\n".join(warn_msgs))
+        if error_msgs:
+            bb.fatal("\n".join(error_msgs))
 
 
 # Insert these classes into siggen's namespace so it can see and select them

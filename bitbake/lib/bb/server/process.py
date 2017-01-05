@@ -30,7 +30,7 @@ import signal
 import sys
 import time
 import select
-from Queue import Empty
+from queue import Empty
 from multiprocessing import Event, Process, util, Queue, Pipe, queues, Manager
 
 from . import BitBakeBaseServer, BitBakeBaseServerConnection, BaseImplServer
@@ -53,10 +53,12 @@ class ServerCommunicator():
         while True:
             # don't let the user ctrl-c while we're waiting for a response
             try:
-                if self.connection.poll(20):
-                    return self.connection.recv()
-                else:
-                    bb.fatal("Timeout while attempting to communicate with bitbake server")
+                for idx in range(0,4): # 0, 1, 2, 3
+                    if self.connection.poll(5):
+                        return self.connection.recv()
+                    else:
+                        bb.warn("Timeout while attempting to communicate with bitbake server")
+                bb.fatal("Gave up; Too many tries: timeout while attempting to communicate with bitbake server")
             except KeyboardInterrupt:
                 pass
 
@@ -106,6 +108,7 @@ class ProcessServer(Process, BaseImplServer):
         # the UI and communicated to us
         self.quitin.close()
         signal.signal(signal.SIGINT, signal.SIG_IGN)
+        bb.utils.set_process_name("Cooker")
         while not self.quit:
             try:
                 if self.command_channel.poll():
@@ -134,7 +137,7 @@ class ProcessServer(Process, BaseImplServer):
         if not fds:
             fds = []
 
-        for function, data in self._idlefuns.items():
+        for function, data in list(self._idlefuns.items()):
             try:
                 retval = function(self, data, False)
                 if retval is False:
@@ -142,7 +145,7 @@ class ProcessServer(Process, BaseImplServer):
                     nextsleep = None
                 elif retval is True:
                     nextsleep = None
-                elif isinstance(retval, float):
+                elif isinstance(retval, float) and nextsleep:
                     if (retval < nextsleep):
                         nextsleep = retval
                 elif nextsleep is None:
@@ -210,19 +213,19 @@ class BitBakeProcessServerConnection(BitBakeBaseServerConnection):
 # Wrap Queue to provide API which isn't server implementation specific
 class ProcessEventQueue(multiprocessing.queues.Queue):
     def __init__(self, maxsize):
-        multiprocessing.queues.Queue.__init__(self, maxsize)
+        multiprocessing.queues.Queue.__init__(self, maxsize, ctx=multiprocessing.get_context())
         self.exit = False
+        bb.utils.set_process_name("ProcessEQueue")
 
     def setexit(self):
         self.exit = True
 
     def waitEvent(self, timeout):
         if self.exit:
-            sys.exit(1)
+            return self.getEvent()
         try:
             if not self.server.is_alive():
-                self.setexit()
-                return None
+                return self.getEvent()
             return self.get(True, timeout)
         except Empty:
             return None
@@ -231,14 +234,15 @@ class ProcessEventQueue(multiprocessing.queues.Queue):
         try:
             if not self.server.is_alive():
                 self.setexit()
-                return None
             return self.get(False)
         except Empty:
+            if self.exit:
+                sys.exit(1)
             return None
 
 
 class BitBakeServer(BitBakeBaseServer):
-    def initServer(self):
+    def initServer(self, single_use=True):
         # establish communication channels.  We use bidirectional pipes for
         # ui <--> server command/response pairs
         # and a queue for server -> ui event notifications

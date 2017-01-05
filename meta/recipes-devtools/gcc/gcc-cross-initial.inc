@@ -22,7 +22,6 @@ EXTRA_OECONF = "\
     --disable-multilib \
     --disable-__cxa_atexit \
     --enable-languages=c \
-    ${OPTSPACE} \
     --program-prefix=${TARGET_PREFIX} \
     --with-sysroot=/not/exist \
     --with-build-sysroot=${GCCCROSS_BUILDSYSROOT} \
@@ -78,7 +77,7 @@ do_install () {
 
 	# gcc-runtime installs libgcc into a special location in staging since it breaks doing a standalone build
 	case ${PN} in
-		*gcc-cross-initial-${TARGET_ARCH}|*gcc-crosssdk-initial-${TARGET_ARCH})
+		*gcc-cross-initial-${TARGET_ARCH}|*gcc-crosssdk-initial-${SDK_SYS})
 			dest=${D}/${includedir}/gcc-build-internal-initial-${TARGET_SYS}
 			hardlinkdir . $dest
 		;;

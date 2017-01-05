@@ -231,6 +231,14 @@ class PRTable(object):
                 datainfo.append(col)
         return (metainfo, datainfo)
 
+    def dump_db(self, fd):
+        writeCount = 0
+        for line in self.conn.iterdump():
+            writeCount = writeCount + len(line) + 1
+            fd.write(line)
+            fd.write('\n')
+        return writeCount
+
 class PRData(object):
     """Object representing the PR database"""
     def __init__(self, filename, nohist=True):
@@ -252,7 +260,7 @@ class PRData(object):
         self.connection.close()
 
     def __getitem__(self,tblname):
-        if not isinstance(tblname, basestring):
+        if not isinstance(tblname, str):
             raise TypeError("tblname argument must be a string, not '%s'" %
                             type(tblname))
         if tblname in self._tables:

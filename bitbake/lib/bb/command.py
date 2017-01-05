@@ -110,7 +110,7 @@ class Command:
             return False
         except SystemExit as exc:
             arg = exc.args[0]
-            if isinstance(arg, basestring):
+            if isinstance(arg, str):
                 self.finishAsyncCommand(arg)
             else:
                 self.finishAsyncCommand("Exited with %s" % arg)
@@ -279,6 +279,7 @@ class CommandsSync:
         mask = params[3]
         return bb.event.set_UIHmask(handlerNum, llevel, debug_domains, mask)
     setEventMask.needconfig = False
+    setEventMask.readonly = True
 
     def setFeatures(self, command, params):
         """

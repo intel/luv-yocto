@@ -1,10 +1,10 @@
 # Copyright (C) 2015 Khem Raj <raj.khem@gmail.com>
 # Released under the MIT license (see COPYING.MIT for the terms)
 
-DESCRIPTION = "keith bostic's POSIX file tree stream operations library"
+SUMMARY = "POSIX file tree stream operations library"
 HOMEPAGE = "https://sites.google.com/a/bostic.com/keithbostic"
 LICENSE = "BSD-4-Clause"
-LIC_FILES_CHECKSUM = "file://${COREBASE}/meta/files/common-licenses/BSD-4-Clause;md5=624d9e67e8ac41a78f6b6c2c55a83a2b"
+LIC_FILES_CHKSUM = "file://fts.h;beginline=1;endline=36;md5=2532eddb3d1a21905723a4011ec4e085"
 SECTION = "libs"
 
 SRC_URI = "https://sites.google.com/a/bostic.com/keithbostic/files/fts.tar.gz \

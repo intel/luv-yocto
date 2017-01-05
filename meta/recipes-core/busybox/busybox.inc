@@ -19,7 +19,7 @@ export EXTRA_CFLAGS = "${CFLAGS}"
 export EXTRA_LDFLAGS = "${LDFLAGS}"
 
 # We don't want '-e MAKEFLAGS=' in EXTRA_OEMAKE
-EXTRA_OEMAKE = "CC='${CC}' LD='${CCLD}' V=1 ARCH=${TARGET_ARCH} CROSS_COMPILE=${TARGET_PREFIX} SKIP_STRIP=y"
+EXTRA_OEMAKE = "CC='${CC}' LD='${CCLD}' V=1 ARCH=${TARGET_ARCH} CROSS_COMPILE=${TARGET_PREFIX} SKIP_STRIP=y HOSTCC='${BUILD_CC}' HOSTCPP='${BUILD_CPP}'"
 
 PACKAGES =+ "${PN}-httpd ${PN}-udhcpd ${PN}-udhcpc ${PN}-syslog ${PN}-mdev ${PN}-hwclock"
 
@@ -258,7 +258,8 @@ do_install () {
 	if grep "CONFIG_UDHCPC=y" ${B}/.config; then
 		install -d ${D}${sysconfdir}/udhcpc.d
 		install -d ${D}${datadir}/udhcpc
-                install -m 0755 ${WORKDIR}/simple.script ${D}${sysconfdir}/udhcpc.d/50default
+		install -m 0755 ${WORKDIR}/simple.script ${D}${sysconfdir}/udhcpc.d/50default
+		sed -i "s:/SBIN_DIR/:${base_sbindir}/:" ${D}${sysconfdir}/udhcpc.d/50default
 		install -m 0755 ${WORKDIR}/default.script ${D}${datadir}/udhcpc/default.script
 	fi
 	if grep "CONFIG_INETD=y" ${B}/.config; then
@@ -285,8 +286,8 @@ do_install () {
                         for i in $tmp
                         do
                                 j=`echo ${i} | sed s/\;/\ /g`
-                                label=`echo ${i} | sed -e 's/tty//' -e 's/^.*;//' -e 's/;.*//'`
-                                echo "tty$label::respawn:${base_sbindir}/getty ${j}" >> ${D}${sysconfdir}/inittab
+                                id=`echo ${i} | sed -e 's/^.*;//' -e 's/;.*//'`
+                                echo "$id::respawn:${base_sbindir}/getty ${j}" >> ${D}${sysconfdir}/inittab
                         done
                 fi
         fi
@@ -346,6 +347,8 @@ python do_package_prepend () {
     dvar = d.getVar('D', True)
     pn = d.getVar('PN', True)
     def set_alternative_vars(links, target):
+        links = d.expand(links)
+        target = d.expand(target)
         f = open('%s%s' % (dvar, links), 'r')
         for alt_link_name in f:
             alt_link_name = alt_link_name.strip()
@@ -412,6 +415,7 @@ pkg_prerm_${PN} () {
 	ln -s ${base_bindir}/busybox $tmpdir/sed
 	ln -s ${base_bindir}/busybox $tmpdir/sort
 	ln -s ${base_bindir}/busybox $tmpdir/grep
+	ln -s ${base_bindir}/busybox $tmpdir/tail
 	export PATH=$PATH:$tmpdir
 }
 
@@ -419,7 +423,7 @@ pkg_prerm_${PN}-syslog () {
 	# remove syslog
 	if test "x$D" = "x"; then
 		if test "$1" = "upgrade" -o "$1" = "remove"; then
-			${sysconfdir}/init.d/syslog stop
+			${sysconfdir}/init.d/syslog stop || :
 		fi
 	fi
 }

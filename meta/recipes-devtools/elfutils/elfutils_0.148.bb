@@ -27,7 +27,6 @@ SRC_URI += "\
         file://elf_additions.diff \
         file://elfutils-fsize.patch \
         file://remove-unused.patch \
-        file://mempcpy.patch \
         file://fix_for_gcc-4.7.patch \
         file://dso-link-change.patch \
         file://nm-Fix-size-passed-to-snprintf-for-invalid-sh_name-case.patch \
@@ -35,6 +34,7 @@ SRC_URI += "\
         file://Fix_elf_cvt_gunhash.patch \
         file://elf_begin.c-CVE-2014-9447-fix.patch \
         file://fix-build-gcc-4.8.patch \
+        file://gcc6.patch \
 "
 # Only apply when building uclibc based target recipe
 SRC_URI_append_libc-uclibc = " file://uclibc-support-for-elfutils-0.148.patch"

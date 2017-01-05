@@ -9,7 +9,6 @@ from django.test import TestCase
 
 from bldcontrol.bbcontroller import BitbakeController, BuildSetupException
 from bldcontrol.localhostbecontroller import LocalhostBEController
-from bldcontrol.sshbecontroller import SSHBEController
 from bldcontrol.models import BuildEnvironment, BuildRequest
 from bldcontrol.management.commands.runbuilds import Command
 
@@ -48,14 +47,13 @@ class BEControllerTests(object):
         self.assertTrue(err == '', "bitbake server pid %s not stopped" % err)
 
     def test_serverStartAndStop(self):
-        from bldcontrol.sshbecontroller import NotImplementedException
         obe =  self._getBuildEnvironment()
         bc = self._getBEController(obe)
         try:
             # setting layers, skip any layer info
             bc.setLayers(BITBAKE_LAYER, POKY_LAYERS)
-        except NotImplementedException,  e:
-            print "Test skipped due to command not implemented yet"
+        except NotImplementedError:
+            print("Test skipped due to command not implemented yet")
             return True
         # We are ok with the exception as we're handling the git already exists
         except BuildSetupException:
@@ -74,15 +72,14 @@ class BEControllerTests(object):
         self._serverForceStop(bc)
 
     def test_getBBController(self):
-        from bldcontrol.sshbecontroller import NotImplementedException
         obe = self._getBuildEnvironment()
         bc = self._getBEController(obe)
         layerSet = False
         try:
             # setting layers, skip any layer info
             layerSet = bc.setLayers(BITBAKE_LAYER, POKY_LAYERS)
-        except NotImplementedException:
-            print "Test skipped due to command not implemented yet"
+        except NotImplementedError:
+            print("Test skipped due to command not implemented yet")
             return True
         # We are ok with the exception as we're handling the git already exists
         except BuildSetupException:
@@ -111,29 +108,6 @@ class LocalhostBEControllerTests(TestCase, BEControllerTests):
 
     def _getBEController(self, obe):
         return LocalhostBEController(obe)
-
-class SSHBEControllerTests(TestCase, BEControllerTests):
-    def __init__(self, *args):
-        super(SSHBEControllerTests, self).__init__(*args)
-
-    def _getBuildEnvironment(self):
-        return BuildEnvironment.objects.create(
-                lock = BuildEnvironment.LOCK_FREE,
-                betype = BuildEnvironment.TYPE_SSH,
-                address = test_address,
-                sourcedir = test_sourcedir,
-                builddir = test_builddir )
-
-    def _getBEController(self, obe):
-        return SSHBEController(obe)
-
-    def test_pathExists(self):
-        obe = BuildEnvironment.objects.create(betype = BuildEnvironment.TYPE_SSH, address= test_address)
-        sbc = SSHBEController(obe)
-        self.assertTrue(sbc._pathexists("/"))
-        self.assertFalse(sbc._pathexists("/.deadbeef"))
-        self.assertTrue(sbc._pathexists(sbc._shellcmd("pwd")))
-
 
 class RunBuildsCommandTests(TestCase):
     def test_bec_select(self):
@@ -165,22 +139,3 @@ class RunBuildsCommandTests(TestCase):
         self.assertTrue(br.state == BuildRequest.REQ_INPROGRESS, "Request is not updated")
         # no more selections possible here
         self.assertRaises(IndexError, command._selectBuildRequest)
-
-
-class UtilityTests(TestCase):
-    def test_reduce_path(self):
-        from bldcontrol.management.commands.loadconf import _reduce_canon_path, _get_id_for_sourcetype
-
-        self.assertTrue( _reduce_canon_path("/") == "/")
-        self.assertTrue( _reduce_canon_path("/home/..") == "/")
-        self.assertTrue( _reduce_canon_path("/home/../ana") == "/ana")
-        self.assertTrue( _reduce_canon_path("/home/../ana/..") == "/")
-        self.assertTrue( _reduce_canon_path("/home/ana/mihai/../maria") == "/home/ana/maria")
-
-    def test_get_id_for_sorucetype(self):
-        from bldcontrol.management.commands.loadconf import _reduce_canon_path, _get_id_for_sourcetype
-        self.assertTrue( _get_id_for_sourcetype("layerindex") == 1)
-        self.assertTrue( _get_id_for_sourcetype("local") == 0)
-        self.assertTrue( _get_id_for_sourcetype("imported") == 2)
-        with self.assertRaises(Exception):
-            _get_id_for_sourcetype("unknown")

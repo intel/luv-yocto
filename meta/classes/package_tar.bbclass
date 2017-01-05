@@ -4,6 +4,9 @@ IMAGE_PKGTYPE ?= "tar"
 
 python do_package_tar () {
     import subprocess
+
+    oldcwd = os.getcwd()
+
     workdir = d.getVar('WORKDIR', True)
     if not workdir:
         bb.error("WORKDIR not defined, unable to package")
@@ -49,11 +52,13 @@ python do_package_tar () {
         ret = subprocess.call(args + [tarfn] + dlist)
         if ret != 0:
             bb.error("Creation of tar %s failed." % tarfn)
+
+    os.chdir(oldcwd)
 }
 
 python () {
     if d.getVar('PACKAGES', True) != '':
-        deps = (d.getVarFlag('do_package_write_tar', 'depends') or "").split()
+        deps = (d.getVarFlag('do_package_write_tar', 'depends', True) or "").split()
         deps.append('tar-native:do_populate_sysroot')
         deps.append('virtual/fakeroot-native:do_populate_sysroot')
         d.setVarFlag('do_package_write_tar', 'depends', " ".join(deps))

@@ -24,13 +24,12 @@
 """Test cases for wic."""
 
 import os
-import sys
 
 from glob import glob
 from shutil import rmtree
 
 from oeqa.selftest.base import oeSelfTest
-from oeqa.utils.commands import runCmd, bitbake, get_bb_var
+from oeqa.utils.commands import runCmd, bitbake, get_bb_var, runqemu
 from oeqa.utils.decorators import testcase
 
 
@@ -42,15 +41,16 @@ class Wic(oeSelfTest):
 
     def setUpLocal(self):
         """This code is executed before each test method."""
-        self.write_config('IMAGE_FSTYPES += " hddimg"\nMACHINE_FEATURES_append = " efi"\n')
+        self.write_config('IMAGE_FSTYPES += " hddimg"\n'
+                          'MACHINE_FEATURES_append = " efi"\n')
 
         # Do this here instead of in setUpClass as the base setUp does some
         # clean up which can result in the native tools built earlier in
         # setUpClass being unavailable.
         if not Wic.image_is_ready:
             bitbake('syslinux syslinux-native parted-native gptfdisk-native '
-                    'dosfstools-native mtools-native')
-            bitbake('core-image-minimal:do_image_complete core-image-minimal:do_rootfs_wicenv')
+                    'dosfstools-native mtools-native bmap-tools-native')
+            bitbake('core-image-minimal')
             Wic.image_is_ready = True
 
         rmtree(self.resultdir, ignore_errors=True)
@@ -80,14 +80,14 @@ class Wic(oeSelfTest):
     @testcase(1212)
     def test_build_artifacts(self):
         """Test wic create directdisk providing all artifacts."""
-        vars = dict((var.lower(), get_bb_var(var, 'core-image-minimal')) \
+        bbvars = dict((var.lower(), get_bb_var(var, 'core-image-minimal')) \
                         for var in ('STAGING_DATADIR', 'DEPLOY_DIR_IMAGE',
                                     'STAGING_DIR_NATIVE', 'IMAGE_ROOTFS'))
         status = runCmd("wic create directdisk "
                         "-b %(staging_datadir)s "
                         "-k %(deploy_dir_image)s "
                         "-n %(staging_dir_native)s "
-                        "-r %(image_rootfs)s" % vars).status
+                        "-r %(image_rootfs)s" % bbvars).status
         self.assertEqual(0, status)
         self.assertEqual(1, len(glob(self.resultdir + "directdisk-*.direct")))
 
@@ -102,7 +102,7 @@ class Wic(oeSelfTest):
     def test_unsupported_subcommand(self):
         """Test unsupported subcommand"""
         self.assertEqual(1, runCmd('wic unsupported',
-                         ignore_status=True).status)
+                                   ignore_status=True).status)
 
     @testcase(1214)
     def test_no_command(self):
@@ -172,20 +172,20 @@ class Wic(oeSelfTest):
     @testcase(1269)
     def test_rootfs_artifacts(self):
         """Test usage of rootfs plugin with rootfs paths"""
-        vars = dict((var.lower(), get_bb_var(var, 'core-image-minimal')) \
+        bbvars = dict((var.lower(), get_bb_var(var, 'core-image-minimal')) \
                         for var in ('STAGING_DATADIR', 'DEPLOY_DIR_IMAGE',
                                     'STAGING_DIR_NATIVE', 'IMAGE_ROOTFS'))
-        vars['wks'] = "directdisk-multi-rootfs"
+        bbvars['wks'] = "directdisk-multi-rootfs"
         status = runCmd("wic create %(wks)s "
                         "-b %(staging_datadir)s "
                         "-k %(deploy_dir_image)s "
                         "-n %(staging_dir_native)s "
                         "--rootfs-dir rootfs1=%(image_rootfs)s "
                         "--rootfs-dir rootfs2=%(image_rootfs)s" \
-                        % vars).status
+                        % bbvars).status
         self.assertEqual(0, status)
         self.assertEqual(1, len(glob(self.resultdir + \
-                                     "%(wks)s-*.direct" % vars)))
+                                     "%(wks)s-*.direct" % bbvars)))
 
     @testcase(1346)
     def test_iso_image(self):
@@ -199,6 +199,7 @@ class Wic(oeSelfTest):
     def test_image_env(self):
         """Test generation of <image>.env files."""
         image = 'core-image-minimal'
+        self.assertEqual(0, bitbake('%s -c do_rootfs_wicenv' % image).status)
         stdir = get_bb_var('STAGING_DIR_TARGET', image)
         imgdatadir = os.path.join(stdir, 'imgdata')
 
@@ -228,7 +229,7 @@ class Wic(oeSelfTest):
         prefix = os.path.join(deploy_dir, 'wic-image-minimal-%s.' % machine)
         # check if we have result image and manifests symlinks
         # pointing to existing files
-        for suffix in ('wic.bz2', 'manifest'):
+        for suffix in ('wic', 'manifest'):
             path = prefix + suffix
             self.assertTrue(os.path.islink(path))
             self.assertTrue(os.path.isfile(os.path.realpath(path)))
@@ -261,6 +262,40 @@ class Wic(oeSelfTest):
     def test_directdisk_bootloader_config(self):
         """Test creation of directdisk-bootloader-config image"""
         image = "directdisk-bootloader-config"
+        self.assertEqual(0, runCmd("wic create %s -e core-image-minimal" \
+                                   % image).status)
+        self.assertEqual(1, len(glob(self.resultdir + "%s-*direct" % image)))
+
+    @testcase(1422)
+    def test_qemu(self):
+        """Test wic-image-minimal under qemu"""
+        self.assertEqual(0, bitbake('wic-image-minimal').status)
+
+        with runqemu('wic-image-minimal', ssh=False) as qemu:
+            command = "mount |grep '^/dev/' | cut -f1,3 -d ' '"
+            status, output = qemu.run_serial(command)
+            self.assertEqual(1, status, 'Failed to run command "%s": %s' % (command, output))
+            self.assertEqual(output, '/dev/root /\r\n/dev/vda3 /mnt')
+
+    def test_bmap(self):
+        """Test generation of .bmap file"""
+        image = "directdisk"
+        status = runCmd("wic create %s -e core-image-minimal --bmap" % image).status
+        self.assertEqual(0, status)
+        self.assertEqual(1, len(glob(self.resultdir + "%s-*direct" % image)))
+        self.assertEqual(1, len(glob(self.resultdir + "%s-*direct.bmap" % image)))
+
+    def test_systemd_bootdisk(self):
+        """Test creation of systemd-bootdisk image"""
+        image = "systemd-bootdisk"
+        self.assertEqual(0, runCmd("wic create %s -e core-image-minimal" \
+                                   % image).status)
+        self.assertEqual(1, len(glob(self.resultdir + "%s-*direct" % image)))
+
+    def test_sdimage_bootpart(self):
+        """Test creation of sdimage-bootpart image"""
+        image = "sdimage-bootpart"
+        self.write_config('IMAGE_BOOT_FILES = "bzImage"\n')
         self.assertEqual(0, runCmd("wic create %s -e core-image-minimal" \
                                    % image).status)
         self.assertEqual(1, len(glob(self.resultdir + "%s-*direct" % image)))

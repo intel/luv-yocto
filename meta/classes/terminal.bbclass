@@ -1,8 +1,7 @@
 OE_TERMINAL ?= 'auto'
 OE_TERMINAL[type] = 'choice'
 OE_TERMINAL[choices] = 'auto none \
-                        ${@" ".join(o.name \
-                                    for o in oe.terminal.prioritized())}'
+                        ${@oe_terminal_prioritized()}'
 
 OE_TERMINAL_EXPORTS += 'EXTRA_OEMAKE'
 OE_TERMINAL_EXPORTS[type] = 'list'
@@ -10,6 +9,9 @@ OE_TERMINAL_EXPORTS[type] = 'list'
 XAUTHORITY ?= "${HOME}/.Xauthority"
 SHELL ?= "bash"
 
+def oe_terminal_prioritized():
+    import oe.terminal
+    return " ".join(o.name for o in oe.terminal.prioritized())
 
 def emit_terminal_func(command, envdata, d):
     cmd_func = 'do_terminal'
@@ -27,7 +29,7 @@ def emit_terminal_func(command, envdata, d):
         bb.data.emit_func(cmd_func, script, envdata)
         script.write(cmd_func)
         script.write("\n")
-    os.chmod(runfile, 0755)
+    os.chmod(runfile, 0o755)
 
     return runfile
 

@@ -7,28 +7,30 @@ configuration from the link-local 169.254.0.0/16 range without the need for a ce
 server.'
 AUTHOR = "Lennart Poettering <lennart@poettering.net>"
 HOMEPAGE = "http://avahi.org"
-BUGTRACKER = "http://avahi.org/report"
+BUGTRACKER = "https://github.com/lathiat/avahi/issues"
 SECTION = "network"
 
 # major part is under LGPLv2.1+, but several .dtd, .xsl, initscripts and
 # python scripts are under GPLv2+
 LICENSE = "GPLv2+ & LGPLv2.1+"
 
-INC_PR = "r11"
+DEPENDS = "expat libcap libdaemon glib-2.0 intltool-native"
 
-DEPENDS = "expat libcap libdaemon dbus glib-2.0"
-
-SRC_URI = "http://avahi.org/download/avahi-${PV}.tar.gz \
+SRC_URI = "https://github.com/lathiat/avahi/releases/download/v${PV}/avahi-${PV}.tar.gz \
           file://00avahi-autoipd \
           file://99avahi-autoipd \
           file://initscript.patch \
-          file://avahi_fix_install_issue.patch \
-          file://fix_for_automake_1.12.x.patch \
-          file://out-of-tree.patch \
-          file://0001-avahi-fix-avahi-status-command-error-prompt.patch \
-          file://reuseport-check.patch \
-          file://0001-Don-t-log-warnings-about-invalid-packets-Fixes-lathi.patch \
           "
+UPSTREAM_CHECK_URI = "https://github.com/lathiat/avahi/releases/"
+
+# For gtk related PACKAGECONFIGs: gtk, gtk3 and pygtk
+AVAHI_GTK ?= ""
+
+PACKAGECONFIG ??= "dbus ${AVAHI_GTK}"
+PACKAGECONFIG[dbus] = "--enable-dbus,--disable-dbus,dbus"
+PACKAGECONFIG[gtk] = "--enable-gtk,--disable-gtk,gtk+"
+PACKAGECONFIG[gtk3] = "--enable-gtk3,--disable-gtk3,gtk+3"
+PACKAGECONFIG[pygtk] = "--enable-pygtk,--disable-pygtk,"
 
 USERADD_PACKAGES = "avahi-daemon avahi-autoipd"
 USERADD_PARAM_avahi-daemon = "--system --home /var/run/avahi-daemon \
@@ -41,10 +43,9 @@ USERADD_PARAM_avahi-autoipd = "--system --home /var/run/avahi-autoipd \
                               -c \"Avahi autoip daemon\" \
                               avahi-autoipd"
 
-inherit autotools pkgconfig update-rc.d gettext useradd
+inherit autotools pkgconfig update-rc.d gettext useradd gobject-introspection
 
-EXTRA_OECONF = "--disable-introspection \
-             --with-avahi-priv-access-group=adm \
+EXTRA_OECONF = "--with-avahi-priv-access-group=adm \
              --disable-stack-protector \
              --disable-gdbm \
              --disable-mono \
@@ -53,24 +54,29 @@ EXTRA_OECONF = "--disable-introspection \
              --disable-qt4 \
              --disable-python \
              --disable-doxygen-doc \
+             --disable-manpages \
              ${EXTRA_OECONF_SYSVINIT} \
              ${EXTRA_OECONF_SYSTEMD} \
-             ${AVAHI_GTK} \
            "
 
 # The distro choice determines what init scripts are installed
 EXTRA_OECONF_SYSVINIT = "${@bb.utils.contains('DISTRO_FEATURES','sysvinit','--with-distro=debian','--with-distro=none',d)}"
 EXTRA_OECONF_SYSTEMD = "${@bb.utils.contains('DISTRO_FEATURES','systemd','--with-systemdsystemunitdir=${systemd_unitdir}/system/','--without-systemdsystemunitdir',d)}"
 
-AVAHI_GTK ?= "--disable-gtk --disable-gtk3"
 
 LDFLAGS_append_libc-uclibc = " -lintl"
 LDFLAGS_append_uclinux-uclibc = " -lintl"
 
 do_configure_prepend() {
     sed 's:AM_CHECK_PYMOD:echo "no pymod" #AM_CHECK_PYMOD:g' -i ${S}/configure.ac
+
+    # This m4 file will get in the way of our introspection.m4 with special cross-compilation fixes
+    rm "${S}/common/introspection.m4" || true
 }
 
+do_compile_prepend() {
+    export GIR_EXTRA_LIBS_PATH="${B}/avahi-gobject/.libs:${B}/avahi-common/.libs:${B}/avahi-client/.libs:${B}/avahi-glib/.libs"
+}
 
 PACKAGES =+ "avahi-daemon libavahi-common libavahi-core libavahi-client avahi-dnsconfd libavahi-glib libavahi-ui avahi-autoipd avahi-utils"
 
@@ -83,7 +89,7 @@ FILES_avahi-autoipd = "${sbindir}/avahi-autoipd \
                        ${sysconfdir}/udhcpc.d/00avahi-autoipd \
                        ${sysconfdir}/udhcpc.d/99avahi-autoipd"
 FILES_libavahi-common = "${libdir}/libavahi-common.so.*"
-FILES_libavahi-core = "${libdir}/libavahi-core.so.*"
+FILES_libavahi-core = "${libdir}/libavahi-core.so.* ${libdir}/girepository-1.0/AvahiCore*.typelib"
 FILES_avahi-daemon = "${sbindir}/avahi-daemon \
                       ${sysconfdir}/avahi/avahi-daemon.conf \
                       ${sysconfdir}/avahi/hosts \
@@ -100,7 +106,7 @@ FILES_avahi-dnsconfd = "${sbindir}/avahi-dnsconfd \
                         ${sysconfdir}/avahi/avahi-dnsconfd.action \
                         ${sysconfdir}/init.d/avahi-dnsconfd"
 FILES_libavahi-glib = "${libdir}/libavahi-glib.so.*"
-FILES_libavahi-gobject = "${libdir}/libavahi-gobject.so.*"
+FILES_libavahi-gobject = "${libdir}/libavahi-gobject.so.*  ${libdir}/girepository-1.0/Avahi*.typelib"
 FILES_avahi-utils = "${bindir}/avahi-*"
 
 RDEPENDS_${PN}-dev = "avahi-daemon (= ${EXTENDPKGV}) libavahi-core (= ${EXTENDPKGV}) libavahi-client (= ${EXTENDPKGV})"
@@ -131,7 +137,7 @@ do_install() {
 	rm -rf ${D}${localstatedir}/run
 	rmdir --ignore-fail-on-non-empty ${D}${localstatedir}
 	rm -rf ${D}${datadir}/dbus-1/interfaces
-	rmdir --ignore-fail-on-non-empty ${D}${datadir}/dbus-1
+	test -d ${D}${datadir}/dbus-1 && rmdir --ignore-fail-on-non-empty ${D}${datadir}/dbus-1
 	rm -rf ${D}${libdir}/avahi
 
 	install -d ${D}${sysconfdir}/udhcpc.d
