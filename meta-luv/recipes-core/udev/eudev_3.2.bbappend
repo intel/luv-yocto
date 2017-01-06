@@ -1,1 +1,1 @@
-RDEPENDS_${PN}-cache += "gzip findutils"
+RDEPENDS_udev-cache += "gzip findutils"
