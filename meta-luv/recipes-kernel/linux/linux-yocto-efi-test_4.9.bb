@@ -95,6 +95,7 @@ SRC_URI_append_x86-64 = "${COMMON_CFG_x86} \
                         "
 SRC_URI_append_aarch64 = " file://qemuarm64/defconfig \
                            file://qemuarm64/network.cfg \
+                           file://qemuarm64/sbbr.cfg \
                          "
 
 # Override KCONFIG_MODE to '--alldefconfig' from the default '--allnoconfig'
