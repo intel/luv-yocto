@@ -1,0 +1,394 @@
+From a47399192fed6e0c9cb8ae3a3af1bb158636e0fb Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Mon, 23 Jan 2017 18:31:35 -0800
+Subject: [PATCH 11/11] selftests/x86: Add more tests for User-Mode Instruction
+ Prevention
+
+Add many tests the UMIP emulation done in the kernel. This tests all
+the possible combinations in 16-bit addressing mode: address in 1 or 2
+registers, 0, 1, 2-byte displacements as well as register operands.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ tools/testing/selftests/x86/entry_from_vm86.c | 342 +++++++++++++++++++++++++-
+ 1 file changed, 338 insertions(+), 4 deletions(-)
+
+diff --git a/tools/testing/selftests/x86/entry_from_vm86.c b/tools/testing/selftests/x86/entry_from_vm86.c
+index 377b773..c7bf946 100644
+--- a/tools/testing/selftests/x86/entry_from_vm86.c
++++ b/tools/testing/selftests/x86/entry_from_vm86.c
+@@ -100,16 +100,162 @@ asm (
+ 	"smsw (2052)\n\t"
+ 	"sidt (2054)\n\t"
+ 	"sgdt (2060)\n\t"
+-	/* addressing via registers */
++	/* addressing via registers, no disp - bx */
+ 	"mov $2066, %bx\n\t"
+ 	"smsw (%bx)\n\t"
+ 	"mov $2068, %bx\n\t"
+ 	"sidt (%bx)\n\t"
+ 	"mov $2074, %bx\n\t"
+ 	"sgdt (%bx)\n\t"
++	/* addressing via registers, no disp - si */
++	"mov $2080, %si\n\t"
++	"smsw (%si)\n\t"
++	"mov $2082, %si\n\t"
++	"sidt (%si)\n\t"
++	"mov $2088, %si\n\t"
++	"sgdt (%si)\n\t"
++	/* addressing via registers, no disp - di */
++	"mov $2094, %di\n\t"
++	"smsw (%di)\n\t"
++	"mov $2096, %di\n\t"
++	"sidt (%di)\n\t"
++	"mov $2102, %di\n\t"
++	"sgdt (%di)\n\t"
++	/* addressing via registers, no disp - bx + si */
++	"mov $2000, %bx\n\t"
++	"mov $108, %si\n\t"
++	".byte 0x0f, 0x01, 0x20\n\t" /* smsw (%bx+%si) */
++	"mov $2000, %bx\n\t"
++	"mov $110, %si\n\t"
++	".byte 0x0f, 0x01, 0x08\n\t" /* sidt (%bx+%si) */
++	"mov $2000, %bx\n\t"
++	"mov $116, %si\n\t"
++	".byte 0x0f, 0x01, 0x00\n\t" /* sgdt (%bx+%si) */
++	/* addressing via registers, no disp - bx + di */
++	"mov $2000, %bx\n\t"
++	"mov $122, %di\n\t"
++	".byte 0x0f, 0x01, 0x21\n\t" /* smsw (%bx+%di) */
++	"mov $2000, %bx\n\t"
++	"mov $124, %di\n\t"
++	".byte 0x0f, 0x01, 0x09\n\t" /* sidt (%bx+%di) */
++	"mov $2000, %bx\n\t"
++	"mov $130, %di\n\t"
++	".byte 0x0f, 0x01, 0x01\n\t" /* sgdt (%bx+%di) */
++	/* addressing via registers, no disp - bp + si */
++	"mov $2000, %bp\n\t"
++	"mov $136, %si\n\t"
++	".byte 0x0f, 0x01, 0x22\n\t" /* smsw (%bp+%si) */
++	"mov $2000, %bp\n\t"
++	"mov $138, %si\n\t"
++	".byte 0x0f, 0x01, 0x0a\n\t" /* sidt (%bp+%si) */
++	"mov $2000, %bp\n\t"
++	"mov $144, %si\n\t"
++	".byte 0x0f, 0x01, 0x02\n\t" /* sgdt (%bp+%si) */
++	/* addressing via registers, no disp - bp + di */
++	"mov $2000, %bp\n\t"
++	"mov $150, %di\n\t"
++	".byte 0x0f, 0x01, 0x23\n\t" /* smsw (%bp+%di) */
++	"mov $2000, %bp\n\t"
++	"mov $152, %di\n\t"
++	".byte 0x0f, 0x01, 0x0b\n\t" /* sidt (%bp+%di) */
++	"mov $2000, %bp\n\t"
++	"mov $158, %di\n\t"
++	".byte 0x0f, 0x01, 0x03\n\t" /* sgdt (%bp+%di) */
++	/* addressing via registers, 8-bit disp - bx */
++	"mov $2164, %bx\n\t"
++	".byte 0x0f, 0x01, 0x67, 0x00\n\t" /* smsw (%bx + 0) */
++	".byte 0x0f, 0x01, 0x4f, 0x02\n\t" /* sidt (%bx + 2) */
++	".byte 0x0f, 0x01, 0x47, 0x08\n\t" /* sgdt (%bx + 8) */
++	/* addressing via registers, 8-bit disp - si */
++	"mov $2178, %si\n\t"
++	".byte 0x0f, 0x01, 0x64, 0x00\n\t" /* smsw (%si + 0) */
++	".byte 0x0f, 0x01, 0x4c, 0x02\n\t" /* sidt (%si + 2) */
++	".byte 0x0f, 0x01, 0x44, 0x08\n\t" /* sgdt (%si + 8) */
++	/* addressing via registers, 8-bit disp - di */
++	"mov $2192, %di\n\t"
++	".byte 0x0f, 0x01, 0x65, 0x00\n\t" /* smsw (%si + 0) */
++	".byte 0x0f, 0x01, 0x4d, 0x02\n\t" /* sidt (%si + 2) */
++	".byte 0x0f, 0x01, 0x45, 0x08\n\t" /* sgdt (%si + 8) */
++	/* addressing via registers, 8-bit - bx + si */
++	"mov $2000, %bx\n\t"
++	"mov $206, %si\n\t"
++	".byte 0x0f, 0x01, 0x60, 0x00\n\t" /* smsw (%bx+%si+0) */
++	".byte 0x0f, 0x01, 0x48, 0x02\n\t" /* sidt (%bx+%si+2) */
++	".byte 0x0f, 0x01, 0x40, 0x08\n\t" /* sgdt (%bx+%si+8) */
++	/* addressing via registers, 8-bit - bx + di */
++	"mov $2000, %bx\n\t"
++	"mov $220, %di\n\t"
++	".byte 0x0f, 0x01, 0x61, 0x00\n\t" /* smsw (%bx+%di+0) */
++	".byte 0x0f, 0x01, 0x49, 0x02\n\t" /* sidt (%bx+%di+2) */
++	".byte 0x0f, 0x01, 0x41, 0x08\n\t" /* sgdt (%bx+%di+8) */
++	/* addressing via registers, 8-bit - bp + si */
++	"mov $2000, %bp\n\t"
++	"mov $234, %si\n\t"
++	".byte 0x0f, 0x01, 0x62, 0x00\n\t" /* smsw (%bp+%si+0) */
++	".byte 0x0f, 0x01, 0x4a, 0x02\n\t" /* sidt (%bp+%si+2) */
++	".byte 0x0f, 0x01, 0x42, 0x08\n\t" /* sgdt (%bp+%si+8) */
++	/* addressing via registers, 8-bit - bp + di */
++	"mov $2000, %bp\n\t"
++	"mov $248, %di\n\t"
++	".byte 0x0f, 0x01, 0x63, 0x00\n\t" /* smsw (%bp+%di+0) */
++	".byte 0x0f, 0x01, 0x4b, 0x02\n\t" /* sidt (%bp+%di+2) */
++	".byte 0x0f, 0x01, 0x43, 0x08\n\t" /* sgdt (%bp+%di+8) */
++	/* addressing via registers, 16-bit disp - bx */
++	"mov $2000, %bx\n\t"
++	".byte 0x0f, 0x01, 0xa7, 0x06, 0x01\n\t" /* smsw (%bx + 262) */
++	".byte 0x0f, 0x01, 0x8f, 0x08, 0x01\n\t" /* sidt (%bx + 264) */
++	".byte 0x0f, 0x01, 0x87, 0x0e, 0x01\n\t" /* sgdt (%bx + 270) */
++	/* addressing via registers, 16-bit disp - si */
++	"mov $2000, %si\n\t"
++	".byte 0x0f, 0x01, 0xa4, 0x14, 0x01\n\t" /* smsw (%si + 276) */
++	".byte 0x0f, 0x01, 0x8c, 0x16, 0x01\n\t" /* sidt (%si + 278) */
++	".byte 0x0f, 0x01, 0x84, 0x1c, 0x01\n\t" /* sgdt (%si + 284) */
++	/* addressing via registers, 16-bit disp - di */
++	"mov $2000, %di\n\t"
++	".byte 0x0f, 0x01, 0xa5, 0x22, 0x01\n\t" /* smsw (%di + 290) */
++	".byte 0x0f, 0x01, 0x8d, 0x24, 0x01\n\t" /* sidt (%di + 292) */
++	".byte 0x0f, 0x01, 0x85, 0x2a, 0x01\n\t" /* sgdt (%di + 298) */
++	/* addressing via registers, 16-bit - bx + si */
++	"mov $1500, %bx\n\t"
++	"mov $500, %si\n\t"
++	".byte 0x0f, 0x01, 0xa0, 0x30, 0x01\n\t" /* smsw (%bx+%si+304) */
++	".byte 0x0f, 0x01, 0x88, 0x32, 0x01\n\t" /* sidt (%bx+%si+306) */
++	".byte 0x0f, 0x01, 0x80, 0x38, 0x01\n\t" /* sgdt (%bx+%si+312) */
++	/* addressing via registers, 16-bit - bx + di */
++	"mov $1500, %bx\n\t"
++	"mov $500, %di\n\t"
++	".byte 0x0f, 0x01, 0xa1, 0x3e, 0x01\n\t" /* smsw (%bx+%di+318) */
++	".byte 0x0f, 0x01, 0x89, 0x40, 0x01\n\t" /* sidt (%bx+%di+320) */
++	".byte 0x0f, 0x01, 0x81, 0x46, 0x01\n\t" /* sgdt (%bx+%di+326) */
++	/* addressing via registers, 16-bit - bp + si */
++	"mov $1500, %bp\n\t"
++	"mov $500, %si\n\t"
++	".byte 0x0f, 0x01, 0xa2, 0x4c, 0x01\n\t" /* smsw (%bp+%si+332) */
++	".byte 0x0f, 0x01, 0x8a, 0x4e, 0x01\n\t" /* sidt (%bp+%si+334) */
++	".byte 0x0f, 0x01, 0x82, 0x54, 0x01\n\t" /* sgdt (%bp+%si+340) */
++	/* addressing via registers, 16-bit - bp + di */
++	"mov $1500, %bp\n\t"
++	"mov $500, %si\n\t"
++	".byte 0x0f, 0x01, 0xa3, 0x5a, 0x01\n\t" /* smsw (%bp+%di+346) */
++	".byte 0x0f, 0x01, 0x8b, 0x5c, 0x01\n\t" /* sidt (%bp+%di+348) */
++	".byte 0x0f, 0x01, 0x83, 0x62, 0x01\n\t" /* sgdt (%bp+%di+354) */
+ 	/* register operands, only for smsw */
+ 	"smsw %ax\n\t"
+-	"mov %ax, (2080)\n\t"
++	"mov %ax, (2360)\n\t"
++	"smsw %cx\n\t"
++	"mov %cx, (2362)\n\t"
++	"smsw %dx\n\t"
++	"mov %dx, (2364)\n\t"
++	"smsw %bx\n\t"
++	"mov %bx, (2366)\n\t"
++	"smsw %sp\n\t"
++	"mov %sp, (2368)\n\t"
++	"smsw %bp\n\t"
++	"mov %bp, (2370)\n\t"
++	"smsw %si\n\t"
++	"mov %si, (2372)\n\t"
++	"smsw %di\n\t"
++	"mov %di, (2374)\n\t"
+ 	"int $0x80\n\t"
+ 	".size vmcode, . - vmcode\n\t"
+ 	"end_vmcode:\n\t"
+@@ -244,7 +390,7 @@ int main(void)
+ 	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
+ 	       *(unsigned short *)(addr + 2060),
+ 	       *(unsigned long  *)(addr + 2062));
+-	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers:\n");
++	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: no disp, bx\n");
+ 	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2066));
+ 	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
+ 	       *(unsigned short *)(addr + 2068),
+@@ -252,8 +398,196 @@ int main(void)
+ 	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
+ 	       *(unsigned short *)(addr + 2074),
+ 	       *(unsigned long  *)(addr + 2076));
+-	printf("[INFO]\tResults of SMSW via register operands:\n");
++
++	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: no disp, si\n");
+ 	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2080));
++	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2082),
++	       *(unsigned long  *)(addr + 2084));
++	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2088),
++	       *(unsigned long  *)(addr + 2090));
++
++	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: no disp, di\n");
++	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2094));
++	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2096),
++	       *(unsigned long  *)(addr + 2098));
++	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2102),
++	       *(unsigned long  *)(addr + 2104));
++
++	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: no disp, bx + si\n");
++	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2108));
++	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2110),
++	       *(unsigned long  *)(addr + 2112));
++	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2116),
++	       *(unsigned long  *)(addr + 2118));
++
++	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: no disp, bx + di\n");
++	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2122));
++	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2124),
++	       *(unsigned long  *)(addr + 2126));
++	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2130),
++	       *(unsigned long  *)(addr + 2132));
++
++	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: no disp, bp + si\n");
++	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2136));
++	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2138),
++	       *(unsigned long  *)(addr + 2140));
++	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2144),
++	       *(unsigned long  *)(addr + 2146));
++
++	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: no disp, bp + di\n");
++	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2150));
++	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2152),
++	       *(unsigned long  *)(addr + 2154));
++	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2158),
++	       *(unsigned long  *)(addr + 2160));
++
++	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: 8-bit disp, bx\n");
++	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2164));
++	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2166),
++	       *(unsigned long  *)(addr + 2168));
++	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2172),
++	       *(unsigned long  *)(addr + 2174));
++
++	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: 8-bit disp, si\n");
++	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2178));
++	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2180),
++	       *(unsigned long  *)(addr + 2182));
++	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2186),
++	       *(unsigned long  *)(addr + 2188));
++
++	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: 8-bit disp, di\n");
++	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2192));
++	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2194),
++	       *(unsigned long  *)(addr + 2196));
++	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2200),
++	       *(unsigned long  *)(addr + 2202));
++
++	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: 8-bit disp bx +si\n");
++	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2206));
++	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2208),
++	       *(unsigned long  *)(addr + 2210));
++	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2214),
++	       *(unsigned long  *)(addr + 2216));
++
++	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: 8-bit disp, bx + di\n");
++	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2220));
++	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2222),
++	       *(unsigned long  *)(addr + 2224));
++	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2228),
++	       *(unsigned long  *)(addr + 2230));
++
++	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: 8-bit disp, bp + si\n");
++	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2234));
++	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2236),
++	       *(unsigned long  *)(addr + 2238));
++	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2242),
++	       *(unsigned long  *)(addr + 2244));
++
++	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: 8-bit disp, bp + di\n");
++	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2248));
++	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2250),
++	       *(unsigned long  *)(addr + 2252));
++	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2256),
++	       *(unsigned long  *)(addr + 2258));
++
++	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: 16-bit disp, bx\n");
++	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2262));
++	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2264),
++	       *(unsigned long  *)(addr + 2266));
++	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2270),
++	       *(unsigned long  *)(addr + 2272));
++
++	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: 16-bit disp, si\n");
++	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2276));
++	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2278),
++	       *(unsigned long  *)(addr + 2280));
++	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2284),
++	       *(unsigned long  *)(addr + 2286));
++
++	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: 16-bit disp, di\n");
++	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2290));
++	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2292),
++	       *(unsigned long  *)(addr + 2294));
++	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2298),
++	       *(unsigned long  *)(addr + 2230));
++
++	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: 16-bit disp, bx+si\n");
++	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2304));
++	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2306),
++	       *(unsigned long  *)(addr + 2308));
++	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2312),
++	       *(unsigned long  *)(addr + 2314));
++
++	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: 16-bit disp, bx+di\n");
++	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2318));
++	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2320),
++	       *(unsigned long  *)(addr + 2322));
++	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2326),
++	       *(unsigned long  *)(addr + 2328));
++
++	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: 16-bit disp, bp+si\n");
++	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2332));
++	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2334),
++	       *(unsigned long  *)(addr + 2336));
++	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2340),
++	       *(unsigned long  *)(addr + 2342));
++
++	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: 16-bit disp, bp+di\n");
++	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2346));
++	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2348),
++	       *(unsigned long  *)(addr + 2350));
++	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2354),
++	       *(unsigned long  *)(addr + 2356));
++
++	printf("[INFO]\tResults of SMSW via register operands:\n");
++	printf("[INFO]\tSMSW ax:[0x%04x]\n", *(unsigned short *)(addr + 2360));
++	printf("[INFO]\tSMSW cx:[0x%04x]\n", *(unsigned short *)(addr + 2362));
++	printf("[INFO]\tSMSW dx:[0x%04x]\n", *(unsigned short *)(addr + 2364));
++	printf("[INFO]\tSMSW bx:[0x%04x]\n", *(unsigned short *)(addr + 2366));
++	printf("[INFO]\tSMSW sp:[0x%04x]\n", *(unsigned short *)(addr + 2368));
++	printf("[INFO]\tSMSW bp:[0x%04x]\n", *(unsigned short *)(addr + 2370));
++	printf("[INFO]\tSMSW si:[0x%04x]\n", *(unsigned short *)(addr + 2372));
++	printf("[INFO]\tSMSW di:[0x%04x]\n", *(unsigned short *)(addr + 2374));
+ 
+ 	/* Execute a null pointer */
+ 	v86.regs.cs = 0;
+-- 
+2.9.3
+

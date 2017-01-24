@@ -69,6 +69,8 @@ SRC_URI += "file://0001-Add-function-to-fixup-page-faults-in-BOOT_SERVICES_-.pat
             file://0002-efi-allow-efi_mem_desc_lookup-find-EFI_BOOT_SERVICES.patch \
             file://0003-x86-efi-Fixup-faults-from-UEFI-firmware.patch \
             file://0004-x86-efi-Introduce-EFI_BOOT_SERVICES_WARN.patch \
+            file://0001-selftests-x86-Add-tests-for-User-Mode-Instruction-Pr.patch \
+            file://0002-selftests-x86-Add-more-tests-for-User-Mode-Instructi.patch \
            "
 # These patches are under discussion on ML
 SRC_URI += "file://0001-serial-SPCR-check-bit-width-for-the-16550-UART.patch  \
