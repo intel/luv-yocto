@@ -120,6 +120,7 @@ do_install_append() {
          # There are 2 copies of the NVDIMM modules which are built. This is a
          # temporary fix to make sure the correct set of modules are used.
          rm -rf ${D}/lib/modules/${LINUX_VERSION}.0-yocto-standard/kernel/drivers/nvdimm/
-         rm ${D}/lib/modules/${LINUX_VERSION}.0-yocto-standard/kernel/drivers/acpi/nfit/nfit.ko
+         rm -rf ${D}/lib/modules/${LINUX_VERSION}.0-yocto-standard/kernel/drivers/dax/
+         rm -rf ${D}/lib/modules/${LINUX_VERSION}.0-yocto-standard/kernel/drivers/acpi/
     fi
 }
