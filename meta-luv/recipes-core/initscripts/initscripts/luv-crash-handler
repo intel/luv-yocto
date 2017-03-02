@@ -38,8 +38,9 @@ if [[ $runl == *5* ]]; then
     if [ $? -eq 0 ]; then
         mount ${LUV_DISK_DEVICE} ${LUV_BOOT_PARTITION}
         if [ $? -eq 0 ]; then
-            kexec -p --initrd=${LUV_BOOT_PARTITION}initrd --append="noluv 3 \
-                  irqpoll maxcpus=1 reset_devices" ${LUV_BOOT_PARTITION}vmlinuz
+            kexec -p --initrd=${LUV_BOOT_PARTITION}initrd --reuse-cmdline \
+                  --append="noluv 3 irqpoll maxcpus=1 reset_devices" \
+                  ${LUV_BOOT_PARTITION}vmlinuz
             umount ${LUV_BOOT_PARTITION}
         fi
     fi
