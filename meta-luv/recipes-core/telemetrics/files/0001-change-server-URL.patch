@@ -1,0 +1,24 @@
+From 21ea531f412ef937f3b8e47ea8cf4331575cafd9 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Mon, 8 Aug 2016 16:57:19 -0700
+Subject: [PATCH] change server URL
+
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
+---
+ .../telemetrics/git-r0/git/src/data/telemetrics.conf.in                 | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/data/telemetrics.conf.in b/src/data/telemetrics.conf.in
+index 25a10df..8a3e06e 100644
+--- a/src/data/telemetrics.conf.in
++++ b/src/data/telemetrics.conf.in
+@@ -1,6 +1,6 @@
+ [settings]
+ # ip address of destination server for record delivery
+-server=https://clr.telemetry.intel.com/v2/collector
++server=10.54.69.24
+
+ socket_path=@SOCKETDIR@/telem-0
+
+--
+1.9.1

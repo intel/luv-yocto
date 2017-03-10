@@ -1,0 +1,34 @@
+From b66bb9942139196f0b89886b06ebdb53049c1b69 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Wed, 16 Nov 2016 17:51:54 -0800
+Subject: [PATCH] Add Kernel panic to the oops-parser list
+
+After an oops, the telemetrics client sends only the records which have
+patterns as listed in the oops parser list to the server. Currently,
+this list does not have the "kernel panic" pattern. Adding this pattern
+will ensure oopses with this pattern are sent to the telemetrics server.
+
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
+---
+ src/probes/oops_parser.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/src/probes/oops_parser.c b/src/probes/oops_parser.c
+index e5f1a7c..65cf5e9 100644
+--- a/src/probes/oops_parser.c
++++ b/src/probes/oops_parser.c
+@@ -148,6 +148,12 @@ struct oops_pattern oops_patterns_arr[] = {
+                 TM_MEDIUM,
+                 false,
+         },
++	{
++		"Kernel panic",
++		"org.clearlinux/kernel/bug",
++		TM_CRITICAL,
++		false,
++	},
+ };
+
+ int oops_patterns_cnt = sizeof(oops_patterns_arr) / sizeof(struct oops_pattern);
+--
+1.9.1

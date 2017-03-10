@@ -1,0 +1,33 @@
+From 649e5e1b103bddf57e24f996bc42538487eec762 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Tue, 18 Oct 2016 12:51:51 -0700
+Subject: [PATCH] Start telemetrics daemon after network
+
+Currently, at boot time, it is non deterministic which comes up first, the
+telemetrics daemon or the network. Since the telemetrics daemon requires
+the network to function, we must ensure network comes up before it.
+
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
+---
+ src/data/telemd.service.in | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/data/telemd.service.in b/src/data/telemd.service.in
+index 17cb1bc..6250b0f 100644
+--- a/src/data/telemd.service.in
++++ b/src/data/telemd.service.in
+@@ -1,9 +1,11 @@
+ [Unit]
+ Description=Telemetrics Daemon
+ ConditionPathExists=!/etc/telemetrics/opt-out
++Before=luv-test-manager.service
++After=networking.service
+
+ [Service]
+-ExecStart=@bindir@/telemd
++ExecStart=@bindir@/telemd -f /usr/share/defaults/telemetrics/telemetrics.conf
+ WorkingDirectory=@localstatedir@/spool/telemetry
+ User=telemetry
+
+--
+1.9.1

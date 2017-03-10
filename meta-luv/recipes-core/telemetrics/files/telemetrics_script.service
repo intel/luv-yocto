@@ -1,0 +1,11 @@
+[Unit]
+Description=should telemetrics run
+Before=hprobe.service telemd.service luv-test-manager.service
+After=luv-netconsole.service
+
+[Service]
+Type=oneshot
+ExecStart=@SBINDIR@/telemetrics_runner
+
+[Install]
+WantedBy=multi-user.target

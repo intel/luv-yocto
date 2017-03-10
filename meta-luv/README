@@ -221,6 +221,10 @@ to alter the default behaviour of LUV.
   luv.poweroff
     Halts and powers off the machine after tests have completed.
     (Calls /sbin/poweroff)
+  luv.telemetrics
+    User wants to enable the telemetrics feature. By doing so, they are
+    agreeing to send data to our server for further analysis.By default,
+    feature is disabled.
   luv.crash
     This kernel parameter will tell us if we are in a regular boot.If so,
     we have to prepare everything in case there is a kernel crash in the

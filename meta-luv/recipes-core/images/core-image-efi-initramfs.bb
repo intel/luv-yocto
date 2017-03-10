@@ -12,7 +12,7 @@ IMAGE_INSTALL = "\
     "
 
 X86_ADDITIONS = "chipsec python-codecs python-subprocess vmcore-dmesg bits \
-                 kernel-modules"
+                 kernel-modules telemetrics"
 
 IMAGE_INSTALL_append_qemux86 = "${X86_ADDITIONS}"
 IMAGE_INSTALL_append_qemux86-64 = "${X86_ADDITIONS} ndctl"
