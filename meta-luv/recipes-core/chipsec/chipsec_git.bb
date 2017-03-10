@@ -10,6 +10,7 @@ SRC_URI = "git://github.com/chipsec/chipsec.git \
     file://0001-drivers-linux-Do-not-host-system-s-kernel-source-dir.patch \
     file://chipsec file://luv-parser-chipsec \
     file://0001-chipsec-building-for-32-bit-systems.patch \
+    file://0001-chipsec-do-not-ship-manual.patch \
     "
 
 SRCREV="2fbb7a4eeb3752998dfbcbdf771cd3f8ed1985ae"
