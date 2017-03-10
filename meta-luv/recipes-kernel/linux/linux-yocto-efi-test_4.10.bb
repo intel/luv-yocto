@@ -72,7 +72,6 @@ SRC_URI += "file://0001-Add-function-to-fixup-page-faults-in-BOOT_SERVICES_-.pat
            "
 # These patches are under discussion on ML
 SRC_URI += "file://0001-serial-SPCR-check-bit-width-for-the-16550-UART.patch  \
-            file://0001-serial-pl011-add-console-matching-function.patch \
            "
 
 COMMON_CFG_x86 = " file://${MACHINE}/defconfig \
@@ -100,13 +99,13 @@ SRC_URI_append_aarch64 = " file://qemuarm64/defconfig \
 
 # Override KCONFIG_MODE to '--alldefconfig' from the default '--allnoconfig'
 KCONFIG_MODE = '--alldefconfig'
-LINUX_VERSION ?= "4.9"
+LINUX_VERSION ?= "4.10"
 LINUX_VERSION_EXTENSION ?= "-efitest"
 
 # Override SRCREV to point to a different commit in a bbappend file to
 # build a different release of the Linux kernel.
-# tag: v4.9 69973b830859bc6529a7a0468ba0d80ee5117826
-SRCREV = "69973b830859bc6529a7a0468ba0d80ee5117826"
+# tag: v4.10 c470abd4fde40ea6a0846a2beab642a578c0b8cd
+SRCREV = "c470abd4fde40ea6a0846a2beab642a578c0b8cd"
 
 PR = "r5"
 PV = "${LINUX_VERSION}+git${SRCPV}"
