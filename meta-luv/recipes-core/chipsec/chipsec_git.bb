@@ -60,14 +60,6 @@ do_patch_append() {
     bb.build.exec_func('fix_kernel_source_dir', d)
 }
 
-do_compile_prepend() {
-    cd ${S}/source/tool
-}
-
-do_install_prepend() {
-    cd ${S}/source/tool
-}
-
 do_install_append() {
     install -d ${D}${bindir}
     install -m 0755 ${WORKDIR}/chipsec ${D}${bindir}
@@ -75,5 +67,4 @@ do_install_append() {
 
 LUV_TEST_LOG_PARSER="luv-parser-chipsec"
 
-FILES_${PN} += "/lib/modules/${KERNEL_VERSION}/extra/chipsec.ko"
 FILES_${PN}-dbg +="${libdir}/${PYTHON_DIR}/site-packages/${PN}/helper/linux/.debug"
