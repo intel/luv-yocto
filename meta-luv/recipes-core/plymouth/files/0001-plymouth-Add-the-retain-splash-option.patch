@@ -1,0 +1,32 @@
+From ae1b291c3b4e8fce621aa3ed2b405cab22695baa Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Mon, 1 Aug 2016 22:28:05 -0700
+Subject: [PATCH] plymouth : Add the retain-splash option
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+After plymouth exits and the kernel has booted fully, we get to the login
+screen and the contents of the boot splash is wiped off. Hence, add the
+–retain-splash” option which tells plymouth to keep the boot splash’s
+contents on screen even after plymouth exits.
+
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
+---
+ .../0.9.2-r0/plymouth-0.9.2/systemd-units/plymouth-quit.service.in      | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/systemd-units/plymouth-quit.service.in b/systemd-units/plymouth-quit.service.in
+index cf9901e..5f65afc 100644
+--- a/systemd-units/plymouth-quit.service.in
++++ b/systemd-units/plymouth-quit.service.in
+@@ -3,6 +3,6 @@ Description=Terminate Plymouth Boot Screen
+ After=rc-local.service plymouth-start.service systemd-user-sessions.service
+
+ [Service]
+-ExecStart=-@PLYMOUTH_CLIENT_DIR@/plymouth quit
++ExecStart=-@PLYMOUTH_CLIENT_DIR@/plymouth quit --retain-splash
+ Type=oneshot
+ TimeoutSec=20
+--
+1.9.1

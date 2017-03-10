@@ -7,6 +7,11 @@
 #####################################################################
 
 # Gather results in a compressed tarball
+
+plymouth_write() {
+    /bin/plymouth display-message --text="{1}"
+}
+
 get_tar_luv_results()
 {
     grep -q luv_storage /proc/cmdline
@@ -26,20 +31,10 @@ get_luv_url()
     valid_exp='(https?|ftp|file)://[-A-Za-z0-9\+&@#/%?=~_|!:,.;]*[-A-Za-z0-9\+&@#/%=~_|]'
     if ! [[ ${storage_url} =~ $valid_exp ]] ; then
         echo $alert_url_missing
-        psplash_write "MSG $alert_url_missing"
-        if [ -e $FIFO ]; then
-            umount -l /mnt/.psplash
-        fi
+	plymouth_write "MSG $alert_url_missing"
+        halt
     else
         return 0
-    fi
-}
-
-
-FIFO="/mnt/.psplash/psplash_fifo"
-psplash_write() {
-    if [ -e $FIFO ]; then
-        echo $1 > $FIFO
     fi
 }
 

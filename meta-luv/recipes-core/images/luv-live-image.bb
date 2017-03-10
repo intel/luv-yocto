@@ -11,11 +11,20 @@ INITRD_IMAGE_LIVE = "core-image-efi-initramfs"
 IMGDEPLOYDIR = "${DEPLOY_DIR_IMAGE}"
 MACHINE_FEATURES += "efi"
 
+# Tell plymouth to ignore serial consoles and limit the amount of systemD logs.
+CMDLINE_USERSPACE = "systemd.log_target=null plymouth.ignore-serial-consoles"
+
 # Kernel commandline for luv live image boot
-CMDLINE = "debug crashkernel=256M ip=dhcp log_buf_len=1M efi=debug psplash=false"
+CMDLINE = "${CMDLINE_USERSPACE} debug crashkernel=256M ip=dhcp log_buf_len=1M efi=debug"
+
+COMMON_CMDLINE_x86 = " console=ttyS0,115200 console=ttyPCH0,115200"
+
+# A splash screen is never seen on ARM. Hence, having the splash parameter only for x86
+# Nomodeset will not allow kernel to load video drivers, helps retaining splash screen.
+COMMON_CMDLINE_x86 += "splash nomodeset"
+
 # Unlike the += operand, _append's do not insert a space between the current value
 # and the appended string. Thus, we add them.
-COMMON_CMDLINE_x86 = " console=ttyS0,115200 console=ttyPCH0,115200"
 CMDLINE_append_aarch64 = " acpi=on"
 CMDLINE_append_x86 = "${COMMON_CMDLINE_x86}"
 CMDLINE_append_x86-64 = "${COMMON_CMDLINE_x86}"

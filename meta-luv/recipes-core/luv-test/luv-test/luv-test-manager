@@ -39,11 +39,12 @@ if [ $? -eq 0 ]; then
     set -v
 fi
 
-FIFO="/mnt/.psplash/psplash_fifo"
-psplash_write() {
-    if [ -e $FIFO ]; then
-	echo $1 > $FIFO
-    fi
+plymouth_write() {
+    /bin/plymouth display-message --text="$1"
+}
+
+plymouth_hide() {
+    /bin/plymouth hide-message --text="$1"
 }
 
 html_start()
@@ -97,11 +98,8 @@ html_finish()
 if [ -z ${LUVNETBOOT} ]; then
     ls /dev/disk/by-uuid | grep -q ${LUV_STORAGE_UUID}
     if [ $? -eq 1 ] ; then
-        psplash_write " MSG $alert_missing_partition "
-        if [ -e $FIFO ]; then
-            umount -l /mnt/.psplash
-        fi
-        exit
+        plymouth_write "$alert_missing_partition"
+        halt
     fi
 
     mkdir -p ${LUV_STORAGE}
@@ -112,11 +110,8 @@ if [ -z ${LUVNETBOOT} ]; then
             # check if there is enough space on disk
             m=$(df | grep ${LUV_STORAGE} | awk '{print $4}')
             if [ $m -le ${LUV_STORAGE_MIN_AVAIL} ] ; then
-                psplash_write " MSG $alert_disk_is_full "
-                if [ -e $FIFO ]; then
-                    umount -l /mnt/.psplash
-                fi
-                exit
+                plymouth_write "$alert_disk_is_full"
+                halt
             fi
         fi
     fi
@@ -151,7 +146,7 @@ if [ ! -z ${LUVDEBUG} ]; then
 fi
 
 
-psplash_write "MSG Running tests..."
+plymouth_write "Running tests..."
 
 luv_version=$(cut -d\\ -f1 /etc/issue)
 
@@ -179,12 +174,6 @@ mkdir -p ${LUV_LOG_DIR}
 # We need to export LUV_HTML_REPORT to be consumed by the LUV test parser
 export LUV_HTML_REPORT=${LUV_SAVE_RESULTS_DIR}/luv.html
 html_start ${LUV_HTML_REPORT}
-#
-# We can't get very accurate progress because we've no way of knowing
-# how many unit tests each test suite includes. Use a coarse-grained
-# progress step based on the number of test suites.
-#
-psplash_write "PROGRESS 0"
 
 # Begin the results files by stating the version of luv
 cat <<EOF | html_inline ${LUV_HTML_REPORT} | tee /dev/kmsg \
@@ -220,14 +209,26 @@ parse_line()
 
 runner_list=`ls -A ${LUV_TESTS_DIR}`
 
+# We can't get very accurate progress because we've no way of knowing
+# how many unit tests each test suite includes. Use a coarse-grained
+# progress step based on the number of test suites. The tests variable
+# tracks the number of test suites which have completed running.
+tests=0
 progress_step="$((100/$(echo $runner_list | wc -w)))"
 for r in $runner_list; do
     runner="${LUV_TESTS_DIR}$r"
+    #We display each test suite running for equal amount of time
+    plymouth_hide "Running tests..."
 
     [ -f "$runner" ] || continue
 
-    psplash_write "PROGRESS $progress_step"
-    psplash_write "MSG Running $r"
+    arr[tests]=$r
+    if [ $tests -ge 1 ]; then
+        plymouth_hide "Running ${arr[$((tests-1))]} ..."
+    fi
+
+    tests=$((tests+1))
+    plymouth_write "Running $r ..."
 
     parser="${LUV_PARSER_DIR}/$r"
     [ -e ${parser} ] || {
@@ -240,6 +241,7 @@ for r in $runner_list; do
               parse_line | \
               tee -a /tmp/luv.results ${LUV_SAVE_RESULTS_DIR}/luv.results
     sync
+    plymouth_hide "Running ${arr[-1]} ..."
 done | awk '/\[\+/  { units += 1 }
     /\[\-/  { suites += 1 }
     /pass/ { passes += 1 }
@@ -248,9 +250,15 @@ done | awk '/\[\+/  { units += 1 }
     /warn/ { warns += $3 }
     END {
 	printf("\nRan %d testsuites and %d unittests, %d passes, %d fails, %d skipped, %d warnings.\n",
-		suites, units, passes, fails, skips, warns)
-    }' | html_inline ${LUV_HTML_REPORT} | tee -a /dev/kmsg /tmp/luv.results \
+		suites, units, passes, fails, skips, warns) > "/tmp/testsuites"
+    }'
+
+cat /tmp/testsuites | html_inline ${LUV_HTML_REPORT} | tee -a /dev/kmsg /tmp/luv.results \
          ${LUV_SAVE_RESULTS_DIR}/luv.results
+
+result=$(cat /tmp/testsuites)
+plymouth_write "$result"
+sleep 2
 
 html_finish ${LUV_HTML_REPORT}
 
@@ -270,17 +278,10 @@ submit_results ${LUV_SAVE_RESULTS_DIR}
 mountpoint -q ${LUV_STORAGE}
 if [ $? -eq 0 ]; then
     umount ${LUV_STORAGE}
-    SAVE_STATUS="Results were saved in your boot media. You may now turn off the system and remove it."
+    plymouth_write "Results were saved in your boot media. You may now turn off the system and remove it."
 else
-    SAVE_STATUS="Results were not saved in storage media."
+    plymouth_write "Results were not saved in storage media."
 fi
-
-[ -e $FIFO ] && {
-    echo "DONE" > $FIFO
-    grep "Ran" /tmp/luv.results | awk '{printf "MSG %s\n%s\n", $0, "'"$SAVE_STATUS"'"}' > $FIFO
-
-    umount -l /mnt/.psplash
-}
 
 grep -q luv.halt /proc/cmdline
 if [ $? -ne 1 ]; then
