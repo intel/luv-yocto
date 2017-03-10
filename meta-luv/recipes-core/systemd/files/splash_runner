@@ -1,0 +1,12 @@
+#!/bin/sh
+#
+# Copyright 2016 Intel Corporation; author Megha Dey
+#
+# Script to create a directory if user wasnts a splash screen
+
+echo "Checking is splash is passed in kernel parameters"
+
+grep -q ' splash ' /proc/cmdline
+if [ $? -eq 1 ]; then
+    mkdir /tmp/splash/
+fi
