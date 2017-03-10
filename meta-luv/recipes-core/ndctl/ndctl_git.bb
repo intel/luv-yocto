@@ -11,7 +11,7 @@ HOMEPAGE = "https://git.kernel.org/cgit/linux/kernel/git/nvdimm/nvdimm.git/tree/
 LICENSE = "GPLv2+"
 LIC_FILES_CHKSUM = "file://COPYING;md5=e66651809cac5da60c8b80e9e4e79e08"
 
-PV = "v55+git${SRCPV}"
+PV = "v56+git${SRCPV}"
 
 RDEPENDS_${PN} = "nvdimm-test"
 COMPATIBLE_HOST='(x86_64).*'
@@ -23,7 +23,7 @@ inherit module-base
 SRC_URI += "git://github.com/pmem/ndctl.git"
 SRC_URI += "file://luv-parser-ndctl"
 SRC_URI += "file://ndctl_runner"
-SRCREV = "1360f38338c7ccf00d872ba64af9a60aa7475b35"
+SRCREV = "78d5421e02272fd068e1637fc2764db3a3776a8a"
 
 S = "${WORKDIR}/git"
 DEPENDS = "virtual/kernel kmod udev"
