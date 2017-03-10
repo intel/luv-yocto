@@ -77,7 +77,6 @@ SRC_URI += "file://0001-x86-efi-Move-efi_bgrt_init-to-early-stage.patch \
 # These patches are under discussion on ML
 SRC_URI += "file://0001-serial-SPCR-check-bit-width-for-the-16550-UART.patch  \
            "
-
 COMMON_CFG_x86 = " file://${MACHINE}/defconfig \
                    file://qemux86/modules.cfg \
                    file://qemux86/display.cfg \
@@ -100,6 +99,9 @@ SRC_URI_append_aarch64 = " file://qemuarm64/defconfig \
                            file://qemuarm64/network.cfg \
                            file://qemuarm64/sbbr.cfg \
                          "
+
+# pstore configs are common to all the supported architectures
+SRC_URI_append = "file://pstore.cfg"
 
 # Override KCONFIG_MODE to '--alldefconfig' from the default '--allnoconfig'
 KCONFIG_MODE = '--alldefconfig'
