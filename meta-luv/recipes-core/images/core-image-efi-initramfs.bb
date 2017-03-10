@@ -10,7 +10,7 @@ IMAGE_INSTALL = "\
     psplash kernel-efi-warnings linux-firmware kexec \
     "
 
-X86_ADDITIONS = "chipsec python-codecs python-subprocess vmcore-dmesg bits \
+X86_ADDITIONS = "python-codecs python-subprocess vmcore-dmesg bits \
                  kernel-modules"
 
 IMAGE_INSTALL_append_qemux86 = "${X86_ADDITIONS}"
