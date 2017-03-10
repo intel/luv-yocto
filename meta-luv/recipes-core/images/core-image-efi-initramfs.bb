@@ -3,7 +3,8 @@ DESCRIPTION = "Small image capable of booting a device and running the suite of 
 EFI tests."
 
 IMAGE_INSTALL = "\
-    base-files base-passwd netbase udev sysvinit initscripts keymaps \
+    base-files base-passwd netbase udev systemd luv-test-manager \
+    luv-test-crash luv-test-netconsole luv-test keymaps \
     kernel-image fwts bash coreutils gawk grep util-linux-agetty \
     util-linux-mount util-linux-umount kmod sed tar net-tools \
     shadow util-linux procps efivarfs-test \

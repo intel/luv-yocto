@@ -1,0 +1,10 @@
+[Unit]
+Description=Run the LUV netconsole
+After=luv-crash-handler.service
+
+[Service]
+Type=oneshot
+ExecStart=@SBINDIR@/luv-netconsole
+
+[Install]
+WantedBy=multi-user.target

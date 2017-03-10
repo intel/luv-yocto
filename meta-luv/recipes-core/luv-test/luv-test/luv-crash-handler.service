@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the LUV crash handler
+Wants=dev-disk-by\x2duuid-05D6\x2d1523.device
+After=dev-disk-by\x2duuid-05D6\x2d1523.device
+
+[Service]
+Type=oneshot
+ExecStart=@SBINDIR@/luv-crash-handler
+
+[Install]
+WantedBy=multi-user.target

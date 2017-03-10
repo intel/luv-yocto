@@ -12,7 +12,7 @@ IMGDEPLOYDIR = "${DEPLOY_DIR_IMAGE}"
 MACHINE_FEATURES += "efi"
 
 # Kernel commandline for luv live image boot
-CMDLINE = "debug crashkernel=256M ip=dhcp log_buf_len=1M efi=debug"
+CMDLINE = "debug crashkernel=256M ip=dhcp log_buf_len=1M efi=debug psplash=false"
 # Unlike the += operand, _append's do not insert a space between the current value
 # and the appended string. Thus, we add them.
 COMMON_CMDLINE_x86 = " console=ttyS0,115200 console=ttyPCH0,115200"

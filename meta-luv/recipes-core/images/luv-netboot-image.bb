@@ -14,7 +14,7 @@ PCBIOS_remove = "1"
 PCBIOS_append = "0"
 
 # Kernel commandline for luv netboot
-CMDLINE = "debug crashkernel=256M ip=dhcp log_buf_len=1M luv.netboot efi=debug"
+CMDLINE = "debug crashkernel=256M ip=dhcp log_buf_len=1M luv.netboot efi=debug psplash=false"
 # Unlike the += operand, _append's do not insert a space between the current value
 # and the appended string. Thus, we add them.
 COMMON_CMDLINE_x86 = " console=ttyS0,115200 console=ttyPCH0,115200"

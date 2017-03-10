@@ -221,6 +221,11 @@ to alter the default behaviour of LUV.
   luv.poweroff
     Halts and powers off the machine after tests have completed.
     (Calls /sbin/poweroff)
+  luv.crash
+    This kernel parameter will tell us if we are in a regular boot.If so,
+    we have to prepare everything in case there is a kernel crash in the
+    future. Unlike the other LUV boot parameters, this one is not intended
+    to be used directly.
 
 VII. Submitting results to a remote location
 ==============================================

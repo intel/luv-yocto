@@ -1,3 +1,4 @@
+#!/bin/bash
 #
 # Copyright 2014 Intel Corporation; author Ricardo Neri
 #
@@ -17,10 +18,12 @@ psplash_write() {
     fi
 }
 
-runl=`runlevel`
-# If we are in runlevel 5, we are on a regular boot and we only have to
-# prepare everything in case there is a kernel crash in the future.
-if [[ $runl == *5* ]]; then
+# The command-line parameter luv.crash tells us if we are in a regular boot.
+# and we only have to prepare everything in case there is a kernel crash in
+# the future.
+
+grep -q luv.crash /proc/cmdline
+if [ $? -eq 1 ]; then
     # Not all disks may be ready to mount at this moment.
     # Thus, we need to wait for them.
     psplash_write "MSG Preparing crash handler..."
@@ -39,17 +42,14 @@ if [[ $runl == *5* ]]; then
         mount ${LUV_DISK_DEVICE} ${LUV_BOOT_PARTITION}
         if [ $? -eq 0 ]; then
             kexec -p --initrd=${LUV_BOOT_PARTITION}initrd --reuse-cmdline \
-                  --append="noluv 3 irqpoll maxcpus=1 reset_devices" \
+                  --append="noluv systemd.unit=graphical.target irqpoll maxcpus=1 reset_devices luv.crash" \
                   ${LUV_BOOT_PARTITION}vmlinuz
             umount ${LUV_BOOT_PARTITION}
         fi
     fi
-fi
-
-# If we are in runlevel 3, we just recovered from a crash. We need to dump
-# the /proc/vmcore file.
-if [[ $runl == *3* ]]; then
-
+else
+# If we have the luv.crash kernel parameter, we just recovered from a crash.
+# We need to dump the /proc/vmcore file.
     LUV_STORAGE=/mnt/luv-storage/
     LUV_PARTITION_UUID=05D6-1523
     LUV_DISK_DEVICE=/dev/disk/by-uuid/${LUV_PARTITION_UUID}
