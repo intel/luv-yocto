@@ -1,0 +1,19 @@
+[Unit]
+Description=Raise network interfaces
+Documentation=man:interfaces(5)
+DefaultDependencies=no
+Wants=network.target systemd-networkd-wait-online.service
+After=local-fs.target network-pre.target apparmor.service systemd-sysctl.service systemd-modules-load.service systemd-udevd.service systemd-networkd-wait-online.service
+Requires=systemd-networkd-wait-online.service
+Before=network.target shutdown.target telemd.service
+Conflicts=shutdown.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStartPre=-/bin/sh -c '[ "$CONFIGURE_INTERFACES" != "no" ] && udevadm settle'
+ExecStart=/sbin/ifup -a
+ExecStop=/sbin/ifdown -a
+RemainAfterExit=true
