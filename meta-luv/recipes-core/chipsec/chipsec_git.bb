@@ -9,13 +9,11 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=8c16666ae6c159876a0ba63099614381"
 SRC_URI = "git://github.com/chipsec/chipsec.git \
     file://0001-drivers-linux-Do-not-host-system-s-kernel-source-dir.patch \
     file://chipsec file://luv-parser-chipsec \
-    file://fix-setup.py-for-Linux.patch \
-    file://chipsec-setup-install-cores-library-under-helper-lin.patch \
     file://0001-chipsec-building-for-32-bit-systems.patch \
-    file://0002-chipsec_km-utilize-inode_lock-unlock-wrappers-for-ne.patch"
+    "
 
-SRCREV="20cc5a30675548a764dadfe0dc677a283816906c"
-PV="1.2.2"
+SRCREV="2fbb7a4eeb3752998dfbcbdf771cd3f8ed1985ae"
+PV="1.2.5+"
 
 DEPENDS = "virtual/kernel python-core nasm-native python-setuptools-native"
 RDEPENDS_${PN} = "python python-shell python-stringold python-xml \
@@ -51,8 +49,8 @@ DISTUTILS_INSTALL_ARGS = "--root=${D}${PYTHON_SITEPACKAGES_DIR} \
     --install-data=${D}/${datadir}"
 
 fix_mod_path() {
-    sed -i -e "s:^INSTALL_MOD_PATH_PREFIX = .*:INSTALL_MOD_PATH_PREFIX = \"${PYTHON_SITEPACKAGES_DIR}\":" ${S}/source/tool/chipsec_main.py
-    sed -i -e "s:PYTHONPATH:${PYTHON_SITEPACKAGES_DIR}:" ${WORKDIR}/chipsec
+    sed -i -e "s:^INSTALL_MOD_PATH_PREFIX = .*:INSTALL_MOD_PATH_PREFIX = \"${PYTHON_SITEPACKAGES_DIR}\":" ${S}/chipsec_main.py
+    sed -i -e "s:PYTHONPATH:${PYTHON_SITEPACKAGES_DIR}/chipsec:" ${WORKDIR}/chipsec
 }
 
 fix_kernel_source_dir() {
