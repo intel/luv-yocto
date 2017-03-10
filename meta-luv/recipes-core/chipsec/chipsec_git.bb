@@ -7,7 +7,7 @@ LICENSE = "GPLv2"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=8c16666ae6c159876a0ba63099614381"
 
 SRC_URI = "git://github.com/chipsec/chipsec.git \
-    file://0006-drivers-linux-Don-t-build-userland-app-automatically.patch \
+    file://0001-drivers-linux-Do-not-host-system-s-kernel-source-dir.patch \
     file://chipsec file://luv-parser-chipsec \
     file://fix-setup.py-for-Linux.patch \
     file://chipsec-setup-install-cores-library-under-helper-lin.patch \
@@ -51,29 +51,17 @@ fix_mod_path() {
     sed -i -e "s:PYTHONPATH:${PYTHON_SITEPACKAGES_DIR}:" ${WORKDIR}/chipsec
 }
 
+fix_kernel_source_dir() {
+    sed -i "s:LUV_KERNEL_SRC_DIR:${STAGING_KERNEL_DIR}:" ${S}/drivers/linux/Makefile
+}
+
 do_patch_append() {
     bb.build.exec_func('fix_mod_path', d)
+    bb.build.exec_func('fix_kernel_source_dir', d)
 }
 
 do_compile_prepend() {
     cd ${S}/source/tool
-}
-
-do_compile_append() {
-    unset CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
-
-    oe_runmake KERNEL_SRC_DIR=${STAGING_KERNEL_DIR}   \
-        KERNEL_VERSION=${KERNEL_VERSION}    \
-        CC="${KERNEL_CC}" LD="${KERNEL_LD}" \
-        AR="${KERNEL_AR}" -C ${STAGING_KERNEL_DIR} \
-        scripts
-
-    oe_runmake KERNEL_SRC_DIR=${STAGING_KERNEL_DIR}   \
-        KERNEL_VERSION=${KERNEL_VERSION}    \
-        CC="${KERNEL_CC}" LD="${KERNEL_LD}" \
-        AR="${KERNEL_AR}" INC="${INC}" -C ${S}/source/drivers/linux
-
-    oe_runmake -C ${S}/source/tool/chipsec/helper/linux
 }
 
 do_install_prepend() {
@@ -81,18 +69,8 @@ do_install_prepend() {
 }
 
 do_install_append() {
-    unset CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
-
     install -d ${D}${bindir}
     install -m 0755 ${WORKDIR}/chipsec ${D}${bindir}
-
-    # Install the kernel driver
-    oe_runmake DEPMOD=echo INSTALL_MOD_PATH="${D}" \
-        KERNEL_SRC=${STAGING_KERNEL_DIR} \
-        CC="${KERNEL_CC}" LD="${KERNEL_LD}" \
-        -C ${STAGING_KERNEL_DIR} \
-        M="${S}/source/drivers/linux" \
-        modules_install
 }
 
 LUV_TEST_LOG_PARSER="luv-parser-chipsec"

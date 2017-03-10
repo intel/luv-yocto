@@ -4,11 +4,6 @@
 #
 # Load the CHIPSEC kernel module and invoke the chipsec main file.
 
-modprobe -q chipsec
-if [ $? -ne 0 ]; then
-    exit 1
-fi
-
 # The below is replaced with the python site packages path during
 # do_patch().
 python PYTHONPATH/chipsec_main.py -i -v
