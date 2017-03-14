@@ -71,6 +71,7 @@ SRC_URI += "file://0001-x86-efi-Move-efi_bgrt_init-to-early-stage.patch \
             file://0006-efi-Allow-efi_mem_desc_lookup-find-illegally-accesse.patch \
             file://0007-x86-efi-Add-function-to-fixup-page-faults-in-illegal.patch \
             file://0008-x86-efi-Fixup-faults-from-UEFI-firmware.patch \
+            file://0009-x86-efi-Introduce-EFI_WARN_ON_ILLEGAL_ACCESSES.patch \
            "
 
 # These patches are under discussion on ML

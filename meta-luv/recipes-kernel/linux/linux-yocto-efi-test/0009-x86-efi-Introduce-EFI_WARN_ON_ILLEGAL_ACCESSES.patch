@@ -1,0 +1,83 @@
+From abb25343b351c72ea4c90afe69a63a2225b7a8a6 Mon Sep 17 00:00:00 2001
+From: Sai Praneeth <sai.praneeth.prakhya@intel.com>
+Date: Fri, 10 Mar 2017 12:21:31 -0800
+Subject: [PATCH 9/9] x86/efi: Introduce EFI_WARN_ON_ILLEGAL_ACCESSES
+
+There may exist buggy implementations of UEFI firmware that access efi
+memory regions like EFI_CONVENTIONAL_MEMORY, EFI_LOADER_CODE/DATA and
+EFI_BOOT_SERVICES_CODE/DATA regions after the call to ExitBootServices()
+(e.g., when calling SetVirtualAddressMap() or while executing some
+efi_runtime_service()). This is in direct violation of the UEFI
+specification.
+
+If selected, this debug option will print a warning message if the UEFI
+firmware tries to access the aforementioned memory regions. Along with
+the warning, the kernel will fixup the page fault so that the firmware
+can proceed further.
+
+If not selected, EFI_BOOT_SERVICES_CODE/DATA memory regions will be
+mapped along with the runtime memory regions so that the buggy firmware
+does not cause any page faults when accessing such memory regions. This
+is the approach from Matthew Garrett in commit 916f676f8dc0 ("x86, efi:
+Retain boot service code until after switching to virtual mode").
+
+However, firmware developers are less likely to find and avoid such
+illegal access as the kernel silently works around their bug.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Signed-off-by: Sai Praneeth Prakhya <sai.praneeth.prakhya@intel.com>
+Cc: Lee, Chun-Yi <jlee@suse.com>
+Cc: Borislav Petkov <bp@alien8.de>
+Cc: Fenghua Yu <fenghua.yu@intel.com>
+Cc: Ravi Shankar <ravi.v.shankar@intel.com>
+Cc: Matt Fleming <matt@codeblueprint.co.uk>
+Cc: Ard Biesheuvel <ard.biesheuvel@linaro.org>
+---
+ arch/x86/Kconfig            | 12 ++++++++++++
+ arch/x86/platform/efi/efi.c |  4 ++++
+ 2 files changed, 16 insertions(+)
+
+diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
+index e487493bbd47..51dacb7c4ef9 100644
+--- a/arch/x86/Kconfig
++++ b/arch/x86/Kconfig
+@@ -1815,6 +1815,18 @@ config EFI_MIXED
+ 
+ 	   If unsure, say N.
+ 
++config EFI_WARN_ON_ILLEGAL_ACCESSES
++	bool "Warn about illegal accesses to efi memory regions"
++	depends on EFI
++	---help---
++	   Enable this debug feature to make the kernel issue a warning if
++	   memory regions marked other than EFI_RUNTIME_CODE/DATA are
++	   accessed after the kernel calls ExitBootServices() on the
++	   firmware. Please see the UEFI specification for details on
++	   the expectations of memory usage.
++
++	   If unsure, say N.
++
+ config SECCOMP
+ 	def_bool y
+ 	prompt "Enable seccomp to safely compute untrusted bytecode"
+diff --git a/arch/x86/platform/efi/efi.c b/arch/x86/platform/efi/efi.c
+index 5015d5c57af6..3e803f04a55a 100644
+--- a/arch/x86/platform/efi/efi.c
++++ b/arch/x86/platform/efi/efi.c
+@@ -771,9 +771,13 @@ static bool should_map_region(efi_memory_desc_t *md)
+ 	/*
+ 	 * Map boot services regions as a workaround for buggy
+ 	 * firmware that accesses them even when they shouldn't.
++	 * (only if CONFIG_EFI_WARN_ON_ILLEGAL_ACCESSES is disabled)
+ 	 *
+ 	 * See efi_{reserve,free}_boot_services().
+ 	 */
++	if (IS_ENABLED(CONFIG_EFI_WARN_ON_ILLEGAL_ACCESSES))
++		return false;
++
+ 	if (md->type == EFI_BOOT_SERVICES_CODE ||
+ 	    md->type == EFI_BOOT_SERVICES_DATA)
+ 		return true;
+-- 
+2.1.4
+
