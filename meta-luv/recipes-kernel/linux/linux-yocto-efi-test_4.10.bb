@@ -69,6 +69,7 @@ SRC_URI += "file://0001-x86-efi-Move-efi_bgrt_init-to-early-stage.patch \
             file://0004-x86-efi-Save-EFI_MEMORY_MAP-passed-by-firmware-perma.patch \
             file://0005-x86-efi-Copy-support-functions-to-install-uninstall-.patch \
             file://0006-efi-Allow-efi_mem_desc_lookup-find-illegally-accesse.patch \
+            file://0007-x86-efi-Add-function-to-fixup-page-faults-in-illegal.patch \
            "
 
 # These patches are under discussion on ML
