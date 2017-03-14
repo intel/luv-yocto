@@ -66,6 +66,7 @@ SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git;prot
 SRC_URI += "file://0001-x86-efi-Move-efi_bgrt_init-to-early-stage.patch \
             file://0002-x86-mm-Allocate-pages-without-sleeping.patch \
             file://0003-x86-efi-remove-__init-attribute-from-memory-mapping-.patch \
+            file://0004-x86-efi-Save-EFI_MEMORY_MAP-passed-by-firmware-perma.patch \
            "
 
 # These patches are under discussion on ML

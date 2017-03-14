@@ -1,0 +1,125 @@
+From d3473ff385bc9a6b4b6d67633d186494d0fa3980 Mon Sep 17 00:00:00 2001
+From: Sai Praneeth <sai.praneeth.prakhya@intel.com>
+Date: Fri, 10 Mar 2017 11:55:12 -0800
+Subject: [PATCH 4/9] x86/efi: Save EFI_MEMORY_MAP passed by firmware
+ permanently
+
+When CONFIG_EFI_WARN_ON_ILLEGAL_ACCESSES is enabled, in order to fixup
+page faults we need the original memory map passed by firmware. We look
+up this memory map to find a memory descriptor that describes the memory
+region that the page fault occurred at. Presently, we discard the
+original memory map passed by firmware and replace it with a new memory
+map that has only EFI_RUNTIME regions. But illegal accesses by firmware
+can occur at any region, hence, create a backup of original memory map,
+so that we can fix *any* illegal accesses to efi regions.
+
+Signed-off-by: Sai Praneeth Prakhya <sai.praneeth.prakhya@intel.com>
+Cc: Lee, Chun-Yi <jlee@suse.com>
+Cc: Borislav Petkov <bp@alien8.de>
+Cc: Fenghua Yu <fenghua.yu@intel.com>
+Cc: Ravi Shankar <ravi.v.shankar@intel.com>
+Cc: Matt Fleming <matt@codeblueprint.co.uk>
+Cc: Ard Biesheuvel <ard.biesheuvel@linaro.org>
+CC: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ arch/x86/include/asm/efi.h     |  9 +++++++++
+ arch/x86/platform/efi/efi.c    |  3 +++
+ arch/x86/platform/efi/quirks.c | 44 ++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 56 insertions(+)
+
+diff --git a/arch/x86/include/asm/efi.h b/arch/x86/include/asm/efi.h
+index b5291b7452d1..8aaa269fb859 100644
+--- a/arch/x86/include/asm/efi.h
++++ b/arch/x86/include/asm/efi.h
+@@ -164,6 +164,15 @@ extern void parse_efi_setup(u64 phys_addr, u32 data_len);
+ 
+ extern void efifb_setup_from_dmi(struct screen_info *si, const char *opt);
+ 
++extern phys_addr_t orig_new_phys;
++extern int orig_num_entries;
++
++#ifdef CONFIG_EFI_WARN_ON_ILLEGAL_ACCESSES
++extern void __init efi_save_orig_memmap(void);
++#else
++static inline void __init efi_save_orig_memmap(void) { }
++#endif /* CONFIG_EFI_WARN_ON_ILLEGAL_ACCESSES */
++
+ #ifdef CONFIG_EFI_MIXED
+ extern void efi_thunk_runtime_setup(void);
+ extern efi_status_t efi_thunk_set_virtual_address_map(
+diff --git a/arch/x86/platform/efi/efi.c b/arch/x86/platform/efi/efi.c
+index d371dce423fc..5015d5c57af6 100644
+--- a/arch/x86/platform/efi/efi.c
++++ b/arch/x86/platform/efi/efi.c
+@@ -947,6 +947,9 @@ static void __init __efi_enter_virtual_mode(void)
+ 
+ 	pa = __pa(new_memmap);
+ 
++	if (IS_ENABLED(CONFIG_EFI_WARN_ON_ILLEGAL_ACCESSES))
++		efi_save_orig_memmap();
++
+ 	/*
+ 	 * Unregister the early EFI memmap from efi_init() and install
+ 	 * the new EFI memory map that we are about to pass to the
+diff --git a/arch/x86/platform/efi/quirks.c b/arch/x86/platform/efi/quirks.c
+index 30031d5293c4..5279be03f7ad 100644
+--- a/arch/x86/platform/efi/quirks.c
++++ b/arch/x86/platform/efi/quirks.c
+@@ -22,6 +22,8 @@
+ static efi_char16_t efi_dummy_name[6] = { 'D', 'U', 'M', 'M', 'Y', 0 };
+ 
+ static bool efi_no_storage_paranoia;
++phys_addr_t orig_new_phys = 0x0;
++int orig_num_entries = 0;
+ 
+ /*
+  * Some firmware implementations refuse to boot if there's insufficient
+@@ -495,3 +497,45 @@ bool efi_poweroff_required(void)
+ {
+ 	return acpi_gbl_reduced_hardware || acpi_no_s5;
+ }
++
++#ifdef CONFIG_EFI_WARN_ON_ILLEGAL_ACCESSES
++void __init efi_save_orig_memmap(void)
++{
++	phys_addr_t new_phys, new_size;
++	efi_memory_desc_t *md;
++	int num_entries = 0;
++	void *new, *new_md;
++
++	for_each_efi_memory_desc(md) {
++		num_entries++;
++	}
++
++	new_size = efi.memmap.desc_size * num_entries;
++	new_phys = efi_memmap_alloc(num_entries);
++	if (!new_phys) {
++		pr_err("Failed to allocate new EFI memmap\n");
++		return;
++	}
++
++	new = memremap(new_phys, new_size, MEMREMAP_WB);
++	if (!new) {
++		pr_err("Failed to map new EFI memmap\n");
++		return;
++	}
++
++	/*
++	 * Build a new EFI memmap that has *all* entries of original memory
++	 * map, because we need these entries to dynamically fixup page
++	 * faults caused by illegal accesses from firmware.
++	 */
++	new_md = new;
++	for_each_efi_memory_desc(md) {
++		memcpy(new_md, md, efi.memmap.desc_size);
++		new_md += efi.memmap.desc_size;
++	}
++
++	memunmap(new);
++	orig_new_phys = new_phys;
++	orig_num_entries = num_entries;
++}
++#endif /* CONFIG_EFI_WARN_ON_ILLEGAL_ACCESSES */
+-- 
+2.1.4
+
