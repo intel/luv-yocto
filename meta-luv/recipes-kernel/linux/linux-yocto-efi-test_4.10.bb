@@ -61,6 +61,11 @@ KERNEL_FEATURES_remove= " features/debug/printk.scc"
 # tree if you do not want to build from Linus' tree.
 SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git;protocol=git;branch=${KBRANCH};name=machine"
 
+# Detect illegal accesses to EFI regions (like EFI_CONVENTIONAL_MEMORY,
+# EFI_LOADER_CODE/DATA, EFI_BOOT_SERVICES_CODE/DATA) by firmware.
+SRC_URI += "file://0001-x86-efi-Move-efi_bgrt_init-to-early-stage.patch \
+           "
+
 # These patches are under discussion on ML
 SRC_URI += "file://0001-serial-SPCR-check-bit-width-for-the-16550-UART.patch  \
            "
