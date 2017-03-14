@@ -65,6 +65,7 @@ SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git;prot
 # EFI_LOADER_CODE/DATA, EFI_BOOT_SERVICES_CODE/DATA) by firmware.
 SRC_URI += "file://0001-x86-efi-Move-efi_bgrt_init-to-early-stage.patch \
             file://0002-x86-mm-Allocate-pages-without-sleeping.patch \
+            file://0003-x86-efi-remove-__init-attribute-from-memory-mapping-.patch \
            "
 
 # These patches are under discussion on ML
