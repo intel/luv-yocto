@@ -1,0 +1,60 @@
+From f1a1c51e38d9912250f96b9e208a213e8958f73a Mon Sep 17 00:00:00 2001
+From: Sai Praneeth <sai.praneeth.prakhya@intel.com>
+Date: Thu, 9 Mar 2017 20:11:12 -0800
+Subject: [PATCH 8/9] x86/efi: Fixup faults from UEFI firmware
+
+Firmware may try to access illegal efi memory regions even after
+those regions were surrendered to kernel for its own consumption. Fix
+that up.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Signed-off-by: Sai Praneeth Prakhya <sai.praneeth.prakhya@intel.com>
+Cc: Lee, Chun-Yi <jlee@suse.com>
+Cc: Borislav Petkov <bp@alien8.de>
+Cc: Fenghua Yu <fenghua.yu@intel.com>
+Cc: Ravi Shankar <ravi.v.shankar@intel.com>
+Cc: Matt Fleming <matt@codeblueprint.co.uk>
+Cc: Ard Biesheuvel <ard.biesheuvel@linaro.org>
+---
+ arch/x86/mm/fault.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/arch/x86/mm/fault.c b/arch/x86/mm/fault.c
+index e3254ca0eec4..fa3f8110a2f6 100644
+--- a/arch/x86/mm/fault.c
++++ b/arch/x86/mm/fault.c
+@@ -14,6 +14,7 @@
+ #include <linux/prefetch.h>		/* prefetchw			*/
+ #include <linux/context_tracking.h>	/* exception_enter(), ...	*/
+ #include <linux/uaccess.h>		/* faulthandler_disabled()	*/
++#include <linux/efi.h>			/* fixup for buggy UEFI firmware*/
+ 
+ #include <asm/cpufeature.h>		/* boot_cpu_has, ...		*/
+ #include <asm/traps.h>			/* dotraplinkage, ...		*/
+@@ -23,6 +24,7 @@
+ #include <asm/vsyscall.h>		/* emulate_vsyscall		*/
+ #include <asm/vm86.h>			/* struct vm86			*/
+ #include <asm/mmu_context.h>		/* vma_pkey()			*/
++#include <asm/efi.h>			/* fixup for buggy UEFI firmware*/
+ 
+ #define CREATE_TRACE_POINTS
+ #include <asm/trace/exceptions.h>
+@@ -802,6 +804,15 @@ no_context(struct pt_regs *regs, unsigned long error_code,
+ 		return;
+ 
+ 	/*
++	 * Try to fixup faults caused by illegal accesses to efi regions by
++	 * UEFI firmware.
++	 */
++	if (IS_ENABLED(CONFIG_EFI_WARN_ON_ILLEGAL_ACCESSES)) {
++		if (efi_illegal_accesses_fixup(address))
++			return;
++	}
++
++	/*
+ 	 * Oops. The kernel tried to access some bad page. We'll have to
+ 	 * terminate things with extreme prejudice:
+ 	 */
+-- 
+2.1.4
+
