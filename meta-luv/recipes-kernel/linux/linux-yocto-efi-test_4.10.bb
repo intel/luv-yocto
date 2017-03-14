@@ -64,6 +64,7 @@ SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git;prot
 # Detect illegal accesses to EFI regions (like EFI_CONVENTIONAL_MEMORY,
 # EFI_LOADER_CODE/DATA, EFI_BOOT_SERVICES_CODE/DATA) by firmware.
 SRC_URI += "file://0001-x86-efi-Move-efi_bgrt_init-to-early-stage.patch \
+            file://0002-x86-mm-Allocate-pages-without-sleeping.patch \
            "
 
 # These patches are under discussion on ML
