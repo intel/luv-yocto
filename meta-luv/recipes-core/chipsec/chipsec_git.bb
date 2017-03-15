@@ -54,6 +54,8 @@ export CHIPSEC_ARCH = "${@get_target_arch(d)}"
 DISTUTILS_INSTALL_ARGS = "--root=${D}${PYTHON_SITEPACKAGES_DIR} \
     --install-data=${D}/${datadir}"
 
+DISTUTILS_BUILD_ARGS = "--build-lib=${TARGET_ARCH}"
+
 fix_mod_path() {
     sed -i -e "s:^INSTALL_MOD_PATH_PREFIX = .*:INSTALL_MOD_PATH_PREFIX = \"${PYTHON_SITEPACKAGES_DIR}\":" ${S}/chipsec_main.py
     sed -i -e "s:PYTHONPATH:${PYTHON_SITEPACKAGES_DIR}/chipsec:" ${WORKDIR}/chipsec
