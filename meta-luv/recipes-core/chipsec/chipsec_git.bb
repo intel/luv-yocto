@@ -28,6 +28,10 @@ inherit python-dir
 inherit distutils
 inherit luv-test
 
+addtask make_scripts after do_patch before do_compile
+do_make_scripts[lockfiles] = "${TMPDIR}/kernel-scripts.lock"
+do_make_scripts[depends] += "virtual/kernel:do_shared_workdir"
+
 S = "${WORKDIR}/git"
 
 export INC = "-I${STAGING_INCDIR}/${PYTHON_DIR}"
