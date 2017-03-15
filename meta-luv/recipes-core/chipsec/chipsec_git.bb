@@ -86,6 +86,11 @@ do_install_append() {
     cd ${D}${PYTHON_SITEPACKAGES_DIR}
     ls | grep -v chipsec | xargs rm -fr
     cd $OLDPWD
+
+    if [ ! "${TARGET_ARCH}" = "x86_64" ]; then
+        rm ${D}${PYTHON_SITEPACKAGES_DIR}/${PN}/chipsec_tools/linux/LzmaCompress.bin
+        rm ${D}${PYTHON_SITEPACKAGES_DIR}/${PN}/chipsec_tools/linux/TianoCompress.bin
+    fi
 }
 
 LUV_TEST_LOG_PARSER="luv-parser-chipsec"
