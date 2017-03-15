@@ -1,0 +1,40 @@
+From 4df09a6f905c9e1cf8c65235ff309ac7bebcc6eb Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Wed, 15 Mar 2017 12:00:57 -0700
+Subject: [PATCH] setup.py: give CPU architecture to the driver's Makefile
+
+Driver is built differently depending on whether it is built for
+32-bit or 64-bit x86 archs. Thus, we need to pass the desired
+CPU architecture. This can be done by reading the environment
+variable CHIPSEC_ARCH. This could be done more nicely by adding
+a new variable to build_ext, though.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ setup.py | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/setup.py b/setup.py
+index fb0da43..e09eaa6 100644
+--- a/setup.py
++++ b/setup.py
+@@ -68,13 +68,14 @@ class build_ext(_build_ext):
+         self.set_undefined_options("build", ("skip_driver", "skip_driver"))
+ 
+     def _build_linux_driver(self):
+-        log.info("building the linux driver")
++        arch = os.environ["CHIPSEC_ARCH"]
++        log.info("building the linux driver for arch " + arch)
+         build_driver = os.path.join(self.real_build_lib, "drivers", "linux")
+         ko_ext = os.path.join(build_driver, "chipsec.ko")
+         # We copy the drivers extension to the build directory.
+         self.copy_tree(os.path.join("drivers", "linux"), build_driver)
+         # Run the makefile there.
+-        subprocess.check_output(["make", "-C", build_driver])
++        subprocess.check_output(["make", "ARCH="+arch, "-C", build_driver])
+         # And copy the resulting .ko to the right place.
+         # That is to the source directory if we are in "develop" mode,
+         # otherwise to the helper subdirectory in the build directory.
+-- 
+2.9.3
+

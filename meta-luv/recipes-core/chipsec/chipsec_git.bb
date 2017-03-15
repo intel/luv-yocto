@@ -11,6 +11,7 @@ SRC_URI = "git://github.com/chipsec/chipsec.git \
     file://chipsec file://luv-parser-chipsec \
     file://0001-chipsec-building-for-32-bit-systems.patch \
     file://0001-chipsec-do-not-ship-manual.patch \
+    file://0001-setup.py-give-CPU-architecture-to-the-driver-s-Makef.patch \
     "
 
 SRCREV="2fbb7a4eeb3752998dfbcbdf771cd3f8ed1985ae"
@@ -48,7 +49,7 @@ def get_target_arch(d):
  else:
     raise bb.parse.SkipPackage("TARGET_ARCH %s not supported!" % target)
 
-EXTRA_OEMAKE += "ARCH="${@get_target_arch(d)}""
+export CHIPSEC_ARCH = "${@get_target_arch(d)}"
 
 DISTUTILS_INSTALL_ARGS = "--root=${D}${PYTHON_SITEPACKAGES_DIR} \
     --install-data=${D}/${datadir}"
