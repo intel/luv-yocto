@@ -1,6 +1,7 @@
 [Unit]
 Description=Run the LUV netconsole
 After=luv-crash-handler.service
+Before=klogscanner.service
 
 [Service]
 Type=oneshot
