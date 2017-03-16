@@ -37,14 +37,16 @@ if [ $? -ne 0 ]; then
 fi
 
 
-# Check if the kernel had to fixup page faults caused by the firmware accessing
-# BOOT_SERVICES_DATA/CODE memory regions after ExitBootServices() has been called
-# kernel message we use to find the illegal accesses:
-#            efi: Fixing illegal access to BOOT_SERVICES_*. Bug in EFI firmware?
+# Check if the kernel had to fixup page faults caused by the firmware
+# accessing memory regions like EFI_BOOT_SERVICES_DATA/CODE,
+# EFI_CONVENTIONAL_MEMORY, EFI_LOADER_DATA/CODE after ExitBootServices()
+# has been called. The kernel message we use to find the illegal
+# accesses is: "efi: [Firmware Bug]: Fixing illegal access to EFI region
+# at PA:"
 
-TEST="EFI_BOOT_SERVICES_*_illegal_access"
-PTTRN="efi: Fixing illegal access to BOOT_SERVICES_\*. Bug in EFI firmware?"
-DESC="Check for illegal accesses to BOOT_SERVICES_* memory regions."
+TEST="EFI_illegal_accesses_test"
+PTTRN="efi: \[Firmware Bug\]: Fixing illegal access to EFI region at PA: "
+DESC="Check for illegal accesses to EFI memory regions."
 
 test_dmesg "${TEST}" "${DESC}" "${PTTRN}"
 
