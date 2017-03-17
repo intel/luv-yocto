@@ -26,14 +26,14 @@ do_unpack_append() {
     bb.build.exec_func('unpack_test_code', d)
 }
 unpack_test_code() {
-    mkdir -p ${S}/tools/testing/selftests/efivarfs
-    cp -pRv ${STAGING_KERNEL_DIR}/tools/testing/selftests/efivarfs/* ${S}/tools/testing/selftests/efivarfs
-    cp -pRv ${STAGING_KERNEL_DIR}/tools/testing/selftests/lib.mk ${S}/tools/testing/selftests
+    mkdir -p ${S}/src/efivarfs
+    cp -pRv ${STAGING_KERNEL_DIR}/tools/testing/selftests/efivarfs/* ${S}/src/efivarfs
+    cp -pRv ${STAGING_KERNEL_DIR}/tools/testing/selftests/lib.mk ${S}/src
 }
 
 EXTRA_OEMAKE = " \
     CC='${CC}' \
-    -C ${S}/tools/testing/selftests/efivarfs"
+    -C ${S}/src/efivarfs"
 
 # This is to just to satisfy the compilation error
 #I am not sure why I am getting this
@@ -41,8 +41,8 @@ FILES_${PN}-dbg += "/usr/share/efivarfs-test/.debug"
 
 do_configure_prepend() {
     # We need to ensure the --sysroot option in CC is preserved
-    if [ -e "${S}/tools/testing/selftests/efivarfs/Makefile" ]; then
-        sed -i 's,CC = $(CROSS_COMPILE)gcc,#CC,' ${S}/tools/testing/selftests/efivarfs/Makefile
+    if [ -e "${S}/src/efivarfs/Makefile" ]; then
+        sed -i 's,CC = $(CROSS_COMPILE)gcc,#CC,' ${S}/src/efivarfs/Makefile
     fi
 
     # Fix for rebuilding
@@ -63,9 +63,9 @@ do_install() {
     install -d ${D}${datadir}/efivarfs-test
 
     #Copying some of the files, these are part of the linux code
-    install -m 0755 ${S}/tools/testing/selftests/efivarfs/create-read ${D}${datadir}/efivarfs-test
-    install -m 0755 ${S}/tools/testing/selftests/efivarfs/open-unlink ${D}${datadir}/efivarfs-test
-    install -m 0755 ${S}/tools/testing/selftests/efivarfs/efivarfs.sh ${D}${datadir}/efivarfs-test
+    install -m 0755 ${S}/src/efivarfs/create-read ${D}${datadir}/efivarfs-test
+    install -m 0755 ${S}/src/efivarfs/open-unlink ${D}${datadir}/efivarfs-test
+    install -m 0755 ${S}/src/efivarfs/efivarfs.sh ${D}${datadir}/efivarfs-test
 
     install -d ${D}${bindir}
     install -m 0755 ${WORKDIR}/efivarfs ${D}${bindir}
