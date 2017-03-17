@@ -14,7 +14,6 @@ SRC_URI = "file://bash-to-sh.patch \
 DEPENDS_class-native += "qemu-native"
 SRCREV="${AUTOREV}"
 inherit autotools luv-test
-S = "${STAGING_KERNEL_DIR}"
 
 RDEPENDS_${PN} += "e2fsprogs"
 
@@ -22,6 +21,15 @@ do_fetch[noexec] = "1"
 do_unpack[depends] += "virtual/kernel:do_unpack"
 do_patch[depends] += "virtual/kernel:do_shared_workdir"
 do_package[depends] += "virtual/kernel:do_populate_sysroot"
+
+do_unpack_append() {
+    bb.build.exec_func('unpack_test_code', d)
+}
+unpack_test_code() {
+    mkdir -p ${S}/tools/testing/selftests/efivarfs
+    cp -pRv ${STAGING_KERNEL_DIR}/tools/testing/selftests/efivarfs/* ${S}/tools/testing/selftests/efivarfs
+    cp -pRv ${STAGING_KERNEL_DIR}/tools/testing/selftests/lib.mk ${S}/tools/testing/selftests
+}
 
 EXTRA_OEMAKE = " \
     CC='${CC}' \
