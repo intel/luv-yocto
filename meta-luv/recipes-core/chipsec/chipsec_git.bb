@@ -14,7 +14,7 @@ SRC_URI = "git://github.com/chipsec/chipsec.git \
     file://0001-setup.py-give-CPU-architecture-to-the-driver-s-Makef.patch \
     "
 
-SRCREV="2fbb7a4eeb3752998dfbcbdf771cd3f8ed1985ae"
+SRCREV="504c2515c59559be3dde755e2a48bb9dee397bcb"
 PV="1.2.5+"
 
 DEPENDS = "virtual/kernel python-core nasm-native python-setuptools-native"
