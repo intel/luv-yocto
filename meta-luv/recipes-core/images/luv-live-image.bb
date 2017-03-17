@@ -15,7 +15,7 @@ MACHINE_FEATURES += "efi"
 CMDLINE_USERSPACE = "systemd.log_target=null plymouth.ignore-serial-consoles"
 
 # Kernel commandline for luv live image boot
-CMDLINE = "${CMDLINE_USERSPACE} debug crashkernel=256M ip=dhcp log_buf_len=1M efi=debug"
+CMDLINE = "${CMDLINE_USERSPACE} debug crashkernel=512M,high ip=dhcp log_buf_len=1M efi=debug"
 
 COMMON_CMDLINE_x86 = " console=ttyS0,115200 console=ttyPCH0,115200"
 
