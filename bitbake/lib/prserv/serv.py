@@ -1,9 +1,10 @@
 import os,sys,logging
 import signal, time
-from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
+from xmlrpc.server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 import threading
-import Queue
+import queue
 import socket
+import io
 
 try:
     import sqlite3
@@ -59,13 +60,11 @@ class PRServer(SimpleXMLRPCServer):
         self.register_function(self.quit, "quit")
         self.register_function(self.ping, "ping")
         self.register_function(self.export, "export")
+        self.register_function(self.dump_db, "dump_db")
         self.register_function(self.importone, "importone")
         self.register_introspection_functions()
 
-        self.db = prserv.db.PRData(self.dbfile)
-        self.table = self.db["PRMAIN"]
-
-        self.requestqueue = Queue.Queue()
+        self.requestqueue = queue.Queue()
         self.handlerthread = threading.Thread(target = self.process_request_thread)
         self.handlerthread.daemon = False
 
@@ -79,10 +78,12 @@ class PRServer(SimpleXMLRPCServer):
         # 60 iterations between syncs or sync if dirty every ~30 seconds
         iterations_between_sync = 60
 
+        bb.utils.set_process_name("PRServ Handler")
+
         while not self.quit:
             try:
                 (request, client_address) = self.requestqueue.get(True, 30)
-            except Queue.Empty:
+            except queue.Empty:
                 self.table.sync_if_dirty()
                 continue
             try:
@@ -98,11 +99,13 @@ class PRServer(SimpleXMLRPCServer):
             self.table.sync_if_dirty()
 
     def sigint_handler(self, signum, stack):
-        self.table.sync()
+        if self.table:
+            self.table.sync()
 
     def sigterm_handler(self, signum, stack):
-        self.table.sync()
-        raise SystemExit
+        if self.table:
+            self.table.sync()
+        self.quit=True
 
     def process_request(self, request, client_address):
         self.requestqueue.put((request, client_address))
@@ -113,6 +116,26 @@ class PRServer(SimpleXMLRPCServer):
         except sqlite3.Error as exc:
             logger.error(str(exc))
             return None
+
+    def dump_db(self):
+        """
+        Returns a script (string) that reconstructs the state of the
+        entire database at the time this function is called. The script
+        language is defined by the backing database engine, which is a
+        function of server configuration.
+        Returns None if the database engine does not support dumping to
+        script or if some other error is encountered in processing.
+        """
+        buff = io.StringIO()
+        try:
+            self.table.sync()
+            self.table.dump_db(buff)
+            return buff.getvalue()
+        except Exception as exc:
+            logger.error(str(exc))
+            return None
+        finally:
+            buff.close()
 
     def importone(self, version, pkgarch, checksum, value):
         return self.table.importone(version, pkgarch, checksum, value)
@@ -140,6 +163,12 @@ class PRServer(SimpleXMLRPCServer):
     def work_forever(self,):
         self.quit = False
         self.timeout = 0.5
+
+        bb.utils.set_process_name("PRServ")
+
+        # DB connection must be created after all forks
+        self.db = prserv.db.PRData(self.dbfile)
+        self.table = self.db["PRMAIN"]
 
         logger.info("Started PRServer with DBfile: %s, IP: %s, PORT: %s, PID: %s" %
                      (self.dbfile, self.host, self.port, str(os.getpid())))
@@ -209,13 +238,12 @@ class PRServer(SimpleXMLRPCServer):
     def cleanup_handles(self):
         signal.signal(signal.SIGINT, self.sigint_handler)
         signal.signal(signal.SIGTERM, self.sigterm_handler)
-        os.umask(0)
         os.chdir("/")
 
         sys.stdout.flush()
         sys.stderr.flush()
-        si = file('/dev/null', 'r')
-        so = file(self.logfile, 'a+')
+        si = open('/dev/null', 'r')
+        so = open(self.logfile, 'a+')
         se = so
         os.dup2(si.fileno(),sys.stdin.fileno())
         os.dup2(so.fileno(),sys.stdout.fileno())
@@ -235,7 +263,7 @@ class PRServer(SimpleXMLRPCServer):
 
         # write pidfile
         pid = str(os.getpid()) 
-        pf = file(self.pidfile, 'w')
+        pf = open(self.pidfile, 'w')
         pf.write("%s\n" % pid)
         pf.close()
 
@@ -282,6 +310,9 @@ class PRServerConnection(object):
     def export(self,version=None, pkgarch=None, checksum=None, colinfo=True):
         return self.connection.export(version, pkgarch, checksum, colinfo)
 
+    def dump_db(self):
+        return self.connection.dump_db()
+
     def importone(self, version, pkgarch, checksum, value):
         return self.connection.importone(version, pkgarch, checksum, value)
 
@@ -292,7 +323,7 @@ def start_daemon(dbfile, host, port, logfile):
     ip = socket.gethostbyname(host)
     pidfile = PIDPREFIX % (ip, port)
     try:
-        pf = file(pidfile,'r')
+        pf = open(pidfile,'r')
         pid = int(pf.readline().strip())
         pf.close()
     except IOError:
@@ -319,7 +350,7 @@ def stop_daemon(host, port):
     ip = socket.gethostbyname(host)
     pidfile = PIDPREFIX % (ip, port)
     try:
-        pf = file(pidfile,'r')
+        pf = open(pidfile,'r')
         pid = int(pf.readline().strip())
         pf.close()
     except IOError:
@@ -389,7 +420,7 @@ class PRServiceConfigError(Exception):
 def auto_start(d):
     global singleton
 
-    host_params = filter(None, (d.getVar('PRSERV_HOST', True) or '').split(':'))
+    host_params = list(filter(None, (d.getVar('PRSERV_HOST', True) or '').split(':')))
     if not host_params:
         return None
 

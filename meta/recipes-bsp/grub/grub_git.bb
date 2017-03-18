@@ -1,23 +1,23 @@
 require grub2.inc
 
-DEPENDS += "autogen-native"
-
 DEFAULT_PREFERENCE = "-1"
 DEFAULT_PREFERENCE_arm = "1"
 
+FILESEXTRAPATHS =. "${FILE_DIRNAME}/grub-git:"
+
 PV = "2.00+${SRCPV}"
-SRCREV = "87de66d9d83446ecddb29cfbdf7369102c8e209e"
+SRCREV = "7a5b301e3adb8e054288518a325135a1883c1c6c"
 SRC_URI = "git://git.savannah.gnu.org/grub.git \
            file://cfg \
-           file://grub-2.00-fpmath-sse-387-fix.patch \
+           file://0001-Disable-mfpmath-sse-as-well-when-SSE-is-disabled.patch \
            file://autogen.sh-exclude-pc.patch \
-           file://grub-2.00-add-oe-kernel.patch \
-           file://0001-Fix-build-with-glibc-2.20.patch \
+           file://0001-grub.d-10_linux.in-add-oe-s-kernel-name.patch \
           "
 
 S = "${WORKDIR}/git"
 
 COMPATIBLE_HOST = '(x86_64.*|i.86.*|arm.*|aarch64.*)-(linux.*|freebsd.*)'
+COMPATIBLE_HOST_armv7a = 'null'
 
 inherit autotools-brokensep gettext texinfo deploy
 
@@ -30,6 +30,8 @@ GRUBPLATFORM ??= "pc"
 
 EXTRA_OECONF = "--with-platform=${GRUBPLATFORM} --disable-grub-mkfont --program-prefix="" \
                 --enable-liblzma=no --enable-device-mapper=no --enable-libzfs=no"
+
+EXTRA_OECONF += "${@bb.utils.contains('DISTRO_FEATURES', 'largefile', '--enable-largefile', '--disable-largefile', d)}"
 
 export ac_cv_path_HELP2MAN=""
 
@@ -47,10 +49,11 @@ do_install_append_class-target() {
     grub-mkimage -c ../cfg -p /EFI/BOOT -d ./grub-core/ \
         -O ${GRUB_TARGET}-${GRUBPLATFORM} -o ./${GRUB_IMAGE} \
         boot linux ext2 fat serial part_msdos part_gpt \
-        normal efi_gop iso9660 search efinet tftp all_video chain \
+        normal efi_gop iso9660 configfile search efinet tftp all_video chain \
         gfxmenu jpeg gfxterm
 
     install -m 0755 -D ${B}/${GRUB_IMAGE} ${D}${bindir}
+    rm -rf ${D}${libdir}/charset.alias
 }
 
 GRUB_TARGET_aarch64 = "arm64"

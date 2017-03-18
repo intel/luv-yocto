@@ -11,23 +11,23 @@ not used.
 
 Signed-off-by: Megha Dey <megha.dey@intel.com>
 ---
- grub-core/Makefile.core.am         |  1 +
+ grub-core/Makefile.core.def        |  1 +
  grub-core/kern/i386/efi/callwrap.S | 40 ++++++++++++++++++++++++++++++++++++++
  include/grub/efi/api.h             |  9 ++++-----
  3 files changed, 45 insertions(+), 5 deletions(-)
 
-diff --git a/grub-core/Makefile.core.am b/grub-core/Makefile.core.am
-index 79d22c3..d4f01a9 100644
---- a/grub-core/Makefile.core.am
-+++ b/grub-core/Makefile.core.am
-@@ -56783,6 +56783,7 @@ if COND_i386_efi
- platform_PROGRAMS += kernel.exec
- kernel_exec_SOURCES  = kern/i386/efi/startup.S 
- kernel_exec_SOURCES += kern/i386/tsc.c kern/i386/efi/init.c bus/pci.c disk/efi/efidisk.c kern/efi/efi.c kern/efi/init.c kern/efi/mm.c term/efi/console.c kern/i386/dl.c kern/i386/pit.c kern/mm.c kern/time.c kern/generic/millisleep.c kern/command.c kern/corecmd.c kern/device.c kern/disk.c kern/dl.c kern/env.c kern/err.c kern/file.c kern/fs.c kern/list.c kern/main.c kern/misc.c kern/parser.c kern/partition.c kern/rescue_parser.c kern/rescue_reader.c kern/term.c 
-+kernel_exec_SOURCES += kern/i386/efi/callwrap.S
- nodist_kernel_exec_SOURCES  = symlist.c  ## platform nodist sources
- kernel_exec_LDADD  = $(LDADD_KERNEL) 
- kernel_exec_CFLAGS  = $(AM_CFLAGS) $(CFLAGS_KERNEL) 
+diff --git a/grub-core/Makefile.core.def b/grub-core/Makefile.core.def
+index 39e77a4..12fdfc1 100644
+--- a/grub-core/Makefile.core.def
++++ b/grub-core/Makefile.core.def
+@@ -136,6 +136,7 @@ kernel = {
+
+   i386_efi = kern/i386/tsc.c;
+   i386_efi = kern/i386/efi/init.c;
++  i386_efi = kern/i386/efi/callwrap.S;
+   i386_efi = bus/pci.c;
+
+   x86_64_efi = kern/i386/tsc.c;
 diff --git a/grub-core/kern/i386/efi/callwrap.S b/grub-core/kern/i386/efi/callwrap.S
 index e69de29..3fae4d0 100644
 --- a/grub-core/kern/i386/efi/callwrap.S

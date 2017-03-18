@@ -23,8 +23,11 @@ SRC_URI = "http://www.valgrind.org/downloads/valgrind-${PV}.tar.bz2 \
            file://0001-Remove-tests-that-fail-to-build-on-some-PPC32-config.patch \
            file://use-appropriate-march-mcpu-mfpu-for-ARM-test-apps.patch \
            file://avoid-neon-for-targets-which-don-t-support-it.patch \
-           "
-
+           file://gcc5-port.patch \
+"
+SRC_URI_append_libc-musl = "\
+           file://0001-fix-build-for-musl-targets.patch \
+"
 SRC_URI[md5sum] = "4ea62074da73ae82e0162d6550d3f129"
 SRC_URI[sha256sum] = "6c396271a8c1ddd5a6fb9abe714ea1e8a86fce85b30ab26b4266aeb4c2413b42"
 
@@ -34,6 +37,10 @@ COMPATIBLE_HOST = '(i.86|x86_64|arm|aarch64|mips|powerpc|powerpc64).*-linux'
 COMPATIBLE_HOST_armv4 = 'null'
 COMPATIBLE_HOST_armv5 = 'null'
 COMPATIBLE_HOST_armv6 = 'null'
+
+# valgrind doesn't like mips soft float
+COMPATIBLE_HOST_mips = "${@bb.utils.contains("TARGET_FPU", "soft", "null", ".*-linux", d)}"
+COMPATIBLE_HOST_mipsel = "${@bb.utils.contains("TARGET_FPU", "soft", "null", ".*-linux", d)}"
 
 inherit autotools ptest
 
@@ -47,8 +54,9 @@ EXTRA_OEMAKE = "-w"
 
 # valgrind likes to control its own optimisation flags. It generally defaults
 # to -O2 but uses -O0 for some specific test apps etc. Passing our own flags
-# (via CFLAGS) means we interfere with that.
-SELECTED_OPTIMIZATION = ""
+# (via CFLAGS) means we interfere with that. Only pass DEBUG_FLAGS to it
+# which fixes build path issue in DWARF.
+SELECTED_OPTIMIZATION = "${DEBUG_FLAGS}"
 
 CFLAGS_append_libc-uclibc = " -D__UCLIBC__ "
 
@@ -62,11 +70,12 @@ RDEPENDS_${PN} += "perl"
 # redirect functions like strlen.
 RRECOMMENDS_${PN} += "${TCLIBC}-dbg"
 
-RDEPENDS_${PN}-ptest += " sed perl glibc-utils perl-module-file-glob"
+RDEPENDS_${PN}-ptest += " sed perl perl-module-file-glob"
+RDEPENDS_${PN}-ptest_append_libc-glibc = " glibc-utils"
 
-# One of the tests contains a bogus interpreter path on purpose, and QA
-# check complains about it
-INSANE_SKIP_${PN}-ptest += "file-rdeps"
+# One of the tests contains a bogus interpreter path on purpose.
+# Skip file dependency check
+SKIP_FILEDEPS_${PN}-ptest = '1'
 
 do_compile_ptest() {
     oe_runmake check

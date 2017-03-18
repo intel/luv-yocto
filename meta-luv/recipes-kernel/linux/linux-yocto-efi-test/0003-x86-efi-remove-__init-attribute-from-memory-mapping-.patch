@@ -1,0 +1,168 @@
+From f21e43995392ae30853bf823130e807dfcb6f6a7 Mon Sep 17 00:00:00 2001
+From: Sai Praneeth <sai.praneeth.prakhya@intel.com>
+Date: Thu, 9 Mar 2017 16:01:50 -0800
+Subject: [PATCH 3/9] x86/efi: remove __init attribute from memory mapping
+ functions
+
+All these functions will be used by the page fault handler to fixup
+illegal accesses to EFI_CONVENTIONAL_MEMORY, EFI_BOOT_SERVICES_CODE/DATA
+and EFI_LOADER_CODE/DATA regions. The page fault handler doesn't have an
+__init attribute because it fixes up page faults that occur even after
+kernel has booted, but these functions have it and thus warns at build
+(WARNING: modpost: Found * section mismatch(es).) and to fix that we
+remove __init attribute for all these functions.
+
+In order to not keep these functions needlessly when
+"CONFIG_EFI_WARN_ON_ILLEGAL_ACCESSES" is not selected, we add a new
+__init_fixup attribute whose value changes based on whether the config
+option is selected or not.
+
+Signed-off-by: Sai Praneeth Prakhya <sai.praneeth.prakhya@intel.com>
+Cc: Lee, Chun-Yi <jlee@suse.com>
+Cc: Borislav Petkov <bp@alien8.de>
+Cc: Fenghua Yu <fenghua.yu@intel.com>
+Cc: Ravi Shankar <ravi.v.shankar@intel.com>
+Cc: Matt Fleming <matt@codeblueprint.co.uk>
+Cc: Ard Biesheuvel <ard.biesheuvel@linaro.org>
+CC: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ arch/x86/include/asm/efi.h     | 8 ++++----
+ arch/x86/platform/efi/efi.c    | 4 ++--
+ arch/x86/platform/efi/efi_32.c | 2 +-
+ arch/x86/platform/efi/efi_64.c | 6 +++---
+ drivers/firmware/efi/efi.c     | 2 +-
+ include/linux/efi.h            | 9 +++++++++
+ 6 files changed, 20 insertions(+), 11 deletions(-)
+
+diff --git a/arch/x86/include/asm/efi.h b/arch/x86/include/asm/efi.h
+index e99675b9c861..b5291b7452d1 100644
+--- a/arch/x86/include/asm/efi.h
++++ b/arch/x86/include/asm/efi.h
+@@ -94,7 +94,7 @@ struct efi_scratch {
+ 	preempt_enable();						\
+ })
+ 
+-extern void __iomem *__init efi_ioremap(unsigned long addr, unsigned long size,
++extern void __iomem *__init_fixup efi_ioremap(unsigned long addr, unsigned long size,
+ 					u32 type, u64 attribute);
+ 
+ #ifdef CONFIG_KASAN
+@@ -117,13 +117,13 @@ extern int __init efi_memblock_x86_reserve_range(void);
+ extern pgd_t * __init efi_call_phys_prolog(void);
+ extern void __init efi_call_phys_epilog(pgd_t *save_pgd);
+ extern void __init efi_print_memmap(void);
+-extern void __init efi_memory_uc(u64 addr, unsigned long size);
+-extern void __init efi_map_region(efi_memory_desc_t *md);
++extern void __init_fixup efi_memory_uc(u64 addr, unsigned long size);
++extern void __init_fixup efi_map_region(efi_memory_desc_t *md);
+ extern void __init efi_map_region_fixed(efi_memory_desc_t *md);
+ extern void efi_sync_low_kernel_mappings(void);
+ extern int __init efi_alloc_page_tables(void);
+ extern int __init efi_setup_page_tables(unsigned long pa_memmap, unsigned num_pages);
+-extern void __init old_map_region(efi_memory_desc_t *md);
++extern void __init_fixup old_map_region(efi_memory_desc_t *md);
+ extern void __init runtime_code_page_mkexec(void);
+ extern void __init efi_runtime_update_mappings(void);
+ extern void __init efi_dump_pagetable(void);
+diff --git a/arch/x86/platform/efi/efi.c b/arch/x86/platform/efi/efi.c
+index 274dfc481849..d371dce423fc 100644
+--- a/arch/x86/platform/efi/efi.c
++++ b/arch/x86/platform/efi/efi.c
+@@ -575,7 +575,7 @@ void __init runtime_code_page_mkexec(void)
+ 	}
+ }
+ 
+-void __init efi_memory_uc(u64 addr, unsigned long size)
++void __init_fixup efi_memory_uc(u64 addr, unsigned long size)
+ {
+ 	unsigned long page_shift = 1UL << EFI_PAGE_SHIFT;
+ 	u64 npages;
+@@ -585,7 +585,7 @@ void __init efi_memory_uc(u64 addr, unsigned long size)
+ 	set_memory_uc(addr, npages);
+ }
+ 
+-void __init old_map_region(efi_memory_desc_t *md)
++void __init_fixup old_map_region(efi_memory_desc_t *md)
+ {
+ 	u64 start_pfn, end_pfn, end;
+ 	unsigned long size;
+diff --git a/arch/x86/platform/efi/efi_32.c b/arch/x86/platform/efi/efi_32.c
+index cef39b097649..20f6fc1babc8 100644
+--- a/arch/x86/platform/efi/efi_32.c
++++ b/arch/x86/platform/efi/efi_32.c
+@@ -50,7 +50,7 @@ int __init efi_setup_page_tables(unsigned long pa_memmap, unsigned num_pages)
+ 	return 0;
+ }
+ 
+-void __init efi_map_region(efi_memory_desc_t *md)
++void __init_fixup efi_map_region(efi_memory_desc_t *md)
+ {
+ 	old_map_region(md);
+ }
+diff --git a/arch/x86/platform/efi/efi_64.c b/arch/x86/platform/efi/efi_64.c
+index 2f25a363068c..9600ba1729ee 100644
+--- a/arch/x86/platform/efi/efi_64.c
++++ b/arch/x86/platform/efi/efi_64.c
+@@ -312,7 +312,7 @@ int __init efi_setup_page_tables(unsigned long pa_memmap, unsigned num_pages)
+ 	return 0;
+ }
+ 
+-static void __init __map_region(efi_memory_desc_t *md, u64 va)
++static void __init_fixup __map_region(efi_memory_desc_t *md, u64 va)
+ {
+ 	unsigned long flags = _PAGE_RW;
+ 	unsigned long pfn;
+@@ -327,7 +327,7 @@ static void __init __map_region(efi_memory_desc_t *md, u64 va)
+ 			   md->phys_addr, va);
+ }
+ 
+-void __init efi_map_region(efi_memory_desc_t *md)
++void __init_fixup efi_map_region(efi_memory_desc_t *md)
+ {
+ 	unsigned long size = md->num_pages << PAGE_SHIFT;
+ 	u64 pa = md->phys_addr;
+@@ -389,7 +389,7 @@ void __init efi_map_region_fixed(efi_memory_desc_t *md)
+ 	__map_region(md, md->virt_addr);
+ }
+ 
+-void __iomem *__init efi_ioremap(unsigned long phys_addr, unsigned long size,
++void __iomem *__init_fixup efi_ioremap(unsigned long phys_addr, unsigned long size,
+ 				 u32 type, u64 attribute)
+ {
+ 	unsigned long last_map_pfn;
+diff --git a/drivers/firmware/efi/efi.c b/drivers/firmware/efi/efi.c
+index 92914801e388..76fe56d230bd 100644
+--- a/drivers/firmware/efi/efi.c
++++ b/drivers/firmware/efi/efi.c
+@@ -358,7 +358,7 @@ subsys_initcall(efisubsys_init);
+  * and if so, populate the supplied memory descriptor with the appropriate
+  * data.
+  */
+-int __init efi_mem_desc_lookup(u64 phys_addr, efi_memory_desc_t *out_md)
++int __init_fixup efi_mem_desc_lookup(u64 phys_addr, efi_memory_desc_t *out_md)
+ {
+ 	efi_memory_desc_t *md;
+ 
+diff --git a/include/linux/efi.h b/include/linux/efi.h
+index 5b1af30ece55..1a403ca7f8c3 100644
+--- a/include/linux/efi.h
++++ b/include/linux/efi.h
+@@ -1021,6 +1021,15 @@ extern int efi_memattr_apply_permissions(struct mm_struct *mm,
+ 	for_each_efi_memory_desc_in_map(&efi.memmap, md)
+ 
+ /*
++ * __init_fixup - remove __init modifier to support CONFIG_EFI_WARN_ON_ILLEGAL_ACCESSES
++ */
++#ifdef CONFIG_EFI_WARN_ON_ILLEGAL_ACCESSES
++#define __init_fixup
++#else
++#define __init_fixup __init
++#endif
++
++/*
+  * Format an EFI memory descriptor's type and attributes to a user-provided
+  * character buffer, as per snprintf(), and return the buffer.
+  */
+-- 
+2.1.4
+

@@ -1,0 +1,154 @@
+#!/bin/bash
+#
+# Copyright 2015 Intel Corporation; author Gayatri Kammela
+#
+# Netconsole is a linux feature that sends the kernel messages
+# to a remote machine via ethernet. The kernel messages sent over
+# to remote machine are useful for debugging in case of a kernel
+# panic.This script enables netconsole feature in LUV
+#
+#####################################################################
+
+# Definitions for disk partitions and mount points
+LUV_DEBUG_NETCONSOLE=/mnt/luv-debug-netconsole
+LUV_STORAGE_UUID=05D6-1523
+
+plymouth_write() {
+    /bin/plymouth display-message --text="$1"
+}
+
+plymouth_hide() {
+    /bin/plymouth hide-message --text="$1"
+ }
+
+# Display the error messages on the psplash screen if netconsole is not configured
+plymouth_netconsole() {
+    for i in {10..1}; do
+    plymouth_write "Netconsole not configured...Resuming execution in $i seconds"
+    sleep 1
+    plymouth_hide "Netconsole not configured...Resuming execution in $i seconds"
+    plymouth_write "For more details check luv.netconsole in debug folder"
+    sleep 1
+    plymouth_hide "For more details check luv.netconsole in debug folder"
+    done
+}
+
+# Install netconsole module
+install_netconsole_mod() {
+    modprobe -r  netconsole
+    modprobe netconsole netconsole=$NETCONSOLE_PORT@$SEND_IP/$SEND_IF,$NETCONSOLE_PORT@$REC_IP/$REC_MAC
+    return 0
+}
+
+# Get local IP and Interface
+get_local_ip_addr() {
+    # Get the host/local ethernet's interface
+    SEND_IF=$(ip -o -4 r s to default | grep ^default | awk '{print $5}')
+    # Get the ip/inet address of the fetched interface
+    SEND_IP=$(ifconfig  | grep $SEND_IF -A1 | grep inet | awk -F: '{print $2}' | awk '{print $1}')
+    # Check if the strings are empty
+    if [ -z "$SEND_IF" ] && [ -z "$SEND_IP" ] ; then
+        return 1
+    else
+        return 0
+    fi
+}
+
+# Get reciever's HW/mac address
+get_remote_mac_addr() {
+    # Find if the reciever is in the same subnet as host machine.This can be checked by
+    # sending a packet  to the remote machine. The packet will be succesfully recieved if
+    # it is on same subnet else the packet will be lost
+    ping -rc 1 $REC_IP > /dev/null 2>&1
+    if [ $? -eq 0 ] ; then
+        REC_MAC_EX=$(arp -n $REC_IP | awk '{ print $3 }')
+        REC_MAC=$(echo $REC_MAC_EX | awk '{ print $2 }')
+        return 0
+    else
+        # netstat displays network connections, routing tables, and a number of network
+        # interface statistics.use netstat to get the ip address available when we grep
+        # default gateway '0.0.0.0'. It checks for the processes that are listening for
+        #connections on any IP address on your machine.
+        DEF_GATE=$(netstat -rn | grep ^0.0.0.0 | awk '{print $2}')
+
+        # send one packet to the ip address that we grep it from default gateway to check
+        # if its alive
+        ping -c 1 $DEF_GATE > /dev/null 2>&1
+
+        # Get the reciever HW MAC Address using the reciever's ip address
+        if [ $? -eq 0 ] ; then
+            REC_MAC_EX=$(arp -n $DEF_GATE | awk '{ print $3 }')
+            REC_MAC=$(echo $REC_MAC_EX | awk '{ print $2 }')
+            return 0
+        else
+            return 1
+        fi
+    fi
+}
+
+# Create a debug directory and make luv.netconsole generate whenever there is error
+# with loading netconsole
+gen_debug_file() {
+    # Definitions for disk partitions and mount points
+    time_stamp=$(date +"%Y-%m-%d--%H-%M-%S")
+    mkdir -p ${LUV_DEBUG_NETCONSOLE}
+    if [ $? -eq 0 ]; then
+        mount /dev/disk/by-uuid/${LUV_STORAGE_UUID} ${LUV_DEBUG_NETCONSOLE}
+        if [ $? -eq 0 ]; then
+            mkdir -p ${LUV_DEBUG_NETCONSOLE}/debug
+            if [ $? -eq 0 ] ; then
+                LUV_DEBUG_LOG_DIR=${LUV_DEBUG_NETCONSOLE}/debug/luv.netconsole-$time_stamp
+                echo -e "Log information about netconsole failures\n\t-----********------" | \
+                tee -a ${LUV_DEBUG_LOG_DIR}
+            fi
+        fi
+    fi
+}
+
+gen_error_message() {
+    gen_debug_file
+    plymouth_netconsole
+}
+
+# Display error message
+Host_network_error="LUV_NETCONSOLE: Host network is unreachable!"
+Remote_network_error="LUV_NETCONSOLE: Remote network is unreachable!"
+
+# Get port and ip address from the luv-net-param script
+net_param=$(luv-netconsole-params)
+net_param_port=$(echo $net_param | tail -1 | awk '{print $2}')
+net_param_ip=$(echo $net_param | tail -1 | awk '{print $1}')
+
+# Check if the parameters are not strings
+if ! [[ $net_param_port =~ ^[0-9]+$ ]] && ! [[ $net_param_ip =~ ^[0-9]+$ ]] ; then
+    gen_error_message
+    echo $net_param | tee -a ${LUV_DEBUG_LOG_DIR}
+else
+    NETCONSOLE_PORT=$net_param_port
+    REC_IP=$net_param_ip
+    # Refresh the arp buffer to detect the ip's in the same subnet
+    cat /proc/net/arp > /dev/null
+    get_remote_mac_addr
+    if [ $? -eq 0 ] ; then
+        get_local_ip_addr
+        if [ $? -eq 0 ] ; then
+            install_netconsole_mod
+            if [ $? -eq 0 ] ; then
+                # Disable helper by default
+                echo 0 > /proc/sys/net/netfilter/nf_conntrack_helper
+            fi
+        else
+            gen_error_message
+            echo $Host_network_error | tee -a ${LUV_DEBUG_LOG_DIR}
+        fi
+    else
+        gen_error_message
+        echo $Remote_network_error | tee -a ${LUV_DEBUG_LOG_DIR}
+    fi
+fi
+
+# Un mount the mount point
+mountpoint -q ${LUV_DEBUG_NETCONSOLE}
+if [ $? -eq 0 ]; then
+    umount ${LUV_DEBUG_NETCONSOLE}
+fi

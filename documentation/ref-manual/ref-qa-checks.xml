@@ -81,11 +81,13 @@ can be found then it should be implemented.  I can't find one at the moment.
 
                 <para>
                     The specified package contains files in
-                    <filename>/usr/libexec</filename>.
-                    By default, <filename>libexecdir</filename> is set to
-                    "${libdir}/${BPN}" rather than to "/usr/libexec".
-                    Thus, installing to <filename>/usr/libexec</filename>
-                    is likely not desirable.
+                    <filename>/usr/libexec</filename> when the distro
+                    configuration uses a different path for
+                    <filename>&lt;libexecdir&gt;</filename>
+                    By default, <filename>&lt;libexecdir&gt;</filename> is
+                    <filename>$prefix/libexec</filename>.
+                    However, this default can be changed (e.g.
+                    <filename>${libdir}</filename>).
                 </para>
 
                 <para>
@@ -916,7 +918,8 @@ can be found then it should be implemented.  I can't find one at the moment.
                     and the upstream change log or release notes.
                     Once you have worked out what the appropriate
                     change is, you can update
-                    <link linkend='var-EXTRA_OECONF'><filename>EXTRA_OECONF</filename></link>
+                    <link linkend='var-EXTRA_OECONF'><filename>EXTRA_OECONF</filename></link>,
+                    <link linkend='var-PACKAGECONFIG_CONFARGS'><filename>PACKAGECONFIG_CONFARGS</filename></link>,
                     or the individual
                     <link linkend='var-PACKAGECONFIG'><filename>PACKAGECONFIG</filename></link>
                     option values accordingly.
@@ -1105,7 +1108,7 @@ can be found then it should be implemented.  I can't find one at the moment.
             <listitem>
                 <para id='qa-issue-installed-vs-shipped'>
                     <code>
-      &lt;recipename&gt;: Files/directories were installed but not shipped [installed-vs-shipped]
+      &lt;recipename&gt;: Files/directories were installed but not shipped in any package [installed-vs-shipped]
                     </code>
                 </para>
 

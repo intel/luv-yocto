@@ -1,0 +1,53 @@
+#!/bin/bash
+#
+# Copyright 2016 Intel Corporation; author Gayatri Kammela
+#
+# This script saves the results for every boot by packing all the results to a
+# zip folder and then upload to a given webserver.
+#####################################################################
+
+# Gather results in a compressed tarball
+
+plymouth_write() {
+    /bin/plymouth display-message --text="{1}"
+}
+
+get_tar_luv_results()
+{
+    grep -q luv_storage /proc/cmdline
+    if [ $? -eq 0 ]; then
+        tar -zcf /tmp/luv-results-$tstamp.tar.gz ${LUV_SAVE_RESULTS_DIR}
+        luv_tar_results=/tmp/luv-results-$tstamp.tar.gz
+    else
+        return 1
+    fi
+}
+
+# check if the url is valid
+get_luv_url()
+{
+    # retrieve the contents of the variable luv_storage
+    storage_url=$(cat /proc/cmdline | sed -e 's/^.*luv_storage=//' -e 's/ .*$//')
+    valid_exp='(https?|ftp|file)://[-A-Za-z0-9\+&@#/%?=~_|!:,.;]*[-A-Za-z0-9\+&@#/%=~_|]'
+    if ! [[ ${storage_url} =~ $valid_exp ]] ; then
+        echo $alert_url_missing
+	plymouth_write "MSG $alert_url_missing"
+        halt
+    else
+        return 0
+    fi
+}
+
+# warn the user when the url to save the results is missing
+alert_url_missing="No valid URL is provided to save the results! Please provide url!!"
+
+LUV_SAVE_RESULTS_DIR=$1
+tstamp=$(date +"%Y-%m-%d--%H-%M-%S")
+
+get_tar_luv_results
+if [ $? -eq 0 ]; then
+    get_luv_url
+    if [ $? -eq 0 ]; then
+        curl -F "uploadedfile=@${luv_tar_results}" ${storage_url}
+    fi
+fi

@@ -33,6 +33,8 @@ def get_gcc_ppc_plt_settings(bb, d):
 def get_long_double_setting(bb, d):
     if d.getVar('TRANSLATED_TARGET_ARCH', True) in [ 'powerpc', 'powerpc64' ] and d.getVar('TCLIBC', True) in [ 'uclibc', 'glibc' ]:
         return "--with-long-double-128"
+    else:
+        return "--without-long-double-128"
     return ""
 
 def get_gcc_multiarch_setting(bb, d):
@@ -54,7 +56,7 @@ def get_gcc_multiarch_setting(bb, d):
 def get_tune_parameters(tune, d):
     availtunes = d.getVar('AVAILTUNES', True)
     if tune not in availtunes.split():
-        bb.error('The tune: %s is not one of the available tunes: %s', tune or None, availtunes)
+        bb.error('The tune: %s is not one of the available tunes: %s' % (tune or None, availtunes))
 
     localdata = bb.data.createCopy(d)
     override = ':tune-' + tune

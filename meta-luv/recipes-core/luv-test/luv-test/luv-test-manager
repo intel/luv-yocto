@@ -1,0 +1,311 @@
+#!/bin/bash
+#
+# Copyright 2014 Intel Corporation; author Matt Fleming
+#
+
+# ### Messages strings
+# warn the user when no partition is found
+alert_missing_partition="STOP! No partition found to store the results..please report to luv@lists.01.org"
+# warn the user when the disk is nearly full
+alert_disk_is_full="Removable disk space is running low , please backup and empty the disk to try again !!"
+
+# ### Definitions for disk partitions and mount points
+LUV_STORAGE=/mnt/luv-storage
+LUV_STORAGE_UUID=05D6-1523
+LUV_STORAGE_MIN_AVAIL=2000
+LUV_EFI=/mnt/luv-efi/
+LUV_EFI_UUID=423C-C2C8
+
+LUV_SAVE_RAW_DIR=/dev/null
+LUV_SAVE_PARSED_DIR=/dev/null
+LUV_SAVE_RESULTS_DIR=/dev/null
+
+grep -q noluv /proc/cmdline
+if [ $? -ne 1 ]; then
+    exit 0
+fi
+
+grep -q luv\.netboot /proc/cmdline
+if [ $? -eq 0 ]; then
+    echo "LUV booted from network..."
+    LUVNETBOOT="1"
+fi
+
+grep -q luv\.debug /proc/cmdline
+if [ $? -eq 0 ]; then
+    echo "Enable LUV debug mode..."
+    LUVDEBUG="1"
+    set -x
+    set -v
+fi
+
+plymouth_write() {
+    /bin/plymouth display-message --text="$1"
+}
+
+plymouth_hide() {
+    /bin/plymouth hide-message --text="$1"
+}
+
+html_start()
+{
+    html=$1
+    echo "<!DOCTYPE html>" > $html
+    echo "<html>" >> $html
+    echo "<head>" >> $html
+    echo "<title> "$luv_version" </title> " >> $html
+    echo "<style>" >> $html
+    cat /usr/share/luv/html/luv-css-styles >> $html
+    echo "</style>" >> $html
+    echo "<script type=\"text/javascript\">" >> $html
+    cat /usr/share/luv/html/luv-scripts >> $html
+    echo "</script>" >> $html
+    echo "</head>" >> $html
+    echo "<body>" >> $html
+}
+
+html_inline()
+{
+    awk -v HTML="${1}" '
+    BEGIN {
+        print "<div class=\"inline\">" >> HTML
+    }
+    {
+        print $0
+        print $0 "<br>">> HTML
+    }
+    END {
+        print "</div>" >> HTML
+    }'
+}
+
+html_finish()
+{
+    html=$1
+    echo "</body>" >> $html
+    echo "</html>" >> $html
+}
+
+# Test can be saved either to a disk or, when booting from the network,
+# to a temporary location to be subsequently sent to a remote
+# system for inspection.
+# When saving to disk, in order to reliably identify the
+# correct partition, mount using the disk's UUID. If the partition
+# cannot be mounted, test execution is aborted.
+# Also, if the space left on disk is less than 2MB, abort.
+
+# booted from disk
+if [ -z ${LUVNETBOOT} ]; then
+    ls /dev/disk/by-uuid | grep -q ${LUV_STORAGE_UUID}
+    if [ $? -eq 1 ] ; then
+        plymouth_write "$alert_missing_partition"
+        halt
+    fi
+
+    mkdir -p ${LUV_STORAGE}
+    if [ $? -eq 0 ]; then
+        mount /dev/disk/by-uuid/${LUV_STORAGE_UUID} ${LUV_STORAGE}
+        if [ $? -eq 0 ]; then
+
+            # check if there is enough space on disk
+            m=$(df | grep ${LUV_STORAGE} | awk '{print $4}')
+            if [ $m -le ${LUV_STORAGE_MIN_AVAIL} ] ; then
+                plymouth_write "$alert_disk_is_full"
+                halt
+            fi
+        fi
+    fi
+
+    mkdir -p ${LUV_EFI}
+    if [ $? -eq 0 ]; then
+        mount /dev/disk/by-uuid/${LUV_EFI_UUID} ${LUV_EFI}
+    fi
+# booted from network
+else
+    LUV_STORAGE=/tmp/luv-storage
+    mkdir -p ${LUV_STORAGE}
+fi
+
+tstamp=$(date +"%Y-%m-%d--%H-%M-%S")
+n=$(ls ${LUV_STORAGE}/ | grep $tstamp | wc -l)
+if [ $n -ge 1 ]; then
+    LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}/luv-results-$tstamp-$n/
+else
+    LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}/luv-results-$tstamp/
+fi
+
+mkdir -p ${LUV_SAVE_RESULTS_DIR}raw/
+[ $? -eq 0 ] && LUV_SAVE_RAW_DIR=${LUV_SAVE_RESULTS_DIR}raw/
+
+mkdir -p ${LUV_SAVE_RESULTS_DIR}parsed/
+[ $? -eq 0 ] && LUV_SAVE_PARSED_DIR=${LUV_SAVE_RESULTS_DIR}parsed
+
+if [ ! -z ${LUVDEBUG} ]; then
+    # once we know where our storage is, redirect output to a file there
+    exec &> >(tee ${LUV_SAVE_RESULTS_DIR}luv-debug.log)
+fi
+
+
+plymouth_write "Running tests..."
+
+luv_version=$(cut -d\\ -f1 /etc/issue)
+
+cat <<EOF | tee /dev/kmsg
+Welcome to ${luv_version}
+
+Running tests...
+EOF
+
+#
+# Every test must create a runner script and place it in $LUV_TESTS_DIR.
+# See meta-luv/classes/luv-test.bbclass for details.
+#
+# Most also want to provide a testsuite log parser that converts the
+# testsuite-specific output into the log schema defined in
+# luv-test-parser.
+#
+LUV_TESTS_DIR=/etc/luv/tests/
+LUV_PARSER_DIR=/etc/luv/parsers/
+LUV_LOG_DIR=/var/log/luv/
+
+mkdir -p ${LUV_LOG_DIR}
+
+# Start the HTML report
+# We need to export LUV_HTML_REPORT to be consumed by the LUV test parser
+export LUV_HTML_REPORT=${LUV_SAVE_RESULTS_DIR}/luv.html
+html_start ${LUV_HTML_REPORT}
+
+# Begin the results files by stating the version of luv
+cat <<EOF | html_inline ${LUV_HTML_REPORT} | tee /dev/kmsg \
+    ${LUV_SAVE_RESULTS_DIR}/luv.results /tmp/luv.results
+$luv_version
+
+Date and time of the system : $tstamp
+
+System: $(cat /proc/cpuinfo | grep 'model name' | cut -d: -f2 | uniq) x $(nproc)
+
+Test results summary:
+
+EOF
+
+# all the messages from dmesg buffer comes with timestamp and since the
+# user space messages are being directed to dmesg via /dev/kmsg, most of
+# the messages miss the timestamp. In order to provide timestamp for each,
+# parse each user space message line by line via /dev/kmsg
+
+parse_line()
+{
+    while read line ; do
+    case $line in
+        *+* )
+        echo ' ' $line
+        ;;
+        * )
+        echo $line
+        ;;
+    esac
+    done | tee /dev/kmsg
+}
+
+runner_list=`ls -A ${LUV_TESTS_DIR}`
+
+# We can't get very accurate progress because we've no way of knowing
+# how many unit tests each test suite includes. Use a coarse-grained
+# progress step based on the number of test suites. The tests variable
+# tracks the number of test suites which have completed running.
+tests=0
+progress_step="$((100/$(echo $runner_list | wc -w)))"
+for r in $runner_list; do
+    runner="${LUV_TESTS_DIR}$r"
+    #We display each test suite running for equal amount of time
+    plymouth_hide "Running tests..."
+
+    [ -f "$runner" ] || continue
+
+    arr[tests]=$r
+    if [ $tests -ge 1 ]; then
+        plymouth_hide "Running ${arr[$((tests-1))]} ..."
+    fi
+
+    tests=$((tests+1))
+    plymouth_write "Running $r ..."
+
+    parser="${LUV_PARSER_DIR}/$r"
+    [ -e ${parser} ] || {
+        parser="/bin/cat"
+    }
+
+    # Make /dev/console silent to avoid the results being printed twice
+    $runner |& tee ${LUV_LOG_DIR}/$r ${LUV_SAVE_RAW_DIR}/$r | $parser | \
+              tee ${LUV_SAVE_PARSED_DIR}/$r | ${LUV_PARSER_DIR}/test-manager | \
+              parse_line | \
+              tee -a /tmp/luv.results ${LUV_SAVE_RESULTS_DIR}/luv.results
+    sync
+    plymouth_hide "Running ${arr[-1]} ..."
+done | awk '/\[\+/  { units += 1 }
+    /\[\-/  { suites += 1 }
+    /pass/ { passes += 1 }
+    /fail/ { fails += $3 }
+    /skip/ { skips += 1 }
+    /warn/ { warns += $3 }
+    END {
+	printf("\nRan %d testsuites and %d unittests, %d passes, %d fails, %d skipped, %d warnings.\n",
+		suites, units, passes, fails, skips, warns) > "/tmp/testsuites"
+    }'
+
+cat /tmp/testsuites | html_inline ${LUV_HTML_REPORT} | tee -a /dev/kmsg /tmp/luv.results \
+         ${LUV_SAVE_RESULTS_DIR}/luv.results
+
+result=$(cat /tmp/testsuites)
+plymouth_write "$result"
+sleep 2
+
+html_finish ${LUV_HTML_REPORT}
+
+mountpoint -q ${LUV_EFI}
+if [ $? -eq 0 ]; then
+    umount ${LUV_EFI}
+fi
+
+# close debug log file before unmounting LUV_STORAGE.
+if [ ! -z ${LUVDEBUG} ]; then
+    exec &> /dev/console
+fi
+
+# invoke the script that saves/submits the results to a webserver.
+submit_results ${LUV_SAVE_RESULTS_DIR}
+
+mountpoint -q ${LUV_STORAGE}
+if [ $? -eq 0 ]; then
+    umount ${LUV_STORAGE}
+    plymouth_write "Results were saved in your boot media. You may now turn off the system and remove it."
+else
+    plymouth_write "Results were not saved in storage media."
+fi
+
+grep -q luv.halt /proc/cmdline
+if [ $? -ne 1 ]; then
+    halt
+fi
+
+REBOOT_TIMEOUT=$((5*60))
+
+timeout_file="/sys/firmware/efi/efivars/LuvTimeout-3b6bf55d-a6f6-45cf-9f7e-ebf3bdadf74e"
+[ -e ${timeout_file} ] && {
+    REBOOT_TIMEOUT=`hexdump -e '"%08u\n"' ${timeout_file} | tail -n1`
+}
+
+grep -q luv.reboot /proc/cmdline
+if [ $? -ne 1 ]; then
+    # Put reboot task into background and drop to a shell
+    $(sleep ${REBOOT_TIMEOUT} ; reboot)&
+fi
+
+grep -q luv.poweroff /proc/cmdline
+if [ $? -ne 1 ]; then
+    # Put poweroff task into background and drop to a shell
+    $(sleep ${REBOOT_TIMEOUT} ; poweroff)&
+fi
+
+set +x
+set +v

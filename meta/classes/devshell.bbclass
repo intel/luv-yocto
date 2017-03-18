@@ -3,7 +3,7 @@ inherit terminal
 DEVSHELL = "${SHELL}"
 
 python do_devshell () {
-    if d.getVarFlag("do_devshell", "manualfakeroot"):
+    if d.getVarFlag("do_devshell", "manualfakeroot", True):
        d.prependVar("DEVSHELL", "pseudo ")
        fakeenv = d.getVar("FAKEROOTENV", True).split()
        for f in fakeenv:
@@ -27,7 +27,7 @@ do_devshell[nostamp] = "1"
 # be done as the normal user. We therfore carefully construct the envionment
 # manually
 python () {
-    if d.getVarFlag("do_devshell", "fakeroot"):
+    if d.getVarFlag("do_devshell", "fakeroot", True):
        # We need to signal our code that we want fakeroot however we
        # can't manipulate the environment and variables here yet (see YOCTO #4795)
        d.setVarFlag("do_devshell", "manualfakeroot", "1")
@@ -65,9 +65,6 @@ def devpyshell(d):
         os.dup2(m, sys.stdout.fileno())
         os.dup2(m, sys.stderr.fileno())
 
-        sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
-        sys.stdin = os.fdopen(sys.stdin.fileno(), 'r', 0)
-
         bb.utils.nonblockingfd(sys.stdout)
         bb.utils.nonblockingfd(sys.stderr)
         bb.utils.nonblockingfd(sys.stdin)
@@ -93,6 +90,7 @@ def devpyshell(d):
             else:
                 prompt = ps1
             sys.stdout.write(prompt)
+            sys.stdout.flush()
 
         # Restore Ctrl+C since bitbake masks this
         def signal_handler(signal, frame):
@@ -114,6 +112,7 @@ def devpyshell(d):
                         continue
                 except EOFError as e:
                     sys.stdout.write("\n")
+                    sys.stdout.flush()
                 except (OSError, IOError) as e:
                     if e.errno == 11:
                         continue

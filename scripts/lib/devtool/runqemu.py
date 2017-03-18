@@ -30,9 +30,11 @@ def runqemu(args, config, basepath, workspace):
     """Entry point for the devtool 'runqemu' subcommand"""
 
     tinfoil = setup_tinfoil(config_only=True, basepath=basepath)
-    machine = tinfoil.config_data.getVar('MACHINE', True)
-    bindir_native = tinfoil.config_data.getVar('STAGING_BINDIR_NATIVE', True)
-    tinfoil.shutdown()
+    try:
+        machine = tinfoil.config_data.getVar('MACHINE', True)
+        bindir_native = tinfoil.config_data.getVar('STAGING_BINDIR_NATIVE', True)
+    finally:
+        tinfoil.shutdown()
 
     if not glob.glob(os.path.join(bindir_native, 'qemu-system-*')):
         raise DevtoolError('QEMU is not available within this SDK')
@@ -57,7 +59,8 @@ def register_commands(subparsers, context):
     """Register devtool subcommands from this plugin"""
     if context.fixed_setup:
         parser_runqemu = subparsers.add_parser('runqemu', help='Run QEMU on the specified image',
-                                               description='Runs QEMU to boot the specified image')
+                                               description='Runs QEMU to boot the specified image',
+                                               group='testbuild', order=-20)
         parser_runqemu.add_argument('imagename', help='Name of built image to boot within QEMU', nargs='?')
         parser_runqemu.add_argument('args', help='Any remaining arguments are passed to the runqemu script (pass --help after imagename to see what these are)',
                                     nargs=argparse.REMAINDER)

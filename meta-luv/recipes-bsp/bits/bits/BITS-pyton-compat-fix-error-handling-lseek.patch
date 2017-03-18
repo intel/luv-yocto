@@ -1,0 +1,47 @@
+From e760bf60069c6880badcf73f8612db8b423f7ee4 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Sat, 19 Nov 2016 17:46:54 -0800
+Subject: [PATCH] pyton: compat: fix error handling lseek
+
+By looking at the code, it is obvious that the intention is to print
+an error message and return (off_t)-1 as seeking was unsuccessful.
+Hence, this block of code needs to be wrapped in curly brackets.
+
+Also, recent versions of gcc include checks for indentation. This will
+trigger the following warning (or error if warnings are treated as
+errors).
+
+[...]/build/grub/grub-core/contrib/python/compat.c: In function 'lseek':
+[...]/grub-core/contrib/python/compat.c:420:5: error: this 'if'
+clause does not guard... [-Werror=misleading-indentation]
+     if (fd >= 0 && fd < 3)
+     ^~
+[...]/build/grub/grub-core/contrib/python/compat.c:422:9: note:
+...this statement, but the latter is misleadingly indented as if it is
+guarded by the 'if'
+         return (off_t)-1;
+         ^~~~~~
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ rc/python/compat.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/rc/python/compat.c b/rc/python/compat.c
+index 6e2ea47..85927d9 100644
+--- a/rc/python/compat.c
++++ b/rc/python/compat.c
+@@ -418,8 +418,10 @@ off_t lseek(int fd, off_t offset, int whence)
+     grub_file_t file;
+ 
+     if (fd >= 0 && fd < 3)
++      {
+         grub_printf("Internal error: Python attempted to seek on stdin, stdout, or stderr.\n");
+         return (off_t)-1;
++      }
+ 
+     file = fd_to_file(fd);
+     if (!file)
+-- 
+2.9.3
+

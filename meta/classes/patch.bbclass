@@ -5,6 +5,9 @@ QUILTRCFILE ?= "${STAGING_ETCDIR_NATIVE}/quiltrc"
 
 PATCHDEPENDENCY = "${PATCHTOOL}-native:do_populate_sysroot"
 
+PATCH_GIT_USER_NAME ?= "OpenEmbedded"
+PATCH_GIT_USER_EMAIL ?= "oe.patch@oe"
+
 inherit terminal
 
 def src_patches(d, all = False ):
@@ -136,7 +139,6 @@ python patch_do_patch() {
 
     s = d.getVar('S', True)
 
-    path = os.getenv('PATH')
     os.putenv('PATH', d.getVar('PATH', True))
 
     # We must use one TMPDIR per process so that the "patch" processes

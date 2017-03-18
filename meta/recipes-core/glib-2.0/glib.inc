@@ -22,14 +22,17 @@ DEPENDS_append = " ${@bb.utils.contains('PTEST_ENABLED', '1', ' dbus', '', d)}"
 DEPENDS_class-native = "pkgconfig-native gettext-native libffi-native zlib-native"
 DEPENDS_class-nativesdk = "nativesdk-libtool nativesdk-gettext nativesdk-libffi nativesdk-zlib glib-2.0-native"
 
-PACKAGES =+ "${PN}-utils ${PN}-bash-completion ${PN}-codegen"
+PACKAGES += "${PN}-codegen ${PN}-utils"
 
 LEAD_SONAME = "libglib-2.0.*"
-FILES_${PN}-utils = "${bindir}/* ${datadir}/glib-2.0/gettext"
 
-inherit autotools gettext gtk-doc pkgconfig ptest-gnome upstream-version-is-even
+inherit autotools gettext gtk-doc pkgconfig ptest-gnome upstream-version-is-even bash-completion gio-module-cache python3native
 
 S = "${WORKDIR}/glib-${PV}"
+
+PACKAGECONFIG ??= "system-pcre"
+# To use the system pcre it must be configured with --enable-unicode-properties
+PACKAGECONFIG[system-pcre] = "--with-pcre=system,--with-pcre=internal,libpcre"
 
 CORECONF = "--disable-dtrace --disable-fam --disable-libelf --disable-systemtap --disable-man"
 
@@ -41,28 +44,43 @@ EXTRA_OECONF_class-native = "${CORECONF} --disable-selinux"
 EXTRA_OECONF_append_libc-uclibc = " --with-libiconv=gnu"
 
 do_configure_prepend() {
-	sed -i -e '1s,#!.*,#!${USRBINPATH}/env python,' ${S}/gio/gdbus-2.0/codegen/gdbus-codegen.in
+	sed -i -e '1s,#!.*,#!${USRBINPATH}/env python3,' ${S}/gio/gdbus-2.0/codegen/gdbus-codegen.in
 }
 
-FILES_${PN} = "${libdir}/lib*${SOLIBS} ${libdir}/gio ${datadir}/glib-2.0/schemas \
-               ${datadir}/glib-2.0/gettext/mkinstalldirs ${datadir}/glib-2.0/gettext/po/Makefile.in.in"
+FILES_${PN} = "${libdir}/lib*${SOLIBS} \
+               ${libdir}/gio \
+               ${libexecdir}/*gio-querymodules \
+               ${datadir}/glib-2.0/schemas"
 FILES_${PN}-dev += "${libdir}/glib-2.0/include \
                     ${libdir}/gio/modules/lib*${SOLIBSDEV} \
-                    ${libdir}/gio/modules/*.la"
+                    ${libdir}/gio/modules/*.la \
+                    ${bindir}/glib-genmarshal \
+                    ${bindir}/glib-gettextize \
+                    ${bindir}/glib-mkenums \
+                    ${bindir}/glib-compile-resources \
+                    ${datadir}/glib-2.0/gettext/po/Makefile.in.in \
+                    ${datadir}/glib-2.0/schemas/gschema.dtd \
+                    ${datadir}/gettext/its"
 FILES_${PN}-dbg += "${datadir}/glib-2.0/gdb ${datadir}/gdb"
-FILES_${PN}-codegen = "${datadir}/glib-2.0/codegen/*.py"
-FILES_${PN}-bash-completion = "${sysconfdir}/bash_completion.d \
-                               ${datadir}/bash-completion"
+FILES_${PN}-codegen = "${datadir}/glib-2.0/codegen/*.py \
+                       ${bindir}/gdbus-codegen"
+FILES_${PN}-utils = "${bindir}/*"
 
-ARM_INSTRUCTION_SET = "arm"
+ARM_INSTRUCTION_SET_armv4 = "arm"
+ARM_INSTRUCTION_SET_armv5 = "arm"
+# Valgrind runtime detection works using hand-written assembly, which
+# doesn't support mips16e
+CPPFLAGS_append_class-target_mips16e = " -DNVALGRIND=1"
+
 USE_NLS = "yes"
 
 do_install_append () {
 	if [ -f ${D}${bindir}/gtester-report ]; then
-		sed ${D}${bindir}/gtester-report -i -e '1s|^#!.*|#!/usr/bin/env python|'
+		sed ${D}${bindir}/gtester-report -i -e '1s|^#!.*|#!/usr/bin/env python3|'
 	fi
 
 	# Remove some unpackaged files
+	rm -rf ${D}${datadir}/glib-2.0/codegen/__pycache__
 	rm -f ${D}${datadir}/glib-2.0/codegen/*.pyc
 	rm -f ${D}${datadir}/glib-2.0/codegen/*.pyo
 
@@ -77,6 +95,11 @@ do_install_append () {
 			rm ${D}${datadir}/installed-tests/glib/gdbus-serialization.test
 		fi
 	fi
+
+        # Make sure gio-querymodules is unique among multilibs
+        if test "x${MLPREFIX}" != "x"; then
+                mv ${D}${libexecdir}/gio-querymodules ${D}${libexecdir}/${MLPREFIX}gio-querymodules
+        fi
 }
 
 do_install_append_libc-musl () {
@@ -90,8 +113,6 @@ RDEPENDS_${PN}-ptest += "\
             tzdata-asia \
             tzdata-europe \
             tzdata-posix \
-            python-pygobject \
-            python-dbus \
             shared-mime-info \
            "
 

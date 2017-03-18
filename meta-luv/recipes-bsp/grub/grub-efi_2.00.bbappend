@@ -31,7 +31,7 @@ SRC_URI += "file://0001-pe32.h-add-header-structures-for-TE-and-DOS-executab.pat
           "
 
 GRUB_BUILDIN = "boot linux ext2 fat serial part_msdos part_gpt \
-        normal efi_gop iso9660 search efinet tftp all_video chain \
+        normal efi_gop iso9660 configfile search efinet tftp all_video chain \
         gfxmenu jpeg gfxterm"
 do_deploy[depends] += "${@bb.utils.contains('DISTRO_FEATURES', 'luv-netboot','luv-netboot-image:do_mkimage' , '', d)}"
 

@@ -1,0 +1,11 @@
+[Unit]
+Description=should tty1 console be disabled
+After=luv-crash-handler.service
+Before=luv-test-manager.service
+
+[Service]
+Type=oneshot
+ExecStart=@SBINDIR@/splash_runner
+
+[Install]
+WantedBy=multi-user.target

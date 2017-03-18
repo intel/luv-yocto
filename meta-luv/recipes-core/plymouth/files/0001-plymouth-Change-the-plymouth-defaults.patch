@@ -1,0 +1,30 @@
+From 86ea6774f134d83e6b5f32f4b2785ecd6fecccc7 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Mon, 1 Aug 2016 22:44:15 -0700
+Subject: [PATCH] plymouth : Change the plymouth defaults
+
+The default theme plymouth used by is spinner. Since the graphical
+behaviour of the script theme is more suited to LUV, change the default
+theme to script. Also, Plymouth has a feature to delay the splash screen
+for 5s. If a boot is faster than 5 s no boot splash is shown at all.
+Hence set ShowDelay to 0.
+
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
+---
+ .../plymouth/0.9.2-r0/plymouth-0.9.2/src/plymouthd.defaults           | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/plymouthd.defaults b/src/plymouthd.defaults
+index fc48b15..ef39574 100644
+--- a/src/plymouthd.defaults
++++ b/src/plymouthd.defaults
+@@ -1,5 +1,5 @@
+ # Distribution defaults. Changes to this file will get overwritten during
+ # upgrades.
+ [Daemon]
+-Theme=spinner
+-ShowDelay=5
++Theme=script
++ShowDelay=0
+--
+1.9.1

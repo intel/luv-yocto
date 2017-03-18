@@ -1,3 +1,0 @@
-#! /bin/sh
-# Simple script to bring-up the loopback interface
-ifconfig lo 127.0.0.1 up

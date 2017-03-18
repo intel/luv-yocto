@@ -25,6 +25,8 @@ SRC_URI_append_e500v2 = " file://no-vectorization.patch"
 INITSCRIPT_NAME = "syslog"
 CONFFILES_${PN} = "${sysconfdir}/syslog.conf.${BPN}"
 
+EXTRA_OEMAKE = "-e MAKEFLAGS="
+
 CFLAGS_append = " -DSYSV"
 
 do_install () {
@@ -53,7 +55,7 @@ ALTERNATIVE_LINK_NAME[syslog-conf] = "${sysconfdir}/syslog.conf"
 pkg_prerm_${PN} () {
 	if test "x$D" = "x"; then
 	if test "$1" = "upgrade" -o "$1" = "remove"; then
-		/etc/init.d/syslog stop
+		/etc/init.d/syslog stop || :
 	fi
 	fi
 }

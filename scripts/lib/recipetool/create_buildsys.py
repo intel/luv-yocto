@@ -1,6 +1,6 @@
 # Recipe creation tool - create command build system handlers
 #
-# Copyright (C) 2014 Intel Corporation
+# Copyright (C) 2014-2016 Intel Corporation
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -17,11 +17,18 @@
 
 import re
 import logging
+import glob
 from recipetool.create import RecipeHandler, validate_pv
 
 logger = logging.getLogger('recipetool')
 
 tinfoil = None
+plugins = None
+
+def plugin_init(pluginlist):
+    # Take a reference to the list so we can use it later
+    global plugins
+    plugins = pluginlist
 
 def tinfoil_init(instance):
     global tinfoil
@@ -37,7 +44,7 @@ class CmakeRecipeHandler(RecipeHandler):
             classes.append('cmake')
             values = CmakeRecipeHandler.extract_cmake_deps(lines_before, srctree, extravalues)
             classes.extend(values.pop('inherit', '').split())
-            for var, value in values.iteritems():
+            for var, value in values.items():
                 lines_before.append('%s = "%s"' % (var, value))
             lines_after.append('# Specify any options you want to pass to cmake using EXTRA_OECMAKE:')
             lines_after.append('EXTRA_OECMAKE = ""')
@@ -48,6 +55,13 @@ class CmakeRecipeHandler(RecipeHandler):
 
     @staticmethod
     def extract_cmake_deps(outlines, srctree, extravalues, cmakelistsfile=None):
+        # Find all plugins that want to register handlers
+        logger.debug('Loading cmake handlers')
+        handlers = []
+        for plugin in plugins:
+            if hasattr(plugin, 'register_cmake_handlers'):
+                plugin.register_cmake_handlers(handlers)
+
         values = {}
         inherits = []
 
@@ -137,10 +151,21 @@ class CmakeRecipeHandler(RecipeHandler):
         pkgcm_re = re.compile('pkg_check_modules\s*\(\s*[a-zA-Z0-9-_]+\s*(REQUIRED)?\s+([^)\s]+)\s*\)', re.IGNORECASE)
         pkgsm_re = re.compile('pkg_search_module\s*\(\s*[a-zA-Z0-9-_]+\s*(REQUIRED)?((\s+[^)\s]+)+)\s*\)', re.IGNORECASE)
         findpackage_re = re.compile('find_package\s*\(\s*([a-zA-Z0-9-_]+)\s*.*', re.IGNORECASE)
+        findlibrary_re = re.compile('find_library\s*\(\s*[a-zA-Z0-9-_]+\s*(NAMES\s+)?([a-zA-Z0-9-_ ]+)\s*.*')
         checklib_re = re.compile('check_library_exists\s*\(\s*([^\s)]+)\s*.*', re.IGNORECASE)
         include_re = re.compile('include\s*\(\s*([^)\s]*)\s*\)', re.IGNORECASE)
         subdir_re = re.compile('add_subdirectory\s*\(\s*([^)\s]*)\s*([^)\s]*)\s*\)', re.IGNORECASE)
         dep_re = re.compile('([^ ><=]+)( *[<>=]+ *[^ ><=]+)?')
+
+        def find_cmake_package(pkg):
+            RecipeHandler.load_devel_filemap(tinfoil.config_data)
+            for fn, pn in RecipeHandler.recipecmakefilemap.items():
+                splitname = fn.split('/')
+                if len(splitname) > 1:
+                    if splitname[0].lower().startswith(pkg.lower()):
+                        if splitname[1] == '%s-config.cmake' % pkg.lower() or splitname[1] == '%sConfig.cmake' % pkg or splitname[1] == 'Find%s.cmake' % pkg:
+                            return pn
+            return None
 
         def interpret_value(value):
             return value.strip('"')
@@ -148,9 +173,12 @@ class CmakeRecipeHandler(RecipeHandler):
         def parse_cmake_file(fn, paths=None):
             searchpaths = (paths or []) + [os.path.dirname(fn)]
             logger.debug('Parsing file %s' % fn)
-            with open(fn, 'r') as f:
+            with open(fn, 'r', errors='surrogateescape') as f:
                 for line in f:
                     line = line.strip()
+                    for handler in handlers:
+                        if handler.process_line(srctree, fn, line, libdeps, pcdeps, deps, outlines, inherits, values):
+                            continue
                     res = include_re.match(line)
                     if res:
                         includefn = bb.utils.which(':'.join(searchpaths), res.group(1))
@@ -192,29 +220,53 @@ class CmakeRecipeHandler(RecipeHandler):
                     res = findpackage_re.match(line)
                     if res:
                         origpkg = res.group(1)
-                        pkg = interpret_value(origpkg.lower())
-                        if pkg == 'gettext':
+                        pkg = interpret_value(origpkg)
+                        found = False
+                        for handler in handlers:
+                            if handler.process_findpackage(srctree, fn, pkg, deps, outlines, inherits, values):
+                                logger.debug('Mapped CMake package %s via handler %s' % (pkg, handler.__class__.__name__))
+                                found = True
+                                break
+                        if found:
+                            continue
+                        elif pkg == 'Gettext':
                             inherits.append('gettext')
-                        elif pkg == 'perl':
+                        elif pkg == 'Perl':
                             inherits.append('perlnative')
-                        elif pkg == 'pkgconfig':
+                        elif pkg == 'PkgConfig':
                             inherits.append('pkgconfig')
-                        elif pkg == 'pythoninterp':
+                        elif pkg == 'PythonInterp':
                             inherits.append('pythonnative')
-                        elif pkg == 'pythonlibs':
+                        elif pkg == 'PythonLibs':
                             inherits.append('python-dir')
                         else:
-                            dep = cmake_pkgmap.get(pkg, None)
+                            # Try to map via looking at installed CMake packages in pkgdata
+                            dep = find_cmake_package(pkg)
                             if dep:
+                                logger.debug('Mapped CMake package %s to recipe %s via pkgdata' % (pkg, dep))
                                 deps.append(dep)
-                            elif dep is None:
-                                unmappedpkgs.append(origpkg)
+                            else:
+                                dep = cmake_pkgmap.get(pkg.lower(), None)
+                                if dep:
+                                    logger.debug('Mapped CMake package %s to recipe %s via internal list' % (pkg, dep))
+                                    deps.append(dep)
+                                elif dep is None:
+                                    unmappedpkgs.append(origpkg)
                         continue
                     res = checklib_re.match(line)
                     if res:
                         lib = interpret_value(res.group(1))
                         if not lib.startswith('$'):
                             libdeps.append(lib)
+                    res = findlibrary_re.match(line)
+                    if res:
+                        libs = res.group(2).split()
+                        for lib in libs:
+                            if lib in ['HINTS', 'PATHS', 'PATH_SUFFIXES', 'DOC', 'NAMES_PER_DIR'] or lib.startswith(('NO_', 'CMAKE_', 'ONLY_CMAKE_')):
+                                break
+                            lib = interpret_value(lib)
+                            if not lib.startswith('$'):
+                                libdeps.append(lib)
                     if line.lower().startswith('useswig'):
                         deps.append('swig-native')
                         continue
@@ -222,14 +274,42 @@ class CmakeRecipeHandler(RecipeHandler):
         parse_cmake_file(srcfiles[0])
 
         if unmappedpkgs:
-            outlines.append('# NOTE: unable to map the following CMake package dependencies: %s' % ' '.join(unmappedpkgs))
+            outlines.append('# NOTE: unable to map the following CMake package dependencies: %s' % ' '.join(list(set(unmappedpkgs))))
 
         RecipeHandler.handle_depends(libdeps, pcdeps, deps, outlines, values, tinfoil.config_data)
+
+        for handler in handlers:
+            handler.post_process(srctree, libdeps, pcdeps, deps, outlines, inherits, values)
 
         if inherits:
             values['inherit'] = ' '.join(list(set(inherits)))
 
         return values
+
+
+class CmakeExtensionHandler(object):
+    '''Base class for CMake extension handlers'''
+    def process_line(self, srctree, fn, line, libdeps, pcdeps, deps, outlines, inherits, values):
+        '''
+        Handle a line parsed out of an CMake file.
+        Return True if you've completely handled the passed in line, otherwise return False.
+        '''
+        return False
+
+    def process_findpackage(self, srctree, fn, pkg, deps, outlines, inherits, values):
+        '''
+        Handle a find_package package parsed out of a CMake file.
+        Return True if you've completely handled the passed in package, otherwise return False.
+        '''
+        return False
+
+    def post_process(self, srctree, fn, pkg, deps, outlines, inherits, values):
+        '''
+        Apply any desired post-processing on the output
+        '''
+        return
+
+
 
 class SconsRecipeHandler(RecipeHandler):
     def process(self, srctree, classes, lines_before, lines_after, handled, extravalues):
@@ -245,6 +325,7 @@ class SconsRecipeHandler(RecipeHandler):
             return True
         return False
 
+
 class QmakeRecipeHandler(RecipeHandler):
     def process(self, srctree, classes, lines_before, lines_after, handled, extravalues):
         if 'buildsystem' in handled:
@@ -256,6 +337,7 @@ class QmakeRecipeHandler(RecipeHandler):
             return True
         return False
 
+
 class AutotoolsRecipeHandler(RecipeHandler):
     def process(self, srctree, classes, lines_before, lines_after, handled, extravalues):
         if 'buildsystem' in handled:
@@ -266,13 +348,13 @@ class AutotoolsRecipeHandler(RecipeHandler):
             autoconf = True
             values = AutotoolsRecipeHandler.extract_autotools_deps(lines_before, srctree, extravalues)
             classes.extend(values.pop('inherit', '').split())
-            for var, value in values.iteritems():
+            for var, value in values.items():
                 lines_before.append('%s = "%s"' % (var, value))
         else:
             conffile = RecipeHandler.checkfiles(srctree, ['configure'])
             if conffile:
                 # Check if this is just a pre-generated autoconf configure script
-                with open(conffile[0], 'r') as f:
+                with open(conffile[0], 'r', errors='surrogateescape') as f:
                     for i in range(1, 10):
                         if 'Generated by GNU Autoconf' in f.readline():
                             autoconf = True
@@ -282,7 +364,7 @@ class AutotoolsRecipeHandler(RecipeHandler):
             # Last resort
             conffile = RecipeHandler.checkfiles(srctree, ['configure'])
             if conffile:
-                with open(conffile[0], 'r') as f:
+                with open(conffile[0], 'r', errors='surrogateescape') as f:
                     for line in f:
                         line = line.strip()
                         if line.startswith('VERSION=') or line.startswith('PACKAGE_VERSION='):
@@ -312,32 +394,60 @@ class AutotoolsRecipeHandler(RecipeHandler):
     def extract_autotools_deps(outlines, srctree, extravalues=None, acfile=None):
         import shlex
 
+        # Find all plugins that want to register handlers
+        logger.debug('Loading autotools handlers')
+        handlers = []
+        for plugin in plugins:
+            if hasattr(plugin, 'register_autotools_handlers'):
+                plugin.register_autotools_handlers(handlers)
+
         values = {}
         inherits = []
 
-        # FIXME this mapping is very thin
+        # Hardcoded map, we also use a dynamic one based on what's in the sysroot
         progmap = {'flex': 'flex-native',
                 'bison': 'bison-native',
                 'm4': 'm4-native',
                 'tar': 'tar-native',
-                'ar': 'binutils-native'}
+                'ar': 'binutils-native',
+                'ranlib': 'binutils-native',
+                'ld': 'binutils-native',
+                'strip': 'binutils-native',
+                'libtool': '',
+                'autoconf': '',
+                'autoheader': '',
+                'automake': '',
+                'uname': '',
+                'rm': '',
+                'cp': '',
+                'mv': '',
+                'find': '',
+                'awk': '',
+                'sed': '',
+                }
         progclassmap = {'gconftool-2': 'gconf',
-                'pkg-config': 'pkgconfig'}
+                'pkg-config': 'pkgconfig',
+                'python': 'pythonnative',
+                'python3': 'python3native',
+                'perl': 'perlnative',
+                'makeinfo': 'texinfo',
+                }
 
-        pkg_re = re.compile('PKG_CHECK_MODULES\(\[?[a-zA-Z0-9_]*\]?, *\[?([^,\]]*)\]?[),].*')
-        pkgce_re = re.compile('PKG_CHECK_EXISTS\(\[?([^,\]]*)\]?[),].*')
-        lib_re = re.compile('AC_CHECK_LIB\(\[?([^,\]]*)\]?,.*')
-        libx_re = re.compile('AX_CHECK_LIBRARY\(\[?[^,\]]*\]?, *\[?([^,\]]*)\]?, *\[?([a-zA-Z0-9-]*)\]?,.*')
-        progs_re = re.compile('_PROGS?\(\[?[a-zA-Z0-9_]*\]?, \[?([^,\]]*)\]?[),].*')
+        pkg_re = re.compile('PKG_CHECK_MODULES\(\s*\[?[a-zA-Z0-9_]*\]?,\s*\[?([^,\]]*)\]?[),].*')
+        pkgce_re = re.compile('PKG_CHECK_EXISTS\(\s*\[?([^,\]]*)\]?[),].*')
+        lib_re = re.compile('AC_CHECK_LIB\(\s*\[?([^,\]]*)\]?,.*')
+        libx_re = re.compile('AX_CHECK_LIBRARY\(\s*\[?[^,\]]*\]?,\s*\[?([^,\]]*)\]?,\s*\[?([a-zA-Z0-9-]*)\]?,.*')
+        progs_re = re.compile('_PROGS?\(\s*\[?[a-zA-Z0-9_]*\]?,\s*\[?([^,\]]*)\]?[),].*')
         dep_re = re.compile('([^ ><=]+)( [<>=]+ [^ ><=]+)?')
-        ac_init_re = re.compile('AC_INIT\(([^,]+), *([^,]+)[,)].*')
-        am_init_re = re.compile('AM_INIT_AUTOMAKE\(([^,]+), *([^,]+)[,)].*')
-        define_re = re.compile(' *(m4_)?define\(([^,]+), *([^,]+)\)')
+        ac_init_re = re.compile('AC_INIT\(\s*([^,]+),\s*([^,]+)[,)].*')
+        am_init_re = re.compile('AM_INIT_AUTOMAKE\(\s*([^,]+),\s*([^,]+)[,)].*')
+        define_re = re.compile('\s*(m4_)?define\(\s*([^,]+),\s*([^,]+)\)')
+        version_re = re.compile('([0-9.]+)')
 
         defines = {}
         def subst_defines(value):
             newvalue = value
-            for define, defval in defines.iteritems():
+            for define, defval in defines.items():
                 newvalue = newvalue.replace(define, defval)
             if newvalue != value:
                 return subst_defines(newvalue)
@@ -373,7 +483,13 @@ class AutotoolsRecipeHandler(RecipeHandler):
         deps = []
         unmapped = []
 
+        RecipeHandler.load_binmap(tinfoil.config_data)
+
         def process_macro(keyword, value):
+            for handler in handlers:
+                if handler.process_macro(srctree, keyword, value, process_value, libdeps, pcdeps, deps, outlines, inherits, values):
+                    return
+            logger.debug('Found keyword %s with value "%s"' % (keyword, value))
             if keyword == 'PKG_CHECK_MODULES':
                 res = pkg_re.search(value)
                 if res:
@@ -399,14 +515,19 @@ class AutotoolsRecipeHandler(RecipeHandler):
                 if res:
                     for prog in shlex.split(res.group(1)):
                         prog = prog.split()[0]
+                        for handler in handlers:
+                            if handler.process_prog(srctree, keyword, value, prog, deps, outlines, inherits, values):
+                                return
                         progclass = progclassmap.get(prog, None)
                         if progclass:
                             inherits.append(progclass)
                         else:
-                            progdep = progmap.get(prog, None)
+                            progdep = RecipeHandler.recipebinmap.get(prog, None)
+                            if not progdep:
+                                progdep = progmap.get(prog, None)
                             if progdep:
                                 deps.append(progdep)
-                            else:
+                            elif progdep is None:
                                 if not prog.startswith('$'):
                                     unmapped.append(prog)
             elif keyword == 'AC_CHECK_LIB':
@@ -421,7 +542,7 @@ class AutotoolsRecipeHandler(RecipeHandler):
                     lib = res.group(2)
                     if not lib.startswith('$'):
                         header = res.group(1)
-                        libdeps.add((lib, header))
+                        libdeps.append((lib, header))
             elif keyword == 'AC_PATH_X':
                 deps.append('libx11')
             elif keyword in ('AX_BOOST', 'BOOST_REQUIRE'):
@@ -450,10 +571,21 @@ class AutotoolsRecipeHandler(RecipeHandler):
                 deps.append('sqlite3')
             elif keyword == 'AX_LIB_TAGLIB':
                 deps.append('taglib')
-            elif keyword == 'AX_PKG_SWIG':
-                deps.append('swig')
+            elif keyword in ['AX_PKG_SWIG', 'AC_PROG_SWIG']:
+                deps.append('swig-native')
             elif keyword == 'AX_PROG_XSLTPROC':
                 deps.append('libxslt-native')
+            elif keyword in ['AC_PYTHON_DEVEL', 'AX_PYTHON_DEVEL', 'AM_PATH_PYTHON']:
+                pythonclass = 'pythonnative'
+                res = version_re.search(value)
+                if res:
+                    if res.group(1).startswith('3'):
+                        pythonclass = 'python3native'
+                # Avoid replacing python3native with pythonnative
+                if not pythonclass in inherits and not 'python3native' in inherits:
+                    if 'pythonnative' in inherits:
+                        inherits.remove('pythonnative')
+                    inherits.append(pythonclass)
             elif keyword == 'AX_WITH_CURSES':
                 deps.append('ncurses')
             elif keyword == 'AX_PATH_BDB':
@@ -519,7 +651,11 @@ class AutotoolsRecipeHandler(RecipeHandler):
                     'AX_LIB_SQLITE3',
                     'AX_LIB_TAGLIB',
                     'AX_PKG_SWIG',
+                    'AC_PROG_SWIG',
                     'AX_PROG_XSLTPROC',
+                    'AC_PYTHON_DEVEL',
+                    'AX_PYTHON_DEVEL',
+                    'AM_PATH_PYTHON',
                     'AX_WITH_CURSES',
                     'AX_PATH_BDB',
                     'AX_PATH_LIB_PCRE',
@@ -527,11 +663,15 @@ class AutotoolsRecipeHandler(RecipeHandler):
                     'AM_INIT_AUTOMAKE',
                     'define(',
                     ]
+
+        for handler in handlers:
+            handler.extend_keywords(keywords)
+
         for srcfile in srcfiles:
             nesting = 0
             in_keyword = ''
             partial = ''
-            with open(srcfile, 'r') as f:
+            with open(srcfile, 'r', errors='surrogateescape') as f:
                 for line in f:
                     if in_keyword:
                         partial += ' ' + line.strip()
@@ -559,7 +699,7 @@ class AutotoolsRecipeHandler(RecipeHandler):
                 process_macro(in_keyword, partial)
 
         if extravalues:
-            for k,v in extravalues.items():
+            for k,v in list(extravalues.items()):
                 if v:
                     if v.startswith('$') or v.startswith('@') or v.startswith('%'):
                         del extravalues[k]
@@ -571,10 +711,42 @@ class AutotoolsRecipeHandler(RecipeHandler):
 
         RecipeHandler.handle_depends(libdeps, pcdeps, deps, outlines, values, tinfoil.config_data)
 
+        for handler in handlers:
+            handler.post_process(srctree, libdeps, pcdeps, deps, outlines, inherits, values)
+
         if inherits:
             values['inherit'] = ' '.join(list(set(inherits)))
 
         return values
+
+
+class AutotoolsExtensionHandler(object):
+    '''Base class for Autotools extension handlers'''
+    def process_macro(self, srctree, keyword, value, process_value, libdeps, pcdeps, deps, outlines, inherits, values):
+        '''
+        Handle a macro parsed out of an autotools file. Note that if you want this to be called
+        for any macro other than the ones AutotoolsRecipeHandler already looks for, you'll need
+        to add it to the keywords list in extend_keywords().
+        Return True if you've completely handled the passed in macro, otherwise return False.
+        '''
+        return False
+
+    def extend_keywords(self, keywords):
+        '''Adds keywords to be recognised by the parser (so that you get a call to process_macro)'''
+        return
+
+    def process_prog(self, srctree, keyword, value, prog, deps, outlines, inherits, values):
+        '''
+        Handle an AC_PATH_PROG, AC_CHECK_PROG etc. line
+        Return True if you've completely handled the passed in macro, otherwise return False.
+        '''
+        return False
+
+    def post_process(self, srctree, fn, pkg, deps, outlines, inherits, values):
+        '''
+        Apply any desired post-processing on the output
+        '''
+        return
 
 
 class MakefileRecipeHandler(RecipeHandler):
@@ -582,7 +754,7 @@ class MakefileRecipeHandler(RecipeHandler):
         if 'buildsystem' in handled:
             return False
 
-        makefile = RecipeHandler.checkfiles(srctree, ['Makefile'])
+        makefile = RecipeHandler.checkfiles(srctree, ['Makefile', 'makefile', 'GNUmakefile'])
         if makefile:
             lines_after.append('# NOTE: this is a Makefile-only piece of software, so we cannot generate much of the')
             lines_after.append('# recipe automatically - you will need to examine the Makefile yourself and ensure')
@@ -598,7 +770,7 @@ class MakefileRecipeHandler(RecipeHandler):
             if scanfile and os.path.exists(scanfile):
                 values = AutotoolsRecipeHandler.extract_autotools_deps(lines_before, srctree, acfile=scanfile)
                 classes.extend(values.pop('inherit', '').split())
-                for var, value in values.iteritems():
+                for var, value in values.items():
                     if var == 'DEPENDS':
                         lines_before.append('# NOTE: some of these dependencies may be optional, check the Makefile and/or upstream documentation')
                     lines_before.append('%s = "%s"' % (var, value))
@@ -625,7 +797,7 @@ class MakefileRecipeHandler(RecipeHandler):
             if installtarget:
                 func.append('# This is a guess; additional arguments may be required')
                 makeargs = ''
-                with open(makefile[0], 'r') as f:
+                with open(makefile[0], 'r', errors='surrogateescape') as f:
                     for i in range(1, 100):
                         if 'DESTDIR' in f.readline():
                             makeargs += " 'DESTDIR=${D}'"
@@ -654,7 +826,7 @@ class VersionFileRecipeHandler(RecipeHandler):
             version = None
             for fileitem in filelist:
                 linecount = 0
-                with open(fileitem, 'r') as f:
+                with open(fileitem, 'r', errors='surrogateescape') as f:
                     for line in f:
                         line = line.rstrip().strip('"\'')
                         linecount += 1
@@ -675,29 +847,43 @@ class SpecFileRecipeHandler(RecipeHandler):
         if 'PV' in extravalues and 'PN' in extravalues:
             return
         filelist = RecipeHandler.checkfiles(srctree, ['*.spec'], recursive=True)
-        pn = None
-        pv = None
+        valuemap = {'Name': 'PN',
+                    'Version': 'PV',
+                    'Summary': 'SUMMARY',
+                    'Url': 'HOMEPAGE',
+                    'License': 'LICENSE'}
+        foundvalues = {}
         for fileitem in filelist:
             linecount = 0
-            with open(fileitem, 'r') as f:
+            with open(fileitem, 'r', errors='surrogateescape') as f:
                 for line in f:
-                    if line.startswith('Name:') and not pn:
-                        pn = line.split(':')[1].strip()
-                    if line.startswith('Version:') and not pv:
-                        pv = line.split(':')[1].strip()
-            if pv or pn:
-                if pv and not 'PV' in extravalues and validate_pv(pv):
-                    extravalues['PV'] = pv
-                if pn and not 'PN' in extravalues:
-                    extravalues['PN'] = pn
-                break
+                    for value, varname in valuemap.items():
+                        if line.startswith(value + ':') and not varname in foundvalues:
+                            foundvalues[varname] = line.split(':', 1)[1].strip()
+                            break
+                    if len(foundvalues) == len(valuemap):
+                        break
+        if 'PV' in foundvalues:
+            if not validate_pv(foundvalues['PV']):
+                del foundvalues['PV']
+        license = foundvalues.pop('LICENSE', None)
+        if license:
+            liccomment = '# NOTE: spec file indicates the license may be "%s"' % license
+            for i, line in enumerate(lines_before):
+                if line.startswith('LICENSE ='):
+                    lines_before.insert(i, liccomment)
+                    break
+            else:
+                lines_before.append(liccomment)
+        extravalues.update(foundvalues)
 
 def register_recipe_handlers(handlers):
-    # These are in a specific order so that the right one is detected first
-    handlers.append(CmakeRecipeHandler())
-    handlers.append(AutotoolsRecipeHandler())
-    handlers.append(SconsRecipeHandler())
-    handlers.append(QmakeRecipeHandler())
-    handlers.append(MakefileRecipeHandler())
+    # Set priorities with some gaps so that other plugins can insert
+    # their own handlers (so avoid changing these numbers)
+    handlers.append((CmakeRecipeHandler(), 50))
+    handlers.append((AutotoolsRecipeHandler(), 40))
+    handlers.append((SconsRecipeHandler(), 30))
+    handlers.append((QmakeRecipeHandler(), 20))
+    handlers.append((MakefileRecipeHandler(), 10))
     handlers.append((VersionFileRecipeHandler(), -1))
     handlers.append((SpecFileRecipeHandler(), -1))

@@ -61,6 +61,7 @@ Table of Contents
   IV. Use of Netconsole in LUV
    V. Obtaining debug information
   VI. Other LUV boot parameters
+ VII. Submitting results to a remote location
 
 
 I. Adding the meta-luv layer to your build
@@ -220,3 +221,75 @@ to alter the default behaviour of LUV.
   luv.poweroff
     Halts and powers off the machine after tests have completed.
     (Calls /sbin/poweroff)
+  luv.telemetrics
+    User wants to enable the telemetrics feature. By doing so, they are
+    agreeing to send data to our server for further analysis.By default,
+    feature is disabled.
+  luv.crash
+    This kernel parameter will tell us if we are in a regular boot.If so,
+    we have to prepare everything in case there is a kernel crash in the
+    future. Unlike the other LUV boot parameters, this one is not intended
+    to be used directly.
+
+VII. Submitting results to a remote location
+==============================================
+
+When LUV boots via network (netboot), there is no way of storing the results
+as there is no presence of physical media. It can be useful if there is a way to
+store the results such as sending them to a central location over network.
+Sending the results over network can only be possible if LUV knows where the
+results should be sent to. One possible way is to store the results to a
+website/server. LUV should have the information about the website/server like an
+URL.
+
+LUV_STORAGE_URL is a parameter in the file 'luv.cfg' that stores the URL of a
+website/server. One has to make sure that the url is functional and the server
+is accessible to the admin/user to retrieve the results. When this parameter is
+invalid, LUV will not have the capability of sending the test results to the
+desired location (website/server).
+
+Configuring a server to gather test results
+-------------------------------------------
+The format of the parameter LUV_STORAGE_URL typically looks like this
+LUV_STORAGE_URL=http://ipaddress/cgi-bin/upload.php (as mentioned in luv.cfg)
+
+The website/server that is going to store the results is a HTTP server and at
+the moment LUV does not have the capability of resolving the hostname in to an
+ipaddress and thus, it is necessary to provide an IP address. If you are not
+sure on how to get the ipaddress please follow
+'Steps on how to get IP address and choose port number' in section IV.
+
+It is always good and recommended to have a destined directory/folder
+specifically for storing results. The path of this destined folder/directory is
+listed in a script (upload.php) that is in the cgi-bin directory. This script is
+responsible for uploads using HTTP POST method.
+
+User/developer has to make sure that upload.php script is present in cgi-bin
+directory.
+
+$ cd /usr/lib/cgi-bin/
+/usr/lib/cgi-bin$ ls
+upload.php
+
+If you do not have a server setup or do not have a upload.php script, please
+follow the documentation
+https://github.com/01org/luv-yocto/wiki/Send--LUV-test-results-to-an-HTTP-server
+
+Configuring a LUV client
+------------------------
+
+Diskboot: In diskboot image, one can edit the 'luv.cfg' file manually by
+following then same format as mentioned above.
+
+Note: Editing is possible only in Linux systems as luv.cfg is available in boot
+(second) partiton of the disk.
+
+Netboot: In netboot image, a script is employed to edit as netboot image is an
+EFI binary and is available in meta-luv/utils/modify_luv_netboot_efi.py
+
+$ cd luv-yocto/meta-luv/utils/
+luv-yocto/meta-luv/utils$ ls
+modify_luv_netboot_efi.py
+
+For the usage of the script please follow the instructions at
+https://github.com/01org/luv-yocto/wiki page.

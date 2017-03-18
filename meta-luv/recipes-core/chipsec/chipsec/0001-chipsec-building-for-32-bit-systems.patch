@@ -8,43 +8,20 @@ architectures.
 
 Signed-off-by: Megha Dey <megha.dey@intel.com>
 ---
- source/drivers/linux/Makefile     | 2 +-
- source/drivers/linux/chipsec_km.c | 4 ++--
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ drivers/linux/chipsec_km.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/source/drivers/linux/Makefile b/source/drivers/linux/Makefile
-index 4342977..bdc0acc 100644
---- a/source/drivers/linux/Makefile
-+++ b/source/drivers/linux/Makefile
-@@ -10,7 +10,7 @@ VERSION=
- #ifeq ($(shell uname -m),x86_64)
- ifeq ($(ARCH),i386)
- obj-m += chipsec.o
--chipsec-objs := chipsec_ko.o i386/cpu.o
-+chipsec-objs := chipsec_km.o i386/cpu.o
- all:	clean chipsec32
- else
- obj-m += chipsec.o
-diff --git a/source/drivers/linux/chipsec_km.c b/source/drivers/linux/chipsec_km.c
-index e76f6a9..a9080ec 100644
---- a/source/drivers/linux/chipsec_km.c
-+++ b/source/drivers/linux/chipsec_km.c
-@@ -946,7 +946,7 @@ static long d_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioc
-         #ifdef __x86_64__
- 		ptr[1] = (uint32_t)(dtr.base >> 32);
-         #else
--        ptr[1] = 0
-+        ptr[1] = 0;
-         #endif
- 		ptr[2] = (uint32_t)dtr.base;
- 
-@@ -1368,8 +1368,8 @@ static long d_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioc
-                 first = ioread32(ioaddr);
-                 second = ioread32( ioaddr + 4 );
-                 ptr[0] = first | (second << 32);
--                break;
-             #endif
-+                break;
+diff --git a/drivers/linux/chipsec_km.c b/drivers/linux/chipsec_km.c
+index 60e1247..4f993f6 100644
+--- a/drivers/linux/chipsec_km.c
++++ b/drivers/linux/chipsec_km.c
+@@ -1437,8 +1437,8 @@ static long d_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioc
+ 				first = ioread32(ioaddr);
+ 				second = ioread32( ioaddr + 4 );
+ 				ptr[0] = first | (second << 32);
+-				break;
+ 			#endif
++				break;
  		}
  
  		my_unxlate_dev_mem_ptr(addr, ioaddr);

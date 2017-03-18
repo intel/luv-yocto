@@ -1,11 +1,11 @@
 #This is just to say that oah this is a shell script not a bash
 # we can add the bash dependency but its not a good idea
-diff --git a/tools/testing/selftests/efivarfs/efivarfs.sh b/tools/testing/selftests/efivarfs/efivarfs.sh
+diff --git a/src/efivarfs/efivarfs.sh b/src/efivarfs/efivarfs.sh
 old mode 100644
 new mode 100755
 index 77edcdc..7d64ff0
---- a/tools/testing/selftests/efivarfs/efivarfs.sh
-+++ b/tools/testing/selftests/efivarfs/efivarfs.sh
+--- a/src/efivarfs/efivarfs.sh
++++ b/src/efivarfs/efivarfs.sh
 @@ -1,4 +1,4 @@
 -#!/bin/bash
 +#!/bin/sh

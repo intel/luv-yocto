@@ -1,8 +1,6 @@
 require busybox.inc
 
 SRC_URI = "http://www.busybox.net/downloads/busybox-${PV}.tar.bz2;name=tarball \
-           file://get_header_tar.patch \
-           file://busybox-appletlib-dependency.patch \
            file://busybox-udhcpc-no_deconfig.patch \
            file://find-touchscreen.sh \
            file://busybox-cron \
@@ -31,10 +29,10 @@ SRC_URI = "http://www.busybox.net/downloads/busybox-${PV}.tar.bz2;name=tarball \
            file://recognize_connmand.patch \
            file://busybox-cross-menuconfig.patch \
            file://0001-Use-CC-when-linking-instead-of-LD-and-use-CFLAGS-and.patch \
-           file://0002-Passthrough-r-to-linker.patch \
            file://busybox-1.24.1-unzip.patch \
            file://busybox-1.24.1-unzip-regression.patch \
            file://busybox-1.24.1-truncate-open-mode.patch \
+           file://0001-flock-update-the-behaviour-of-c-parameter-to-match-u.patch \
            file://mount-via-label.cfg \
            file://sha1sum.cfg \
            file://sha256sum.cfg \
@@ -46,6 +44,15 @@ SRC_URI = "http://www.busybox.net/downloads/busybox-${PV}.tar.bz2;name=tarball \
            file://rcS \
            file://rcK \
            file://runlevel \
+           file://CVE-2016-2148.patch \
+           file://CVE-2016-2147.patch \
+           file://CVE-2016-2147_2.patch \
+           file://ip_fix_problem_on_mips64_n64_big_endian_musl_systems.patch \
+           file://makefile-fix-backport.patch \
+           file://0001-sed-fix-sed-n-flushes-pattern-space-terminates-early.patch \
+           file://busybox-kbuild-race-fix-commit-d8e61bb.patch \
+           file://commit-applet_tables-fix-commit-0dddbc1.patch \
+           file://makefile-libbb-race.patch \
 "
 SRC_URI_append_libc-musl = " file://musl.cfg "
 

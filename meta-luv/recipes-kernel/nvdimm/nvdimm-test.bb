@@ -13,3 +13,11 @@ S = "${WORKDIR}"
 
 EXTRA_OEMAKE += "KERNEL=${STAGING_KERNEL_DIR}"
 KERNEL_MODULE_PACKAGE_PREFIX = "nvdimm-test"
+
+do_install_prepend() {
+        cp ${STAGING_KERNEL_DIR}/tools/testing/nvdimm/Module.symvers ${B}
+}
+
+do_populate_lic[depends] += "virtual/kernel:do_populate_lic"
+
+RPROVIDES_${PN} = "kernel-module-libnvdimm"

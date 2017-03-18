@@ -1,0 +1,92 @@
+#!/bin/bash
+#
+# Copyright 2014 Intel Corporation; author Ricardo Neri
+#
+# The crash handler provides a safety net to LuvOS in case there is a kernel
+# crash while running the tests. It will make preparations to reboot the
+# system with kexec and dump all the available crash information in the
+# recovery boot.
+
+# In regular boot, we prepare the recovery kernel and initrd image. These images
+# are obtained from a disk partition identified by its UUID. Behavior changes
+# according to the runlevel.
+
+plymouth_write() {
+    /bin/plymouth display-message --text="$1"
+}
+
+plymouth_hide() {
+    /bin/plymouth hide-message --text="$1"
+}
+
+# The command-line parameter luv.crash tells us if we are in a regular boot.
+# and we only have to prepare everything in case there is a kernel crash in
+# the future.
+
+grep -q luv.crash /proc/cmdline
+if [ $? -eq 1 ]; then
+    # Not all disks may be ready to mount at this moment.
+    # Thus, we need to wait for them.
+    plymouth_write "Preparing crash handler..."
+
+    LUV_BOOT_PARTITION=/mnt/boot/
+    LUV_BOOT_PARTITION_UUID=423C-C2C8
+    LUV_DISK_DEVICE=/dev/disk/by-uuid/${LUV_BOOT_PARTITION_UUID}
+
+    mkdir -p ${LUV_BOOT_PARTITION}
+    if [ $? -eq 0 ]; then
+        mount ${LUV_DISK_DEVICE} ${LUV_BOOT_PARTITION}
+        if [ $? -eq 0 ]; then
+            kexec -p --initrd=${LUV_BOOT_PARTITION}initrd --reuse-cmdline \
+                  --append="noluv systemd.unit=graphical.target irqpoll maxcpus=1 reset_devices luv.crash" \
+                  ${LUV_BOOT_PARTITION}vmlinuz
+            umount ${LUV_BOOT_PARTITION}
+        fi
+    fi
+    plymouth_hide "Preparing crash handler..."
+else
+# If we have the luv.crash kernel parameter, we just recovered from a crash.
+# We need to dump the /proc/vmcore file.
+    LUV_STORAGE=/mnt/luv-storage/
+    LUV_PARTITION_UUID=05D6-1523
+    LUV_DISK_DEVICE=/dev/disk/by-uuid/${LUV_PARTITION_UUID}
+    LUV_DEBUG_DIR=${LUV_STORAGE}luv-debug/
+    LUV_DEBUG_FILE=luv-debug.log
+    LUV_README_FILE=README.txt
+
+    LUV_DEBUG_README="
+    Oops. It looks like the system crashed while running the tests. We can
+    help to determine what went wrong. Along with this file, you will see a
+    ${LUV_DEBUG_FILE} file. Please report your crash to luv@lists.01.org or
+    submit a bug report on https://github.com/01org/luv-yocto/issues. In either
+    case, please submit the contents of ${LUV_DEBUG_FILE}."
+
+    plymouth_write "Recovery Boot. Saving debug info..."
+    sleep 1
+    plymouth_hide "Recovery Boot. Saving debug info..."
+
+    mkdir -p ${LUV_STORAGE}
+    if [ $? -eq 0 ]; then
+
+        mount ${LUV_DISK_DEVICE} ${LUV_STORAGE}
+        if [ $? -eq 0 ]; then
+
+            mkdir -p ${LUV_DEBUG_DIR}
+            if [ $? -eq 0 ]; then
+                vmcore-dmesg /proc/vmcore > ${LUV_DEBUG_DIR}${LUV_DEBUG_FILE}
+                echo ${LUV_DEBUG_README} > ${LUV_DEBUG_DIR}${LUV_README_FILE}
+            fi
+        fi
+    fi
+
+    if [ -f ${LUV_DEBUG_DIR}${LUV_DEBUG_FILE} ]; then
+        plymouth_write "Recovery boot. Debug info saved on your non-volatile media.
+                       You may safely remove it."
+    else
+        plymouth_write "Recovery boot. Could not save debug info."
+    fi
+
+    mountpoint -q ${LUV_STORAGE}
+    [ $? -eq 0 ] && umount ${LUV_STORAGE}
+
+fi

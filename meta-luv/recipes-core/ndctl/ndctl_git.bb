@@ -11,7 +11,7 @@ HOMEPAGE = "https://git.kernel.org/cgit/linux/kernel/git/nvdimm/nvdimm.git/tree/
 LICENSE = "GPLv2+"
 LIC_FILES_CHKSUM = "file://COPYING;md5=e66651809cac5da60c8b80e9e4e79e08"
 
-PV = "v52+git${SRCPV}"
+PV = "v56+git${SRCPV}"
 
 RDEPENDS_${PN} = "nvdimm-test"
 COMPATIBLE_HOST='(x86_64).*'
@@ -21,11 +21,9 @@ inherit pkgconfig
 inherit module-base
 
 SRC_URI += "git://github.com/pmem/ndctl.git"
-SRC_URI += "file://0001-ndctl-fix-build-on-systems-where-bin-sh-is-not-a-lin.patch"
-SRC_URI += "file://0002-ndctl-Disable-building-the-documentation.patch"
 SRC_URI += "file://luv-parser-ndctl"
 SRC_URI += "file://ndctl_runner"
-SRCREV = "21cc75427cf53ec827ad0051915747d8868f273f"
+SRCREV = "78d5421e02272fd068e1637fc2764db3a3776a8a"
 
 S = "${WORKDIR}/git"
 DEPENDS = "virtual/kernel kmod udev"
@@ -40,6 +38,7 @@ do_install_append() {
         install -m 755 ${WORKDIR}/ndctl_runner ${D}${bindir}
 }
 
+FILES_${PN} += "/usr/share/bash-completion/completions/ndctl"
 LUV_TEST_LOG_PARSER="luv-parser-ndctl"
 LUV_TEST="ndctl_runner"
 LUV_TEST_ARGS=""

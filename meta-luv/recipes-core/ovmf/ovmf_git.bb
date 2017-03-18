@@ -6,13 +6,17 @@ LIC_FILES_CHKSUM = "file://OvmfPkg/License.txt;md5=343dc88e82ff33d042074f62050c3
 SRC_URI = "git://github.com/tianocore/edk2.git;branch=master \
 	file://0001-BaseTools-Force-tools-variables-to-host-toolchain.patch \
 	file://0001-OvmfPkg-Enable-BGRT-in-OVMF.patch \
-	file://0002-ovmf-update-path-to-native-BaseTools.patch"
+	file://0002-ovmf-update-path-to-native-BaseTools.patch \
+	file://0003-BaseTools-makefile-adjust-to-build-in-under-bitbake.patch \
+        "
 
-SRCREV="3e43396b3506b9fdaf71ffb69ed160f2e108894b"
+SRCREV="4575a602ca6072ee9d04150b38bfb143cbff8588"
+
+PARALLEL_MAKE = ""
 
 S = "${WORKDIR}/git"
 
-DEPENDS_class-native="util-linux-native iasl-native"
+DEPENDS_class-native="util-linux-native iasl-native ossp-uuid-native"
 
 DEPENDS_class-target="ovmf-native"
 
@@ -55,6 +59,9 @@ GCC_VER="$(${CC} -v 2>&1 | tail -n1 | awk '{print $3}')"
 
 fixup_target_tools() {
     case ${1} in
+      4.4.*)
+        FIXED_GCCVER=GCC44
+        ;;
       4.5.*)
         FIXED_GCCVER=GCC45
         ;;
@@ -67,11 +74,11 @@ fixup_target_tools() {
       4.8.*)
         FIXED_GCCVER=GCC48
         ;;
-      4.9.*|4.1[0-9].*|5.*.*)
+      4.9.*)
         FIXED_GCCVER=GCC49
         ;;
       *)
-        FIXED_GCCVER=GCC44
+        FIXED_GCCVER=GCC5
         ;;
     esac
     echo ${FIXED_GCCVER}
@@ -89,6 +96,7 @@ do_compile_class-target() {
     fi
 
     FIXED_GCCVER=$(fixup_target_tools ${GCC_VER})
+    echo FIXED_GCCVER is ${FIXED_GCCVER}
     ${S}/OvmfPkg/build.sh -a $OVMF_ARCH -b RELEASE -t ${FIXED_GCCVER}
 }
 

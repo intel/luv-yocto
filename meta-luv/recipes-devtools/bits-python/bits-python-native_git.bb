@@ -20,12 +20,12 @@ inherit native
 LICENSE = "GPLv3"
 LIC_FILES_CHKSUM = "file://COPYING;md5=71a9ec458a3c65c2bfb461b227ef3049"
 
-BITSVERSION="2073"
+BITSVERSION="2079"
 PV="${BITSVERSION}+git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
-SRCREV ="5931fde3bc7da376a33411e07423722977502259"
+SRCREV ="19da7046a7303f1de8b53165eea1a6f486757c03"
 SRC_URI = "gitsm://github.com/biosbits/bits.git;protocol=http  \
            file://BITS-python-_ctypes-do-not-use-the-WIN-64-EFI64-call.patch \
            file://BITS-python-configure-customize-Python-version.patch \
@@ -39,8 +39,25 @@ DEPENDS = "virtual/gettext autogen-native gettext-native sqlite3-native"
 COMPATIBLE_HOST = '(x86_64.*|i.86.*)-(linux|freebsd.*)'
 
 do_compile() {
-	# adjust the install bin directory
-	sed -i 's|BINDIR/PN|${bindir}/${PN}|' Makefile
+	# adjust the target directories
+	sed -i 's|BUILD_SYS|${BUILD_SYS}|' ${S}/Makefile
+	sed -i 's|HOST_SYS|${HOST_SYS}|' ${S}/Makefile
+	sed -i 's|TARGET_SYS|${TARGET_SYS}|' ${S}/Makefile
+	sed -i 's|_PREFIX_|${prefix}|' ${S}/Makefile
+	sed -i 's|EXEC_PREFIX|${exec_prefix}|' ${S}/Makefile
+	sed -i 's|_BINDIR/PN|${bindir}/${PN}|' ${S}/Makefile
+	sed -i 's|SBINDIR|${sbindir}/${PN}|' ${S}/Makefile
+	sed -i 's|LIBEXECDIR|${libexecdir}|' ${S}/Makefile
+	sed -i 's|DATADIR|${datadir}|' ${S}/Makefile
+	sed -i 's|SYSCONFDIR|${sysconfdir}|' ${S}/Makefile
+	sed -i 's|SHAREDSTATEDIR|${sharedstatedir}|' ${S}/Makefile
+	sed -i 's|LOCALSTATEDIR|${localstatedir}|' ${S}/Makefile
+	sed -i 's|LIBDIR|${libdir}|' ${S}/Makefile
+	sed -i 's|_INCLUDEDIR|${includedir}|' ${S}/Makefile
+	sed -i 's|OLDINCLUDEDIR|${oldincludedir}|' ${S}/Makefile
+	sed -i 's|INFODIR|${infodir}|' ${S}/Makefile
+	sed -i 's|MANDIR|${mandir}|' ${S}/Makefile
+
 	oe_runmake build-python-host
 }
 

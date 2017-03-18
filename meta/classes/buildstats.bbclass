@@ -4,8 +4,7 @@ BUILDSTATS_BASE = "${TMPDIR}/buildstats/"
 # Build statistics gathering.
 #
 # The CPU and Time gathering/tracking functions and bbevent inspiration
-# were written by Christopher Larson and can be seen here:
-# http://kergoth.pastey.net/142813
+# were written by Christopher Larson.
 #
 ################################################################################
 
@@ -26,13 +25,14 @@ def get_process_cputime(pid):
         'cstime' : fields[16],  
     }
     iostats = {}
-    with open("/proc/%d/io" % pid, "r") as f:
-        while True:
-            i = f.readline().strip()
-            if not i:
-                break
-            i = i.split(": ")
-            iostats[i[0]] = i[1]
+    if os.path.isfile("/proc/%d/io" % pid):
+        with open("/proc/%d/io" % pid, "r") as f:
+            while True:
+                i = f.readline().strip()
+                if not i:
+                    break
+                i = i.split(": ")
+                iostats[i[0]] = i[1]
     resources = resource.getrusage(resource.RUSAGE_SELF)
     childres = resource.getrusage(resource.RUSAGE_CHILDREN)
     return stats, iostats, resources, childres
@@ -112,7 +112,14 @@ python run_buildstats () {
 
     if isinstance(e, bb.event.BuildStarted):
         ########################################################################
-        # at first pass make the buildstats heriarchy and then
+        # If the kernel was not configured to provide I/O statistics, issue
+        # a one time warning.
+        ########################################################################
+        if not os.path.isfile("/proc/%d/io" % os.getpid()):
+            bb.warn("The Linux kernel on your build host was not configured to provide process I/O statistics. (CONFIG_TASK_IO_ACCOUNTING is not set)")
+
+        ########################################################################
+        # at first pass make the buildstats hierarchy and then
         # set the buildname
         ########################################################################
         bb.utils.mkdirhier(bsdir)
@@ -156,10 +163,17 @@ python run_buildstats () {
             bs = os.path.join(bsdir, "build_stats")
             with open(bs, "a") as f:
                 rootfs = d.getVar('IMAGE_ROOTFS', True)
-                rootfs_size = subprocess.Popen(["du", "-sh", rootfs], stdout=subprocess.PIPE).stdout.read()
-                f.write("Uncompressed Rootfs size: %s" % rootfs_size)
+                if os.path.isdir(rootfs):
+                    try:
+                        rootfs_size = subprocess.check_output(["du", "-sh", rootfs],
+                                stderr=subprocess.STDOUT).decode('utf-8')
+                        f.write("Uncompressed Rootfs size: %s" % rootfs_size)
+                    except subprocess.CalledProcessError as err:
+                        bb.warn("Failed to get rootfs size: %s" % err.output.decode('utf-8'))
 
     elif isinstance(e, bb.build.TaskFailed):
+        # Can have a failure before TaskStarted so need to mkdir here too
+        bb.utils.mkdirhier(taskdir)
         write_task_data("failed", os.path.join(taskdir, e.task), e, d)
         ########################################################################
         # Lets make things easier and tell people where the build failed in

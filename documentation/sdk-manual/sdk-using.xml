@@ -2,41 +2,203 @@
 "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd"
 [<!ENTITY % poky SYSTEM "../poky.ent"> %poky; ] >
 
-<chapter id='sdk-using'>
-
-<title>Developing with an SDK</title>
-
-<para>
-    This chapter is going to cover all the SDK stuff that is common
-    to both the SDK and the extensible SDK.
-    We need to figure out what from the existing YP manual set can
-    go into this chapter.
-</para>
-
-<section id='chap-two-section-one'>
-    <title>Section One</title>
+<chapter id='sdk-using-the-standard-sdk'>
+    <title>Using the Standard SDK</title>
 
     <para>
-        Some section of stuff here.
+        This chapter describes the standard SDK and how to install it.
+        Information includes unique installation and setup aspects for the
+        standard SDK.
+        <note>
+            For a side-by-side comparison of main features supported for a
+            standard SDK as compared to an extensible SDK, see the
+            "<link linkend='sdk-manual-intro'>Introduction</link>"
+            section.
+        </note>
     </para>
 
-    <section id='chap-two-section-one-one'>
-        <title>Section One One</title>
+    <para>
+        You can use a standard SDK to work on Makefile, Autotools, and
+        Eclipse-based projects.
+        See the
+        "<link linkend='sdk-working-projects'>Working with Different Types of Projects</link>"
+        chapter for more information.
+    </para>
+
+    <section id='sdk-standard-sdk-intro'>
+        <title>Why use the Standard SDK and What is in It?</title>
 
         <para>
-            Some section of stuff here.
+            The Standard SDK provides a cross-development toolchain and
+            libraries tailored to the contents of a specific image.
+            You would use the Standard SDK if you want a more traditional
+            toolchain experience as compared to the extensible SDK, which
+            provides an internal build system and the
+            <filename>devtool</filename> functionality.
+        </para>
+
+        <para>
+            The installed Standard SDK consists of several files and
+            directories.
+            Basically, it contains an SDK environment setup script, some
+            configuration files, and host and target root filesystems to
+            support usage.
+            You can see the directory structure in the
+            "<link linkend='sdk-installed-standard-sdk-directory-structure'>Installed Standard SDK Directory Structure</link>"
+            section.
         </para>
     </section>
 
-    <section id='chap-two-section-one-two'>
-        <title>Section One Two</title>
+    <section id='sdk-installing-the-sdk'>
+        <title>Installing the SDK</title>
 
         <para>
-            Some section of stuff here.
+            The first thing you need to do is install the SDK on your host
+            development machine by running the <filename>*.sh</filename>
+            installation script.
+        </para>
+
+        <para>
+            You can download a tarball installer, which includes the
+            pre-built toolchain, the <filename>runqemu</filename>
+            script, and support files from the appropriate directory under
+            <ulink url='&YOCTO_TOOLCHAIN_DL_URL;'></ulink>.
+            Toolchains are available for 32-bit and 64-bit x86 development
+            systems from the <filename>i686</filename> and
+            <filename>x86_64</filename> directories, respectively.
+            The toolchains the Yocto Project provides are based off the
+            <filename>core-image-sato</filename> image and contain
+            libraries appropriate for developing against that image.
+            Each type of development system supports five or more target
+            architectures.
+        </para>
+
+        <para>
+            The names of the tarball installer scripts are such that a
+            string representing the host system appears first in the
+            filename and then is immediately followed by a string
+            representing the target architecture.
+            <literallayout class='monospaced'>
+     poky-glibc-<replaceable>host_system</replaceable>-<replaceable>image_type</replaceable>-<replaceable>arch</replaceable>-toolchain-<replaceable>release_version</replaceable>.sh
+
+     Where:
+         <replaceable>host_system</replaceable> is a string representing your development system:
+
+                    i686 or x86_64.
+
+         <replaceable>image_type</replaceable> is the image for which the SDK was built.
+
+         <replaceable>arch</replaceable> is a string representing the tuned target architecture:
+
+                    i586, x86_64, powerpc, mips, armv7a or armv5te
+
+         <replaceable>release_version</replaceable> is a string representing the release number of the
+                Yocto Project:
+
+                    &DISTRO;, &DISTRO;+snapshot
+            </literallayout>
+            For example, the following SDK installer is for a 64-bit
+            development host system and a i586-tuned target architecture
+            based off the SDK for <filename>core-image-sato</filename> and
+            using the current &DISTRO; snapshot:
+            <literallayout class='monospaced'>
+     poky-glibc-x86_64-core-image-sato-i586-toolchain-&DISTRO;.sh
+            </literallayout>
+            <note>
+                As an alternative to downloading an SDK, you can build the
+                SDK installer.
+                For information on building the installer, see the
+                "<link linkend='sdk-building-an-sdk-installer'>Building an SDK Installer</link>"
+                section.
+                Another helpful resource for building an installer is the
+                <ulink url='https://wiki.yoctoproject.org/wiki/TipsAndTricks/RunningEclipseAgainstBuiltImage'>Cookbook guide to Making an Eclipse Debug Capable Image</ulink>
+                wiki page.
+                This wiki page focuses on development when using the Eclipse
+                IDE.
+            </note>
+        </para>
+
+        <para>
+            The SDK and toolchains are self-contained and by default are
+            installed into <filename>/opt/poky</filename>.
+            However, when you run the SDK installer, you can choose an
+            installation directory.
+            <note>
+                You must change the permissions on the SDK
+                installer script so that it is executable:
+                <literallayout class='monospaced'>
+     $ chmod +x poky-glibc-x86_64-core-image-sato-i586-toolchain-&DISTRO;.sh
+                </literallayout>
+            </note>
+        </para>
+
+        <para>
+            The following command shows how to run the installer given a
+            toolchain tarball for a 64-bit x86 development host system and
+            a 32-bit x86 target architecture.
+            The example assumes the SDK installer is located in
+            <filename>~/Downloads/</filename>.
+            <note>
+                If you do not have write permissions for the directory
+                into which you are installing the SDK, the installer
+                notifies you and exits.
+                Be sure you have write permissions in the directory and
+                run the installer again.
+            </note>
+            <literallayout class='monospaced'>
+     $ ./poky-glibc-x86_64-core-image-sato-i586-toolchain-&DISTRO;.sh
+     Poky (Yocto Project Reference Distro) SDK installer version &DISTRO;
+     ===============================================================
+     Enter target directory for SDK (default: /opt/poky/&DISTRO;):
+     You are about to install the SDK to "/opt/poky/&DISTRO;". Proceed[Y/n]? Y
+     Extracting SDK.......................................................................done
+     Setting it up...done
+     SDK has been successfully set up and is ready to be used.
+     Each time you wish to use the SDK in a new shell session, you need to source the environment setup script e.g.
+      $ . /opt/poky/&DISTRO;/environment-setup-i586-poky-linux
+            </literallayout>
+        </para>
+
+        <para>
+            Again, reference the
+            "<link linkend='sdk-installed-standard-sdk-directory-structure'>Installed Standard SDK Directory Structure</link>"
+            section for more details on the resulting directory structure of
+            the installed SDK.
         </para>
     </section>
-</section>
 
+    <section id='sdk-running-the-sdk-environment-setup-script'>
+        <title>Running the SDK Environment Setup Script</title>
+
+        <para>
+            Once you have the SDK installed, you must run the SDK environment
+            setup script before you can actually use it.
+            This setup script resides in the directory you chose when you
+            installed the SDK.
+            For information on where this setup script can reside, see the
+            "<link linkend='sdk-appendix-obtain'>Obtaining the SDK</link>"
+            Appendix.
+        </para>
+
+        <para>
+            Before running the script, be sure it is the one that matches the
+            architecture for which you are developing.
+            Environment setup scripts begin with the string
+            "<filename>environment-setup</filename>" and include as part of
+            their name the tuned target architecture.
+            For example, the command to source a setup script for an IA-based
+            target machine using i586 tuning and located in the default SDK
+            installation directory is as follows:
+            <literallayout class='monospaced'>
+     $ source /opt/poky/&DISTRO;/environment-setup-i586-poky-linux
+            </literallayout>
+            When you run the setup script, the same environment variables are
+            defined as are when you run the setup script for an extensible SDK.
+            See the
+            "<link linkend='sdk-running-the-extensible-sdk-environment-setup-script'>Running the Extensible SDK Environment Setup Script</link>"
+            section for more information.
+        </para>
+    </section>
 </chapter>
 <!--
 vim: expandtab tw=80 ts=4

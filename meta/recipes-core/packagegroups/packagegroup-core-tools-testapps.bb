@@ -3,7 +3,6 @@
 #
 
 SUMMARY = "Testing tools/applications"
-LICENSE = "MIT"
 
 PR = "r2"
 
@@ -11,13 +10,13 @@ PACKAGE_ARCH = "${MACHINE_ARCH}"
 
 inherit packagegroup
 
-# kexec-tools doesn't work on e5500-64b yet
+# kexec-tools doesn't work on e5500-64b and nios2 yet
 KEXECTOOLS ?= "kexec"
 KEXECTOOLS_e5500-64b ?= ""
+KEXECTOOLS_nios2 ?= ""
 
 X11GLTOOLS = "\
     mesa-demos \
-    piglit \
     "
 
 3GTOOLS = "\
@@ -26,7 +25,7 @@ X11GLTOOLS = "\
 
 X11TOOLS = "\
     fstests \
-    gst-player-bin \
+    gst-player \
     x11perf \
     xrestop \
     xwininfo \
@@ -36,8 +35,6 @@ X11TOOLS = "\
 
 RDEPENDS_${PN} = "\
     blktool \
-    tslib-calibrate \
-    tslib-tests \
     lrzsz \
     ${KEXECTOOLS} \
     alsa-utils-amixer \

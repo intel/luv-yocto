@@ -493,13 +493,13 @@ index 3f3e6e3..bd83859 100644
 +  section = context->first_section;
 +  for (i = 0; i < context->num_sections; i++, section++)
 +    {
-+      if (section->characteristics & 0x02000000)
-+        /* section has EFI_IMAGE_SCN_MEM_DISCARDABLE attr set */
-+        continue;
++	if (section->characteristics & 0x02000000)
++	/* section has EFI_IMAGE_SCN_MEM_DISCARDABLE attr set */
++	  continue;
 +
 +	sect_size = section->virtual_size;
 +
-+        if (sect_size > section->raw_data_size)
++	if (sect_size > section->raw_data_size)
 +	  sect_size = section->raw_data_size;
 +
 +	base = (grub_int8_t *)

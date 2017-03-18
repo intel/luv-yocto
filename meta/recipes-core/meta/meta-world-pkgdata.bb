@@ -1,5 +1,6 @@
 SUMMARY = "Pulls in pkgdata for world"
 LICENSE = "MIT"
+
 INHIBIT_DEFAULT_DEPS = "1"
 
 addtask do_allpackagedata before do_build
@@ -33,7 +34,7 @@ do_install[noexec] = "1"
 
 do_configure[deptask] = ""
 
-WORLD_PKGDATA_EXCLUDE ?= "adt-installer"
+WORLD_PKGDATA_EXCLUDE ?= ""
 
 python calculate_extra_depends() {
     exclude = '${WORLD_PKGDATA_EXCLUDE}'.split()

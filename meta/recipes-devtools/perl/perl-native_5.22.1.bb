@@ -1,5 +1,7 @@
 require perl.inc
 
+EXTRA_OEMAKE = "-e MAKEFLAGS="
+
 SRC_URI += "\
            file://Configure-multilib.patch \
            file://perl-configpm-switch.patch \
@@ -9,6 +11,7 @@ SRC_URI += "\
            file://debian/errno_ver.diff \
            file://dynaloaderhack.patch \
            file://perl-PathTools-don-t-filter-out-blib-from-INC.patch \
+           file://perl-remove-nm-from-libswanted.patch \
           "
 
 SRC_URI[md5sum] = "6671e4829cbaf9cecafa9a84f141b0a3"

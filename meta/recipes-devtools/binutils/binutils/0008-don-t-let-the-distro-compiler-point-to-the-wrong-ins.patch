@@ -1,4 +1,4 @@
-From 4d3a9f6db604055348332b56889d466c058fa5f3 Mon Sep 17 00:00:00 2001
+From b2d277937d11f1ce1d581f48ff74a25822a052da Mon Sep 17 00:00:00 2001
 From: Khem Raj <raj.khem@gmail.com>
 Date: Mon, 2 Mar 2015 01:39:01 +0000
 Subject: [PATCH 08/13] don't let the distro compiler point to the wrong
@@ -17,10 +17,10 @@ Signed-off-by: Khem Raj <raj.khem@gmail.com>
  1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/libiberty/Makefile.in b/libiberty/Makefile.in
-index 9b87720..ff43f53 100644
+index c7a4568..f766b72 100644
 --- a/libiberty/Makefile.in
 +++ b/libiberty/Makefile.in
-@@ -361,7 +361,8 @@ install-strip: install
+@@ -364,7 +364,8 @@ install-strip: install
  # multilib-specific flags, it's overridden by FLAGS_TO_PASS from the
  # default multilib, so we have to take CFLAGS into account as well,
  # since it will be passed the multilib flags.
@@ -31,5 +31,5 @@ index 9b87720..ff43f53 100644
  	if test -n "${target_header_dir}"; then \
  		${mkinstalldirs} $(DESTDIR)$(libdir)/$(MULTIOSDIR); \
 -- 
-2.1.4
+2.9.0
 

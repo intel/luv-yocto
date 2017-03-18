@@ -20,6 +20,7 @@ import os
 import logging
 import glob
 import argparse
+import subprocess
 
 def logger_create(name):
     logger = logging.getLogger(name)
@@ -101,3 +102,30 @@ def fetch_uri(d, uri, destdir, srcrev=None):
         os.chdir(olddir)
     return ret
 
+def run_editor(fn):
+    if isinstance(fn, str):
+        params = '"%s"' % fn
+    else:
+        params = ''
+        for fnitem in fn:
+            params += ' "%s"' % fnitem
+
+    editor = os.getenv('VISUAL', os.getenv('EDITOR', 'vi'))
+    try:
+        return subprocess.check_call('%s %s' % (editor, params), shell=True)
+    except OSError as exc:
+        logger.error("Execution of editor '%s' failed: %s", editor, exc)
+        return 1
+
+def is_src_url(param):
+    """
+    Check if a parameter is a URL and return True if so
+    NOTE: be careful about changing this as it will influence how devtool/recipetool command line handling works
+    """
+    if not param:
+        return False
+    elif '://' in param:
+        return True
+    elif param.startswith('git@') or ('@' in param and param.endswith('.git')):
+        return True
+    return False

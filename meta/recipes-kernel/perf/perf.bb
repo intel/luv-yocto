@@ -30,6 +30,8 @@ DEPENDS = " \
     ${SCRIPTING_DEPENDS} \
     ${LIBUNWIND_DEPENDS} \
     bison flex xz \
+    xmlto-native \
+    asciidoc-native \
 "
 
 do_configure[depends] += "virtual/kernel:do_shared_workdir"
@@ -40,10 +42,6 @@ inherit linux-kernel-base kernel-arch pythonnative
 
 # needed for building the tools/perf Python bindings
 inherit python-dir
-export STAGING_INCDIR
-export STAGING_LIBDIR
-export BUILD_SYS
-export HOST_SYS
 export PYTHON_SITEPACKAGES_DIR
 
 #kernel 3.1+ supports WERROR to disable warnings as errors
@@ -81,6 +79,7 @@ EXTRA_OEMAKE = '\
     ARCH=${ARCH} \
     CC="${CC}" \
     AR="${AR}" \
+    LD="${LD}" \
     EXTRA_CFLAGS="-ldw" \
     perfexecdir=${libexecdir} \
     NO_GTK2=1 ${TUI_DEFINES} NO_DWARF=1 ${LIBUNWIND_DEFINES} \
@@ -88,18 +87,17 @@ EXTRA_OEMAKE = '\
 '
 
 EXTRA_OEMAKE += "\
+    'DESTDIR=${D}' \
     'prefix=${prefix}' \
     'bindir=${bindir}' \
     'sharedir=${datadir}' \
     'sysconfdir=${sysconfdir}' \
     'perfexecdir=${libexecdir}/perf-core' \
-    \
     'ETC_PERFCONFIG=${@os.path.relpath(sysconfdir, prefix)}' \
     'sharedir=${@os.path.relpath(datadir, prefix)}' \
     'mandir=${@os.path.relpath(mandir, prefix)}' \
     'infodir=${@os.path.relpath(infodir, prefix)}' \
 "
-
 
 do_compile() {
 	# Linux kernel build system is expected to do the right thing
@@ -110,7 +108,7 @@ do_compile() {
 do_install() {
 	# Linux kernel build system is expected to do the right thing
 	unset CFLAGS
-	oe_runmake DESTDIR=${D} install
+	oe_runmake install
 	# we are checking for this make target to be compatible with older perf versions
 	if [ "${@perf_feature_enabled('perf-scripting', 1, 0, d)}" = "1" ] && grep -q install-python_ext ${S}/tools/perf/Makefile*; then
 		oe_runmake DESTDIR=${D} install-python_ext
@@ -135,11 +133,24 @@ do_configure_prepend () {
     # with each other if its in the shared source directory
     #
     if [ -e "${S}/tools/perf/config/Makefile" ]; then
+        perfconfig="${S}/tools/perf/config/Makefile"
+    fi
+    if [ -e "${S}/tools/perf/Makefile.config" ]; then
+        perfconfig="${S}/tools/perf/Makefile.config"
+    fi
+    if [ -n "${perfconfig}" ]; then
         # Match $(prefix)/$(lib) and $(prefix)/lib
         sed -i -e 's,^libdir = \($(prefix)/.*lib\),libdir ?= \1,' \
                -e 's,^perfexecdir = \(.*\),perfexecdir ?= \1,' \
                -e 's,\ .config-detected, $(OUTPUT)/config-detected,g' \
-            ${S}/tools/perf/config/Makefile
+            ${perfconfig}
+    fi
+    # The man pages installation is "$(INSTALL) -d -m 755 $(DESTDIR)$(man1dir)"
+    # in ${S}/tools/perf/Documentation/Makefile, if the mandir set to '?=', it
+    # will use the relative path 'share/man', in the way it will resulting in
+    # incorrect installation for man pages.
+    if [ -e "${S}/tools/perf/Documentation/Makefile" ]; then
+	sed -i 's,^mandir?=,mandir:=,' ${S}/tools/perf/Documentation/Makefile
     fi
     if [ -e "${S}/tools/perf/Makefile.perf" ]; then
         sed -i -e 's,\ .config-detected, $(OUTPUT)/config-detected,g' \
@@ -159,10 +170,16 @@ do_configure_prepend () {
     if [ -e "${S}/tools/perf/Makefile.perf" ]; then
         sed -i 's,CC = $(CROSS_COMPILE)gcc,#CC,' ${S}/tools/perf/Makefile.perf
         sed -i 's,AR = $(CROSS_COMPILE)ar,#AR,' ${S}/tools/perf/Makefile.perf
+        sed -i 's,LD = $(CROSS_COMPILE)ld,#LD,' ${S}/tools/perf/Makefile.perf
     fi
     if [ -e "${S}/tools/lib/api/Makefile" ]; then
         sed -i 's,CC = $(CROSS_COMPILE)gcc,#CC,' ${S}/tools/lib/api/Makefile
         sed -i 's,AR = $(CROSS_COMPILE)ar,#AR,' ${S}/tools/lib/api/Makefile
+        sed -i 's,LD = $(CROSS_COMPILE)ld,#LD,' ${S}/tools/lib/api/Makefile
+    fi
+    if [ -e "${S}/tools/lib/subcmd/Makefile" ]; then
+        sed -i 's,CC = $(CROSS_COMPILE)gcc,#CC,' ${S}/tools/lib/subcmd/Makefile
+        sed -i 's,AR = $(CROSS_COMPILE)ar,#AR,' ${S}/tools/lib/subcmd/Makefile
     fi
     if [ -e "${S}/tools/perf/config/feature-checks/Makefile" ]; then
         sed -i 's,CC := $(CROSS_COMPILE)gcc -MD,CC += -MD,' ${S}/tools/perf/config/feature-checks/Makefile
@@ -179,6 +196,11 @@ do_configure_prepend () {
         sed -i 's,#include "tests/tests.h",#include "tests/tests.h"\n#include "util/debug.h",' ${S}/tools/perf/arch/arm/tests/dwarf-unwind.c
         sed -i 's,#include "perf_regs.h",#include "perf_regs.h"\n#include "util/debug.h",' ${S}/tools/perf/arch/arm/util/unwind-libunwind.c
     fi
+
+    # use /usr/bin/env instead of version specific python
+    for s in `find ${S}/tools/perf/scripts/python/ -name '*.py'`; do
+        sed -i 's,/usr/bin/python2,/usr/bin/env python,' "${s}"
+    done
 }
 
 python do_package_prepend() {
@@ -191,18 +213,21 @@ PACKAGE_ARCH = "${MACHINE_ARCH}"
 PACKAGES =+ "${PN}-archive ${PN}-tests ${PN}-perl ${PN}-python"
 
 RDEPENDS_${PN} += "elfutils bash"
+RDEPENDS_${PN}-doc += "man"
 RDEPENDS_${PN}-archive =+ "bash"
-RDEPENDS_${PN}-python =+ "bash python"
+RDEPENDS_${PN}-python =+ "bash python python-modules"
 RDEPENDS_${PN}-perl =+ "bash perl perl-modules"
 RDEPENDS_${PN}-tests =+ "python"
 
 RSUGGESTS_SCRIPTING = "${@perf_feature_enabled('perf-scripting', '${PN}-perl ${PN}-python', '',d)}"
 RSUGGESTS_${PN} += "${PN}-archive ${PN}-tests ${RSUGGESTS_SCRIPTING}"
 
+#FILES_${PN} += "${libexecdir}/perf-core ${exec_prefix}/libexec/perf-core /usr/lib64/traceevent ${libdir}/traceevent"
 FILES_${PN} += "${libexecdir}/perf-core ${exec_prefix}/libexec/perf-core ${libdir}/traceevent"
 FILES_${PN}-archive = "${libdir}/perf/perf-core/perf-archive"
-FILES_${PN}-tests = "${libdir}/perf/perf-core/tests"
-FILES_${PN}-python = "${libdir}/python*/site-packages ${libdir}/perf/perf-core/scripts/python"
+FILES_${PN}-tests = "${libdir}/perf/perf-core/tests ${libexecdir}/perf-core/tests"
+FILES_${PN}-python = "${libdir}/perf/perf-core/scripts/python ${PYTHON_SITEPACKAGES_DIR}"
+FILES_${PN}-python += "${libexecdir}/perf-core/scripts/python/*"
 FILES_${PN}-perl = "${libdir}/perf/perf-core/scripts/perl"
 
 

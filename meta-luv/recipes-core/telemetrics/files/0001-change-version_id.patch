@@ -1,0 +1,28 @@
+From b11252947caadcb63654f4e3a54d34da23c748b4 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Tue, 16 Aug 2016 15:46:47 -0700
+Subject: [PATCH] Use BUILD_ID instead of VERSION_ID
+
+Currently, the telemetrics-client uses the VERSION_ID to send records to the
+server. Since we have introduced a BUILD_ID variable, we will use this instead.
+
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
+---
+ build/tmp/work/core2-64-oe-linux/telemetrics/git-r0/git/src/telemetry.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/telemetry.c b/src/telemetry.c
+index 1b255c2..403af4e 100644
+--- a/src/telemetry.c
++++ b/src/telemetry.c
+@@ -314,7 +314,7 @@ static int set_system_build_header(struct telem_ref *t_ref)
+         } else {
+                 fs = fdopen(fd, "r");
+                 while (fgets(buf, SMALL_LINE_BUF, fs)) {
+-                        if (sscanf(buf, "VERSION_ID=%s", version) < 1) {
++                        if (sscanf(buf, "BUILD_ID=%s", version) < 1) {
+                                 continue;
+                         } else {
+                                 break;
+--
+1.9.1

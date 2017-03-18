@@ -1,0 +1,27 @@
+From 55007899d29c10f20b736814506b3f68fc2ba46b Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Wed, 10 Aug 2016 17:33:47 -0700
+Subject: [PATCH] configure remove malloc
+
+Without this patch, we observe errors while building the telemetrics repo.
+
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
+---
+ build/tmp/work/core2-64-oe-linux/telemetrics/git-r0/git/configure.ac | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 45ab1a5..a0209f4 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -66,8 +66,6 @@ AC_TYPE_UINT64_T
+ AC_TYPE_UINT8_T
+
+ # Checks for library functions.
+-AC_FUNC_MALLOC
+-AC_FUNC_REALLOC
+ AC_CHECK_FUNCS([memmove])
+ AC_CHECK_FUNCS([memset])
+ AC_CHECK_FUNCS([socket])
+--
+1.9.1

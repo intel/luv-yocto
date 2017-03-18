@@ -33,7 +33,9 @@ SRC_URI = "http://downloads.yoctoproject.org/mirror/sources/mtools-${PV}.tar.gz 
            file://mtools-makeinfo.patch \
            file://mtools.patch \
            file://no-x11.patch \
-           file://fix-broken-lz.patch"
+           file://fix-broken-lz.patch \
+           file://0001-Continue-even-if-fs-size-is-not-divisible-by-sectors.patch \
+           "
 
 inherit autotools texinfo
 
@@ -50,9 +52,4 @@ do_install_prepend () {
     # Create bindir to fix parallel installation issues
     mkdir -p ${D}/${bindir}
     mkdir -p ${D}/${datadir}
-}
-
-do_install_append_class-native () {
-    create_wrapper ${D}${bindir}/mcopy \
-        GCONV_PATH=${libdir}/gconv
 }

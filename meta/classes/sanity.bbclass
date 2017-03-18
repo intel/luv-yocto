@@ -20,26 +20,83 @@ def sanity_conf_find_line(pattern, lines):
         if re.search(pattern, line)), (None, None))
 
 def sanity_conf_update(fn, lines, version_var_name, new_version):
-    index, line = sanity_conf_find_line(version_var_name, lines)
+    index, line = sanity_conf_find_line(r"^%s" % version_var_name, lines)
     lines[index] = '%s = "%d"\n' % (version_var_name, new_version)
     with open(fn, "w") as f:
         f.write(''.join(lines))
 
-# Functions added to this variable MUST throw an exception (or sys.exit()) unless they
-# successfully changed LCONF_VERSION in bblayers.conf
-BBLAYERS_CONF_UPDATE_FUNCS += "oecore_update_bblayers"
+# Functions added to this variable MUST throw a NotImplementedError exception unless 
+# they successfully changed the config version in the config file. Exceptions
+# are used since exec_func doesn't handle return values.
+BBLAYERS_CONF_UPDATE_FUNCS += " \
+    conf/bblayers.conf:LCONF_VERSION:LAYER_CONF_VERSION:oecore_update_bblayers \
+    conf/local.conf:CONF_VERSION:LOCALCONF_VERSION:oecore_update_localconf \
+    conf/site.conf:SCONF_VERSION:SITE_CONF_VERSION:oecore_update_siteconf \
+"
 
+SANITY_DIFF_TOOL ?= "meld"
+
+SANITY_LOCALCONF_SAMPLE ?= "${COREBASE}/meta*/conf/local.conf.sample"
+python oecore_update_localconf() {
+    # Check we are using a valid local.conf
+    current_conf  = d.getVar('CONF_VERSION', True)
+    conf_version =  d.getVar('LOCALCONF_VERSION', True)
+
+    failmsg = """Your version of local.conf was generated from an older/newer version of 
+local.conf.sample and there have been updates made to this file. Please compare the two 
+files and merge any changes before continuing.
+
+Matching the version numbers will remove this message.
+
+\"${SANITY_DIFF_TOOL} conf/local.conf ${SANITY_LOCALCONF_SAMPLE}\" 
+
+is a good way to visualise the changes."""
+    failmsg = d.expand(failmsg)
+
+    raise NotImplementedError(failmsg)
+}
+
+SANITY_SITECONF_SAMPLE ?= "${COREBASE}/meta*/conf/site.conf.sample"
+python oecore_update_siteconf() {
+    # If we have a site.conf, check it's valid
+    current_sconf = d.getVar('SCONF_VERSION', True)
+    sconf_version = d.getVar('SITE_CONF_VERSION', True)
+
+    failmsg = """Your version of site.conf was generated from an older version of 
+site.conf.sample and there have been updates made to this file. Please compare the two 
+files and merge any changes before continuing.
+
+Matching the version numbers will remove this message.
+
+\"${SANITY_DIFF_TOOL} conf/site.conf ${SANITY_SITECONF_SAMPLE}\" 
+
+is a good way to visualise the changes."""
+    failmsg = d.expand(failmsg)
+
+    raise NotImplementedError(failmsg)
+}
+
+SANITY_BBLAYERCONF_SAMPLE ?= "${COREBASE}/meta*/conf/bblayers.conf.sample"
 python oecore_update_bblayers() {
     # bblayers.conf is out of date, so see if we can resolve that
 
     current_lconf = int(d.getVar('LCONF_VERSION', True))
-    if not current_lconf:
-        sys.exit()
     lconf_version = int(d.getVar('LAYER_CONF_VERSION', True))
+
+    failmsg = """Your version of bblayers.conf has the wrong LCONF_VERSION (has ${LCONF_VERSION}, expecting ${LAYER_CONF_VERSION}).
+Please compare your file against bblayers.conf.sample and merge any changes before continuing.
+"${SANITY_DIFF_TOOL} conf/bblayers.conf ${SANITY_BBLAYERCONF_SAMPLE}" 
+
+is a good way to visualise the changes."""
+    failmsg = d.expand(failmsg)
+
+    if not current_lconf:
+        raise NotImplementedError(failmsg)
+
     lines = []
 
     if current_lconf < 4:
-        sys.exit()
+        raise NotImplementedError(failmsg)
 
     bblayers_fn = bblayers_conf_file(d)
     lines = sanity_conf_read(bblayers_fn)
@@ -58,25 +115,60 @@ python oecore_update_bblayers() {
                         lines[index] = (bbpath_line[:start + 1] +
                                     topdir_var + ':' + bbpath_line[start + 1:])
             else:
-                sys.exit()
+                raise NotImplementedError(failmsg)
         else:
             index, bbfiles_line = sanity_conf_find_line('BBFILES', lines)
             if bbfiles_line:
                 lines.insert(index, 'BBPATH = "' + topdir_var + '"\n')
             else:
-                sys.exit()
+                raise NotImplementedError(failmsg)
 
         current_lconf += 1
         sanity_conf_update(bblayers_fn, lines, 'LCONF_VERSION', current_lconf)
+        bb.note("Your conf/bblayers.conf has been automatically updated.")
         return
 
     elif current_lconf == 5 and lconf_version > 5:
         # Null update, to avoid issues with people switching between poky and other distros
         current_lconf = 6
         sanity_conf_update(bblayers_fn, lines, 'LCONF_VERSION', current_lconf)
+        bb.note("Your conf/bblayers.conf has been automatically updated.")
         return
 
-    sys.exit()
+        status.addresult()
+
+    elif current_lconf == 6 and lconf_version > 6:
+        # Handle rename of meta-yocto -> meta-poky
+        # This marks the start of separate version numbers but code is needed in OE-Core
+        # for the migration, one last time.
+        layers = d.getVar('BBLAYERS', True).split()
+        layers = [ os.path.basename(path) for path in layers ]
+        if 'meta-yocto' in layers:
+            found = False
+            while True:
+                index, meta_yocto_line = sanity_conf_find_line(r'.*meta-yocto[\'"\s\n]', lines)
+                if meta_yocto_line:
+                    lines[index] = meta_yocto_line.replace('meta-yocto', 'meta-poky')
+                    found = True
+                else:
+                    break
+            if not found:
+                raise NotImplementedError(failmsg)
+            index, meta_yocto_line = sanity_conf_find_line('LCONF_VERSION.*\n', lines)
+            if meta_yocto_line:
+                lines[index] = 'POKY_BBLAYERS_CONF_VERSION = "1"\n'
+            else:
+                raise NotImplementedError(failmsg)
+            with open(bblayers_fn, "w") as f:
+                f.write(''.join(lines))
+            bb.note("Your conf/bblayers.conf has been automatically updated.")
+            return
+        current_lconf += 1
+        sanity_conf_update(bblayers_fn, lines, 'LCONF_VERSION', current_lconf)
+        bb.note("Your conf/bblayers.conf has been automatically updated.")
+        return
+
+    raise NotImplementedError(failmsg)
 }
 
 def raise_sanity_error(msg, d, network_error=False):
@@ -241,7 +333,7 @@ def check_create_long_filename(filepath, pathname):
 
 def check_path_length(filepath, pathname, limit):
     if len(filepath) > limit:
-        return "The length of %s is longer than 410, this would cause unexpected errors, please use a shorter path.\n" % pathname
+        return "The length of %s is longer than %s, this would cause unexpected errors, please use a shorter path.\n" % (pathname, limit)
     return ""
 
 def get_filesystem_id(path):
@@ -366,19 +458,19 @@ def check_gcc_march(sanity_data):
 
         # Check if GCC could work without march
         if not result:
-            status,res = oe.utils.getstatusoutput("${BUILD_PREFIX}gcc gcc_test.c -o gcc_test")
+            status,res = oe.utils.getstatusoutput(sanity_data.expand("${BUILD_CC} gcc_test.c -o gcc_test"))
             if status == 0:
                 result = True;
 
         if not result:
-            status,res = oe.utils.getstatusoutput("${BUILD_PREFIX}gcc -march=native gcc_test.c -o gcc_test")
+            status,res = oe.utils.getstatusoutput(sanity_data.expand("${BUILD_CC} -march=native gcc_test.c -o gcc_test"))
             if status == 0:
                 message = "BUILD_CFLAGS_append = \" -march=native\""
                 result = True;
 
         if not result:
             build_arch = sanity_data.getVar('BUILD_ARCH', True)
-            status,res = oe.utils.getstatusoutput("${BUILD_PREFIX}gcc -march=%s gcc_test.c -o gcc_test" % build_arch)
+            status,res = oe.utils.getstatusoutput(sanity_data.expand("${BUILD_CC} -march=%s gcc_test.c -o gcc_test" % build_arch))
             if status == 0:
                 message = "BUILD_CFLAGS_append = \" -march=%s\"" % build_arch
                 result = True;
@@ -438,60 +530,43 @@ def check_tar_version(sanity_data):
     return None
 
 # We use git parameters and functionality only found in 1.7.8 or later
+# The kernel tools assume git >= 1.8.3.1 (verified needed > 1.7.9.5) see #6162 
+# The git fetcher also had workarounds for git < 1.7.9.2 which we've dropped
 def check_git_version(sanity_data):
     from distutils.version import LooseVersion
     status, result = oe.utils.getstatusoutput("git --version 2> /dev/null")
     if status != 0:
         return "Unable to execute git --version, exit code %s\n" % status
     version = result.split()[2]
-    if LooseVersion(version) < LooseVersion("1.7.8"):
-        return "Your version of git is older than 1.7.8 and has bugs which will break builds. Please install a newer version of git.\n"
+    if LooseVersion(version) < LooseVersion("1.8.3.1"):
+        return "Your version of git is older than 1.8.3.1 and has bugs which will break builds. Please install a newer version of git.\n"
     return None
 
 # Check the required perl modules which may not be installed by default
 def check_perl_modules(sanity_data):
     ret = ""
     modules = ( "Text::ParseWords", "Thread::Queue", "Data::Dumper" )
+    errresult = ''
     for m in modules:
-        status, result = oe.utils.getstatusoutput("perl -e 'use %s' 2> /dev/null" % m)
+        status, result = oe.utils.getstatusoutput("perl -e 'use %s'" % m)
         if status != 0:
+            errresult += result
             ret += "%s " % m
     if ret:
-        return "Required perl module(s) not found: %s\n" % ret
+        return "Required perl module(s) not found: %s\n\n%s\n" % (ret, errresult)
     return None
 
-def sanity_check_conffiles(status, d):
-    # Check we are using a valid local.conf
-    current_conf  = d.getVar('CONF_VERSION', True)
-    conf_version =  d.getVar('LOCALCONF_VERSION', True)
-
-    if current_conf != conf_version:
-        status.addresult("Your version of local.conf was generated from an older/newer version of local.conf.sample and there have been updates made to this file. Please compare the two files and merge any changes before continuing.\nMatching the version numbers will remove this message.\n\"meld conf/local.conf ${COREBASE}/meta*/conf/local.conf.sample\" is a good way to visualise the changes.\n")
-
-    # Check bblayers.conf is valid
-    current_lconf = d.getVar('LCONF_VERSION', True)
-    lconf_version = d.getVar('LAYER_CONF_VERSION', True)
-    if current_lconf != lconf_version:
-        funcs = d.getVar('BBLAYERS_CONF_UPDATE_FUNCS', True).split()
-        for func in funcs:
-            success = True
+def sanity_check_conffiles(d):
+    funcs = d.getVar('BBLAYERS_CONF_UPDATE_FUNCS', True).split()
+    for func in funcs:
+        conffile, current_version, required_version, func = func.split(":")
+        if check_conf_exists(conffile, d) and d.getVar(current_version, True) is not None and \
+                d.getVar(current_version, True) != d.getVar(required_version, True):
             try:
-                bb.build.exec_func(func, d)
-            except Exception:
-                success = False
-            if success:
-                bb.note("Your conf/bblayers.conf has been automatically updated.")
-                status.reparse = True
-        if not status.reparse:
-            status.addresult("Your version of bblayers.conf has the wrong LCONF_VERSION (has %s, expecting %s).\nPlease compare the your file against bblayers.conf.sample and merge any changes before continuing.\n\"meld conf/bblayers.conf ${COREBASE}/meta*/conf/bblayers.conf.sample\" is a good way to visualise the changes.\n" % (current_lconf, lconf_version))
-
-    # If we have a site.conf, check it's valid
-    if check_conf_exists("conf/site.conf", d):
-        current_sconf = d.getVar('SCONF_VERSION', True)
-        sconf_version = d.getVar('SITE_CONF_VERSION', True)
-        if current_sconf != sconf_version:
-            status.addresult("Your version of site.conf was generated from an older version of site.conf.sample and there have been updates made to this file. Please compare the two files and merge any changes before continuing.\nMatching the version numbers will remove this message.\n\"meld conf/site.conf ${COREBASE}/meta*/conf/site.conf.sample\" is a good way to visualise the changes.\n")
-
+                bb.build.exec_func(func, d, pythonexception=True)
+            except NotImplementedError as e:
+                bb.fatal(e)
+            d.setVar("BB_INVALIDCONF", True)
 
 def sanity_handle_abichanges(status, d):
     #
@@ -572,9 +647,9 @@ def check_sanity_sstate_dir_change(sstate_dir, data):
     return testmsg
        
 def check_sanity_version_change(status, d):
-    # Sanity checks to be done when SANITY_VERSION changes
+    # Sanity checks to be done when SANITY_VERSION or NATIVELSBSTRING changes
     # In other words, these tests run once in a given build directory and then 
-    # never again until the sanity version changes.
+    # never again until the sanity version or host distrubution id/version changes.
 
     # Check the python install is complete. glib-2.0-natives requries
     # xml.parsers.expat
@@ -594,11 +669,11 @@ def check_sanity_version_change(status, d):
     if not check_app_exists("${MAKE}", d):
         missing = missing + "GNU make,"
 
-    if not check_app_exists('${BUILD_PREFIX}gcc', d):
-        missing = missing + "C Compiler (%sgcc)," % d.getVar("BUILD_PREFIX", True)
+    if not check_app_exists('${BUILD_CC}', d):
+        missing = missing + "C Compiler (%s)," % d.getVar("BUILD_CC", True)
 
-    if not check_app_exists('${BUILD_PREFIX}g++', d):
-        missing = missing + "C++ Compiler (%sg++)," % d.getVar("BUILD_PREFIX", True)
+    if not check_app_exists('${BUILD_CXX}', d):
+        missing = missing + "C++ Compiler (%s)," % d.getVar("BUILD_CXX", True)
 
     required_utilities = d.getVar('SANITY_REQUIRED_UTILITIES', True)
 
@@ -667,7 +742,7 @@ def check_sanity_version_change(status, d):
             status.addresult("You have a 32-bit libc, but no 32-bit headers.  You must install the 32-bit libc headers.\n")
 
     bbpaths = d.getVar('BBPATH', True).split(":")
-    if ("." in bbpaths or "./" in bbpaths or "" in bbpaths) and not status.reparse:
+    if ("." in bbpaths or "./" in bbpaths or "" in bbpaths):
         status.addresult("BBPATH references the current directory, either through "    \
                 "an empty entry, a './' or a '.'.\n\t This is unsafe and means your "\
                 "layer configuration is adding empty elements to BBPATH.\n\t "\
@@ -685,6 +760,16 @@ def check_sanity_version_change(status, d):
 
     # Check that TMPDIR isn't located on nfs
     status.addresult(check_not_nfs(tmpdir, "TMPDIR"))
+
+def sanity_check_locale(d):
+    """
+    Currently bitbake switches locale to en_US.UTF-8 so check that this locale actually exists.
+    """
+    import locale
+    try:
+        locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
+    except locale.Error:
+        raise_sanity_error("You system needs to support the en_US.UTF-8 locale.", d)
 
 def check_sanity_everybuild(status, d):
     import os, stat
@@ -705,7 +790,7 @@ def check_sanity_everybuild(status, d):
     if (LooseVersion(bb.__version__) < LooseVersion(minversion)):
         status.addresult('Bitbake version %s is required and version %s was found\n' % (minversion, bb.__version__))
 
-    sanity_check_conffiles(status, d)
+    sanity_check_locale(d)
 
     paths = d.getVar('PATH', True).split(":")
     if "." in paths or "./" in paths or "" in paths:
@@ -750,8 +835,8 @@ def check_sanity_everybuild(status, d):
 
     check_supported_distro(d)
 
-    omask = os.umask(022)
-    if omask & 0755:
+    omask = os.umask(0o022)
+    if omask & 0o755:
         status.addresult("Please use a umask which allows a+rx and u+rwx\n")
     os.umask(omask)
 
@@ -781,7 +866,7 @@ def check_sanity_everybuild(status, d):
     mirror_vars = ['MIRRORS', 'PREMIRRORS', 'SSTATE_MIRRORS']
     protocols = ['http', 'ftp', 'file', 'https', \
                  'git', 'gitsm', 'hg', 'osc', 'p4', 'svn', \
-                 'bzr', 'cvs']
+                 'bzr', 'cvs', 'npm', 'sftp', 'ssh']
     for mirror_var in mirror_vars:
         mirrors = (d.getVar(mirror_var, True) or '').replace('\\n', '\n').split('\n')
         for mirror_entry in mirrors:
@@ -812,13 +897,13 @@ def check_sanity_everybuild(status, d):
                 continue
 
             if mirror.startswith('file://'):
-                import urlparse
-                check_symlink(urlparse.urlparse(mirror).path, d)
+                import urllib
+                check_symlink(urllib.parse.urlparse(mirror).path, d)
                 # SSTATE_MIRROR ends with a /PATH string
                 if mirror.endswith('/PATH'):
                     # remove /PATH$ from SSTATE_MIRROR to get a working
                     # base directory path
-                    mirror_base = urlparse.urlparse(mirror[:-1*len('/PATH')]).path
+                    mirror_base = urllib.parse.urlparse(mirror[:-1*len('/PATH')]).path
                     check_symlink(mirror_base, d)
 
     # Check that TMPDIR hasn't changed location since the last time we were run
@@ -841,29 +926,17 @@ def check_sanity_everybuild(status, d):
         with open(checkfile, "w") as f:
             f.write(tmpdir)
 
-    # Check vmdk and live can't be built together.
-    if 'vmdk' in d.getVar('IMAGE_FSTYPES', True) and 'live' in d.getVar('IMAGE_FSTYPES', True):
-        status.addresult("Error, IMAGE_FSTYPES vmdk and live can't be built together\n")
-
-    # Check vdi and live can't be built together.
-    if 'vdi' in d.getVar('IMAGE_FSTYPES', True) and 'live' in d.getVar('IMAGE_FSTYPES', True):
-        status.addresult("Error, IMAGE_FSTYPES vdi and live can't be built together\n")
-
-    # Check qcow2 and live can't be built together.
-    if 'qcow2' in d.getVar('IMAGE_FSTYPES', True) and 'live' in d.getVar('IMAGE_FSTYPES', True):
-        status.addresult("Error, IMAGE_FSTYPES qcow2 and live can't be built together\n")
-
-    # Check /bin/sh links to dash or bash
-    real_sh = os.path.realpath('/bin/sh')
-    if not real_sh.endswith('/dash') and not real_sh.endswith('/bash'):
-        status.addresult("Error, /bin/sh links to %s, must be dash or bash\n" % real_sh)
+    # If /bin/sh is a symlink, check that it points to dash or bash
+    if os.path.islink('/bin/sh'):
+        real_sh = os.path.realpath('/bin/sh')
+        if not real_sh.endswith('/dash') and not real_sh.endswith('/bash'):
+            status.addresult("Error, /bin/sh links to %s, must be dash or bash\n" % real_sh)
 
 def check_sanity(sanity_data):
     class SanityStatus(object):
         def __init__(self):
             self.messages = ""
             self.network_error = False
-            self.reparse = False
 
         def addresult(self, message):
             if message:
@@ -880,6 +953,7 @@ def check_sanity(sanity_data):
     last_sanity_version = 0
     last_tmpdir = ""
     last_sstate_dir = ""
+    last_nativelsbstr = ""
     sanityverfile = sanity_data.expand("${TOPDIR}/conf/sanity_info")
     if os.path.exists(sanityverfile):
         with open(sanityverfile, 'r') as f:
@@ -890,12 +964,17 @@ def check_sanity(sanity_data):
                     last_tmpdir = line.split()[1]
                 if line.startswith('SSTATE_DIR'):
                     last_sstate_dir = line.split()[1]
+                if line.startswith('NATIVELSBSTRING'):
+                    last_nativelsbstr = line.split()[1]
 
     check_sanity_everybuild(status, sanity_data)
     
     sanity_version = int(sanity_data.getVar('SANITY_VERSION', True) or 1)
     network_error = False
-    if last_sanity_version < sanity_version: 
+    # NATIVELSBSTRING var may have been overridden with "universal", so
+    # get actual host distribution id and version
+    nativelsbstr = lsb_distro_identifier(sanity_data)
+    if last_sanity_version < sanity_version or last_nativelsbstr != nativelsbstr: 
         check_sanity_version_change(status, sanity_data)
         status.addresult(check_sanity_sstate_dir_change(sstate_dir, sanity_data))
     else: 
@@ -907,12 +986,12 @@ def check_sanity(sanity_data):
             f.write("SANITY_VERSION %s\n" % sanity_version) 
             f.write("TMPDIR %s\n" % tmpdir) 
             f.write("SSTATE_DIR %s\n" % sstate_dir) 
+            f.write("NATIVELSBSTRING %s\n" % nativelsbstr) 
 
     sanity_handle_abichanges(status, sanity_data)
 
     if status.messages != "":
         raise_sanity_error(sanity_data.expand(status.messages), sanity_data, status.network_error)
-    return status.reparse
 
 # Create a copy of the datastore and finalise it to ensure appends and 
 # overrides are set - the datastore has yet to be finalised at ConfigParsed
@@ -921,15 +1000,20 @@ def copy_data(e):
     sanity_data.finalize()
     return sanity_data
 
+addhandler config_reparse_eventhandler
+config_reparse_eventhandler[eventmask] = "bb.event.ConfigParsed"
+python config_reparse_eventhandler() {
+    sanity_check_conffiles(e.data)
+}
+
 addhandler check_sanity_eventhandler
 check_sanity_eventhandler[eventmask] = "bb.event.SanityCheck bb.event.NetworkTest"
 python check_sanity_eventhandler() {
     if bb.event.getName(e) == "SanityCheck":
         sanity_data = copy_data(e)
+        check_sanity(sanity_data)
         if e.generateevents:
             sanity_data.setVar("SANITY_USE_EVENTS", "1")
-        reparse = check_sanity(sanity_data)
-        e.data.setVar("BB_INVALIDCONF", reparse)
         bb.event.fire(bb.event.SanityCheckPassed(), e.data)
     elif bb.event.getName(e) == "NetworkTest":
         sanity_data = copy_data(e)

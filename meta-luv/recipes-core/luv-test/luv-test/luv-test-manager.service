@@ -1,0 +1,12 @@
+[Unit]
+Description=Run the LUV tests
+Wants=dev-disk-by\x2duuid-05D6\x2d1523.device
+After=luv-netconsole.service
+Before=plymouth-quit.service
+
+[Service]
+Type=oneshot
+ExecStart=@SBINDIR@/luv-test-manager
+
+[Install]
+WantedBy=multi-user.target

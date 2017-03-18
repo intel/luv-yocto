@@ -33,6 +33,7 @@ python toaster_layerinfo_dumpdata() {
 
     def _get_git_branch(layer_path):
         branch = subprocess.Popen("git symbolic-ref HEAD 2>/dev/null ", cwd=layer_path, shell=True, stdout=subprocess.PIPE).communicate()[0]
+        branch = branch.decode('utf-8')
         branch = branch.replace('refs/heads/', '').rstrip()
         return branch
 
@@ -112,77 +113,39 @@ def _toaster_load_pkgdatafile(dirpath, filepath):
                 pass    # ignore lines without valid key: value pairs
     return pkgdata
 
-
 python toaster_package_dumpdata() {
     """
-    Dumps the data created by emit_pkgdata
+    Dumps the data about the packages created by a recipe
     """
-    # replicate variables from the package.bbclass
 
-    packages = d.getVar('PACKAGES', True)
-    pkgdest = d.getVar('PKGDEST', True)
+    # No need to try and dumpdata if the recipe isn't generating packages
+    if not d.getVar('PACKAGES', True):
+        return
 
     pkgdatadir = d.getVar('PKGDESTWORK', True)
-
-    # scan and send data for each package
-
     lpkgdata = {}
-    for pkg in packages.split():
+    datadir = os.path.join(pkgdatadir, 'runtime')
 
-        lpkgdata = _toaster_load_pkgdatafile(pkgdatadir + "/runtime/", pkg)
-
-        # Fire an event containing the pkg data
-        bb.event.fire(bb.event.MetadataEvent("SinglePackageInfo", lpkgdata), d)
+    # scan and send data for each generated package
+    for datafile in os.listdir(datadir):
+        if not datafile.endswith('.packaged'):
+            lpkgdata = _toaster_load_pkgdatafile(datadir, datafile)
+            # Fire an event containing the pkg data
+            bb.event.fire(bb.event.MetadataEvent("SinglePackageInfo", lpkgdata), d)
 }
 
 # 2. Dump output image files information
 
-python toaster_image_dumpdata() {
-    """
-    Image filename for output images is not standardized.
-    image_types.bbclass will spell out IMAGE_CMD_xxx variables that actually
-    have hardcoded ways to create image file names in them.
-    So we look for files starting with the set name.
-    """
-
-    deploy_dir_image = d.getVar('DEPLOY_DIR_IMAGE', True);
-    image_name = d.getVar('IMAGE_NAME', True);
-    image_info_data = {}
-
-    # collect all images
-    for dirpath, dirnames, filenames in os.walk(deploy_dir_image):
-        for fn in filenames:
-            try:
-                if fn.startswith(image_name):
-                    image_output = os.path.join(dirpath, fn)
-                    image_info_data[image_output] = os.stat(image_output).st_size
-            except OSError as e:
-                bb.event.fire(bb.event.MetadataEvent("OSErrorException", e), d)
-
-    bb.event.fire(bb.event.MetadataEvent("ImageFileSize",image_info_data), d)
-}
-
 python toaster_artifact_dumpdata() {
     """
-    Dump data about artifacts in the SDK_DEPLOY directory
+    Dump data about SDK variables
     """
 
-    artifact_dir = d.getVar("SDK_DEPLOY", True)
-    artifact_info_data = {}
+    event_data = {
+      "TOOLCHAIN_OUTPUTNAME": d.getVar("TOOLCHAIN_OUTPUTNAME", True)
+    }
 
-    # collect all artifacts
-    for dirpath, dirnames, filenames in os.walk(artifact_dir):
-        for fn in filenames:
-            try:
-                artifact_path = os.path.join(dirpath, fn)
-                filestat = os.stat(artifact_path)
-                if not os.path.islink(artifact_path):
-                    artifact_info_data[artifact_path] = filestat.st_size
-            except OSError as e:
-                import sys
-                bb.event.fire(bb.event.MetadataEvent("OSErrorException", e), d)
-
-    bb.event.fire(bb.event.MetadataEvent("ArtifactFileSize",artifact_info_data), d)
+    bb.event.fire(bb.event.MetadataEvent("SDKArtifactInfo", event_data), d)
 }
 
 # collect list of buildstats files based on fired events; when the build completes, collect all stats and fire an event with collected data
@@ -194,25 +157,37 @@ python toaster_collect_task_stats() {
     import bb.utils
     import os
 
+    toaster_statlist_file = os.path.join(e.data.getVar('BUILDSTATS_BASE', True), "toasterstatlist")
+
     if not e.data.getVar('BUILDSTATS_BASE', True):
         return  # if we don't have buildstats, we cannot collect stats
+
+    def stat_to_float(value):
+        return float(value.strip('% \n\r'))
 
     def _append_read_list(v):
         lock = bb.utils.lockfile(e.data.expand("${TOPDIR}/toaster.lock"), False, True)
 
-        with open(os.path.join(e.data.getVar('BUILDSTATS_BASE', True), "toasterstatlist"), "a") as fout:
+        with open(toaster_statlist_file, "a") as fout:
             taskdir = e.data.expand("${BUILDSTATS_BASE}/${BUILDNAME}/${PF}")
             fout.write("%s::%s::%s::%s\n" % (e.taskfile, e.taskname, os.path.join(taskdir, e.task), e.data.expand("${PN}")))
 
         bb.utils.unlockfile(lock)
 
     def _read_stats(filename):
-        cpu_usage = 0
-        disk_io = 0
-        started = '0'
-        ended = '0'
-        pn = ''
+        # seconds
+        cpu_time_user = 0
+        cpu_time_system = 0
+
+        # bytes
+        disk_io_read = 0
+        disk_io_write = 0
+
+        started = 0
+        ended = 0
+
         taskname = ''
+
         statinfo = {}
 
         with open(filename, 'r') as task_bs:
@@ -220,41 +195,49 @@ python toaster_collect_task_stats() {
                 k,v = line.strip().split(": ", 1)
                 statinfo[k] = v
 
-        if "CPU usage" in statinfo:
-            cpu_usage = str(statinfo["CPU usage"]).strip('% \n\r')
-
-        if "IO write_bytes" in statinfo:
-            disk_io = disk_io + int(statinfo["IO write_bytes"].strip('% \n\r'))
-
-        if "IO read_bytes" in statinfo:
-            disk_io = disk_io + int(statinfo["IO read_bytes"].strip('% \n\r'))
-
         if "Started" in statinfo:
-            started = str(statinfo["Started"]).strip('% \n\r')
+            started = stat_to_float(statinfo["Started"])
 
         if "Ended" in statinfo:
-            ended = str(statinfo["Ended"]).strip('% \n\r')
+            ended = stat_to_float(statinfo["Ended"])
 
-        elapsed_time = float(ended) - float(started)
+        if "Child rusage ru_utime" in statinfo:
+            cpu_time_user = cpu_time_user + stat_to_float(statinfo["Child rusage ru_utime"])
 
-        cpu_usage = float(cpu_usage)
+        if "Child rusage ru_stime" in statinfo:
+            cpu_time_system = cpu_time_system + stat_to_float(statinfo["Child rusage ru_stime"])
 
-        return {'cpu_usage': cpu_usage, 'disk_io': disk_io, 'elapsed_time': elapsed_time}
+        if "IO write_bytes" in statinfo:
+            write_bytes = int(statinfo["IO write_bytes"].strip('% \n\r'))
+            disk_io_write = disk_io_write + write_bytes
 
+        if "IO read_bytes" in statinfo:
+            read_bytes = int(statinfo["IO read_bytes"].strip('% \n\r'))
+            disk_io_read = disk_io_read + read_bytes
+
+        return {
+            'stat_file': filename,
+            'cpu_time_user': cpu_time_user,
+            'cpu_time_system': cpu_time_system,
+            'disk_io_read': disk_io_read,
+            'disk_io_write': disk_io_write,
+            'started': started,
+            'ended': ended
+        }
 
     if isinstance(e, (bb.build.TaskSucceeded, bb.build.TaskFailed)):
         _append_read_list(e)
         pass
 
-
-    if isinstance(e, bb.event.BuildCompleted) and os.path.exists(os.path.join(e.data.getVar('BUILDSTATS_BASE', True), "toasterstatlist")):
+    if isinstance(e, bb.event.BuildCompleted) and os.path.exists(toaster_statlist_file):
         events = []
-        with open(os.path.join(e.data.getVar('BUILDSTATS_BASE', True), "toasterstatlist"), "r") as fin:
+        with open(toaster_statlist_file, "r") as fin:
             for line in fin:
                 (taskfile, taskname, filename, recipename) = line.strip().split("::")
-                events.append((taskfile, taskname, _read_stats(filename), recipename))
+                stats = _read_stats(filename)
+                events.append((taskfile, taskname, stats, recipename))
         bb.event.fire(bb.event.MetadataEvent("BuildStatsList", events), e.data)
-        os.unlink(os.path.join(e.data.getVar('BUILDSTATS_BASE', True), "toasterstatlist"))
+        os.unlink(toaster_statlist_file)
 }
 
 # dump relevant build history data as an event when the build is completed
@@ -271,6 +254,7 @@ python toaster_buildhistory_dump() {
     allpkgs = {}
     files = {}
     for target in e._pkgs:
+        target = target.split(':')[0] # strip ':<task>' suffix from the target
         installed_img_path = e.data.expand(os.path.join(BUILDHISTORY_DIR_IMAGE_BASE, target))
         if os.path.exists(installed_img_path):
             images[target] = {}
@@ -304,15 +288,22 @@ python toaster_buildhistory_dump() {
                             images[target][dependsname] = {'size': 0, 'depends' : []}
                         images[target][pname]['depends'].append((dependsname, deptype))
 
-            with open("%s/files-in-image.txt" % installed_img_path, "r") as fin:
-                for line in fin:
-                    lc = [ x for x in line.strip().split(" ") if len(x) > 0 ]
-                    if lc[0].startswith("l"):
-                        files[target]['syms'].append(lc)
-                    elif lc[0].startswith("d"):
-                        files[target]['dirs'].append(lc)
-                    else:
-                        files[target]['files'].append(lc)
+            # files-in-image.txt is only generated if an image file is created,
+            # so the file entries ('syms', 'dirs', 'files') for a target will be
+            # empty for rootfs builds and other "image" tasks which don't
+            # produce image files
+            # (e.g. "bitbake core-image-minimal -c populate_sdk")
+            files_in_image_path = "%s/files-in-image.txt" % installed_img_path
+            if os.path.exists(files_in_image_path):
+                with open(files_in_image_path, "r") as fin:
+                    for line in fin:
+                        lc = [ x for x in line.strip().split(" ") if len(x) > 0 ]
+                        if lc[0].startswith("l"):
+                            files[target]['syms'].append(lc)
+                        elif lc[0].startswith("d"):
+                            files[target]['dirs'].append(lc)
+                        else:
+                            files[target]['files'].append(lc)
 
             for pname in images[target]:
                 if not pname in allpkgs:
@@ -333,15 +324,18 @@ python toaster_buildhistory_dump() {
 
 }
 
-# dump information related to license manifest path
-
-python toaster_licensemanifest_dump() {
-    deploy_dir = d.getVar('DEPLOY_DIR', True);
-    image_name = d.getVar('IMAGE_NAME', True);
-
-    data = { 'deploy_dir' : deploy_dir, 'image_name' : image_name }
-
-    bb.event.fire(bb.event.MetadataEvent("LicenseManifestPath", data), d)
+# get list of artifacts from sstate manifest
+python toaster_artifacts() {
+    if e.taskname in ["do_deploy", "do_image_complete", "do_populate_sdk", "do_populate_sdk_ext"]:
+        d2 = d.createCopy()
+        d2.setVar('FILE', e.taskfile)
+        d2.setVar('SSTATE_MANMACH', d2.expand("${MACHINE}"))
+        manifest = oe.sstatesig.sstate_get_manifest_filename(e.taskname[3:], d2)[0]
+        if os.access(manifest, os.R_OK):
+            with open(manifest) as fmanifest:
+                artifacts = [fname.strip() for fname in fmanifest]
+                data = {"task": e.taskid, "artifacts": artifacts}
+                bb.event.fire(bb.event.MetadataEvent("TaskArtifacts", data), d2)
 }
 
 # set event handlers
@@ -354,12 +348,17 @@ toaster_collect_task_stats[eventmask] = "bb.event.BuildCompleted bb.build.TaskSu
 addhandler toaster_buildhistory_dump
 toaster_buildhistory_dump[eventmask] = "bb.event.BuildCompleted"
 
+addhandler toaster_artifacts
+toaster_artifacts[eventmask] = "bb.runqueue.runQueueTaskSkipped bb.runqueue.runQueueTaskCompleted"
+
+do_packagedata_setscene[postfuncs] += "toaster_package_dumpdata "
+do_packagedata_setscene[vardepsexclude] += "toaster_package_dumpdata "
+
 do_package[postfuncs] += "toaster_package_dumpdata "
 do_package[vardepsexclude] += "toaster_package_dumpdata "
 
-do_rootfs[postfuncs] += "toaster_image_dumpdata "
-do_rootfs[postfuncs] += "toaster_licensemanifest_dump "
-do_rootfs[vardepsexclude] += "toaster_image_dumpdata toaster_licensemanifest_dump "
-
 do_populate_sdk[postfuncs] += "toaster_artifact_dumpdata "
 do_populate_sdk[vardepsexclude] += "toaster_artifact_dumpdata "
+
+do_populate_sdk_ext[postfuncs] += "toaster_artifact_dumpdata "
+do_populate_sdk_ext[vardepsexclude] += "toaster_artifact_dumpdata "

@@ -1,0 +1,70 @@
+From 68ff583d905b63f24742fcf4e4f7164401e6974b Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Mon, 21 Nov 2016 13:51:23 -0800
+Subject: [PATCH] fdlibm: fix indentation warnings
+
+When using gcc -Werror=misleading-indentation we see the following warnings:
+
+[...]/build/grub/grub-core/contrib-deps/fdlibm/k_rem_pio2.c:188:6:
+ error: this 'for' clause does not guard... [-Werror=misleading-indentation]
+      for(j=0,fw=0.0;j<=jx;j++) fw += x[j]*f[jx+i-j]; q[i] = fw;
+      ^~~
+[...]/build/grub/grub-core/contrib-deps/fdlibm/k_rem_pio2.c:188:54: note:
+ ...this statement, but the latter is misleadingly indented as if it is guarded by the 'for'
+      for(j=0,fw=0.0;j<=jx;j++) fw += x[j]*f[jx+i-j]; q[i] = fw;
+
+[...]/build/grub/grub-core/contrib-deps/fdlibm/e_asin.c:
+ In function '__ieee754_asin':
+[...]/build/grub/grub-core/contrib-deps/fdlibm/e_asin.c:88:8:
+ error: this 'else' clause does not guard... [-Werror=misleading-indentation]
+      } else
+        ^~~~
+[...]/build/grub/grub-core/contrib-deps/fdlibm/e_asin.c:90:3:
+ note: ...this statement, but the latter is misleadingly indented as if it is guarded by the 'else'
+   p = t*(pS0+t*(pS1+t*(pS2+t*(pS3+t*(pS4+t*pS5)))));
+   ^
+
+This only fixes warnings, no functional changes.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ e_asin.c     | 8 ++++----
+ k_rem_pio2.c | 3 ++-
+ 2 files changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/deps/fdlibm/e_asin.c b/deps/fdlibm/e_asin.c
+index 8e37e22..f29ebdf 100644
+--- a/deps/fdlibm/e_asin.c
++++ b/e_asin.c
+@@ -87,10 +87,10 @@ qS4 =  7.70381505559019352791e-02; /* 0x3FB3B8C5, 0xB12E9282 */
+ 		if(huge+x>one) return x;/* return x with inexact if x!=0*/
+ 	    } else 
+ 		t = x*x;
+-		p = t*(pS0+t*(pS1+t*(pS2+t*(pS3+t*(pS4+t*pS5)))));
+-		q = one+t*(qS1+t*(qS2+t*(qS3+t*qS4)));
+-		w = p/q;
+-		return x+x*w;
++	    p = t*(pS0+t*(pS1+t*(pS2+t*(pS3+t*(pS4+t*pS5)))));
++	    q = one+t*(qS1+t*(qS2+t*(qS3+t*qS4)));
++	    w = p/q;
++	    return x+x*w;
+ 	}
+ 	/* 1> |x|>= 0.5 */
+ 	w = one-fabs(x);
+diff --git a/deps/fdlibm/k_rem_pio2.c b/deps/fdlibm/k_rem_pio2.c
+index ec473ac..30bff1e 100644
+--- a/deps/fdlibm/k_rem_pio2.c
++++ b/deps/fdlibm/k_rem_pio2.c
+@@ -185,7 +185,8 @@ twon24  =  5.96046447753906250000e-08; /* 0x3E700000, 0x00000000 */
+ 
+     /* compute q[0],q[1],...q[jk] */
+ 	for (i=0;i<=jk;i++) {
+-	    for(j=0,fw=0.0;j<=jx;j++) fw += x[j]*f[jx+i-j]; q[i] = fw;
++	    for(j=0,fw=0.0;j<=jx;j++) fw += x[j]*f[jx+i-j];
++	    q[i] = fw;
+ 	}
+ 
+ 	jz = jk;
+-- 
+2.9.3
+

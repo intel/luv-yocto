@@ -1,0 +1,43 @@
+From 04d0329e63bd919dae1f2c8cbb4af85f31ad8e32 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Mon, 21 Nov 2016 13:12:07 -0800
+Subject: [PATCH] python: ast: fix indentation
+
+Recent versions of gcc warn about misleading indentation.
+
+Fix the following warning:
+
+[...]/build/grub/grub-core/contrib-deps/python/Python/ast.c:
+ In function 'ast_for_print_stmt':
+[...]/build/grub/grub-core/contrib-deps/python/Python/ast.c:2285:9:
+ error: this 'if' clause does not guard... [-Werror=misleading-indentation]
+         if (!dest)
+         ^~
+[...]/build/grub/grub-core/contrib-deps/python/Python/ast.c:2287:13: note:
+  ...this statement, but the latter is misleadingly indented as if it is guarded by the 'if'
+             start = 4;
+             ^~~~~
+
+This only fix indentation. No functional changes are made.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ Python/ast.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/deps/python/Python/ast.c b/deps/python/Python/ast.c
+index e5d7ac6..03dcffc 100644
+--- a/deps/python/Python/ast.c
++++ b/deps/python/Python/ast.c
+@@ -2284,7 +2284,7 @@ ast_for_print_stmt(struct compiling *c, const node *n)
+         dest = ast_for_expr(c, CHILD(n, 2));
+         if (!dest)
+             return NULL;
+-            start = 4;
++        start = 4;
+     }
+     values_count = (NCH(n) + 1 - start) / 2;
+     if (values_count) {
+-- 
+2.9.3
+

@@ -3,26 +3,46 @@ From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
 Date: Sat, 14 Nov 2015 12:08:21 -0800
 Subject: [PATCH] Makefile: customize the Python install bin directory
 
-ustomize the Python bin directory to allow it to be installed within
-the LUV native sysroot. Please note that the bin directory is set as BINDIR/PN.
-This text is intended to be replaced at build time by bitbake with
-the appropriate value.
+Customize the Python install target directories to allow it to be installed
+within the LUV native sysroot. Please note that the bin directory is set as
+BINDIR/PN. This text is intended to be replaced at build time by bitbake
+with the appropriate value.
+
+Also, note that some of the sed patterns are prepended with a _ to avoid
+certain patterns to be substrings of others (e.g., INCLUDEDIR is a
+substring of OLDINCLUDEDIR).
 
 Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
 ---
- Makefile | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ Makefile | 18 +++++++++++++++++-
+ 1 file changed, 17 insertions(+), 1 deletion(-)
 
 diff --git a/Makefile b/Makefile
-index c5f94d4..b3ff0e4 100644
+index 64d9dc4..234a6b2 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -174,7 +174,7 @@ dist: install-src-bits
+@@ -173,7 +173,23 @@ dist: install-src-bits
  
  build-python-host: setup
  	$(Q)tar -cf - --exclude=.git -C $(BITS)/deps/python . | tar -xf - -C $(python-host-src)
 -	$(Q)cd '$(python-host-src)' && ./configure
-+	$(Q)cd '$(python-host-src)' && ./configure --bindir=BINDIR/PN
++	$(Q)cd '$(python-host-src)' && ./configure --build=BUILD_SYS \
++						   --host=HOST_SYS \
++						   --target=TARGET_SYS \
++						   --prefix=_PREFIX_ \
++						   --exec_prefix=EXEC_PREFIX \
++						   --bindir=_BINDIR/PN \
++						   --sbindir=SBINDIR \
++						   --libexecdir=LIBEXECDIR \
++						   --datadir=DATADIR \
++						   --sysconfdir=SYSCONFDIR \
++						   --sharedstatedir=SHAREDSTATEDIR \
++						   --localstatedir=LOCALSTATEDIR \
++						   --libdir=LIBDIR \
++						   --includedir=_INCLUDEDIR \
++						   --oldincludedir=OLDINCLUDEDIR \
++						   --infodir=INFODIR \
++						   --mandir=MANDIR \
  	$(Q)cd '$(python-host-src)' && $(MAKE)
  
  pylibtmp:=$(workdir)/python-lib

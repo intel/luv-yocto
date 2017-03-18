@@ -1,4 +1,3 @@
-include conf/distro/include/package_regex.inc
 include conf/distro/include/upstream_tracking.inc
 include conf/distro/include/distro_alias.inc
 include conf/distro/include/maintainers.inc
@@ -104,6 +103,7 @@ python do_distrodata_np() {
             line = line + "," + i
         bb.note("%s\n" % line)
 }
+do_distrodata_np[vardepsexclude] = "DATETIME"
 
 addtask distrodata
 do_distrodata[nostamp] = "1"
@@ -196,6 +196,7 @@ python do_distrodata() {
             f.close()
         bb.utils.unlockfile(lf)
 }
+do_distrodata[vardepsexclude] = "DATETIME"
 
 addtask distrodataall after do_distrodata
 do_distrodataall[recrdeptask] = "do_distrodataall do_distrodata"
