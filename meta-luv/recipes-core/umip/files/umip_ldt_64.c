@@ -123,7 +123,8 @@ int main(void)
 	test_fs = SEGMENT_SELECTOR(DATA_FS_DESC_INDEX);
 	test_gs = SEGMENT_SELECTOR(DATA_GS_DESC_INDEX);
 
-	if (setup_data_segments()) {
+	ret = setup_data_segments();
+	if (ret) {
 		pr_error("Failed to setup segments [%d].\n", ret);
 		goto err_out;
 	}
