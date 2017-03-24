@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <asm/ldt.h>
 #include <sys/syscall.h>
+#include <unistd.h>
 #include <sys/mman.h>
 #include <asm/prctl.h>
 #include <sys/prctl.h>
