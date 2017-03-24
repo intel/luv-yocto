@@ -229,10 +229,10 @@ static int test_str(void)
 	pr_info("====Checking STR. Expected value: [0x%x]====\n", expected_tr);
 	pr_info("==Tests for register operands==\n");
 	pr_info("Value should be saved at [0x%p]\n", &val);
-	CHECK_ALLreg("str", val, INIT_SS, expected_tr);
+	CHECK_ALLreg("str", val, INIT_SS, (unsigned long)expected_tr);
 	pr_info("==Tests for memory operands==\n");
 	pr_info("Value should be saved at [0x%p]\n", &val);
-	CHECK_ALLmem("str", val, INIT_SS, expected_tr);
+	CHECK_ALLmem("str", val, INIT_SS, (unsigned long)expected_tr);
 	/* TODO: check with addressing using SIB byte */
 	return 0;
 
@@ -246,10 +246,10 @@ static int test_smsw(void)
 	pr_info("====Checking SMSW. Expected value: [0x%x]====\n", expected_msw);
 	pr_info("==Tests for register operands==\n");
 	pr_info("Value should be saved at [0x%p]\n", &val);
-	CHECK_ALLreg("smsw", val, INIT_MSW, expected_msw);
+	CHECK_ALLreg("smsw", val, INIT_MSW, (unsigned long)expected_msw);
 	pr_info("==Tests for memory operands==\n");
 	pr_info("Value should be saved at [0x%p]\n", &val);
-	CHECK_ALLmem("smsw", val, INIT_MSW, expected_msw);
+	CHECK_ALLmem("smsw", val, INIT_MSW, (unsigned long)expected_msw);
 	/* TODO: check with addressing using SIB byte */
 	return 0;
 }
@@ -262,10 +262,10 @@ static int test_sldt(void)
 	pr_info("====Checking SLDT. Expected value: [0x%x]====\n", expected_ldt);
 	pr_info("==Tests for register operands==\n");
 	pr_info("Value should be saved at [0x%p]\n", &val);
-	CHECK_ALLreg("sldt", val, INIT_LDTS, expected_ldt);
+	CHECK_ALLreg("sldt", val, INIT_LDTS, (unsigned long)expected_ldt);
 	pr_info("==Tests for memory operands==\n");
 	pr_info("Value should be saved at [0x%p]\n", &val);
-	CHECK_ALLmem("sldt", val, INIT_LDTS, expected_ldt);
+	CHECK_ALLmem("sldt", val, INIT_LDTS, (unsigned long)expected_ldt);
 	/* TODO: check with addressing using SIB byte */
 	return 0;
 }
