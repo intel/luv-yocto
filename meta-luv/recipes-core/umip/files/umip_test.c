@@ -49,26 +49,6 @@ static void handler(int signum, siginfo_t *info, void *ctx_void)
 	exit(1);
 }
 
-static unsigned long get_mask(int op_size) {
-	switch (op_size) {
-	case 16:
-		return 0xffff;
-	case 32:
-		return 0xffffffff;
-#if __x86_64__
-	case 64:
-		return 0xffffffffffffffff;
-#endif
-	default:
-		pr_error("Invalid operand size!\n");
-		/*
-		 * We can't return -1 as it would be equal to the
-		 * 32 or 64-bit mask
-		 */
-		return 0;
-	}
-}
-
 static void call_sgdt()
 {
 	unsigned char val[GDTR_LEN];
