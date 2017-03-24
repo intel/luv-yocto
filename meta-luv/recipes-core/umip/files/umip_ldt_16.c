@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <asm/ldt.h>
 #include <sys/syscall.h>
+#include <unistd.h>
 #include <sys/mman.h>
 #include <string.h>
 #include <ucontext.h>
