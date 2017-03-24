@@ -176,7 +176,7 @@ static int setup_data_segments()
 	return 0;
 }
 
-void main(void)
+int main(void)
 {
 	int ret;
 	unsigned short interim_cs, interim_ss;
@@ -352,10 +352,10 @@ void main(void)
 	}
 
 	printf("Exiting...\n");
-	return;
+	return 0;
 err_out:
 	pr_error("Could not run tests\n");
-	exit(1);
+	return 1;
 
 };
 

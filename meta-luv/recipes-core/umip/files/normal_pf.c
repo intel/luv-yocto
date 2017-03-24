@@ -55,7 +55,7 @@ struct my_struct {
 	int c;
 };
 
-void main (void)
+int main (void)
 {
 	struct sigaction action;
 	unsigned long *val_bad = (unsigned long *)0x100000;
@@ -85,7 +85,7 @@ void main (void)
 
 	if (!got_signal) {
 		pr_fail("Signal not received!\n");
-		return;
+		return 1;
 	}
 #ifdef __x86_64__
 	if (signal_code != SI_KERNEL)
@@ -105,6 +105,8 @@ void main (void)
 
 	if (sigaction(SIGSEGV, &action, NULL) < 0) {
 		pr_error("Could not remove signal handler!\n");
-		exit(1);
+		return 1;
 	}
+
+	return 0;
 }

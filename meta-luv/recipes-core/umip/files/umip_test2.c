@@ -294,7 +294,7 @@ static void handler(int signum, siginfo_t *info, void *ctx_void)
 	exit(1);
 }
 
-void main (void)
+int main (void)
 {
 	int ret_str, ret_smsw, ret_sldt;
 	struct sigaction action;
@@ -327,6 +327,8 @@ void main (void)
 
 	if (sigaction(SIGSEGV, &action, NULL) < 0) {
 		pr_error("Could not remove signal handler!");
-		exit(1);
+		return 1;
 	}
+
+	return 0;
 }
