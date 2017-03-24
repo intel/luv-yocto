@@ -226,7 +226,7 @@ static int test_str(void)
 	unsigned long val;
 	unsigned short mask = 0xffff;
 
-	pr_info("====Checking STR. Expected value: [0x%lx]====\n", expected_tr);
+	pr_info("====Checking STR. Expected value: [0x%x]====\n", expected_tr);
 	pr_info("==Tests for register operands==\n");
 	pr_info("Value should be saved at [0x%p]\n", &val);
 	CHECK_ALLreg("str", val, INIT_SS, expected_tr);
@@ -243,7 +243,7 @@ static int test_smsw(void)
 	unsigned long val;
 	unsigned short mask = 0xffff;
 
-	pr_info("====Checking SMSW. Expected value: [0x%lx]====\n", expected_msw);
+	pr_info("====Checking SMSW. Expected value: [0x%x]====\n", expected_msw);
 	pr_info("==Tests for register operands==\n");
 	pr_info("Value should be saved at [0x%p]\n", &val);
 	CHECK_ALLreg("smsw", val, INIT_MSW, expected_msw);
@@ -259,7 +259,7 @@ static int test_sldt(void)
 	unsigned long val;
 	unsigned short mask = 0xffff;
 
-	pr_info("====Checking SLDT. Expected value: [0x%lx]====\n", expected_ldt);
+	pr_info("====Checking SLDT. Expected value: [0x%x]====\n", expected_ldt);
 	pr_info("==Tests for register operands==\n");
 	pr_info("Value should be saved at [0x%p]\n", &val);
 	CHECK_ALLreg("sldt", val, INIT_LDTS, expected_ldt);
