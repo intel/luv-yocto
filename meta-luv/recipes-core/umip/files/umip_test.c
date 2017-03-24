@@ -58,7 +58,7 @@ static void call_sgdt()
 
 	for (i = 0; i < GDTR_LEN; i++)
 		val[i] = 0;
-	pr_info("Will issue SGDT and save at [0x%lx]\n", val);
+	pr_info("Will issue SGDT and save at [%p]\n", val);
 	asm volatile("sgdt %0" : "=m" (val));
 
 	limit = val[1] << 8 | val[0];
@@ -92,7 +92,7 @@ static void call_sidt()
 
 	for (i = 0; i < IDTR_LEN; i++)
 		val[i] = 0;
-	pr_info("Will issue SIDT and save at [0x%lx]\n", val);
+	pr_info("Will issue SIDT and save at [%p]\n", val);
 	asm volatile("sidt %0" : "=m" (val));
 
 	limit = val[1] << 8 | val[0];
@@ -124,7 +124,7 @@ static void call_sldt()
 	/* if operand is memory, result is 16-bit */
 	unsigned short mask = 0xffff;
 
-	pr_info("Will issue SLDT and save at [0x%lx]\n", &val);
+	pr_info("Will issue SLDT and save at [%p]\n", &val);
 	asm volatile("sldt %0" : "=m" (val));
 
 	pr_info("SS for LDT[0x%08lx]\n", val);
@@ -147,7 +147,7 @@ static void call_smsw()
 	unsigned long init_val = INIT_VAL(0xa2a2a2a2a2a2a2a2);
 	unsigned short mask = 0xffff;
 
-	pr_info("Will issue SMSW and save at [0x%lx]\n", &val);
+	pr_info("Will issue SMSW and save at [%p]\n", &val);
 	asm volatile("smsw %0" : "=m" (val));
 
 	pr_info("CR0[0x%08lx]\n", val);
