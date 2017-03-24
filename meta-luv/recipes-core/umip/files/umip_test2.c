@@ -194,9 +194,9 @@
 	CHECK_INSNmem(insn, "edi", val, init, exp)
 #endif
 
-#define INIT_SS   INIT_VAL(0x1313131313131313)
-#define INIT_MSW  INIT_VAL(0x1414141414141414)
-#define INIT_LDTS INIT_VAL(0x1515151515151515)
+#define INIT_SS   INIT_VAL(13131313)
+#define INIT_MSW  INIT_VAL(14141414)
+#define INIT_LDTS INIT_VAL(15151515)
 
 static sig_atomic_t got_signal;
 
