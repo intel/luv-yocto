@@ -52,7 +52,7 @@ static void handler(int signum, siginfo_t *info, void *ctx_void)
 static void call_sgdt()
 {
 	unsigned char val[GDTR_LEN];
-	unsigned long base = INIT_VAL(0x8989898989898989);
+	unsigned long base = INIT_VAL(89898989);
 	unsigned short limit = 0x3d3d;
 	int i;
 
@@ -86,7 +86,7 @@ static void call_sgdt()
 static void call_sidt()
 {
 	unsigned char val[IDTR_LEN];
-	unsigned long base = INIT_VAL(0x7373737373737373);
+	unsigned long base = INIT_VAL(73737373);
 	unsigned short limit = 0x9696;
 	int i;
 
@@ -119,8 +119,8 @@ static void call_sidt()
 
 static void call_sldt()
 {
-	unsigned long val = INIT_VAL(0xa1a1a1a1a1a1a1a1);
-	unsigned long init_val = INIT_VAL(0xa1a1a1a1a1a1a1a1);
+	unsigned long val = INIT_VAL(a1a1a1a1);
+	unsigned long init_val = INIT_VAL(a1a1a1a1);
 	/* if operand is memory, result is 16-bit */
 	unsigned short mask = 0xffff;
 
@@ -143,8 +143,8 @@ static void call_sldt()
 
 static void call_smsw()
 {
-	unsigned long val = INIT_VAL(0xa2a2a2a2a2a2a2a2);
-	unsigned long init_val = INIT_VAL(0xa2a2a2a2a2a2a2a2);
+	unsigned long val = INIT_VAL(a2a2a2a2);
+	unsigned long init_val = INIT_VAL(a2a2a2a2);
 	unsigned short mask = 0xffff;
 
 	pr_info("Will issue SMSW and save at [%p]\n", &val);

@@ -14,10 +14,10 @@
 
 #ifdef __x86_64__
 #define PRINT_BITNESS pr_info("This binary uses 64-bit code\n")
-#define INIT_VAL(val) (val)
+#define INIT_VAL(val) (0x##val##val)
 #else
 #define PRINT_BITNESS pr_info("This binary uses 32-bit code\n")
-#define INIT_VAL(val) (val & 0xffffffff)
+#define INIT_VAL(val) (0x##val)
 #endif
 
 #define EXPECTED_SMSW 0x33
