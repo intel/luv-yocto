@@ -103,11 +103,7 @@ def two_comp_8(val):
 		return ((abs(val) ^ 0xff) + 1) & 0xff
 
 def my_hex(val):
-	hxval = hex(val)
-	if (hxval[-1] == 'L'):
-		return hxval[:-1]
-	else:
-		return hxval
+	return hex(val).rstrip("L")
 
 def find_backup_reg(do_not_use):
 	regs = [ RAX, RCX, RDX, RBX, RSP, RBP, RSI, RDI, R8, R9, R10, R11, R12, R13, R14, R15]
@@ -139,11 +135,11 @@ def get_segment_prefix(segment, register, modrm, sib=0):
 def generate_check_code(comment, segment_chk_str, address, inst):
 	# TODO: Use an enum here
 	if (inst.result_bytes == 2):
-		checkcode = "\tgot = *(unsigned short *)(" + segment_chk_str +" + " + str(hex(address)) + ");\n"
+		checkcode = "\tgot = *(unsigned short *)(" + segment_chk_str +" + " + str(my_hex(address)) + ");\n"
 		checkcode += "\tprintf(\"%s " + comment + ". Got:[0x%x]Exp[0x%x]\\n\",\n"
 		checkcode += "\t       got==expected ? TEST_PASS : TEST_FAIL, got, expected);\n"
 	elif (inst.result_bytes == 6):
-		checkcode = "\tgot = (struct table_desc *)(" + segment_chk_str +" + " + str(hex(address)) + ");\n"
+		checkcode = "\tgot = (struct table_desc *)(" + segment_chk_str +" + " + str(my_hex(address)) + ");\n"
 		checkcode += "\tprintf(\"%s " + comment + ". Got:Base[0x%lx]Limit[0x%x]ExpBase[0x%lx]Limit[0x%x]\\n\",\n"
 		checkcode += "\t       ((got->base == expected->base) && (got->limit == expected->limit)) ? TEST_PASS : TEST_FAIL, got->base, got->limit, expected->base, expected->limit);\n"
 	return checkcode
@@ -155,21 +151,21 @@ def generate_disp(modrm, disp, sib=0):
 		# if a sib byte is used, disp 32 is used
 		if (((sib &7) == 5) and (modrm & 7) == 4):
 			disp_2comp = two_comp_32(disp)
-			disp_str = ", " + str(hex(disp_2comp & 0xff)) + ", "
-			disp_str += str(hex((disp_2comp >> 8)  & 0xff)) + ", "
-			disp_str += str(hex((disp_2comp >> 16) & 0xff)) + ", "
-			disp_str += str(hex((disp_2comp >> 24) & 0xff))
+			disp_str = ", " + str(my_hex(disp_2comp & 0xff)) + ", "
+			disp_str += str(my_hex((disp_2comp >> 8)  & 0xff)) + ", "
+			disp_str += str(my_hex((disp_2comp >> 16) & 0xff)) + ", "
+			disp_str += str(my_hex((disp_2comp >> 24) & 0xff))
 		else:
 			disp_str = ""
 	elif (modrm_mod == 1):
 		disp_2comp = two_comp_8(disp)
-		disp_str = ", " + str(hex(disp_2comp))
+		disp_str = ", " + str(my_hex(disp_2comp))
 	elif (modrm_mod == 2):
 		disp_2comp = two_comp_32(disp)
-		disp_str = ", " + str(hex(disp_2comp & 0xff)) + ", "
-		disp_str += str(hex((disp_2comp >> 8)  & 0xff)) + ", "
-		disp_str += str(hex((disp_2comp >> 16) & 0xff)) + ", "
-		disp_str += str(hex((disp_2comp >> 24) & 0xff))
+		disp_str = ", " + str(my_hex(disp_2comp & 0xff)) + ", "
+		disp_str += str(my_hex((disp_2comp >> 8)  & 0xff)) + ", "
+		disp_str += str(my_hex((disp_2comp >> 16) & 0xff)) + ", "
+		disp_str += str(my_hex((disp_2comp >> 24) & 0xff))
 
 	return disp_str
 
@@ -178,7 +174,7 @@ def generate_code(tc_nr, segment, inst, register, modrm_mod, index, disp):
 	code_end = "\\n\\t\"\n"
 
 	modrm = (modrm_mod << 6) | (inst.modrm_reg << 3) | register.modrm_rm
-	modrm_str = ", " + str(hex(modrm))
+	modrm_str = ", " + str(my_hex(modrm))
 	mov_reg_str = "\t\"mov $" + str(my_hex(two_comp_64(index))) + ", " + register.mnemonic + "\\n\\t\"\n"
 
 	segment_str, segment_chk_str = get_segment_prefix(segment, register, modrm)
@@ -186,7 +182,7 @@ def generate_code(tc_nr, segment, inst, register, modrm_mod, index, disp):
 	opcode_str = inst.opcode
 
 	if (register.rex_b != 0):
-		rex_b_str = hex(register.rex_b) + ", "
+		rex_b_str = my_hex(register.rex_b) + ", "
 	else:
 		rex_b_str = ""
 
@@ -201,14 +197,14 @@ def generate_code(tc_nr, segment, inst, register, modrm_mod, index, disp):
 		comment += " + disp8). "
 	elif (modrm_mod == 2):
 		comment += " + disp32). "
-	comment += "EFF_ADDR[" + str(hex(index + disp)) + "]. "
-	comment += register.name + "[" + str(hex(index)) + "] "
+	comment += "EFF_ADDR[" + str(my_hex(index + disp)) + "]. "
+	comment += register.name + "[" + str(my_hex(index)) + "] "
 	if (modrm_mod == 0):
 			comment += ""
 	elif (modrm_mod == 1):
-			comment += "disp8[" + str(hex(disp)) + "]"
+			comment += "disp8[" + str(my_hex(disp)) + "]"
 	elif (modrm_mod == 2):
-			comment += "disp32[" + str(hex(disp)) + "]"
+			comment += "disp32[" + str(my_hex(disp)) + "]"
 
 	code = "\t/* " + comment + " */\n"
 	code += mov_reg_str
@@ -224,8 +220,8 @@ def generate_code_sib(tc_nr, segment, inst, reg_base, reg_index, modrm_mod, sib_
 
 	modrm = (modrm_mod << 6) | (inst.modrm_reg << 3) | RSP.modrm_rm
 	sib = (sib_scale << 6) | (reg_index.modrm_rm << 3) | reg_base.modrm_rm
-	modrm_str = ", " + str(hex(modrm))
-	sib_str = ", " + str(hex(sib))
+	modrm_str = ", " + str(my_hex(modrm))
+	sib_str = ", " + str(my_hex(sib))
 	mov_reg_str = "\t\"mov $" + str(my_hex(two_comp_64(sib_base))) + ", " + reg_base.mnemonic + "\\n\\t\"\n"
 	mov_reg_str += "\t\"mov $" + str(my_hex(two_comp_64(sib_index))) + ", " + reg_index.mnemonic + "\\n\\t\"\n"
 
@@ -242,7 +238,7 @@ def generate_code_sib(tc_nr, segment, inst, reg_base, reg_index, modrm_mod, sib_
 	opcode_str = inst.opcode
 
 	if ((reg_index.rex_x != 0) or (reg_base.rex_b != 0)):
-		rex_b_str = hex(reg_index.rex_x | reg_base.rex_b) + ", "
+		rex_b_str = my_hex(reg_index.rex_x | reg_base.rex_b) + ", "
 	else:
 		rex_b_str = ""
 
@@ -272,17 +268,17 @@ def generate_code_sib(tc_nr, segment, inst, reg_base, reg_index, modrm_mod, sib_
 
 	eff_addr = calc_base + calc_index*(1<<sib_scale) + disp
 
-	comment += "EFF_ADDR[" + str(hex(eff_addr)) + "]. "
-	comment += 	"b[" + str(hex(sib_base)) + "] i[" + str(hex(sib_index)) + "] "
+	comment += "EFF_ADDR[" + str(my_hex(eff_addr)) + "]. "
+	comment += 	"b[" + str(my_hex(sib_base)) + "] i[" + str(my_hex(sib_index)) + "] "
 	if (modrm_mod == 0):
 		if(reg_base == RBP):
-			comment += "disp32[" + str(hex(disp)) + "]"
+			comment += "disp32[" + str(my_hex(disp)) + "]"
 		else:
 			comment += ""
 	elif (modrm_mod == 1):
-			comment += "disp8[" + str(hex(disp)) + "]"
+			comment += "disp8[" + str(my_hex(disp)) + "]"
 	elif (modrm_mod == 2):
-			comment += "disp32[" + str(hex(disp)) + "]"
+			comment += "disp32[" + str(my_hex(disp)) + "]"
 
 	code = "\t/* " + comment + " */\n"
 	code += backup_str
@@ -413,20 +409,20 @@ def generate_special_unit_tests(start_tc_nr, segment, inst, start_idx):
 	if(0):
 		# MOD = 0, r/m = 5 (RBP), no index is used, only a disp32
 		modrm = (MODRM_MO0 << 6) | (inst.modrm_reg << 3) | RBP.modrm_rm
-		modrm_str = ", " + str(hex(modrm))
+		modrm_str = ", " + str(my_hex(modrm))
 
 		segment_str, segment_chk_str = get_segment_prefix(segment, RBP, modrm)
 
-		disp_str = ", " + str(hex(index & 0xff)) + ", "
-		disp_str += str(hex((index >> 8)  & 0xff)) + ", "
-		disp_str += str(hex((index >> 16) & 0xff)) + ", "
-		disp_str += str(hex((index >> 24) & 0xff))
+		disp_str = ", " + str(my_hex(index & 0xff)) + ", "
+		disp_str += str(my_hex((index >> 8)  & 0xff)) + ", "
+		disp_str += str(my_hex((index >> 16) & 0xff)) + ", "
+		disp_str += str(my_hex((index >> 24) & 0xff))
 
 		comment = "Ricardin Special Test case " + str(tc_nr) + ": "
 		comment += "SEG[" + segment.name + "] "
 		comment += "INSN: " + inst.name + " (disp32)."
-		comment += "EFF_ADDR[" + str(hex(index)) + "]."
-		comment += " disp32[" + str(hex(index)) + "]"
+		comment += "EFF_ADDR[" + str(my_hex(index)) + "]."
+		comment += " disp32[" + str(my_hex(index)) + "]"
 
 		code = "\t/* " + comment + " */\n"
 		code += "\t\"jmp 1f:\\n\\t\"\n"
