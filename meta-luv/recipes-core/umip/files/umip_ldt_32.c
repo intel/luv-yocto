@@ -127,7 +127,7 @@ static int setup_data_segments()
 	return 0;
 }
 
-void main(void)
+int main(void)
 {
 	int ret;
 	unsigned short test_cs, test_ds, test_ss;
@@ -266,10 +266,10 @@ void main(void)
 
 	pr_info("Exiting...\n");
 
-	return;
+	return 0;
 err_out:
 	pr_error("Could not run tests\n");
-	exit(1);
+	return 1;
 
 };
 
