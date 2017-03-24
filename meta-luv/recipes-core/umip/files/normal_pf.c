@@ -58,7 +58,6 @@ struct my_struct {
 void main (void)
 {
 	struct sigaction action;
-	unsigned long val;
 	unsigned long *val_bad = (unsigned long *)0x100000;
 
 	PRINT_BITNESS;

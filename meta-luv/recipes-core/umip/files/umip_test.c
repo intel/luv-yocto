@@ -22,13 +22,10 @@
 #define IDTR_LEN 6
 #endif
 
-static sig_atomic_t signal_code;
 static sig_atomic_t got_signal;
 
 static void handler(int signum, siginfo_t *info, void *ctx_void)
 {
-	ucontext_t *ctx = (ucontext_t *)ctx_void;
-
         pr_info("si_signo[%d]\n", info->si_signo);
         pr_info("si_errno[%d]\n", info->si_errno);
         pr_info("si_code[%d]\n", info->si_code);
