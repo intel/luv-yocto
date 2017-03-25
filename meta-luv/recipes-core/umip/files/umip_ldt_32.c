@@ -158,7 +158,7 @@ int main(void)
 	}
 
 	code = mmap(NULL, CODE_MEM_SIZE, PROT_WRITE | PROT_READ | PROT_EXEC,
-		    MAP_PRIVATE | MAP_32BIT | MAP_ANONYMOUS, -1, 0);
+		    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if (!code) {
 		pr_error("Failed to allocate memory for code segment!\n");
 		goto err_out;
