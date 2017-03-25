@@ -127,7 +127,7 @@ static int setup_data_segments()
 	return 0;
 }
 
-int main(void)
+int run_umip_ldt_test(void)
 {
 	int ret;
 	unsigned short test_cs, test_ds, test_ss;
@@ -273,3 +273,7 @@ err_out:
 
 };
 
+int main(void)
+{
+	return run_umip_ldt_test();
+}
