@@ -210,7 +210,7 @@ int main(void)
 	}
 
 	code_interim = mmap(NULL, 4096, PROT_WRITE | PROT_READ | PROT_EXEC,
-		    MAP_PRIVATE | MAP_32BIT | MAP_ANONYMOUS, -1, 0);
+		    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if (!code_interim) {
 		pr_error("Failed to allocate memory for interim code segment!\n");
 		goto err_out;
@@ -219,7 +219,7 @@ int main(void)
 	memcpy(code_interim, interim, interim_end - interim);
 
 	code_16 = mmap(NULL, CODE_MEM_SIZE, PROT_WRITE | PROT_READ | PROT_EXEC,
-		    MAP_PRIVATE | MAP_32BIT | MAP_ANONYMOUS, -1, 0);
+		    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if (!code_16) {
 		pr_error("Failed to allocate memory for code segment!\n");
 		goto err_out;
