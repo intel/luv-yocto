@@ -155,6 +155,44 @@ static int test_lock_prefix(void)
 	return ret;
 }
 
+#define gen_test_register_operand_inst(name, inst)			\
+static int __test_register_operand_##name(void)				\
+{									\
+	pr_info("Test %s with register operand\n", #name);		\
+	/* name (%eax) with the LOCK prefix */				\
+	asm volatile(inst						\
+		      "nop\n"						\
+		      "nop\n"						\
+		      "nop\n"						\
+		      "nop\n"						\
+		      "nop\n");						\
+									\
+	if (signal_code != ILL_ILLOPN) {				\
+		pr_fail("Signal code is not what we expect.\n");	\
+		signal_code = 0;					\
+		return 1;						\
+	}								\
+	pr_pass("An ILL_ILLOPN exception was issued.\n");		\
+	signal_code = 0;						\
+									\
+	return 0;							\
+}
+
+gen_test_register_operand_inst(SIDT, ".byte 0xf, 0x1, 0xc8\n")
+gen_test_register_operand_inst(SGDT, ".byte 0xf, 0x1, 0xc0\n")
+
+int test_register_operand(void)
+{
+	int ret;
+
+	signal_code = 0;
+	ret = __test_register_operand_SGDT();
+	if (ret)
+		return 1;
+
+	ret = __test_register_operand_SIDT();
+}
+
 int main (void)
 {
 	struct sigaction action;
@@ -182,6 +220,10 @@ int main (void)
 		return 1;
 
 	ret = test_lock_prefix();
+	if (ret)
+		return 1;
+
+	ret = test_register_operand();
 
 	memset(&action, 0, sizeof(action));
 	action.sa_handler = SIG_DFL;
