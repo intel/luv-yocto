@@ -77,6 +77,7 @@ do_populate_image() {
 }
 
 python do_mkimage() {
+    set_live_vm_vars(d, 'LIVE')
     bb.build.exec_func('build_efi_cfg', d)
     bb.build.exec_func('build_luv_cfg', d)
     bb.build.exec_func('do_populate_image', d)
