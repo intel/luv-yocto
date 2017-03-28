@@ -26,16 +26,28 @@ void handler(int signum, siginfo_t *info, void *ctx_void)
         pr_info("si_errno[%d]\n", info->si_errno);
         pr_info("si_code[%d]\n", info->si_code);
         pr_info("si_code[0x%p]\n", info->si_addr);
-	if (signum != SIGSEGV)
+
+	got_signal = signum;
+
+	if (signum == SIGSEGV) {
+		if (info->si_code == SEGV_MAPERR)
+			pr_info("Signal because of unmapped object.\n");
+		else if (info->si_code == SI_KERNEL)
+			pr_info("Signal because of #GP\n");
+		else
+			pr_info("Unknown si_code!\n");
+	}
+	else if (signum == SIGILL) {
+		if (info->si_code == SEGV_MAPERR)
+			pr_info("Signal because of unmapped object.\n");
+		else if (info->si_code == ILL_ILLOPN)
+			pr_info("Signal because of #UD\n");
+		else
+			pr_info("Unknown si_code!\n");
+	}
+	else
 		errx(1, "ERROR: Received unexpected signal");
-	else
-		got_signal = signum;
-	if (info->si_code == SEGV_MAPERR)
-		pr_info("Signal because of unmapped object.\n");
-	else if (info->si_code == SI_KERNEL)
-		pr_info("Signal because of #GP\n");
-	else
-		pr_info("Unknown si_code!\n");
+
 	/* Save the signal code */
 	signal_code = info->si_code;
 	/*
@@ -104,9 +116,14 @@ int main (void)
 	sigemptyset(&action.sa_mask);
 
 	if (sigaction(SIGSEGV, &action, NULL) < 0) {
-		pr_error("Could not set the signal handler!\n");
+		pr_error("Could not set the signal handler for SIGSEGV!\n");
 		exit(1);
-		}
+	}
+
+	if (sigaction(SIGILL, &action, NULL) < 0) {
+		pr_error("Could not set the signal handler SIGILL!\n");
+		exit(1);
+	}
 
 	ret = test_normal_pf();
 
@@ -115,7 +132,12 @@ int main (void)
 	sigemptyset(&action.sa_mask);
 
 	if (sigaction(SIGSEGV, &action, NULL) < 0) {
-		pr_error("Could not remove signal handler!\n");
+		pr_error("Could not remove signal SIGSEGV handler!\n");
+		return 1;
+	}
+
+	if (sigaction(SIGILL, &action, NULL) < 0) {
+		pr_error("Could not remove signal SIGILL handler!\n");
 		return 1;
 	}
 
