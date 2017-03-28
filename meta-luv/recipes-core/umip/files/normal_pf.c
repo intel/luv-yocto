@@ -103,6 +103,58 @@ int test_normal_pf(void)
 #endif
 }
 
+#define gen_test_lock_prefix_inst(name, inst)				\
+static int __test_lock_prefix_##name(void)				\
+{									\
+	pr_info("Test %s with lock prefix\n", #name);			\
+	/* name (%eax) with the LOCK prefix */				\
+	asm volatile(inst						\
+		      "nop\n"						\
+		      "nop\n"						\
+		      "nop\n"						\
+		      "nop\n");						\
+									\
+	if (signal_code != ILL_ILLOPN) {				\
+		pr_fail("Signal code is not what we expect.\n");	\
+		signal_code = 0;					\
+		return 1;						\
+	}								\
+	pr_pass("An ILL_ILLOPN exception was issued.\n");		\
+	signal_code = 0;						\
+									\
+	return 0;							\
+}
+
+gen_test_lock_prefix_inst(SMSW, ".byte 0xf0, 0xf, 0x1, 0x20\n")
+gen_test_lock_prefix_inst(SIDT, ".byte 0xf0, 0xf, 0x1, 0x8\n")
+gen_test_lock_prefix_inst(SGDT, ".byte 0xf0, 0xf, 0x1, 0x0\n")
+gen_test_lock_prefix_inst(STR,  ".byte 0xf0, 0xf, 0x0, 0x8\n")
+gen_test_lock_prefix_inst(SLDT, ".byte 0xf0, 0xf, 0x0, 0x0\n")
+
+static int test_lock_prefix(void)
+{
+	int ret = 0;
+	ret = __test_lock_prefix_SMSW();
+	if (ret)
+		return ret;
+
+	ret = __test_lock_prefix_SIDT();
+	if (ret)
+		return ret;
+
+	ret = __test_lock_prefix_SGDT();
+	if (ret)
+		return ret;
+
+	ret = __test_lock_prefix_STR();
+	if (ret)
+		return ret;
+
+	ret = __test_lock_prefix_SLDT();
+
+	return ret;
+}
+
 int main (void)
 {
 	struct sigaction action;
@@ -126,6 +178,10 @@ int main (void)
 	}
 
 	ret = test_normal_pf();
+	if (ret)
+		return 1;
+
+	ret = test_lock_prefix();
 
 	memset(&action, 0, sizeof(action));
 	action.sa_handler = SIG_DFL;
