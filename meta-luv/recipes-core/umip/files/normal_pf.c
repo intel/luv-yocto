@@ -55,22 +55,9 @@ struct my_struct {
 	int c;
 };
 
-int main (void)
+int test_normal_pf(void)
 {
-	struct sigaction action;
 	unsigned long *val_bad = (unsigned long *)0x100000;
-
-	PRINT_BITNESS;
-
-	memset(&action, 0, sizeof(action));
-	action.sa_sigaction = &handler;
-	action.sa_flags = SA_SIGINFO;
-	sigemptyset(&action.sa_mask);
-
-	if (sigaction(SIGSEGV, &action, NULL) < 0) {
-		pr_error("Could not set the signal handler!\n");
-		exit(1);
-		}
 
 	asm volatile ("smsw %0\n"
 		      "nop\n"
@@ -88,16 +75,40 @@ int main (void)
 		return 1;
 	}
 #ifdef __x86_64__
-	if (signal_code != SI_KERNEL)
+	if (signal_code != SI_KERNEL) {
 		pr_fail("Signal code is not what we expect.\n");
-	else
-		pr_pass("A SEGV_MAPERR page fault was issued.\n");
+		return 1;
+	}
+	pr_pass("A SEGV_MAPERR page fault was issued.\n");
+	return 0;
 #else
-	if (signal_code != SEGV_MAPERR)
+	if (signal_code != SEGV_MAPERR) {
 		pr_fail("Signal code is not what we expect.\n");
-	else
-		pr_pass("A SEGV_MAPERR page fault was issued.\n");
+		return 1;
+	}
+	pr_pass("A SEGV_MAPERR page fault was issued.\n");
+	return 0;
 #endif
+}
+
+int main (void)
+{
+	struct sigaction action;
+	int ret;
+
+	PRINT_BITNESS;
+
+	memset(&action, 0, sizeof(action));
+	action.sa_sigaction = &handler;
+	action.sa_flags = SA_SIGINFO;
+	sigemptyset(&action.sa_mask);
+
+	if (sigaction(SIGSEGV, &action, NULL) < 0) {
+		pr_error("Could not set the signal handler!\n");
+		exit(1);
+		}
+
+	ret = test_normal_pf();
 
 	memset(&action, 0, sizeof(action));
 	action.sa_handler = SIG_DFL;
@@ -108,5 +119,5 @@ int main (void)
 		return 1;
 	}
 
-	return 0;
+	return ret;
 }
