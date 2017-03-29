@@ -37,7 +37,7 @@ SRC_URI += "file://luv-test-manager file://luv-test-parser \
 RDEPENDS_${PN}-netconsole+= "kernel-modules curl iputils iproute2 bash init-ifupdown dhcp-client"
 RDEPENDS_${PN}-crash+="bash"
 RDEPENDS_${PN}-manager+= "bash"
-RDEPENDS_${PN}+= "bash"
+RDEPENDS_${PN}+= "bash gzip"
 
 do_install_append() {
        install -d ${D}${sbindir}/
