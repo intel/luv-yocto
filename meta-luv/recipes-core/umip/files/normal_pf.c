@@ -193,6 +193,144 @@ int test_register_operand(void)
 	ret = __test_register_operand_SIDT();
 }
 
+#ifdef __x86_64__
+int test_null_segment_selectors(void)
+{
+}
+#else
+#define gen_test_null_segment_selector(inst, reg)				\
+static int __test_null_segment_selector_##inst##_##reg(void)			\
+{										\
+	pr_info("Test using null seg sel for " #inst " with " #reg "\n");	\
+	asm volatile("push %" #reg "\n"						\
+		     "push %eax\n"						\
+		     "push %ebx\n"						\
+		     "mov $0x1000, %eax\n"					\
+		     "mov $0, %ebx\n"						\
+		     "mov %bx, %" #reg "\n"					\
+		     "smsw %" #reg ":(%eax)\n"					\
+		     "nop\n"							\
+		     "nop\n"							\
+		     "nop\n"							\
+		     "nop\n"							\
+		     "nop\n"							\
+		     "pop %ebx\n"						\
+		     "pop %eax\n"						\
+		     "pop %" #reg "\n");					\
+	if (signal_code != SI_KERNEL) {						\
+		pr_fail("Signal code is not what we expect.\n");		\
+		signal_code = 0;						\
+	return 1;								\
+	}									\
+	pr_pass("An ILL_ILLOPN exception was issued.\n");			\
+	signal_code = 0;							\
+										\
+	return 0;								\
+}
+
+gen_test_null_segment_selector(smsw, ds)
+gen_test_null_segment_selector(smsw, es)
+gen_test_null_segment_selector(smsw, fs)
+gen_test_null_segment_selector(smsw, gs)
+gen_test_null_segment_selector(sidt, ds)
+gen_test_null_segment_selector(sidt, es)
+gen_test_null_segment_selector(sidt, fs)
+gen_test_null_segment_selector(sidt, gs)
+gen_test_null_segment_selector(sgdt, ds)
+gen_test_null_segment_selector(sgdt, es)
+gen_test_null_segment_selector(sgdt, fs)
+gen_test_null_segment_selector(sgdt, gs)
+gen_test_null_segment_selector(str, ds)
+gen_test_null_segment_selector(str, es)
+gen_test_null_segment_selector(str, fs)
+gen_test_null_segment_selector(str, gs)
+gen_test_null_segment_selector(sldt, ds)
+gen_test_null_segment_selector(sldt, es)
+gen_test_null_segment_selector(sldt, fs)
+gen_test_null_segment_selector(sldt, gs)
+
+int test_null_segment_selectors(void)
+{
+	int ret;
+
+	ret = __test_null_segment_selector_smsw_ds();
+	if (ret)
+		return 1;
+	ret = __test_null_segment_selector_smsw_es();
+	if (ret)
+		return 1;
+	ret = __test_null_segment_selector_smsw_fs();
+	if (ret)
+		return 1;
+#ifdef TEST_GS /* TODO: Meddling with gs breaks libc */
+	ret = __test_null_segment_selector_smsw_gs();
+	if (ret)
+		return 1;
+#endif
+
+	ret = __test_null_segment_selector_sidt_ds();
+	if (ret)
+		return 1;
+	ret = __test_null_segment_selector_sidt_es();
+	if (ret)
+		return 1;
+	ret = __test_null_segment_selector_sidt_fs();
+	if (ret)
+		return 1;
+#ifdef TEST_GS /* TODO: Meddling with gs breaks libc */
+	ret = __test_null_segment_selector_sidt_gs();
+	if (ret)
+		return 1;
+#endif
+
+	ret = __test_null_segment_selector_sgdt_ds();
+	if (ret)
+		return 1;
+	ret = __test_null_segment_selector_sgdt_es();
+	if (ret)
+		return 1;
+	ret = __test_null_segment_selector_sgdt_fs();
+	if (ret)
+		return 1;
+#ifdef TEST_GS /* TODO: Meddling with gs breaks libc */
+	ret = __test_null_segment_selector_sgdt_gs();
+	if (ret)
+		return 1;
+#endif
+
+	ret = __test_null_segment_selector_sldt_ds();
+	if (ret)
+		return 1;
+	ret = __test_null_segment_selector_sldt_es();
+	if (ret)
+		return 1;
+	ret = __test_null_segment_selector_sldt_fs();
+	if (ret)
+		return 1;
+#ifdef TEST_GS /* TODO: Meddling with gs breaks libc */
+	ret = __test_null_segment_selector_sldt_gs();
+	if (ret)
+		return 1;
+#endif
+
+	ret = __test_null_segment_selector_str_ds();
+	if (ret)
+		return 1;
+	ret = __test_null_segment_selector_str_es();
+	if (ret)
+		return 1;
+	ret = __test_null_segment_selector_str_fs();
+	if (ret)
+		return 1;
+#ifdef TEST_GS /* TODO: Meddling with gs breaks libc */
+	ret = __test_null_segment_selector_str_gs();
+	if (ret)
+		return 1;
+#endif
+	return 0;
+}
+#endif
+
 int main (void)
 {
 	struct sigaction action;
@@ -224,6 +362,10 @@ int main (void)
 		return 1;
 
 	ret = test_register_operand();
+	if (ret)
+		return 1;
+
+	ret = test_null_segment_selectors();
 
 	memset(&action, 0, sizeof(action));
 	action.sa_handler = SIG_DFL;
