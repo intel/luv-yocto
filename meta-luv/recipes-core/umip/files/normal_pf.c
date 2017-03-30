@@ -13,6 +13,8 @@
 #include <string.h>
 #include <ucontext.h>
 #include <err.h>
+#include <asm/ldt.h>
+#include <sys/syscall.h>
 #include "umip_test_defs.h"
 
 static sig_atomic_t signal_code;
@@ -331,6 +333,200 @@ int test_null_segment_selectors(void)
 }
 #endif
 
+#ifdef __x86_64__
+int test_addresses_outside_segment(void)
+{
+}
+#else
+
+#define SEGMENT_SIZE 0x1000
+#define CODE_DESC_INDEX 1
+#define DATA_DESC_INDEX 2
+
+#define RPL3 3
+#define TI_LDT 1
+
+#define SEGMENT_SELECTOR(index) (RPL3 | (TI_LDT << 2) | (index << 3))
+
+unsigned char custom_segment[SEGMENT_SIZE];
+
+static int setup_data_segments()
+{
+	int ret;
+	struct user_desc desc = {
+		.entry_number    = 0,
+		.base_addr       = 0,
+		.limit           = SEGMENT_SIZE,
+		.seg_32bit       = 1,
+		.contents        = 0, /* data */
+		.read_exec_only  = 0,
+		.limit_in_pages  = 0,
+		.seg_not_present = 0,
+		.useable         = 1
+	};
+
+	desc.entry_number = DATA_DESC_INDEX;
+	desc.base_addr = (unsigned long)&custom_segment;
+
+	ret = syscall(SYS_modify_ldt, 1, &desc, sizeof(desc));
+	if (ret) {
+		pr_error("Failed to install stack semgnet [%d].\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+#define gen_test_addresses_outside_segment(inst, sel)			\
+int __test_addresses_outside_segment_##inst##_##sel(void)		\
+{									\
+	int ret;							\
+	unsigned short seg_sel;						\
+									\
+	seg_sel = SEGMENT_SELECTOR(DATA_DESC_INDEX);			\
+									\
+	pr_info("Test address outside of segment limit for " #inst " with " #sel"\n");\
+	asm volatile("push %%" #sel"\n"					\
+		     "push %%eax\n"					\
+		     "push %%ebx\n"					\
+		     "mov $0x2000, %%eax\n"				\
+		     "mov %0, %%" #sel "\n"				\
+		     #inst " %%" #sel ":(%%eax)\n"			\
+		     "nop\n"						\
+		     "nop\n"						\
+		     "nop\n"						\
+		     "nop\n"						\
+		     "nop\n"						\
+		     "pop %%ebx\n"					\
+		     "pop %%eax\n"					\
+		     "pop %%" #sel "\n"					\
+		     :							\
+		     :"m" (seg_sel));					\
+									\
+	if (signal_code != SI_KERNEL) {					\
+		pr_fail("Signal code is not what we expect.\n");	\
+		signal_code = 0;					\
+	return 1;							\
+	}								\
+	pr_pass("An ILL_ILLOPN exception was issued.\n");		\
+	signal_code = 0;						\
+									\
+	return 0;							\
+}
+
+gen_test_addresses_outside_segment(smsw, ds)
+gen_test_addresses_outside_segment(str, ds)
+gen_test_addresses_outside_segment(sldt, ds)
+gen_test_addresses_outside_segment(sgdt, ds)
+gen_test_addresses_outside_segment(sidt, ds)
+gen_test_addresses_outside_segment(smsw, es)
+gen_test_addresses_outside_segment(str, es)
+gen_test_addresses_outside_segment(sldt, es)
+gen_test_addresses_outside_segment(sgdt, es)
+gen_test_addresses_outside_segment(sidt, es)
+gen_test_addresses_outside_segment(smsw, fs)
+gen_test_addresses_outside_segment(str, fs)
+gen_test_addresses_outside_segment(sldt, fs)
+gen_test_addresses_outside_segment(sgdt, fs)
+gen_test_addresses_outside_segment(sidt, fs)
+gen_test_addresses_outside_segment(smsw, gs)
+gen_test_addresses_outside_segment(str, gs)
+gen_test_addresses_outside_segment(sldt, gs)
+gen_test_addresses_outside_segment(sgdt, gs)
+gen_test_addresses_outside_segment(sidt, gs)
+
+int test_addresses_outside_segment(void)
+{
+	int ret;
+
+	ret = setup_data_segments();
+	if (ret)
+		return 1;
+
+	ret = __test_addresses_outside_segment_smsw_ds();
+	if (ret)
+			return 1;
+
+	ret = __test_addresses_outside_segment_str_ds();
+	if (ret)
+			return 1;
+
+		ret = __test_addresses_outside_segment_sgdt_ds();
+	if (ret)
+			return 1;
+
+	ret = __test_addresses_outside_segment_sidt_ds();
+	if (ret)
+			return 1;
+
+	ret = __test_addresses_outside_segment_sldt_ds();
+	if (ret)
+			return 1;
+
+	ret = __test_addresses_outside_segment_smsw_es();
+	if (ret)
+			return 1;
+
+	ret = __test_addresses_outside_segment_str_es();
+	if (ret)
+			return 1;
+
+		ret = __test_addresses_outside_segment_sgdt_es();
+	if (ret)
+			return 1;
+
+	ret = __test_addresses_outside_segment_sidt_es();
+	if (ret)
+			return 1;
+
+	ret = __test_addresses_outside_segment_sldt_es();
+	if (ret)
+			return 1;
+
+	ret = __test_addresses_outside_segment_smsw_fs();
+	if (ret)
+			return 1;
+
+	ret = __test_addresses_outside_segment_str_fs();
+	if (ret)
+			return 1;
+
+		ret = __test_addresses_outside_segment_sgdt_fs();
+	if (ret)
+			return 1;
+
+	ret = __test_addresses_outside_segment_sidt_fs();
+	if (ret)
+			return 1;
+
+	ret = __test_addresses_outside_segment_sldt_fs();
+	if (ret)
+			return 1;
+
+#ifdef TEST_GS
+	ret = __test_addresses_outside_segment_smsw_gs();
+	if (ret)
+			return 1;
+
+	ret = __test_addresses_outside_segment_str_gs();
+	if (ret)
+			return 1;
+
+		ret = __test_addresses_outside_segment_sgdt_gs();
+	if (ret)
+			return 1;
+
+	ret = __test_addresses_outside_segment_sidt_gs();
+	if (ret)
+			return 1;
+
+	ret = __test_addresses_outside_segment_sldt_gs();
+	if (ret)
+			return 1;
+#endif
+}
+#endif
+
 int main (void)
 {
 	struct sigaction action;
@@ -366,6 +562,10 @@ int main (void)
 		return 1;
 
 	ret = test_null_segment_selectors();
+	if (ret)
+		return 1;
+
+	test_addresses_outside_segment();
 
 	memset(&action, 0, sizeof(action));
 	action.sa_handler = SIG_DFL;
