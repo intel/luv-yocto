@@ -78,3 +78,71 @@ PTTRN="\[Firmware Info\]"
 DESC="Check for informative messages issued by the Linux kernel about the firmware."
 
 test_dmesg "${TEST}" "${DESC}" "${PTTRN}"
+
+# Check if the entries in EFI_MEMORY_ATTRIBUTES table have appropriate type.
+# According to UEFI spec, all entries in EFI_MEMORY_ATTRIBUTES table should
+# be either RuntimeServiceCode or RuntimeServiceData. All other types indicate
+# buggy firmware.
+
+TEST="Kernel_MEM_ATTR_TYPE"
+PTTRN="efi: memattr: Entry type should be RuntimeServiceCode/Data"
+DESC="Check if the entries in EFI_MEMORY_ATTRIBUTES table have appropriate type."
+
+test_dmesg "${TEST}" "${DESC}" "${PTTRN}"
+
+# Check if the entries in EFI_MEMORY_ATTRIBUTES table have appropriate attributes
+# set. Presently, UEFI spec defines only three attributes for entries in
+# EFI_MEMORY_ATTRIBUTES table and they are RO (Read Only), XP (eXecute Protect)
+# and EFI_MEMORY_RUNTIME. Any other attribute set for these entries indicate
+# buggy firmware.
+
+TEST="Kernel_MEM_ATTR_ATTR"
+PTTRN="efi: memattr: Entry attributes invalid: RO and XP bits both cleared"
+DESC="Check if the entries in EFI_MEMORY_ATTRIBUTES table have appropriate attributes."
+
+test_dmesg "${TEST}" "${DESC}" "${PTTRN}"
+
+# Check for alignment of entries in EFI_MEMORY_ATTRIBUTES table. UEFI spec,
+# mentions that all EFI_MEMORY_DESCRIPTORS that require virtual mapping
+# must be aligned on a 4KiB boundary and must be a multiple of 4KiB in size.
+# So, unaligned regions indicate buggy firmware.
+
+TEST="Kernel_MEM_ATTR_ALGN"
+PTTRN="efi: memattr: Entry address region misaligned"
+DESC="Check for alignment of entries in EFI_MEMORY_ATTRIBUTES table."
+
+test_dmesg "${TEST}" "${DESC}" "${PTTRN}"
+
+# Check for entries that describe multiple entries of EFI Memory Map.
+# UEFI spec mentions that every entry in EFI_MEMORY_ATTRIBUTES table must
+# be a sub-region of, or equal to, a entry in EFI Memory Map. This means
+# that, a entry in EFI_MEMORY_ATTRIBUTES table which describes more than
+# one entry in EFI Memory Map is a bug and hence indicates buggy firmware.
+
+TEST="Kernel_MEM_ATTR_OVLP"
+PTTRN="efi: memattr: Entry covers multiple EFI memory map regions"
+DESC="Check for entries that describe multiple entries of EFI Memory Map."
+
+test_dmesg "${TEST}" "${DESC}" "${PTTRN}"
+
+# Check if entry type is same in EFI_MEMORY_ATTRIBUTES and EFI Memory Map.
+# UEFI spec defines that "Type" field of an entry in EFI_MEMORY_ATTRIBUTES table
+# should match with the "Type" field of the same entry found in EFI Memory Map.
+# Any mismatch between entries "Type" field indicates buggy firmware.
+
+TEST="Kernel_MEM_ATTR_TYMA"
+PTTRN="efi: memattr: Entry type deviates from EFI memory map region type"
+DESC="Check if entry type is same in EFI_MEMORY_ATTRIBUTES and EFI Memory Map."
+
+test_dmesg "${TEST}" "${DESC}" "${PTTRN}"
+
+# Check if the entries published in EFI_MEMORY_ATTRIBUTES table match with
+# atleast one entry in EFI Memory Map. This is not stated directly in the
+# UEFI spec but can be inferred easily. This check makes sure that all the
+# entries in EFI_MEMORY_ATTRIBUTES table are derived from EFI Memory Map.
+
+TEST="Kernel_MEM_ATTR_MISS"
+PTTRN="efi: memattr: No matching entry found in the EFI memory map"
+DESC="Check if entry is present in EFI Memory Map."
+
+test_dmesg "${TEST}" "${DESC}" "${PTTRN}"
