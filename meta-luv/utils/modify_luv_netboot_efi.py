@@ -96,10 +96,10 @@ def replace_strings(keywords):
             if (k.lower().find(a.lower()) > 0):
                 """
                 check if the arguments are passed for each parameter in luv.cfg.
-                If not then replace that parameter with an blank space
+                If not then replace that parameter with a string "none"
                 """
                 if (args_lists[a]) is None:
-                    replace_str = k + "=" + " " + "\n"
+                    replace_str = k + "=" + "none" + "\n"
                     print ("No " + a + " parameter found! Please provide one "
                            "if you intend to use the feature")
                     new_rep_str = new_rep_str + replace_str
