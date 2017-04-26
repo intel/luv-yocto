@@ -9,7 +9,7 @@
 # Gather results in a compressed tarball
 
 plymouth_write() {
-    /bin/plymouth display-message --text="{1}"
+    /bin/plymouth display-message --text="${1}"
 }
 
 get_tar_luv_results()
@@ -31,8 +31,7 @@ get_luv_url()
     valid_exp='(https?|ftp|file)://[-A-Za-z0-9\+&@#/%?=~_|!:,.;]*[-A-Za-z0-9\+&@#/%=~_|]'
     if ! [[ ${storage_url} =~ $valid_exp ]] ; then
         echo $alert_url_missing
-	plymouth_write "MSG $alert_url_missing"
-        halt
+	plymouth_write "$alert_url_missing"
     else
         return 0
     fi
