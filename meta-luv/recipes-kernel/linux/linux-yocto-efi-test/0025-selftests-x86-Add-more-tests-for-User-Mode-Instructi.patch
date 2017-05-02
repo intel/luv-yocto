@@ -1,7 +1,7 @@
-From a47399192fed6e0c9cb8ae3a3af1bb158636e0fb Mon Sep 17 00:00:00 2001
+From 606f8d1225db3f145217858a4e6c62ae64bcb775 Mon Sep 17 00:00:00 2001
 From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
-Date: Mon, 23 Jan 2017 18:31:35 -0800
-Subject: [PATCH 11/11] selftests/x86: Add more tests for User-Mode Instruction
+Date: Tue, 2 May 2017 14:15:47 -0700
+Subject: [PATCH 25/26] selftests/x86: Add more tests for User-Mode Instruction
  Prevention
 
 Add many tests the UMIP emulation done in the kernel. This tests all
@@ -10,11 +10,11 @@ registers, 0, 1, 2-byte displacements as well as register operands.
 
 Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
 ---
- tools/testing/selftests/x86/entry_from_vm86.c | 342 +++++++++++++++++++++++++-
- 1 file changed, 338 insertions(+), 4 deletions(-)
+ tools/testing/selftests/x86/entry_from_vm86.c | 357 +++++++++++++++++++++++++-
+ 1 file changed, 355 insertions(+), 2 deletions(-)
 
 diff --git a/tools/testing/selftests/x86/entry_from_vm86.c b/tools/testing/selftests/x86/entry_from_vm86.c
-index 377b773..c7bf946 100644
+index a335400..2bb666c 100644
 --- a/tools/testing/selftests/x86/entry_from_vm86.c
 +++ b/tools/testing/selftests/x86/entry_from_vm86.c
 @@ -100,16 +100,162 @@ asm (
@@ -179,26 +179,33 @@ index 377b773..c7bf946 100644
 +	"mov %si, (2372)\n\t"
 +	"smsw %di\n\t"
 +	"mov %di, (2374)\n\t"
- 	"int $0x80\n\t"
- 	".size vmcode, . - vmcode\n\t"
- 	"end_vmcode:\n\t"
-@@ -244,7 +390,7 @@ int main(void)
- 	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
- 	       *(unsigned short *)(addr + 2060),
- 	       *(unsigned long  *)(addr + 2062));
--	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers:\n");
+ 	"int3\n\t"
+ 	"vmcode_umip_str:\n\t"
+ 	"str %eax\n\t"
+@@ -296,6 +442,213 @@ int main(void)
+ 
+ 	/* UMIP -- should exit with INTx 0x80 unless UMIP was not disabled */
+ 	do_umip_tests(&v86, addr);
++	do_test(&v86, vmcode_umip - vmcode, VM86_TRAP, 3, "UMIP tests");
++	printf("[INFO]\tResults of UMIP-protected instructions via displacements:\n");
++	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2052));
++	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2054),
++	       *(unsigned long  *)(addr + 2056));
++	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2060),
++	       *(unsigned long  *)(addr + 2062));
 +	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: no disp, bx\n");
- 	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2066));
- 	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
- 	       *(unsigned short *)(addr + 2068),
-@@ -252,8 +398,196 @@ int main(void)
- 	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
- 	       *(unsigned short *)(addr + 2074),
- 	       *(unsigned long  *)(addr + 2076));
--	printf("[INFO]\tResults of SMSW via register operands:\n");
++	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2066));
++	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2068),
++	       *(unsigned long  *)(addr + 2070));
++	printf("[INFO]\tSGDT: limit[0x%04x]base[0x%08lx]\n",
++	       *(unsigned short *)(addr + 2074),
++	       *(unsigned long  *)(addr + 2076));
 +
 +	printf("[INFO]\tResults of UMIP-protected instructions via addressing in registers: no disp, si\n");
- 	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2080));
++	printf("[INFO]\tSMSW:[0x%04x]\n", *(unsigned short *)(addr + 2080));
 +	printf("[INFO]\tSIDT: limit[0x%04x]base[0x%08lx]\n",
 +	       *(unsigned short *)(addr + 2082),
 +	       *(unsigned long  *)(addr + 2084));

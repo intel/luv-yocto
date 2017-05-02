@@ -64,7 +64,6 @@ SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git;prot
 # These patches are under discussion on ML
 SRC_URI += "file://0001-serial-SPCR-check-bit-width-for-the-16550-UART.patch  \
            "
-
 # Detect illegal accesses to EFI regions (like EFI_CONVENTIONAL_MEMORY,
 # EFI_LOADER_CODE/DATA, EFI_BOOT_SERVICES_CODE/DATA) by firmware.
 SRC_URI += "file://0001-x86-mm-Allocate-pages-without-sleeping.patch \
@@ -77,8 +76,9 @@ SRC_URI += "file://0001-x86-mm-Allocate-pages-without-sleeping.patch \
             file://0008-x86-efi-Introduce-EFI_WARN_ON_ILLEGAL_ACCESSES.patch \
             file://0001-PCI-Vulcan-AHCI-PCI-bar-fix-for-Broadcom-Vulcan-earl.patch \
             file://0002-ahci-thunderx2-Fix-for-errata-that-affects-stop-engi.patch \
-            file://0001-selftests-x86-Add-tests-for-User-Mode-Instruction-Pr.patch \
-            file://0002-selftests-x86-Add-more-tests-for-User-Mode-Instructi.patch \
+            file://0023-selftests-x86-Add-tests-for-User-Mode-Instruction-Pr.patch \
+            file://0024-selftests-x86-Add-tests-for-instruction-str-and-sldt.patch \
+            file://0025-selftests-x86-Add-more-tests-for-User-Mode-Instructi.patch \
            "
 
 COMMON_CFG_x86 = " file://qemux86/modules.cfg \
