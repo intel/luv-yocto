@@ -109,8 +109,16 @@ SRC_URI_append = "file://pstore.cfg \
                   file://efi.cfg \
                  "
 
-# Override KCONFIG_MODE to '--alldefconfig' from the default '--allnoconfig'
-KCONFIG_MODE = '--alldefconfig'
+# If a defconfig is specified via the KBUILD_DEFCONFIG variable, we copy it
+# from the source tree, into a common location and normalized "defconfig" name,
+# where the rest of the process will include and incoroporate it into the build
+
+# If the fetcher has already placed a defconfig in WORKDIR (from the SRC_URI),
+# we don't overwrite it, but instead warn the user that SRC_URI defconfigs take
+# precendence.
+KBUILD_DEFCONFIG = "defconfig"
+KBUILD_DEFCONFIG_x86 = "i386_defconfig"
+KBUILD_DEFCONFIG_x86-64 = "x86_64_defconfig"
 LINUX_VERSION ?= "4.10"
 LINUX_VERSION_EXTENSION ?= "-efitest"
 
@@ -125,6 +133,14 @@ PV = "${LINUX_VERSION}+git${SRCPV}"
 # Override COMPATIBLE_MACHINE to include your machine in a bbappend
 # file. Leaving it empty here ensures an early explicit build failure.
 COMPATIBLE_MACHINE = "qemux86|qemux86-64|qemuarm64"
+
+# We need to merge the other fragments of the kernel along with defconfig.
+# The KBUILD_DEFCONFIG will only configure the default kernel defconfig.
+# We need to pass "-m" as an option for the merge_config script to merge
+# other configure fragments of the kernel.
+do_kernel_configme_append() {
+    CFLAGS="${CFLAGS} ${TOOLCHAIN_OPTIONS}" ARCH=${ARCH} merge_config.sh -m -O ${B} ${configs} > ${meta_dir}/cfg/merge_config_build.log 2>&1
+}
 
 do_install_append() {
     if [ "${TARGET_ARCH}" = "x86_64" ]; then
