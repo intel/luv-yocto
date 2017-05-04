@@ -78,8 +78,7 @@ SRC_URI += "file://0001-x86-efi-Move-efi_bgrt_init-to-early-stage.patch \
 SRC_URI += "file://0001-serial-SPCR-check-bit-width-for-the-16550-UART.patch  \
            "
 
-COMMON_CFG_x86 = " file://${MACHINE}/defconfig \
-                   file://qemux86/modules.cfg \
+COMMON_CFG_x86 = " file://qemux86/modules.cfg \
                    file://qemux86/display.cfg \
                    file://qemux86/ram_block.cfg \
                    file://qemux86/debug.cfg \
