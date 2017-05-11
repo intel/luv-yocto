@@ -31,7 +31,7 @@ CMDLINE_append_x86 = "${COMMON_CMDLINE_x86}"
 CMDLINE_append_x86-64 = "${COMMON_CMDLINE_x86}"
 
 LUVCFG_netconsole = "LUV_NETCONSOLE=10.11.12.13,64001"
-LUVCFG_storage_url = "LUV_STORAGE_URL=http://ipaddress/cgi-bin/upload.php"
+LUVCFG_storage_url = "LUV_STORAGE_URL=none"
 
 python() {
     import re
