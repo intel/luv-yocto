@@ -171,10 +171,10 @@ python build_efi_cfg() {
 
     target = d.getVar('TARGET_ARCH', True)
     cfgfile.write('source /luv.cfg\n')
+    cfgfile.write('timeout=0\n')
 
     if re.search("(x86_64|i.86)", target):
        cfgfile.write('default=bits\n')
-       cfgfile.write('timeout=0\n')
        cfgfile.write('fallback=0\n')
 
     cfgfile.write('menuentry \'luv\' {\n')
