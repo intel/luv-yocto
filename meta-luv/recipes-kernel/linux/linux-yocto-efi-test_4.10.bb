@@ -137,9 +137,9 @@ COMPATIBLE_MACHINE = "qemux86|qemux86-64|qemuarm64"
 # The KBUILD_DEFCONFIG will only configure the default kernel defconfig.
 # We need to pass "-m" as an option for the merge_config script to merge
 # other configure fragments of the kernel.
-do_kernel_configme_append() {
-    CFLAGS="${CFLAGS} ${TOOLCHAIN_OPTIONS}" ARCH=${ARCH} merge_config.sh -m -O ${B} ${configs} > ${meta_dir}/cfg/merge_config_build.log 2>&1
-}
+#do_kernel_configme_append() {
+#    CFLAGS="${CFLAGS} ${TOOLCHAIN_OPTIONS}" ARCH=${ARCH} merge_config.sh -m -O ${B} ${configs} > ${meta_dir}/cfg/merge_config_build.log 2>&1
+#}
 
 do_install_append() {
     if [ "${TARGET_ARCH}" = "x86_64" ]; then
