@@ -16,8 +16,8 @@ A quick guide for UMIP testing
   16-bit long. Addresses in these tests are computed using only the ModRM
   byte. Also, these tests use the normal __USER_DS segment with a base
   address of zero.
-* Use umip_pf to verify that a page fault is correctly issued when UMIP-
-  emulated code tries to write in an invalid memory address of the user
+* Use umip_exceptions to verify that a page fault is correctly issued when
+  UMIP-emulated code tries to write in an invalid memory address of the user
   space memory.
 * Use umip_ldt to verify all the possible 32-bit address encodings in the
   UMIP-emulated instructions. This includes all the ModRM, and SiB displacement
@@ -29,4 +29,3 @@ A quick guide for UMIP testing
   combinations. Furthermore, this test configure a Local Descriptor Table
   whose segments have base addresses that are different from the __USER_DS
   segment. Also, the code segment is configured for 16-bit addresses.
-
