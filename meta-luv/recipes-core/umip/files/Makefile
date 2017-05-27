@@ -1,7 +1,7 @@
 x86_64:
 	$(CC) -o umip_test2_64 umip_test2.c
 	$(CC) -o umip_test_64 umip_test.c
-	$(CC) -o umip_pf_64 normal_pf.c
+	$(CC) -o umip_exceptions_64 umip_exceptions.c
 
 	python umip_test_gen_64.py
 	$(CC) -c test_umip_ldt_64.c
@@ -14,7 +14,7 @@ i686:
 	# fo 32-bit builds, use -m32 if building independently
 	$(CC) -o umip_test2_32 umip_test2.c
 	$(CC) -o umip_test_32 umip_test.c
-	$(CC) -o umip_pf_32 normal_pf.c
+	$(CC) -o umip_exceptions_32 umip_exceptions.c
 
 	python umip_test_gen_32.py
 	$(CC) -c test_umip_ldt_32.c
