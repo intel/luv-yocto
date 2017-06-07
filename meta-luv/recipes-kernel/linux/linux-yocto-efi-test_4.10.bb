@@ -110,7 +110,18 @@ SRC_URI_append = "file://pstore.cfg \
                  "
 
 # Override KCONFIG_MODE to '--alldefconfig' from the default '--allnoconfig'
-KCONFIG_MODE = '--alldefconfig'
+KCONFIG_MODE = 'alldefconfig'
+
+# If a defconfig is specified via the KBUILD_DEFCONFIG variable, we copy it
+# from the source tree, into a common location and normalized "defconfig" name,
+# where the rest of the process will include and incoroporate it into the build
+
+# If the fetcher has already placed a defconfig in WORKDIR (from the SRC_URI),
+# we don't overwrite it, but instead warn the user that SRC_URI defconfigs take
+# precendence.
+KBUILD_DEFCONFIG = "defconfig"
+KBUILD_DEFCONFIG_x86 = "i386_defconfig"
+KBUILD_DEFCONFIG_x86-64 = "x86_64_defconfig"
 LINUX_VERSION ?= "4.10"
 LINUX_VERSION_EXTENSION ?= "-efitest"
 
