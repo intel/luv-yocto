@@ -2,5 +2,5 @@ require recipes-kernel/linux-libc-headers/linux-libc-headers.inc
 
 FILESEXTRAPATHS_prepend :="../../../meta/recipes-kernel/linux-libc-headers:"
 
-SRC_URI[md5sum] = "b5e7f6b9b2fe1b6cc7bc56a3a0bfc090"
-SRC_URI[sha256sum] = "3c95d9f049bd085e5c346d2c77f063b8425f191460fcd3ae9fe7e94e0477dc4b"
+SRC_URI[md5sum] = "251a5deee0fa6daf3f356b1bbda9eab8"
+SRC_URI[sha256sum] = "b67ecafd0a42b3383bf4d82f0850cbff92a7e72a215a6d02f42ddbafcf42a7d6"
