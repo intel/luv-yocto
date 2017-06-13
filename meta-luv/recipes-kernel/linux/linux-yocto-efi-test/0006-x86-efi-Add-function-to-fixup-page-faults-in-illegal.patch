@@ -1,0 +1,135 @@
+From 6abf42c02e4b8cd837bba99fbe5fde1d18ee6bce Mon Sep 17 00:00:00 2001
+From: Sai Praneeth <sai.praneeth.prakhya@intel.com>
+Date: Fri, 19 May 2017 16:17:04 -0700
+Subject: [PATCH 6/8] x86/efi: Add function to fixup page faults in illegal efi
+ regions
+
+As per the UEFI specification, after the call to ExitBootServices(),
+accesses by firmware to any memory regions except EFI_RUNTIME_CODE/DATA
+regions is considered illegal. However, some buggy firmware
+implementations still access these regions after such call.
+
+Rather than safely mapping all the BOOT_SERVICES_* regions, map only
+EFI_RUNTIME regions and trap all other illegal accesses. The function
+efi_illegal_accesses_fixup() is intended to be called from the page
+fault handler.
+
+[ All BOOT_SERVICES_* regions are still marked as reserved until
+  efi_free_boot_services() is called, so we're OK to dynamically
+  fixup any faults since the pages won't have been reused - Matt ]
+
+We are fixing up faults even after efi_free_boot_services() is called
+and we are also fixing faults not only for EFI_BOOT_SERVICES_CODE/DATA
+but also for EFI_CONVENTIONAL_MEMORY and EFI_LOADER_CODE/DATA which are
+not reserved. We cannot reserve these regions as they are very huge and
+reserving them will make kernel un-bootable. We are still considering
+this fixup because we could at least save few random kernel hangs on
+buggy machines. So, even though we fix the page fault we cannot
+guarantee any data integrity.
+
+Finally, this new mapping will not impact a reboot from kexec, as kexec
+is only concerned about runtime memory regions.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Signed-off-by: Sai Praneeth Prakhya <sai.praneeth.prakhya@intel.com>
+Cc: Lee, Chun-Yi <jlee@suse.com>
+Cc: Borislav Petkov <bp@alien8.de>
+Cc: Fenghua Yu <fenghua.yu@intel.com>
+Cc: Ravi Shankar <ravi.v.shankar@intel.com>
+Cc: Matt Fleming <matt@codeblueprint.co.uk>
+Cc: Ard Biesheuvel <ard.biesheuvel@linaro.org>
+---
+ arch/x86/include/asm/efi.h     |  5 ++++
+ arch/x86/platform/efi/quirks.c | 60 ++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 65 insertions(+)
+
+diff --git a/arch/x86/include/asm/efi.h b/arch/x86/include/asm/efi.h
+index f8742da90d73..43a3ab75c020 100644
+--- a/arch/x86/include/asm/efi.h
++++ b/arch/x86/include/asm/efi.h
+@@ -169,8 +169,13 @@ extern int orig_num_entries;
+ 
+ #ifdef CONFIG_EFI_WARN_ON_ILLEGAL_ACCESSES
+ extern void __init efi_save_orig_memmap(void);
++extern int efi_illegal_accesses_fixup(unsigned long phys_addr);
+ #else
+ static inline void __init efi_save_orig_memmap(void) { }
++static inline int efi_illegal_accesses_fixup(unsigned long phys_addr)
++{
++	return 0;
++}
+ #endif /* CONFIG_EFI_WARN_ON_ILLEGAL_ACCESSES */
+ 
+ #ifdef CONFIG_EFI_MIXED
+diff --git a/arch/x86/platform/efi/quirks.c b/arch/x86/platform/efi/quirks.c
+index 1cd3cdc333fd..aca070f0ca5c 100644
+--- a/arch/x86/platform/efi/quirks.c
++++ b/arch/x86/platform/efi/quirks.c
+@@ -614,4 +614,64 @@ static int efi_install_memmap(phys_addr_t addr, unsigned int nr_map)
+ 	return __efi_memmap_init(&data, efi.memmap.late);
+ }
+ 
++int efi_illegal_accesses_fixup(unsigned long phys_addr)
++{
++	int num_entries;
++	efi_memory_desc_t md;
++	bool fixed_page_fault;
++	efi_memory_desc_t *p_md;
++	phys_addr_t old_memmap_phys;
++
++	num_entries = 0;
++	fixed_page_fault = false;
++
++	if (phys_addr == 0x0)
++		return 0;
++
++	/* Save already existing memory map */
++	old_memmap_phys = efi.memmap.phys_map;
++	for_each_efi_memory_desc(p_md) {
++		num_entries++;
++	}
++
++	/* Install original memory map passed by firmware */
++	if (efi_install_memmap(orig_new_phys, orig_num_entries)) {
++		pr_err("Could not install original EFI memmap\n");
++		return 0;
++	}
++
++	if (efi_mem_desc_lookup(phys_addr, &md))
++		goto unmap;
++
++	if (md.type == EFI_BOOT_SERVICES_CODE ||
++		md.type == EFI_BOOT_SERVICES_DATA ||
++		md.type == EFI_CONVENTIONAL_MEMORY ||
++		md.type == EFI_LOADER_CODE ||
++		md.type == EFI_LOADER_DATA)	{
++		/*
++		 * If the page fault was caused by an acccess to illegal memory
++		 * regions, just map the region... and warn about it. By now we
++		 * should have found the virtual address of the system table.
++		 * Thus, no need to update.
++		 */
++		pr_warn(FW_BUG "Fixing illegal access to EFI region at PA: "
++			"0x%lx\n", phys_addr);
++		efi_map_region(&md);
++		fixed_page_fault = true;
++	}
++
++unmap:
++	/*
++	* Install the memory map that was already present before
++	* switiching to original EFI Memory Map.
++	*/
++	if (efi_install_memmap(old_memmap_phys, num_entries))
++		pr_err("Could not install previous EFI memmap\n");
++
++	if (fixed_page_fault)
++		return 1;
++
++	return 0;
++}
++
+ #endif /* CONFIG_EFI_WARN_ON_ILLEGAL_ACCESSES */
+-- 
+2.1.4
+
