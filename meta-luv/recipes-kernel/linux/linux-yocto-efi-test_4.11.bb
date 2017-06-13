@@ -94,6 +94,7 @@ SRC_URI_append_x86 = "${COMMON_CFG_x86} \
                      "
 SRC_URI_append_x86-64 = "${COMMON_CFG_x86} \
                          file://qemux86/ndctl.cfg \
+                         file://qemux86-64/efi_x86-64.cfg \
                          file://qemux86-64/linux_quirks.cfg \
                         "
 SRC_URI_append_aarch64 = " file://qemuarm64/network.cfg \
