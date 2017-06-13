@@ -61,19 +61,6 @@ KERNEL_FEATURES_remove= " features/debug/printk.scc"
 # tree if you do not want to build from Linus' tree.
 SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git;protocol=git;branch=${KBRANCH};name=machine"
 
-# Detect illegal accesses to EFI regions (like EFI_CONVENTIONAL_MEMORY,
-# EFI_LOADER_CODE/DATA, EFI_BOOT_SERVICES_CODE/DATA) by firmware.
-SRC_URI += "file://0001-x86-efi-Move-efi_bgrt_init-to-early-stage.patch \
-            file://0002-x86-mm-Allocate-pages-without-sleeping.patch \
-            file://0003-x86-efi-remove-__init-attribute-from-memory-mapping-.patch \
-            file://0004-x86-efi-Save-EFI_MEMORY_MAP-passed-by-firmware-perma.patch \
-            file://0005-x86-efi-Copy-support-functions-to-install-uninstall-.patch \
-            file://0006-efi-Allow-efi_mem_desc_lookup-find-illegally-accesse.patch \
-            file://0007-x86-efi-Add-function-to-fixup-page-faults-in-illegal.patch \
-            file://0008-x86-efi-Fixup-faults-from-UEFI-firmware.patch \
-            file://0009-x86-efi-Introduce-EFI_WARN_ON_ILLEGAL_ACCESSES.patch \
-           "
-
 # These patches are under discussion on ML
 SRC_URI += "file://0001-serial-SPCR-check-bit-width-for-the-16550-UART.patch  \
            "
@@ -95,7 +82,6 @@ SRC_URI_append_x86 = "${COMMON_CFG_x86} \
                      "
 SRC_URI_append_x86-64 = "${COMMON_CFG_x86} \
                          file://qemux86/ndctl.cfg \
-                         file://qemux86-64/efi_x86-64.cfg \
                          file://qemux86-64/linux_quirks.cfg \
                         "
 SRC_URI_append_aarch64 = " file://qemuarm64/network.cfg \
