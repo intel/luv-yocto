@@ -68,6 +68,7 @@ SRC_URI += "file://0001-serial-SPCR-check-bit-width-for-the-16550-UART.patch  \
 # Detect illegal accesses to EFI regions (like EFI_CONVENTIONAL_MEMORY,
 # EFI_LOADER_CODE/DATA, EFI_BOOT_SERVICES_CODE/DATA) by firmware.
 SRC_URI += "file://0001-x86-mm-Allocate-pages-without-sleeping.patch \
+            file://0002-x86-efi-remove-__init-attribute-from-memory-mapping-.patch \
            "
 
 COMMON_CFG_x86 = " file://qemux86/modules.cfg \
