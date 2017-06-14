@@ -32,6 +32,7 @@ SRC_URI += "file://luv-test-manager file://luv-test-parser \
             file://luv-test-manager.service \
             file://luv-crash-handler.service \
             file://luv-netconsole.service \
+            file://luv-dmesg-acpi-tables-dump \
           "
 
 RDEPENDS_${PN}-netconsole+= "kernel-modules curl iputils iproute2 bash init-ifupdown dhcp-client"
@@ -77,6 +78,10 @@ do_install_append() {
 
        install -m 0644 ${WORKDIR}/luv-crash-handler.service ${D}${systemd_unitdir}/system
        sed -i -e 's,@SBINDIR@,${sbindir},g' ${D}${systemd_unitdir}/system/luv-crash-handler.service
+
+       # Install luv-dmesg-acpi-tables-dump in bin directory
+       install -d ${D}${bindir}
+       install -m 0755 ${WORKDIR}/luv-dmesg-acpi-tables-dump ${D}${bindir}
 }
 
 FILES_${PN}-manager += "${datadir}/luv/html/luv-scripts \
