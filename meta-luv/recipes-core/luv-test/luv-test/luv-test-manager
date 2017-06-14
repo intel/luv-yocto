@@ -272,6 +272,9 @@ if [ ! -z ${LUVDEBUG} ]; then
     exec &> /dev/console
 fi
 
+# dump dmesg, cpuinfo and acpi tables to LUV Results partition
+luv-dmesg-acpi-tables-dump luv-results-$tstamp
+
 # invoke the script that saves/submits the results to a webserver.
 submit_results ${LUV_SAVE_RESULTS_DIR}
 

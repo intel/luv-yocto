@@ -1,0 +1,37 @@
+#!/bin/bash
+#
+# Copyright 2017 Intel Corporation; author Sai Praneeth Prakhya
+#
+# FWTS supports a debug option which dumps dmesg, cpuinfo and machine's
+# ACPI tables. ACPI tables will be helpful for firmware engineers to
+# debug errors in ACPI tables, similarly dmesg and cpuinfo can be used
+# for post-mortem analysis. This script will create a directory named
+# "dumps" in LUV RESULTS partiton and then will dump dmesg, cpuinfo
+# and ACPI tables into that directory.
+#
+#####################################################################
+
+# Definitions for disk partitions and mount points
+DUMP=/mnt/dump/
+LUV_STORAGE_UUID=05D6-1523
+LUV_SAVE_RESULTS_DIR=$1
+
+# Create a temporary mount point and run "fwts -d" command to dump dmesg,
+# cpuinfo and ACPI tables
+gen_dmesg_acpi_dumps() {
+    # Definitions for disk partitions and mount points
+    mkdir -p ${DUMP}
+    if [ $? -eq 0 ]; then
+        mount /dev/disk/by-uuid/${LUV_STORAGE_UUID} ${DUMP}
+        if [ $? -eq 0 ]; then
+			mkdir -p ${DUMP}${LUV_SAVE_RESULTS_DIR}/dumps
+            if [ $? -eq 0 ] ; then
+				cd ${DUMP}${LUV_SAVE_RESULTS_DIR}/dumps
+				fwts -d
+				umount ${DUMP}
+            fi
+        fi
+    fi
+}
+
+gen_dmesg_acpi_dumps
