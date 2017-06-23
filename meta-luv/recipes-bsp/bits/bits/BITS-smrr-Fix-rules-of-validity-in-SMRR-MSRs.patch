@@ -1,0 +1,115 @@
+From b6f87a49569ce07337ade2b0f9db769e61d12dac Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Fri, 23 Jun 2017 14:31:11 -0700
+Subject: [PATCH 2/2] smrr: Fix rules of validity in SMRR MSRs
+
+SMRR settings are determined by the same rules as the Memory Type Range
+Registers (as defined in the Intel Software Development Manual). That is:
+
+a) The minimum range is 4 KBytes and the range must be on a 4KByte
+   boundary.
+b) For ranges greater than 4KBytes, each range must be of lenght 2^n where
+  12 <= n <= N.
+c) The alignment of the base address of the range must be aligned to the
+  2^n boundary of its range.
+
+In the case of the SMRR, N is always 32.
+
+Rule  a) is trivial as range and base address are automatically expressed
+in units of 4 KBytes in the IA32_SMRR_PHYSBASE and IA32_PHYMASK MSRs. Rule
+b) imples that maks are always defined as (0xfffff << n') & 0xfffff, where
+n' = n - 12 because, again, ranges are expressed in units of 4 KBytes.
+Also, a valid mask is that when tested against an address within the valid
+range, test_addr, meets the condition
+
+     test_addr & mask = base_addr & mask
+
+Rule c) implies that the base address is a multiple of the address range.
+
+Reimplement the checks for the values of SMRR_PHYSBASE and SMRR_PHYSMASK
+to only check for the aforementioned rules. Previously, we were checking
+that SMRR_PHYSBASE was aligned with a 8MByte boundary and a minimum range
+of 8MBytes. This is not required as per the Intel Software Development
+Manual.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ python/testsmrr.py | 52 +++++++++++++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 47 insertions(+), 5 deletions(-)
+
+diff --git a/python/testsmrr.py b/python/testsmrr.py
+index 54d3aee..2831ed9 100644
+--- a/python/testsmrr.py
++++ b/python/testsmrr.py
+@@ -29,6 +29,46 @@
+ import bits
+ import testmsr
+ import testsuite
++import bitfields
++
++def smrr_mask_is_valid(mask):
++    """Test if the SMRR mask is valid. The SMRR mask is used to determine whether a test_addr is whithin the
++       address range of SMRAM. Ranges must be of length 2^n where 12 <= n <= 32. A valid mask must meet the
++       condition
++
++           test_addr & mask = base_addr & mask
++
++       where base_addr is the base address of the address range. In order to meet these two conditions, a
++       valid mask must be
++
++           mask = (0xffffffff << n) & 0xffffffff
++
++       Given that mask and base address are expressed in 4KByte units in the relevant MSRs, the range of n
++       is adjusted as 0 <= n <= 20.
++    """
++
++    # find the first bit set in mask and build a good mask
++    idx = bitfields.ffs(mask, 20)
++    if (idx < 0):
++        return False
++
++    good_mask = (0xfffff << idx) & 0xfffff
++
++    if good_mask == mask:
++        return True
++
++    return False
++
++def smrr_base_is_good(base, mask):
++    """Test if the SMRR base is valid. That is, if the SMRR base alignment is not less than the SMRR range.
++       In other words, If the base address is a multiple of the range. Please note that the base address and
++       range are expressed in units of 4KBytes, as this is how they are represented in the respective MSRs. """
++
++    range = 2**bitfields.ffs(mask, 20)
++    if (base % range):
++        return False
++
++    return True
+ 
+ def register_tests():
+     testsuite.add_test("SMRR configuration", test_smrr)
+@@ -56,14 +96,16 @@ def test_smrr():
+         smrr_type, smrr_type_str = testmsr.MSR('SMRR Type', apicid, MSR_SMRR_PHYS_BASE, 2, 0)
+         smrr_physmask, smrr_physmask_str = testmsr.MSR('SMRR Physmask', apicid, MSR_SMRR_PHYS_MASK, 31, 12)
+         smrr_valid, smrr_valid_str = testmsr.MSR('SMRR Valid', apicid, MSR_SMRR_PHYS_MASK, 11, 11)
+-        testsuite.test('SMRR_PHYSBASE must be aligned on an 8MB boundary', (smrr_physbase % 0x800) == 0)
++        testsuite.test('SMRR_MASK must express a power-of-two range', smrr_mask_is_valid(smrr_physmask))
++        testsuite.print_detail(smrr_physmask_str)
++        testsuite.print_detail('To express a power-of-two, 2^n, range SMRR Physmask must be (0xfffff << n) & 0xfffff where 0 <= n <= 20')
++        testsuite.print_detail('Range is expressed in units of 4KBytes.')
++        testsuite.test('SMRR Physbase must be aligned to range expressed in SMRR Physmask', smrr_base_is_good(smrr_physbase, smrr_physmask))
+         testsuite.print_detail(smrr_physbase_str)
+-        testsuite.print_detail('SMRR_PHYSBASE % 0x800 must be 0')
++        testsuite.print_detail('Range from SMRR Physmask is ' + hex(2**bitfields.ffs(smrr_physmask, 20) * 4096) + ' bytes.')
++        testsuite.print_detail('Base address from SMRR Physbase is ' + hex(smrr_physbase * 4096) + ' bytes.')
+         testsuite.test('SMRR Type must be Write-Back (Best performance)', smrr_type == 6)
+         testsuite.print_detail(smrr_type_str)
+         testsuite.print_detail('SMRR Type must be 6')
+-        testsuite.test('SMRR size must be at least 8MB', smrr_physmask >= 0x800)
+-        testsuite.print_detail(smrr_physmask_str)
+-        testsuite.print_detail('SMRR Physmask must be >= 0x800')
+         testsuite.test('SMRR Valid bit must be 1', smrr_valid)
+         testsuite.print_detail(smrr_valid_str)
+-- 
+2.13.0
+
