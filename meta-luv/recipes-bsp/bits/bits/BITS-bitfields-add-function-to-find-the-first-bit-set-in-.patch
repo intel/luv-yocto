@@ -1,0 +1,41 @@
+From 17bf4f1235a37549529d2d14f3d4d867df8efc68 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Fri, 23 Jun 2017 14:28:05 -0700
+Subject: [PATCH 1/2] bitfields: add function to find the first bit set in a
+ byte/word/dword/qword
+
+Implement a function to determine the index of the first bit set in a
+value of variable length (the lenght of the value is given by the msb
+argument).
+
+This function returns the index on sucess (if a set bit was found within
+the range [msb, 0] or -1 in error.
+
+This funciton is useful when determining the validity of masks in MTRR
+and SMRR address ranges.
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ python/bitfields.py | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/python/bitfields.py b/python/bitfields.py
+index 828f79e..363e621 100644
+--- a/python/bitfields.py
++++ b/python/bitfields.py
+@@ -67,3 +67,12 @@ def setbits(value, fieldvalue, msb, lsb=None):
+     value &= ~bitmask(msb, lsb)
+     value |= bitfield(fieldvalue, msb, lsb)
+     return value
++
++def ffs(num, msb):
++    """Return the index of the first bit set in num within the range [msb, 0]. -1 if not found."""
++    mask = 1;
++    for p in range(0, msb):
++        mask = 1 << p
++        if (mask & num):
++            return p
++    return -1
+-- 
+2.13.0
+
