@@ -50,6 +50,7 @@ SRC_URI = "gitsm://github.com/biosbits/bits.git;protocol=http  \
            file://FDLIBM-fix-indentation-warnings.patch \
            file://BITS-bitfields-add-function-to-find-the-first-bit-set-in-.patch \
            file://BITS-smrr-Fix-rules-of-validity-in-SMRR-MSRs.patch \
+           file://BITS-init.py-Enable-logging-debugging-in-bits-via-ne.patch \
            file://luv-test-bits \
            file://luv-parser-bits \
            file://0001-only-output-to-log.patch;apply=no \

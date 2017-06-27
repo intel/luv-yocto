@@ -1,0 +1,163 @@
+From e47a624416c82a294a9db8edc13c0fe36dee57c1 Mon Sep 17 00:00:00 2001
+From: Gayatri Kammela <gayatri.kammela@intel.com>
+Date: Mon, 26 Jun 2017 19:18:34 -0700
+Subject: [PATCH] Bits-init.py: Enable logging/debugging in bits via network
+
+BITS has socket module implemented, with which the host machine(where
+the BITS testsuite is running) can now, able to communicate with the
+remote machine via TCP/IP protocol.
+
+Leveraging the feature of communication with the remote machine for
+our debugging purposes can be useful especially, when there is no
+serial cable available.
+
+Signed-off-by: Gayatri Kammela <gayatri.kammela@intel.com>
+---
+ python/init.py               |   1 +
+ python/luv_netconsole_log.py | 122 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 123 insertions(+)
+ create mode 100644 python/luv_netconsole_log.py
+
+diff --git a/python/init.py b/python/init.py
+index b2a97b2ed80b..3ca197d6bbbf 100644
+--- a/python/init.py
++++ b/python/init.py
+@@ -28,6 +28,7 @@
+ 
+ """Python initialization, to run at BITS startup."""
+ 
++import luv_netconsole_log
+ import _bits
+ 
+ start = _bits._time()
+diff --git a/python/luv_netconsole_log.py b/python/luv_netconsole_log.py
+new file mode 100644
+index 000000000000..2595dbfd5774
+--- /dev/null
++++ b/python/luv_netconsole_log.py
+@@ -0,0 +1,122 @@
++"""
++Copyright(c) 2017 Intel Corporation; author Gayatri Kammela
++
++This module will enable the network logging/debugging via netcat using TCP
++server. To use this feature do $netcat -l <port number> on the remote machine
++
++"""
++
++""" log bits via network."""
++
++import socket
++import re
++import sys
++import redirect
++from efi import EFIException
++
++file = "/luv.cfg"
++
++"""
++luv.cfg is special config file in which grub.cfg file sources the parameters
++such as netconsole and luv_storage. By default, this file is located in root
++directory.
++"""
++
++def get_netconsole_params():
++    """ get the netconsole parameters from the file """
++    f = open(file, "r")
++    s = f.read()
++    f.close()
++    line = s.split('\n')
++
++    if re.search('LUV_NETCONSOLE=none', s):
++        """ check if luv_netconsole is disabled """
++        return
++
++    for i in line:
++        """ search for the LUV_NETCONSOLE in luv.cfg to retrieve the values """
++        if re.search('LUV_NETCONSOLE=', i):
++            p = i.split('=',1)[1]
++            break
++
++    return p
++
++def check_net_params(p):
++    """ check if the retrieved parameters are valid """
++    if not p:
++        raise ValueError("Configure Netconsole to use this feature!")
++
++    ipaddress = p.split(',',1)[0]
++    """ check if the ip address is valid using inet_aton() """
++    try:
++        socket.inet_aton(ipaddress)
++    except socket.error:
++        raise ValueError("Invalid ipaddress!")
++
++    port_num = p.split(',',1)[1]
++    """ check if the given port is an integer and if it is valid/unreserved """
++    if (len(port_num) >= 4):
++        try:
++            port = int(p.split(',',1)[1])
++        except ValueError:
++            raise ValueError("Invalid port number!")
++    else:
++        raise ValueError("Port number should be intergers, not characters!")
++
++    return ipaddress, port
++
++def establish_connection(ipaddress, port):
++    """ check if the remote is able to connect to the host using ipaddress """
++    try:
++        check_remote = socket.gethostbyname( ipaddress )
++        """ connect to the remote server using the ipaddress and port given """
++    except socket.error:
++        raise ValueError("Host ipaddress is not reachable!")
++
++    """
++    In case of network issues i.e., even though netconsole is configured but no
++    remote machine is listening or any network related issues, for BITS to
++    resume its execution of tests, set a timeout for 5 secs.
++    """
++    sock.settimeout(5)
++    try:
++        sock.connect((check_remote, port))
++    except (socket.error, EFIException):
++        raise ValueError("Netconsole should be configured with TCP socket on the remote "
++                        "side! usage: netcat -l <port>")
++
++    try:
++        """ Send a note to the remote machine that netconsole has started """
++        sock.send("Starting BITS ...\n")
++        """
++        create a file at the socket using makefile() and tee the stdout
++        to the file. makefile() accepts arguments just like open()
++        makefile([mode, [bufsize]]) -- return a file object for the
++        socket [*] - from _socket.py module.
++        """
++        file = sock.makefile('w', 0)
++        sys.stdout = redirect.Tee(buffer_stdout, file)
++    except socket.error:
++        sock.close()
++        raise ValueError("Could not connect to the remote machine! "
++                         "Please verify the connectivity on both sides")
++
++def enable_netconsole():
++    """ enable the netconsole in bits """
++    try:
++        p = get_netconsole_params()
++        ipaddress, port = check_net_params(p)
++        establish_connection(ipaddress, port)
++    except (ValueError, socket.error):
++        print ("Netconsole could not be configured")
++
++buffer_stdout = sys.stdout
++""" 
++    Create a socket to send out the stdout to TCP server. If the socket is not
++    created successfully then skip the entire module.
++"""
++try:
++    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
++    enable_netconsole()
++except (socket.error, EFIException):
++    print("Failed to create a socket")
+-- 
+2.7.4
+
