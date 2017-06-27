@@ -168,6 +168,21 @@ that are being sent:
 example:
    $ netcat -l -u 64001
 
+Usage in Bits
+------------
+Implementation of luv_netconsole in BITS helps us capture the BITS log, thus
+achieving fully automated network debugging support in LUV. However, the usage
+of netconsole in BITS varies slightly as luv-netconsole in LUV provides the
+support by sending the messages via UDP, whereas BITS only
+supports sending the debug info via TCP socket.
+
+On the remote machine, use netcat as usual and since UDP is not supported, get
+rid of '-u' option.
+
+   $ netcat -l <port number> (or) nc -l <port number>
+example:
+   $ netcat -l 64001
+
 Steps on how to get IP address and choose port number
 -----------------------------------------------------
 On your terminal do
