@@ -12,10 +12,11 @@ SRC_URI = "git://github.com/chipsec/chipsec.git \
     file://0001-chipsec-building-for-32-bit-systems.patch \
     file://0001-chipsec-do-not-ship-manual.patch \
     file://0001-setup.py-give-CPU-architecture-to-the-driver-s-Makef.patch \
+    file://0001-Revert-fix-issue-with-building-driver-on-32bit-syste.patch \
     "
 
-SRCREV="45603c15e5dd5728551162dbad54c844d5d11f7e"
-PV="1.3.0"
+SRCREV="a82209970012e7835dc16f73af4b377f9f5329d7"
+PV="1.3.1"
 
 DEPENDS = "virtual/kernel python-core nasm-native python-setuptools-native"
 RDEPENDS_${PN} = "python python-shell python-stringold python-xml \

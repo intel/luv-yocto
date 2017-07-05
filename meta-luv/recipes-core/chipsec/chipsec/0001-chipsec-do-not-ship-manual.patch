@@ -25,10 +25,10 @@ index 89bcc91..fb0da43 100644
  install_requires = []
  extra_kw = {}
  
-@@ -155,7 +155,6 @@ if platform.system().lower() == "windows":
- elif platform.system().lower() == "linux":
+@@ -156,7 +156,6 @@ if platform.system().lower() == "windows":
      compression_source_files = []
      package_data["chipsec_tools.linux"] = ['*']
+     package_data["chipsec_tools.compression"] = ["*.c","*.h"]
 -    data_files = [(os.path.join("share","doc","chipsec"), ["chipsec-manual.pdf"])]
      for root, dir, path in os.walk( os.path.join( "chipsec_tools", "compression" ) ):
          for f in path:

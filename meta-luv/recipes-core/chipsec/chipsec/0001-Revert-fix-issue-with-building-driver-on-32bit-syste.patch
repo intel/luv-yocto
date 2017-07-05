@@ -1,0 +1,43 @@
+From 24813411bf05b19e4a750be34f9d61833a8455e6 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Wed, 5 Jul 2017 15:03:24 -0700
+Subject: [PATCH] Revert "fix issue with building driver on 32bit system
+ (#203)"
+
+This reverts commit 1c09ea5adad8d18bdcd9161214984ae6efec5be9.
+
+This fix can only work if the host machine is also the target machine.
+However, when cross-compiling, we cannot use uname to obtain the
+target architecture. Insted, allow the Makefile to use an externally
+defined variable.
+---
+ drivers/linux/Makefile | 12 +++++-------
+ 1 file changed, 5 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/linux/Makefile b/drivers/linux/Makefile
+index 69e90e2..0766cd9 100644
+--- a/drivers/linux/Makefile
++++ b/drivers/linux/Makefile
+@@ -1,14 +1,12 @@
+ KERNEL_SRC_DIR ?= /lib/modules/`uname -r`/build
+ #KERNEL_SRC_DIR = /usr/src/android/3.0-mid
+ 
+-MACHINE ?= $(shell uname -m)
+-
+-ifeq (,$(filter %i686 %i386 %i586,$(MACHINE)))
+-	elf-size := elf64
+-	asm-path := amd64
++ifeq ($(ARCH),i386)
++elf-size := elf32
++asm-path := i386
+ else
+-	elf-size := elf32
+-	asm-path := i386
++elf-size := elf64
++asm-path := amd64
+ endif
+ 
+ chipsec-objs := chipsec_km.o $(asm-path)/cpu.o
+-- 
+2.13.0
+
