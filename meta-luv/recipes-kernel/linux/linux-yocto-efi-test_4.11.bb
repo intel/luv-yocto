@@ -75,6 +75,10 @@ SRC_URI += "file://0001-x86-mm-Allocate-pages-without-sleeping.patch \
             file://0006-x86-efi-Add-function-to-fixup-page-faults-in-illegal.patch \
             file://0007-x86-efi-Fixup-faults-from-UEFI-firmware.patch \
             file://0008-x86-efi-Introduce-EFI_WARN_ON_ILLEGAL_ACCESSES.patch \
+            file://0001-PCI-Vulcan-AHCI-PCI-bar-fix-for-Broadcom-Vulcan-earl.patch \
+            file://0002-ahci-thunderx2-Fix-for-errata-that-affects-stop-engi.patch \
+            file://0003-PCI-Avoid-generating-invalid-ThunderX2-DMA-aliases.patch \
+            file://0004-PCI-Add-device-flag-PCI_DEV_FLAGS_BRIDGE_XLATE_ROOT.patch \
            "
 
 COMMON_CFG_x86 = " file://qemux86/modules.cfg \
