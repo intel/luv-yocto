@@ -77,8 +77,6 @@ SRC_URI += "file://0001-x86-mm-Allocate-pages-without-sleeping.patch \
             file://0008-x86-efi-Introduce-EFI_WARN_ON_ILLEGAL_ACCESSES.patch \
             file://0001-PCI-Vulcan-AHCI-PCI-bar-fix-for-Broadcom-Vulcan-earl.patch \
             file://0002-ahci-thunderx2-Fix-for-errata-that-affects-stop-engi.patch \
-            file://0003-PCI-Avoid-generating-invalid-ThunderX2-DMA-aliases.patch \
-            file://0004-PCI-Add-device-flag-PCI_DEV_FLAGS_BRIDGE_XLATE_ROOT.patch \
            "
 
 COMMON_CFG_x86 = " file://qemux86/modules.cfg \
@@ -123,13 +121,13 @@ KCONFIG_MODE = 'alldefconfig'
 KBUILD_DEFCONFIG = "defconfig"
 KBUILD_DEFCONFIG_x86 = "i386_defconfig"
 KBUILD_DEFCONFIG_x86-64 = "x86_64_defconfig"
-LINUX_VERSION ?= "4.11"
+LINUX_VERSION ?= "4.12"
 LINUX_VERSION_EXTENSION ?= "-efitest"
 
 # Override SRCREV to point to a different commit in a bbappend file to
 # build a different release of the Linux kernel.
-# tag: v4.11 a351e9b9fc24e982ec2f0e76379a49826036da12
-SRCREV = "a351e9b9fc24e982ec2f0e76379a49826036da12"
+# tag: v4.12 6f7da290413ba713f0cdd9ff1a2a9bb129ef4f6c
+SRCREV = "6f7da290413ba713f0cdd9ff1a2a9bb129ef4f6c"
 
 PR = "r5"
 PV = "${LINUX_VERSION}+git${SRCPV}"
