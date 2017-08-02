@@ -7,10 +7,10 @@
 #define TEST_INFO "\x1b[34m[info]\x1b[0m "
 #define TEST_ERROR "\x1b[33m[ERROR]\x1b[0m "
 
-#define pr_pass(...) printf(TEST_PASS __VA_ARGS__)
-#define pr_fail(...) printf(TEST_FAIL __VA_ARGS__)
+#define pr_pass(pass_ctr, ...) do{ printf(TEST_PASS __VA_ARGS__); pass_ctr++; } while(0)
+#define pr_fail(fail_ctr, ...) do{ printf(TEST_FAIL __VA_ARGS__); fail_ctr++; } while(0)
 #define pr_info(...) printf(TEST_INFO __VA_ARGS__)
-#define pr_error(...) printf(TEST_ERROR __VA_ARGS__)
+#define pr_error(error_ctr, ...) do{ printf(TEST_ERROR __VA_ARGS__); error_ctr++; } while(0)
 
 #ifdef __x86_64__
 #define PRINT_BITNESS pr_info("This binary uses 64-bit code\n")
