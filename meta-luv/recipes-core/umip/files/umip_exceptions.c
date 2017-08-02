@@ -306,7 +306,7 @@ static int setup_data_segments()
 
 	ret = syscall(SYS_modify_ldt, 1, &desc, sizeof(desc));
 	if (ret) {
-		pr_error(test_errors, "Failed to install stack semgnet [%d].\n", ret);
+		pr_error(test_errors, "Failed to install stack segment [%d].\n", ret);
 		return ret;
 	}
 
