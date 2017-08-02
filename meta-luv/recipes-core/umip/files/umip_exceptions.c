@@ -71,41 +71,67 @@ static void handler(int signum, siginfo_t *info, void *ctx_void)
 #endif
 }
 
+#ifdef __x86_64__
+#define inspect_signal(sigcode)							\
+	do {									\
+		if (sigcode != SI_KERNEL) {					\
+			pr_fail(test_failed, "Signal code is not what we expect.\n");\
+			return;							\
+		}								\
+		pr_pass(test_passed, "A SEGV_MAPERR page fault was issued.\n");	\
+		return;								\
+	} while (0)
+#else
+#define inspect_signal(sigcode)							\
+	do {									\
+		if (sigcode != SEGV_MAPERR) {					\
+			pr_fail(test_failed, "Signal code is not what we expect.\n");\
+			return;							\
+		}								\
+		pr_pass(test_passed, "A SEGV_MAPERR page fault was issued.\n");	\
+		return;								\
+	} while (0)
+#endif
+
+#define gen_test_maperr_pf_inst(inst, bad_addr)					\
+static void __test_maperr_pf_##inst(void)					\
+{										\
+	unsigned long *val_bad = (unsigned long *)bad_addr;			\
+										\
+	signal_code = 0;							\
+										\
+	pr_info("Test page fault because unmapped memory for %s with addr %p\n", #inst, val_bad);\
+	asm volatile (#inst" %0\n"						\
+		      "nop\n"							\
+		      "nop\n"							\
+		      "nop\n"							\
+		      "nop\n"							\
+		      "nop\n"							\
+		      "nop\n"							\
+		      "nop\n"							\
+		      "nop\n"							\
+		      "nop\n": "=m"(*val_bad));					\
+										\
+	if (!got_signal) {							\
+		pr_fail(test_failed, "Signal not received!\n");			\
+		return;								\
+	}									\
+	inspect_signal(signal_code);						\
+}
+
+gen_test_maperr_pf_inst(smsw, 0x100000)
+gen_test_maperr_pf_inst(sidt, 0x100000)
+gen_test_maperr_pf_inst(sgdt, 0x100000)
+gen_test_maperr_pf_inst(str, 0x100000)
+gen_test_maperr_pf_inst(sldt, 0x100000)
+
 static void test_maperr_pf(void)
 {
-	unsigned long *val_bad = (unsigned long *)0x100000;
-
-	pr_info("Test page fault because unmapped memory for smsw with addr %p\n", 0x100000);
-	asm volatile ("smsw %0\n"
-		      "nop\n"
-		      "nop\n"
-		      "nop\n"
-		      "nop\n"
-		      "nop\n"
-		      "nop\n"
-		      "nop\n"
-		      "nop\n"
-		      "nop\n": "=m"(*val_bad));
-
-	if (!got_signal) {
-		pr_fail(test_failed, "Signal not received!\n");
-		return;
-	}
-#ifdef __x86_64__
-	if (signal_code != SI_KERNEL) {
-		pr_fail(test_failed, "Signal code is not what we expect.\n");
-		return;
-	}
-	pr_pass(test_passed, "A SEGV_MAPERR page fault was issued.\n");
-	return;
-#else
-	if (signal_code != SEGV_MAPERR) {
-		pr_fail(test_failed, "Signal code is not what we expect.\n");
-		return;
-	}
-	pr_pass(test_passed, "A SEGV_MAPERR page fault was issued.\n");
-	return;
-#endif
+	__test_maperr_pf_smsw();
+	__test_maperr_pf_sidt();
+	__test_maperr_pf_sgdt();
+	__test_maperr_pf_str();
+	__test_maperr_pf_sldt();
 }
 
 #define gen_test_lock_prefix_inst(name, inst)				\
