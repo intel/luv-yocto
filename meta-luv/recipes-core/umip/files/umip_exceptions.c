@@ -20,6 +20,14 @@
 static sig_atomic_t signal_code;
 static sig_atomic_t got_signal;
 
+static int test_passed, test_failed, test_errors;
+
+static void print_results(void)
+{
+	printf("RESULTS: passed[%d], failed[%d], error[%d]\n",
+	       test_passed, test_failed, test_errors);
+}
+
 void handler(int signum, siginfo_t *info, void *ctx_void)
 {
 	ucontext_t *ctx = (ucontext_t *)ctx_void;
@@ -79,22 +87,22 @@ int test_normal_pf(void)
 		      "nop\n": "=m"(*val_bad));
 
 	if (!got_signal) {
-		pr_fail("Signal not received!\n");
+		pr_fail(test_failed, "Signal not received!\n");
 		return 1;
 	}
 #ifdef __x86_64__
 	if (signal_code != SI_KERNEL) {
-		pr_fail("Signal code is not what we expect.\n");
+		pr_fail(test_failed, "Signal code is not what we expect.\n");
 		return 1;
 	}
-	pr_pass("A SEGV_MAPERR page fault was issued.\n");
+	pr_pass(test_passed, "A SEGV_MAPERR page fault was issued.\n");
 	return 0;
 #else
 	if (signal_code != SEGV_MAPERR) {
-		pr_fail("Signal code is not what we expect.\n");
+		pr_fail(test_failed, "Signal code is not what we expect.\n");
 		return 1;
 	}
-	pr_pass("A SEGV_MAPERR page fault was issued.\n");
+	pr_pass(test_passed, "A SEGV_MAPERR page fault was issued.\n");
 	return 0;
 #endif
 }
@@ -111,11 +119,11 @@ static int __test_lock_prefix_##name(void)				\
 		      "nop\n");						\
 									\
 	if (signal_code != ILL_ILLOPN) {				\
-		pr_fail("Signal code is not what we expect.\n");	\
+		pr_fail(test_failed, "Signal code is not what we expect.\n");\
 		signal_code = 0;					\
 		return 1;						\
 	}								\
-	pr_pass("An ILL_ILLOPN exception was issued.\n");		\
+	pr_pass(test_passed, "An ILL_ILLOPN exception was issued.\n");	\
 	signal_code = 0;						\
 									\
 	return 0;							\
@@ -164,11 +172,11 @@ static int __test_register_operand_##name(void)				\
 		      "nop\n");						\
 									\
 	if (signal_code != ILL_ILLOPN) {				\
-		pr_fail("Signal code is not what we expect.\n");	\
+		pr_fail(test_failed, "Signal code is not what we expect.\n");\
 		signal_code = 0;					\
 		return 1;						\
 	}								\
-	pr_pass("An ILL_ILLOPN exception was issued.\n");		\
+	pr_pass(test_passed, "An ILL_ILLOPN exception was issued.\n");	\
 	signal_code = 0;						\
 									\
 	return 0;							\
@@ -214,11 +222,11 @@ static int __test_null_segment_selector_##inst##_##reg(void)			\
 		     "pop %eax\n"						\
 		     "pop %" #reg "\n");					\
 	if (signal_code != SI_KERNEL) {						\
-		pr_fail("Signal code is not what we expect.\n");		\
+		pr_fail(test_failed, "Signal code is not what we expect.\n");	\
 		signal_code = 0;						\
 	return 1;								\
 	}									\
-	pr_pass("An ILL_ILLOPN exception was issued.\n");			\
+	pr_pass(test_passed, "An ILL_ILLOPN exception was issued.\n");		\
 	signal_code = 0;							\
 										\
 	return 0;								\
@@ -364,7 +372,7 @@ static int setup_data_segments()
 
 	ret = syscall(SYS_modify_ldt, 1, &desc, sizeof(desc));
 	if (ret) {
-		pr_error("Failed to install stack semgnet [%d].\n", ret);
+		pr_error(test_errors, "Failed to install stack semgnet [%d].\n", ret);
 		return ret;
 	}
 
@@ -398,11 +406,11 @@ int __test_addresses_outside_segment_##inst##_##sel(void)		\
 		     :"m" (seg_sel));					\
 									\
 	if (signal_code != SI_KERNEL) {					\
-		pr_fail("Signal code is not what we expect.\n");	\
+		pr_fail(test_failed, "Signal code is not what we expect.\n");	\
 		signal_code = 0;					\
 	return 1;							\
 	}								\
-	pr_pass("An ILL_ILLOPN exception was issued.\n");		\
+	pr_pass(test_passed, "An ILL_ILLOPN exception was issued.\n");		\
 	signal_code = 0;						\
 									\
 	return 0;							\
@@ -534,12 +542,12 @@ int main (void)
 	sigemptyset(&action.sa_mask);
 
 	if (sigaction(SIGSEGV, &action, NULL) < 0) {
-		pr_error("Could not set the signal handler for SIGSEGV!\n");
+		pr_error(test_errors, "Could not set the signal handler for SIGSEGV!\n");
 		exit(1);
 	}
 
 	if (sigaction(SIGILL, &action, NULL) < 0) {
-		pr_error("Could not set the signal handler SIGILL!\n");
+		pr_error(test_errors, "Could not set the signal handler SIGILL!\n");
 		exit(1);
 	}
 
@@ -566,14 +574,17 @@ int main (void)
 	sigemptyset(&action.sa_mask);
 
 	if (sigaction(SIGSEGV, &action, NULL) < 0) {
-		pr_error("Could not remove signal SIGSEGV handler!\n");
+		pr_error(test_errors, "Could not remove signal SIGSEGV handler!\n");
+		print_results();
 		return 1;
 	}
 
 	if (sigaction(SIGILL, &action, NULL) < 0) {
-		pr_error("Could not remove signal SIGILL handler!\n");
+		pr_error(test_errors, "Could not remove signal SIGILL handler!\n");
+		print_results();
 		return 1;
 	}
 
+	print_results();
 	return ret;
 }
