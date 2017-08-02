@@ -61,7 +61,6 @@
 		else { \
 			pr_fail(test_failed, "On %s-bit '%s %s'! Got[0x%016lx] Exp[0x%016lx]\n", \
 			       #op_size, insn, reg, val, (val&mask) | (init&~mask)); \
-			return -1; \
 		} \
 	} while(0);
 
@@ -161,7 +160,6 @@
 	else { \
 		pr_fail(test_failed, "On '%s %s(%s)'! Got[0x%016lx] Exp[0x%016lx]\n", \
 		       insn, #INSNmacro, reg, val, (exp & mask) | (init & ~mask)); \
-		return -1; \
 	}
 
 #define CHECK_INSNmem(insn, reg, val, init, exp) \
