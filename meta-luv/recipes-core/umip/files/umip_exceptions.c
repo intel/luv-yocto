@@ -63,12 +63,6 @@ void handler(int signum, siginfo_t *info, void *ctx_void)
 #endif
 }
 
-struct my_struct {
-	int a;
-	int b;
-	int c;
-};
-
 int test_normal_pf(void)
 {
 	unsigned long *val_bad = (unsigned long *)0x100000;
