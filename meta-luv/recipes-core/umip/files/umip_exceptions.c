@@ -71,7 +71,7 @@ static void handler(int signum, siginfo_t *info, void *ctx_void)
 #endif
 }
 
-static int test_normal_pf(void)
+static void test_normal_pf(void)
 {
 	unsigned long *val_bad = (unsigned long *)0x100000;
 
@@ -88,27 +88,27 @@ static int test_normal_pf(void)
 
 	if (!got_signal) {
 		pr_fail(test_failed, "Signal not received!\n");
-		return 1;
+		return;
 	}
 #ifdef __x86_64__
 	if (signal_code != SI_KERNEL) {
 		pr_fail(test_failed, "Signal code is not what we expect.\n");
-		return 1;
+		return;
 	}
 	pr_pass(test_passed, "A SEGV_MAPERR page fault was issued.\n");
-	return 0;
+	return;
 #else
 	if (signal_code != SEGV_MAPERR) {
 		pr_fail(test_failed, "Signal code is not what we expect.\n");
-		return 1;
+		return;
 	}
 	pr_pass(test_passed, "A SEGV_MAPERR page fault was issued.\n");
-	return 0;
+	return;
 #endif
 }
 
 #define gen_test_lock_prefix_inst(name, inst)				\
-static int __test_lock_prefix_##name(void)				\
+static void __test_lock_prefix_##name(void)				\
 {									\
 	pr_info("Test %s with lock prefix\n", #name);			\
 	/* name (%eax) with the LOCK prefix */				\
@@ -121,12 +121,12 @@ static int __test_lock_prefix_##name(void)				\
 	if (signal_code != ILL_ILLOPN) {				\
 		pr_fail(test_failed, "Signal code is not what we expect.\n");\
 		signal_code = 0;					\
-		return 1;						\
+		return;							\
 	}								\
 	pr_pass(test_passed, "An ILL_ILLOPN exception was issued.\n");	\
 	signal_code = 0;						\
 									\
-	return 0;							\
+	return;								\
 }
 
 gen_test_lock_prefix_inst(SMSW, ".byte 0xf0, 0xf, 0x1, 0x20\n")
@@ -135,21 +135,17 @@ gen_test_lock_prefix_inst(SGDT, ".byte 0xf0, 0xf, 0x1, 0x0\n")
 gen_test_lock_prefix_inst(STR,  ".byte 0xf0, 0xf, 0x0, 0x8\n")
 gen_test_lock_prefix_inst(SLDT, ".byte 0xf0, 0xf, 0x0, 0x0\n")
 
-static int test_lock_prefix(void)
+static void test_lock_prefix(void)
 {
-	int ret = 0;
-
 	__test_lock_prefix_SMSW();
 	__test_lock_prefix_SIDT();
 	__test_lock_prefix_SGDT();
 	__test_lock_prefix_STR();
 	__test_lock_prefix_SLDT();
-
-	return ret;
 }
 
 #define gen_test_register_operand_inst(name, inst)			\
-static int __test_register_operand_##name(void)				\
+static void __test_register_operand_##name(void)				\
 {									\
 	pr_info("Test %s with register operand\n", #name);		\
 	/* name (%eax) with the LOCK prefix */				\
@@ -163,18 +159,18 @@ static int __test_register_operand_##name(void)				\
 	if (signal_code != ILL_ILLOPN) {				\
 		pr_fail(test_failed, "Signal code is not what we expect.\n");\
 		signal_code = 0;					\
-		return 1;						\
+		return;							\
 	}								\
 	pr_pass(test_passed, "An ILL_ILLOPN exception was issued.\n");	\
 	signal_code = 0;						\
 									\
-	return 0;							\
+	return;								\
 }
 
 gen_test_register_operand_inst(SIDT, ".byte 0xf, 0x1, 0xc8\n")
 gen_test_register_operand_inst(SGDT, ".byte 0xf, 0x1, 0xc0\n")
 
-static int test_register_operand(void)
+static void test_register_operand(void)
 {
 	signal_code = 0;
 
@@ -183,12 +179,12 @@ static int test_register_operand(void)
 }
 
 #ifdef __x86_64__
-static int test_null_segment_selectors(void)
+static void test_null_segment_selectors(void)
 {
 }
 #else
 #define gen_test_null_segment_selector(inst, reg)				\
-static int __test_null_segment_selector_##inst##_##reg(void)			\
+static void __test_null_segment_selector_##inst##_##reg(void)			\
 {										\
 	pr_info("Test using null seg sel for " #inst " with " #reg "\n");	\
 	asm volatile("push %" #reg "\n"						\
@@ -209,12 +205,12 @@ static int __test_null_segment_selector_##inst##_##reg(void)			\
 	if (signal_code != SI_KERNEL) {						\
 		pr_fail(test_failed, "Signal code is not what we expect.\n");	\
 		signal_code = 0;						\
-	return 1;								\
+	return;									\
 	}									\
 	pr_pass(test_passed, "An ILL_ILLOPN exception was issued.\n");		\
 	signal_code = 0;							\
 										\
-	return 0;								\
+	return;									\
 }
 
 gen_test_null_segment_selector(smsw, ds)
@@ -238,7 +234,7 @@ gen_test_null_segment_selector(sldt, es)
 gen_test_null_segment_selector(sldt, fs)
 gen_test_null_segment_selector(sldt, gs)
 
-static int test_null_segment_selectors(void)
+static void test_null_segment_selectors(void)
 {
 	__test_null_segment_selector_smsw_ds();
 	__test_null_segment_selector_smsw_es();
@@ -274,12 +270,11 @@ static int test_null_segment_selectors(void)
 #ifdef TEST_GS /* TODO: Meddling with gs breaks libc */
 	__test_null_segment_selector_str_gs();
 #endif
-	return 0;
 }
 #endif
 
 #ifdef __x86_64__
-static int test_addresses_outside_segment(void)
+static void test_addresses_outside_segment(void)
 {
 }
 #else
@@ -323,7 +318,7 @@ static int setup_data_segments()
 }
 
 #define gen_test_addresses_outside_segment(inst, sel)			\
-static int __test_addresses_outside_segment_##inst##_##sel(void)		\
+static void __test_addresses_outside_segment_##inst##_##sel(void)		\
 {									\
 	int ret;							\
 	unsigned short seg_sel;						\
@@ -351,12 +346,12 @@ static int __test_addresses_outside_segment_##inst##_##sel(void)		\
 	if (signal_code != SI_KERNEL) {					\
 		pr_fail(test_failed, "Signal code is not what we expect.\n");	\
 		signal_code = 0;					\
-	return 1;							\
+	return;								\
 	}								\
 	pr_pass(test_passed, "An ILL_ILLOPN exception was issued.\n");		\
 	signal_code = 0;						\
 									\
-	return 0;							\
+	return;								\
 }
 
 gen_test_addresses_outside_segment(smsw, ds)
@@ -386,7 +381,7 @@ static int test_addresses_outside_segment(void)
 
 	ret = setup_data_segments();
 	if (ret)
-		return 1;
+		return;
 
 	__test_addresses_outside_segment_smsw_ds();
 	__test_addresses_outside_segment_str_ds();
