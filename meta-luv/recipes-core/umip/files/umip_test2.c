@@ -56,11 +56,11 @@
 		 * does not change. \
 		 */ \
 		if (((val & mask) == (exp & mask)) && ((exp & ~mask) == (exp & ~mask))) \
-			pr_pass(" On %s-bit '%s %s'! Got [0x%lx] Exp[0x%lx]\n", \
-			        #op_size, insn, reg, val, exp); \
+			pr_pass(test_passed, " On %s-bit '%s %s'! Got [0x%016lx] Exp[0x%016lx]\n", \
+			        #op_size, insn, reg, val, (val&mask) | (init&~mask)); \
 		else { \
-			pr_fail("On %s-bit '%s %s'! Got[0x%lx] Exp[0x%lx]\n", \
-			       #op_size, insn, reg, val, exp); \
+			pr_fail(test_failed, "On %s-bit '%s %s'! Got[0x%016lx] Exp[0x%016lx]\n", \
+			       #op_size, insn, reg, val, (val&mask) | (init&~mask)); \
 			return -1; \
 		} \
 	} while(0);
@@ -156,11 +156,11 @@
 	 * does not change. \
 	 */ \
 	if (((val & mask) == (exp & mask)) && ((exp & ~mask) == (exp & ~mask))) \
-		pr_pass("On '%s %s(%s)'! Got [0x%lx] Exp[0x%lx]\n", \
-		       insn, #INSNmacro, reg, val, exp); \
+		pr_pass(test_passed, "On '%s %s(%s)'! Got [0x%016lx] Exp[0x%016lx]\n", \
+		       insn, #INSNmacro, reg, val, (exp & mask) | (init & ~mask)); \
 	else { \
-		pr_fail("On '%s %s(%s)'! Got[0x%lx] Exp[0x%lx]\n", \
-		       insn, #INSNmacro, reg, val, exp); \
+		pr_fail(test_failed, "On '%s %s(%s)'! Got[0x%016lx] Exp[0x%016lx]\n", \
+		       insn, #INSNmacro, reg, val, (exp & mask) | (init & ~mask)); \
 		return -1; \
 	}
 
