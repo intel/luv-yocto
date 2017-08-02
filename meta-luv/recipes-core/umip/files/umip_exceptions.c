@@ -75,6 +75,7 @@ static void test_maperr_pf(void)
 {
 	unsigned long *val_bad = (unsigned long *)0x100000;
 
+	pr_info("Test page fault because unmapped memory for smsw with addr %p\n", 0x100000);
 	asm volatile ("smsw %0\n"
 		      "nop\n"
 		      "nop\n"
