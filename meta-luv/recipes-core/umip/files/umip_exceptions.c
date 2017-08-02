@@ -179,9 +179,7 @@ static void test_register_operand(void)
 }
 
 #ifdef __x86_64__
-static void test_null_segment_selectors(void)
-{
-}
+static void test_null_segment_selectors(void) {}
 #else
 #define gen_test_null_segment_selector(inst, reg)				\
 static void __test_null_segment_selector_##inst##_##reg(void)			\
@@ -274,9 +272,7 @@ static void test_null_segment_selectors(void)
 #endif
 
 #ifdef __x86_64__
-static void test_addresses_outside_segment(void)
-{
-}
+static void test_addresses_outside_segment(void) {}
 #else
 
 #define SEGMENT_SIZE 0x1000
