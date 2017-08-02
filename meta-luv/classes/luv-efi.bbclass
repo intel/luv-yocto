@@ -85,9 +85,10 @@ efi_populate() {
 		install -m 0644 ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${DEST}${EFIDIR}
     fi
 
-    if echo "${TARGET_ARCH}" | grep -q "i.86" || [ "${TARGET_ARCH}" = "x86_64" ]; then
-        efi_populate_bits ${DEST}
-    fi
+    # TODO: only populate bits if present in features
+    #if echo "${TARGET_ARCH}" | grep -q "i.86" || [ "${TARGET_ARCH}" = "x86_64" ]; then
+    #    efi_populate_bits ${DEST}
+    #fi
 
     # Install splash and grub.cfg files into EFI directory.
     install -m 0644 ${GRUBCFG} ${DEST}${EFIDIR}
