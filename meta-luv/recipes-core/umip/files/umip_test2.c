@@ -223,7 +223,7 @@ static unsigned long get_mask(int op_size) {
 static int test_str(void)
 {
 	unsigned long val;
-	unsigned short mask = 0xffff;
+	unsigned long mask = 0xffff;
 
 	pr_info("====Checking STR. Expected value: [0x%x]====\n", expected_tr);
 	pr_info("==Tests for register operands==\n");
@@ -240,7 +240,7 @@ static int test_str(void)
 static int test_smsw(void)
 {
 	unsigned long val;
-	unsigned short mask = 0xffff;
+	unsigned long mask = 0xffff;
 
 	pr_info("====Checking SMSW. Expected value: [0x%x]====\n", expected_msw);
 	pr_info("==Tests for register operands==\n");
@@ -256,7 +256,7 @@ static int test_smsw(void)
 static int test_sldt(void)
 {
 	unsigned long val;
-	unsigned short mask = 0xffff;
+	unsigned long mask = 0xffff;
 
 	pr_info("====Checking SLDT. Expected value: [0x%x]====\n", expected_ldt);
 	pr_info("==Tests for register operands==\n");
