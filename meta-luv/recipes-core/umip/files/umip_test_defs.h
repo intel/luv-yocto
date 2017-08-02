@@ -12,6 +12,35 @@
 #define pr_info(...) printf(TEST_INFO __VA_ARGS__)
 #define pr_error(error_ctr, ...) do{ printf(TEST_ERROR __VA_ARGS__); error_ctr++; } while(0)
 
+/*
+ * Use this definiton to check for results that fit in a single variable
+ * (e.g., char, short, int, long, double)
+ */
+#define pr_result(result, expected, text, pass_ctr, fail_ctr) \
+	do{								\
+		if (result == expected)					\
+			pr_pass(pass_ctr, text);			\
+		else							\
+			pr_fail(fail_ctr, text);			\
+		printf("Got:[0x%x]Exp[0x%x]\n", result, expected);	\
+	} while(0)
+
+/*
+ * Use this definiton to check for results that in struct table_desc
+ * (e.g., char, short, int, long, double)
+ */
+#define pr_result_table(result, expected, text, pass_ctr, fail_ctr) \
+	do{								\
+		if ((result->base == expected->base) &&			\
+		    (result->limit == expected->limit))			\
+			pr_pass(pass_ctr, text);			\
+		else							\
+			pr_fail(fail_ctr, text);			\
+		printf("Got:Base[0x%lx]Limit[0x%x]ExpBase[0x%lx]Limit[0x%x]\n", \
+			got->base, got->limit,				\
+			expected->base, expected->limit);		\
+	} while(0)
+
 #ifdef __x86_64__
 #define PRINT_BITNESS pr_info("This binary uses 64-bit code\n")
 #define INIT_VAL(val) (0x##val##val)
