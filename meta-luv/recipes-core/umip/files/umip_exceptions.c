@@ -28,7 +28,7 @@ static void print_results(void)
 	       test_passed, test_failed, test_errors);
 }
 
-void handler(int signum, siginfo_t *info, void *ctx_void)
+static void handler(int signum, siginfo_t *info, void *ctx_void)
 {
 	ucontext_t *ctx = (ucontext_t *)ctx_void;
 
@@ -71,7 +71,7 @@ void handler(int signum, siginfo_t *info, void *ctx_void)
 #endif
 }
 
-int test_normal_pf(void)
+static int test_normal_pf(void)
 {
 	unsigned long *val_bad = (unsigned long *)0x100000;
 
@@ -174,7 +174,7 @@ static int __test_register_operand_##name(void)				\
 gen_test_register_operand_inst(SIDT, ".byte 0xf, 0x1, 0xc8\n")
 gen_test_register_operand_inst(SGDT, ".byte 0xf, 0x1, 0xc0\n")
 
-int test_register_operand(void)
+static int test_register_operand(void)
 {
 	signal_code = 0;
 
@@ -183,7 +183,7 @@ int test_register_operand(void)
 }
 
 #ifdef __x86_64__
-int test_null_segment_selectors(void)
+static int test_null_segment_selectors(void)
 {
 }
 #else
@@ -238,7 +238,7 @@ gen_test_null_segment_selector(sldt, es)
 gen_test_null_segment_selector(sldt, fs)
 gen_test_null_segment_selector(sldt, gs)
 
-int test_null_segment_selectors(void)
+static int test_null_segment_selectors(void)
 {
 	__test_null_segment_selector_smsw_ds();
 	__test_null_segment_selector_smsw_es();
@@ -279,7 +279,7 @@ int test_null_segment_selectors(void)
 #endif
 
 #ifdef __x86_64__
-int test_addresses_outside_segment(void)
+static int test_addresses_outside_segment(void)
 {
 }
 #else
@@ -323,7 +323,7 @@ static int setup_data_segments()
 }
 
 #define gen_test_addresses_outside_segment(inst, sel)			\
-int __test_addresses_outside_segment_##inst##_##sel(void)		\
+static int __test_addresses_outside_segment_##inst##_##sel(void)		\
 {									\
 	int ret;							\
 	unsigned short seg_sel;						\
@@ -380,7 +380,7 @@ gen_test_addresses_outside_segment(sldt, gs)
 gen_test_addresses_outside_segment(sgdt, gs)
 gen_test_addresses_outside_segment(sidt, gs)
 
-int test_addresses_outside_segment(void)
+static int test_addresses_outside_segment(void)
 {
 	int ret;
 
