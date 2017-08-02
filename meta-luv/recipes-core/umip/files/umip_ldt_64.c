@@ -36,7 +36,7 @@ void handler(int signum, siginfo_t *info, void *ctx_void)
         pr_info("si_signo[%d]\n", info->si_signo);
         pr_info("si_errno[%d]\n", info->si_errno);
         pr_info("si_code[%d]\n", info->si_code);
-        pr_info("si_code[0x%p]\n", info->si_addr);
+        pr_info("si_addr[0x%p]\n", info->si_addr);
 	if (signum != SIGSEGV)
 		pr_error("Received unexpected signal");
 	else
