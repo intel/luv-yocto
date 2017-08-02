@@ -22,7 +22,14 @@
 #define IDTR_LEN 6
 #endif
 
+static int test_passed, test_failed, test_error;
 static sig_atomic_t got_signal;
+
+static void print_results(void)
+{
+	printf("RESULTS: passed[%d], failed[%d], error[%d]\n",
+	       test_passed, test_failed, test_errors);
+}
 
 static void handler(int signum, siginfo_t *info, void *ctx_void)
 {
@@ -42,10 +49,11 @@ static void handler(int signum, siginfo_t *info, void *ctx_void)
 		pr_info("Unknown si_code!\n");
 
 #ifdef __x86_64__
-	pr_pass("I got a SIGSEGV. UMIP not emulated in 64-bit\n");
+	pr_pass(test_passed, "I got a SIGSEGV. UMIP not emulated in 64-bit\n");
 #else
-	pr_fail("FAIL: Whoa! I got a SIGSEGV. This is an error!\n");
+	pr_fail(test_failed, "FAIL: Whoa! I got a SIGSEGV. This is an error!\n");
 #endif
+	print_results();
 	exit(1);
 }
 
@@ -65,9 +73,9 @@ static void call_sgdt()
 	pr_info("GDT Limit [0x%04x]\n", limit);
 
 	if (limit == expected_gdt.limit)
-		pr_pass("Expected limit value\n");
+		pr_pass(test_passed, "Expected limit value\n");
 	else
-		pr_fail("Unexpected limit value\n");
+		pr_fail(test_failed, "Unexpected limit value\n");
 
 #if 0
 	for (i = 0; i < (GDTR_LEN -2); i++)
@@ -78,9 +86,9 @@ static void call_sgdt()
 	pr_info("GDT Base [0x%016lx]\n", base);
 
 	if (base == expected_gdt.base)
-		pr_pass("Expected base value\n");
+		pr_pass(test_passed, "Expected base value\n");
 	else
-		pr_fail("Unexpected base value\n");
+		pr_fail(test_failed, "Unexpected base value\n");
 }
 
 static void call_sidt()
@@ -99,9 +107,9 @@ static void call_sidt()
 	pr_info("IDT Limit [0x%04x]\n", limit);
 
 	if (limit == expected_idt.limit)
-		pr_pass("Expected limit value\n");
+		pr_pass(test_passed, "Expected limit value\n");
 	else
-		pr_fail("Unexpected limit value\n");
+		pr_fail(test_failed, "Unexpected limit value\n");
 
 #if 0
 	for (i = 0; i < (IDTR_LEN -2); i++)
@@ -112,9 +120,9 @@ static void call_sidt()
 	pr_info("IDT Base [0x%016lx]\n", base);
 
 	if (base == expected_idt.base)
-		pr_pass("Expected base value\n");
+		pr_pass(test_passed, "Expected base value\n");
 	else
-		pr_fail("Unexpected base value\n");
+		pr_fail(test_failed, "Unexpected base value\n");
 }
 
 static void call_sldt()
@@ -136,9 +144,9 @@ static void call_sldt()
 	 */ \
 	if ((val & mask) == expected_ldt &&
 	    (val & ~mask) == (init_val & ~mask))
-		pr_pass("Obtained expected value\n");
+		pr_pass(test_passed, "Obtained expected value\n");
 	else
-		pr_fail("Obtained unexpected value\n");
+		pr_fail(test_failed, "Obtained unexpected value\n");
 }
 
 static void call_smsw()
@@ -159,9 +167,9 @@ static void call_smsw()
 	 */ \
 	if ((val & mask) == expected_msw &&
 	    (val & ~mask) == (init_val & ~mask))
-		pr_pass("Obtained expected value\n");
+		pr_pass(test_passed, "Obtained expected value\n");
 	else
-		pr_fail("Obtained unexpected value\n");
+		pr_fail(test_failed, "Obtained unexpected value\n");
 }
 
 static void call_str()
@@ -179,9 +187,9 @@ static void call_str()
 
 	/* All 64 bits are written */
 	if (val64 == expected_tr)
-		pr_pass("Obtained 64-bit expected value\n");
+		pr_pass(test_passed, "Obtained 64-bit expected value\n");
 	else
-		pr_fail("Obtained 64-bit unexpected value\n");
+		pr_fail(test_failed, "Obtained 64-bit unexpected value\n");
 #endif
 
 	pr_info("Will issue STR and save at m32[0x%p]\n", &val32);
@@ -196,9 +204,9 @@ static void call_str()
 	 */
 	if ((val32 & 0xffff) == expected_tr &&
 	    (val32 & ~0xffff) == (init_val32 & ~0xffff))
-		pr_pass("Obtained 32-bit expected value\n");
+		pr_pass(test_passed, "Obtained 32-bit expected value\n");
 	else
-		pr_fail("Obtained 32-bit unexpected value\n");
+		pr_fail(test_failed, "Obtained 32-bit unexpected value\n");
 
 	pr_info("Will issue STR and save at m16[0x%p]\n", &val16);
 	asm volatile("str %0" : "=m" (val16));
@@ -212,9 +220,9 @@ static void call_str()
 	 */
 	if ((val16 & 0xffff) == expected_tr &&
 	    (val16 & ~0xffff) == (init_val16 & ~0xffff))
-		pr_pass("Obtained 16-bit expected value\n");
+		pr_pass(test_passed, "Obtained 16-bit expected value\n");
 	else
-		pr_fail("Obtained 16-bit unexpected value\n");
+		pr_fail(test_failed, "Obtained 16-bit unexpected value\n");
 
 }
 
@@ -230,7 +238,8 @@ int main(void)
 	sigemptyset(&action.sa_mask);
 
 	if (sigaction(SIGSEGV, &action, NULL) < 0) {
-		pr_error("Could not set the signal handler!");
+		pr_error(test_error, "Could not set the signal handler!");
+		print_results();
 		exit(1);
 	}
 
@@ -245,9 +254,11 @@ int main(void)
 	sigemptyset(&action.sa_mask);
 
 	if (sigaction(SIGSEGV, &action, NULL) < 0) {
-		pr_error("Could not remove signal handler!");
-		return 1;
+		pr_error(test_error, "Could not remove signal handler!");
+		print_results();
+		exit(1);
 	}
 
+	print_results();
 	return 0;
 }
