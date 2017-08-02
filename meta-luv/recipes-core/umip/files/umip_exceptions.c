@@ -71,7 +71,7 @@ static void handler(int signum, siginfo_t *info, void *ctx_void)
 #endif
 }
 
-static void test_normal_pf(void)
+static void test_maperr_pf(void)
 {
 	unsigned long *val_bad = (unsigned long *)0x100000;
 
@@ -425,7 +425,7 @@ int main (void)
 		exit(1);
 	}
 
-	test_normal_pf();
+	test_maperr_pf();
 	test_lock_prefix();
 	test_register_operand();
 	test_null_segment_selectors();
