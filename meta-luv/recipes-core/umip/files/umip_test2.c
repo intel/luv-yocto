@@ -197,6 +197,13 @@
 #define INIT_LDTS INIT_VAL(15151515)
 
 static sig_atomic_t got_signal;
+static int test_passed, test_failed, test_errors;
+
+static void print_results(void)
+{
+	printf("RESULTS: passed[%d], failed[%d], error[%d]\n",
+	       test_passed, test_failed, test_errors);
+}
 
 static unsigned long get_mask(int op_size) {
 	switch (op_size) {
@@ -209,7 +216,7 @@ static unsigned long get_mask(int op_size) {
 		return 0xffffffffffffffff;
 #endif
 	default:
-		pr_error("Invalid operand size!\n");
+		pr_error(test_errors, "Invalid operand size!\n");
 		/*
 		 * We can't return -1 as it would be equal to the
 		 * 32 or 64-bit mask
@@ -274,7 +281,7 @@ static void handler(int signum, siginfo_t *info, void *ctx_void)
         pr_info("si_code[%d]\n", info->si_code);
         pr_info("si_code[0x%p]\n", info->si_addr);
 	if (signum != SIGSEGV)
-		pr_error("Received unexpected signal");
+		pr_error(test_errors, "Received unexpected signal");
 	else
 		got_signal = signum;
 	if (info->si_code == SEGV_MAPERR)
@@ -285,9 +292,9 @@ static void handler(int signum, siginfo_t *info, void *ctx_void)
 		pr_info("Unknown si_code!\n");
 
 #ifdef __x86_64__
-	pr_pass("I got a SIGSEGV. UMIP not emulated in 64-bit\n");
+	pr_pass(test_passed, "I got a SIGSEGV. UMIP not emulated in 64-bit\n");
 #else
-	pr_fail("FAIL: Whoa! I got a SIGSEGV. This is an error!\n");
+	pr_fail(test_failed, "FAIL: Whoa! I got a SIGSEGV. This is an error!\n");
 #endif
 	exit(1);
 }
@@ -305,7 +312,7 @@ int main (void)
 	sigemptyset(&action.sa_mask);
 
 	if (sigaction(SIGSEGV, &action, NULL) < 0) {
-		pr_error("Could not set the signal handler!");
+		pr_error(test_errors, "Could not set the signal handler!");
 		exit(1);
 	}
 
@@ -313,20 +320,22 @@ int main (void)
 	ret_str = test_str();
 	ret_smsw = test_smsw();
 	ret_sldt = test_sldt();
+
 	if (ret_str || ret_smsw || ret_sldt)
-		pr_fail("***Test completed with errors str[%d] smsw[%d] sldt[%d]\n",
+		pr_info("***Test completed with errors str[%d] smsw[%d] sldt[%d]\n",
 		       ret_str, ret_smsw, ret_sldt);
 	else
-		pr_pass("***All tests completed successfully.***\n");
+		pr_info("***All tests completed successfully.***\n");
 
 	memset(&action, 0, sizeof(action));
 	action.sa_handler = SIG_DFL;
 	sigemptyset(&action.sa_mask);
 
 	if (sigaction(SIGSEGV, &action, NULL) < 0) {
-		pr_error("Could not remove signal handler!");
+		pr_error(test_errors, "Could not remove signal handler!");
 		return 1;
 	}
 
+	print_results();
 	return 0;
 }
