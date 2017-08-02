@@ -138,23 +138,12 @@ gen_test_lock_prefix_inst(SLDT, ".byte 0xf0, 0xf, 0x0, 0x0\n")
 static int test_lock_prefix(void)
 {
 	int ret = 0;
-	ret = __test_lock_prefix_SMSW();
-	if (ret)
-		return ret;
 
-	ret = __test_lock_prefix_SIDT();
-	if (ret)
-		return ret;
-
-	ret = __test_lock_prefix_SGDT();
-	if (ret)
-		return ret;
-
-	ret = __test_lock_prefix_STR();
-	if (ret)
-		return ret;
-
-	ret = __test_lock_prefix_SLDT();
+	__test_lock_prefix_SMSW();
+	__test_lock_prefix_SIDT();
+	__test_lock_prefix_SGDT();
+	__test_lock_prefix_STR();
+	__test_lock_prefix_SLDT();
 
 	return ret;
 }
@@ -187,14 +176,10 @@ gen_test_register_operand_inst(SGDT, ".byte 0xf, 0x1, 0xc0\n")
 
 int test_register_operand(void)
 {
-	int ret;
-
 	signal_code = 0;
-	ret = __test_register_operand_SGDT();
-	if (ret)
-		return 1;
 
-	ret = __test_register_operand_SIDT();
+	__test_register_operand_SGDT();
+	__test_register_operand_SIDT();
 }
 
 #ifdef __x86_64__
@@ -255,81 +240,39 @@ gen_test_null_segment_selector(sldt, gs)
 
 int test_null_segment_selectors(void)
 {
-	int ret;
-
-	ret = __test_null_segment_selector_smsw_ds();
-	if (ret)
-		return 1;
-	ret = __test_null_segment_selector_smsw_es();
-	if (ret)
-		return 1;
-	ret = __test_null_segment_selector_smsw_fs();
-	if (ret)
-		return 1;
+	__test_null_segment_selector_smsw_ds();
+	__test_null_segment_selector_smsw_es();
+	__test_null_segment_selector_smsw_fs();
 #ifdef TEST_GS /* TODO: Meddling with gs breaks libc */
-	ret = __test_null_segment_selector_smsw_gs();
-	if (ret)
-		return 1;
+	__test_null_segment_selector_smsw_gs();
+#endif
+	__test_null_segment_selector_sidt_ds();
+	__test_null_segment_selector_sidt_es();
+	__test_null_segment_selector_sidt_fs();
+#ifdef TEST_GS /* TODO: Meddling with gs breaks libc */
+	__test_null_segment_selector_sidt_gs();
 #endif
 
-	ret = __test_null_segment_selector_sidt_ds();
-	if (ret)
-		return 1;
-	ret = __test_null_segment_selector_sidt_es();
-	if (ret)
-		return 1;
-	ret = __test_null_segment_selector_sidt_fs();
-	if (ret)
-		return 1;
+	__test_null_segment_selector_sgdt_ds();
+	__test_null_segment_selector_sgdt_es();
+	__test_null_segment_selector_sgdt_fs();
 #ifdef TEST_GS /* TODO: Meddling with gs breaks libc */
-	ret = __test_null_segment_selector_sidt_gs();
-	if (ret)
-		return 1;
+	__test_null_segment_selector_sgdt_gs();
 #endif
 
-	ret = __test_null_segment_selector_sgdt_ds();
-	if (ret)
-		return 1;
-	ret = __test_null_segment_selector_sgdt_es();
-	if (ret)
-		return 1;
-	ret = __test_null_segment_selector_sgdt_fs();
-	if (ret)
-		return 1;
-#ifdef TEST_GS /* TODO: Meddling with gs breaks libc */
-	ret = __test_null_segment_selector_sgdt_gs();
-	if (ret)
-		return 1;
+	__test_null_segment_selector_sldt_ds();
+	__test_null_segment_selector_sldt_es();
+	__test_null_segment_selector_sldt_fs();
+	#ifdef TEST_GS /* TODO: Meddling with gs breaks libc */
+	__test_null_segment_selector_sldt_gs();
 #endif
 
-	ret = __test_null_segment_selector_sldt_ds();
-	if (ret)
-		return 1;
-	ret = __test_null_segment_selector_sldt_es();
-	if (ret)
-		return 1;
-	ret = __test_null_segment_selector_sldt_fs();
-	if (ret)
-		return 1;
-#ifdef TEST_GS /* TODO: Meddling with gs breaks libc */
-	ret = __test_null_segment_selector_sldt_gs();
-	if (ret)
-		return 1;
-#endif
+	__test_null_segment_selector_str_ds();
+	__test_null_segment_selector_str_es();
+	__test_null_segment_selector_str_fs();
 
-	ret = __test_null_segment_selector_str_ds();
-	if (ret)
-		return 1;
-	ret = __test_null_segment_selector_str_es();
-	if (ret)
-		return 1;
-	ret = __test_null_segment_selector_str_fs();
-	if (ret)
-		return 1;
 #ifdef TEST_GS /* TODO: Meddling with gs breaks libc */
-	ret = __test_null_segment_selector_str_gs();
-	if (ret)
-		return 1;
+	__test_null_segment_selector_str_gs();
 #endif
 	return 0;
 }
@@ -445,86 +388,27 @@ int test_addresses_outside_segment(void)
 	if (ret)
 		return 1;
 
-	ret = __test_addresses_outside_segment_smsw_ds();
-	if (ret)
-			return 1;
-
-	ret = __test_addresses_outside_segment_str_ds();
-	if (ret)
-			return 1;
-
-		ret = __test_addresses_outside_segment_sgdt_ds();
-	if (ret)
-			return 1;
-
-	ret = __test_addresses_outside_segment_sidt_ds();
-	if (ret)
-			return 1;
-
-	ret = __test_addresses_outside_segment_sldt_ds();
-	if (ret)
-			return 1;
-
-	ret = __test_addresses_outside_segment_smsw_es();
-	if (ret)
-			return 1;
-
-	ret = __test_addresses_outside_segment_str_es();
-	if (ret)
-			return 1;
-
-		ret = __test_addresses_outside_segment_sgdt_es();
-	if (ret)
-			return 1;
-
-	ret = __test_addresses_outside_segment_sidt_es();
-	if (ret)
-			return 1;
-
-	ret = __test_addresses_outside_segment_sldt_es();
-	if (ret)
-			return 1;
-
-	ret = __test_addresses_outside_segment_smsw_fs();
-	if (ret)
-			return 1;
-
-	ret = __test_addresses_outside_segment_str_fs();
-	if (ret)
-			return 1;
-
-		ret = __test_addresses_outside_segment_sgdt_fs();
-	if (ret)
-			return 1;
-
-	ret = __test_addresses_outside_segment_sidt_fs();
-	if (ret)
-			return 1;
-
-	ret = __test_addresses_outside_segment_sldt_fs();
-	if (ret)
-			return 1;
-
+	__test_addresses_outside_segment_smsw_ds();
+	__test_addresses_outside_segment_str_ds();
+	__test_addresses_outside_segment_sgdt_ds();
+	__test_addresses_outside_segment_sidt_ds();
+	__test_addresses_outside_segment_sldt_ds();
+	__test_addresses_outside_segment_smsw_es();
+	__test_addresses_outside_segment_str_es();
+	__test_addresses_outside_segment_sgdt_es();
+	__test_addresses_outside_segment_sidt_es();
+	__test_addresses_outside_segment_sldt_es();
+	__test_addresses_outside_segment_smsw_fs();
+	__test_addresses_outside_segment_str_fs();
+	__test_addresses_outside_segment_sgdt_fs();
+	__test_addresses_outside_segment_sidt_fs();
+	__test_addresses_outside_segment_sldt_fs();
 #ifdef TEST_GS
-	ret = __test_addresses_outside_segment_smsw_gs();
-	if (ret)
-			return 1;
-
-	ret = __test_addresses_outside_segment_str_gs();
-	if (ret)
-			return 1;
-
-		ret = __test_addresses_outside_segment_sgdt_gs();
-	if (ret)
-			return 1;
-
-	ret = __test_addresses_outside_segment_sidt_gs();
-	if (ret)
-			return 1;
-
-	ret = __test_addresses_outside_segment_sldt_gs();
-	if (ret)
-			return 1;
+	__test_addresses_outside_segment_smsw_gs();
+	__test_addresses_outside_segment_str_gs();
+	__test_addresses_outside_segment_sgdt_gs();
+	__test_addresses_outside_segment_sidt_gs();
+	__test_addresses_outside_segment_sldt_gs();
 #endif
 }
 #endif
@@ -532,7 +416,6 @@ int test_addresses_outside_segment(void)
 int main (void)
 {
 	struct sigaction action;
-	int ret;
 
 	PRINT_BITNESS;
 
@@ -551,22 +434,10 @@ int main (void)
 		exit(1);
 	}
 
-	ret = test_normal_pf();
-	if (ret)
-		return 1;
-
-	ret = test_lock_prefix();
-	if (ret)
-		return 1;
-
-	ret = test_register_operand();
-	if (ret)
-		return 1;
-
-	ret = test_null_segment_selectors();
-	if (ret)
-		return 1;
-
+	test_normal_pf();
+	test_lock_prefix();
+	test_register_operand();
+	test_null_segment_selectors();
 	test_addresses_outside_segment();
 
 	memset(&action, 0, sizeof(action));
@@ -586,5 +457,5 @@ int main (void)
 	}
 
 	print_results();
-	return ret;
+	return 0;
 }
