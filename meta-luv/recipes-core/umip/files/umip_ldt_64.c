@@ -31,6 +31,14 @@ unsigned short old_fs, old_gs;
 
 static sig_atomic_t got_signal;
 
+extern int test_passed, test_failed, test_errors;
+
+static void print_results(void)
+{
+	printf("RESULTS: passed[%d], failed[%d], error[%d]\n",
+	       test_passed, test_failed, test_errors);
+}
+
 void handler(int signum, siginfo_t *info, void *ctx_void)
 {
         pr_info("si_signo[%d]\n", info->si_signo);
@@ -38,7 +46,7 @@ void handler(int signum, siginfo_t *info, void *ctx_void)
         pr_info("si_code[%d]\n", info->si_code);
         pr_info("si_addr[0x%p]\n", info->si_addr);
 	if (signum != SIGSEGV)
-		pr_error("Received unexpected signal");
+		pr_error(test_errors, "Received unexpected signal");
 	else
 		got_signal = signum;
 	if (info->si_code == SEGV_MAPERR)
@@ -48,7 +56,8 @@ void handler(int signum, siginfo_t *info, void *ctx_void)
 	else
 		pr_info("Unknown si_code!\n");
 
-	pr_fail("Whoa! I got a SIGSEGV! Something went wrong!\n");
+	pr_fail(test_failed, "Whoa! I got a SIGSEGV! Something went wrong!\n");
+	print_results();
 	exit(1);
 }
 
@@ -107,7 +116,7 @@ int main(void)
 	sigemptyset(&action.sa_mask);
 
 	if (sigaction(SIGSEGV, &action, NULL) < 0) {
-		pr_error("Could not set the signal handler!");
+		pr_error(test_errors, "Could not set the signal handler!");
 		goto err_out;
 	}
 
@@ -125,7 +134,7 @@ int main(void)
 
 	ret = setup_data_segments();
 	if (ret) {
-		pr_error("Failed to setup segments [%d].\n", ret);
+		pr_error(test_errors, "Failed to setup segments [%d].\n", ret);
 		goto err_out;
 	}
 
@@ -176,14 +185,18 @@ int main(void)
 	sigemptyset(&action.sa_mask);
 
 	if (sigaction(SIGSEGV, &action, NULL) < 0) {
-		pr_error("Could not remove signal handler!");
+		pr_error(test_errors, "Could not remove signal handler!");
+		print_results();
 		exit(1);
 	}
 	printf("Exiting...\n");
+	print_results();
 
 	return 0;
 err_out:
-	pr_error("Could not run tests\n");
+	pr_error(test_errors, "Could not run tests\n");
+	print_results();
+
 	return 1;
 };
 
