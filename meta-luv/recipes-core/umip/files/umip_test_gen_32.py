@@ -17,6 +17,11 @@ MODRM_MO3 = 3
 SEGMENT_SIZE = 262144
 CODE_MEM_SIZE = 262144
 
+TEST_PASS_CTR_VAR = "test_passed"
+TEST_FAIL_CTR_VAR = "test_failed"
+TEST_ERROR_CTR_VAR = "test_errors"
+
+
 class Instruction:
 	def __init__(self, name, opcode, modrm_reg, result_bytes, expected_val):
 		self.name = name
@@ -116,16 +121,14 @@ def get_segment_prefix(segment, register, modrm, sib=0):
 
 	return segment_str, segment_chk_str
 
-def generate_check_code(comment, segment_chk_str, address, inst):
+def generate_check_code(comment, segment_chk_str, address, inst, pass_ctr, fail_ctr):
 	# TODO: Use an enum here
 	if (inst.result_bytes == 2):
 		checkcode = "\tgot = *(unsigned short *)(" + segment_chk_str +" + " + str(my_hex(address)) + ");\n"
-		checkcode += "\tprintf(\"%s " + comment + ". Got:[0x%x]Exp[0x%x]\\n\",\n"
-		checkcode += "\t       got==expected ? TEST_PASS : TEST_FAIL, got, expected);\n"
+		checkcode += "\tpr_result(got, expected, \"" + comment + "\", " + pass_ctr + ", " + fail_ctr + ");\n"
 	elif (inst.result_bytes == 6):
 		checkcode = "\tgot = (struct table_desc *)(" + segment_chk_str +" + " + str(my_hex(address)) + ");\n"
-		checkcode += "\tprintf(\"%s " + comment + ". Got:Base[0x%lx]Limit[0x%x]ExpBase[0x%lx]Limit[0x%x]\\n\",\n"
-		checkcode += "\t       ((got->base == expected->base) && (got->limit == expected->limit)) ? TEST_PASS : TEST_FAIL, got->base, got->limit, expected->base, expected->limit);\n"
+		checkcode += "\tpr_result_table(got, expected, \"" + comment + "\", " + pass_ctr + ", " + fail_ctr + ");\n"
 	return checkcode
 
 def generate_disp(modrm, disp, sib=0):
@@ -189,7 +192,7 @@ def generate_code(tc_nr, segment, inst, register, modrm_mod, index, disp):
 	code += mov_reg_str
 	code += code_start + segment_str + opcode_str + modrm_str + disp_str + code_end
 
-	checkcode = generate_check_code(comment, segment_chk_str, index + disp, inst)
+	checkcode = generate_check_code(comment, segment_chk_str, index + disp, inst, TEST_PASS_CTR_VAR, TEST_FAIL_CTR_VAR)
 
 	return code, checkcode, inst.result_bytes
 
@@ -260,7 +263,7 @@ def generate_code_sib(tc_nr, segment, inst, reg_base, reg_index, modrm_mod, sib_
 	code += code_start + segment_str + opcode_str + modrm_str + sib_str + disp_str + code_end
 	code += restore_str
 
-	checkcode = generate_check_code(comment, segment_chk_str, eff_addr, inst)
+	checkcode = generate_check_code(comment, segment_chk_str, eff_addr, inst, TEST_PASS_CTR_VAR, TEST_FAIL_CTR_VAR)
 
 	return code, checkcode, inst.result_bytes
 
@@ -401,7 +404,7 @@ def generate_special_unit_tests(start_tc_nr, segment, inst, start_idx):
 	code = "\t/* " + comment + " */\n"
 	code += code_start + segment_str + opcode_str + modrm_str + disp_str +code_end
 
-	checkcode += generate_check_code(comment, segment_chk_str, index, inst)
+	checkcode += generate_check_code(comment, segment_chk_str, index, inst, TEST_PASS_CTR_VAR, TEST_FAIL_CTR_VAR)
 
 	index += inst.result_bytes
 	tc_nr += 1
@@ -571,6 +574,10 @@ def generate_test_cases(test_code, check_code):
 	check_code += "#include <stdio.h>\n"
 	check_code += "#include \"test_umip_ldt_32.h\"\n\n"
 	check_code += "#include \"umip_test_defs.h\"\n\n"
+	check_code += "\n"
+	check_code +="int " + TEST_PASS_CTR_VAR + ";\n"
+	check_code +="int " + TEST_FAIL_CTR_VAR + ";\n"
+	check_code +="int " + TEST_ERROR_CTR_VAR + ";\n"
 	check_code += "\n"
 
 	run_check_code = ""
