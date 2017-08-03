@@ -197,6 +197,7 @@ err_out:
 	pr_error(test_errors, "Could not run tests\n");
 	print_results();
 
+	printf("Now you will see a segmentation fault. This is under investigation.\n");
 	return 1;
 };
 
