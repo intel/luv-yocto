@@ -17,15 +17,6 @@ MODRM_MO3 = 3
 SEGMENT_SIZE = 262144
 CODE_MEM_SIZE = 262144
 
-#expected values
-EXPECTED_SMSW = 0x33
-EXPECTED_SLDT = 0x0
-EXPECTED_STR = 0x0
-EXPECTED_GDT_BASE = 0xfffe0000
-EXPECTED_GDT_LIMIT = 0x0
-EXPECTED_IDT_BASE = 0xffff0000
-EXPECTED_IDT_LIMIT = 0x0
-
 class Instruction:
 	def __init__(self, name, opcode, modrm_reg, result_bytes, expected_val):
 		self.name = name
