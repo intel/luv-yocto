@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -20,6 +21,7 @@
 	PUSH(aux) \
 	PUSH(reg) \
 	insn" %%"reg"\n"     \
+	NOP_SLED \
 	"mov %%"reg", %%"aux"\n" \
 	POP(reg) \
 	"mov %%"aux", %0\n" \
@@ -29,6 +31,7 @@
 	PUSH(aux) \
 	PUSH(reg) \
 	insn" %%e"reg"\n"     \
+	NOP_SLED \
 	"mov %%e"reg", %%e"aux"\n" \
 	POP(reg) \
 	"movl %%e"aux", %0\n" \
@@ -38,6 +41,7 @@
 	"push %%"aux"\n" \
 	"push %%"reg"\n" \
 	insn" %%"reg"\n"     \
+	NOP_SLED \
 	"mov %%"reg", %%"aux"\n" \
 	"pop %%"reg"\n" \
 	"mov %%"aux", %0\n" \
@@ -49,7 +53,14 @@
 		mask = get_mask(op_size); \
 		if (!mask) \
 			return -1; \
+		\
+		got_signal = 0; \
+		got_sigcode = 0; \
+		\
 		asm volatile(INSNreg##op_size(insn, reg, aux) : "=m" (val)); \
+		\
+		if(inspect_signal(exp_signum, exp_sigcode)) \
+			break; \
 		/* \
 		 * Check that the bits that are supposed to change does so \
 		 * as well as that the bits that are not supposed to change \
@@ -116,6 +127,7 @@
 	"mov %%"reg", %%rax\n"       /* make a backup of register under test */ \
 	"mov %%rsp, %%"reg"\n"       /* move rsp to our register under test */ \
 	insn" "disp"(%%"reg")\n"     /* execute our instruction */ \
+	NOP_SLED \
 	"push "disp"(%%"reg")\n"     /* save result to stack */ \
 	"mov %%rax, %%"reg"\n"       /* restore register under test */ \
 	"pop %1\n"                   /* copy result to our variable */ \
@@ -128,6 +140,7 @@
 	"mov %%"reg", %%eax\n"       /* make a backup of register under test */ \
 	"mov %%esp, %%"reg"\n"       /* move esp to our register under test */ \
 	insn" "disp"(%%"reg")\n"     /* execute our instruction */ \
+	NOP_SLED \
 	"push "disp"(%%"reg")\n"     /* save result to stack */ \
 	"mov %%eax, %%"reg"\n"       /* restore register under test */ \
 	"pop %1\n"                   /* copy result to our variable */ \
@@ -148,18 +161,25 @@
 	mask = get_mask(16); \
 	if (!mask) \
 		return -1; \
+		\
+		got_signal = 0; \
+		got_sigcode = 0; \
+	\
 	asm volatile(INSNmacro(insn, reg) : "=m" (val): "m"(val) : "%rax"); \
-	/* \
-	 * Check that the bits that are supposed to change does so \
-	 * as well as that the bits that are not supposed to change \
-	 * does not change. \
-	 */ \
-	if (((val & mask) == (exp & mask)) && ((exp & ~mask) == (exp & ~mask))) \
-		pr_pass(test_passed, "On '%s %s(%s)'! Got [0x%016lx] Exp[0x%016lx]\n", \
-		       insn, #INSNmacro, reg, val, (exp & mask) | (init & ~mask)); \
-	else { \
-		pr_fail(test_failed, "On '%s %s(%s)'! Got[0x%016lx] Exp[0x%016lx]\n", \
-		       insn, #INSNmacro, reg, val, (exp & mask) | (init & ~mask)); \
+	\
+	if(!inspect_signal(exp_signum, exp_sigcode)) { \
+		/* \
+		* Check that the bits that are supposed to change does so \
+		* as well as that the bits that are not supposed to change \
+		* does not change. \
+		*/ \
+		if (((val & mask) == (exp & mask)) && ((exp & ~mask) == (exp & ~mask))) \
+			pr_pass(test_passed, "On '%s %s(%s)'! Got [0x%016lx] Exp[0x%016lx]\n", \
+			insn, #INSNmacro, reg, val, (exp & mask) | (init & ~mask)); \
+		else { \
+			pr_fail(test_failed, "On '%s %s(%s)'! Got[0x%016lx] Exp[0x%016lx]\n", \
+				insn, #INSNmacro, reg, val, (exp & mask) | (init & ~mask)); \
+		}\
 	}
 
 #define CHECK_INSNmem(insn, reg, val, init, exp) \
@@ -196,7 +216,7 @@
 #define INIT_MSW  INIT_VAL(14141414)
 #define INIT_LDTS INIT_VAL(15151515)
 
-static sig_atomic_t got_signal;
+sig_atomic_t got_signal, got_sigcode;
 int test_passed, test_failed, test_errors;
 
 static unsigned long get_mask(int op_size) {
@@ -223,6 +243,9 @@ static int test_str(void)
 {
 	unsigned long val;
 	unsigned long mask = 0xffff;
+	int exp_signum, exp_sigcode;
+
+	INIT_EXPECTED_SIGNAL_STR_SLDT(exp_signum, 0, exp_sigcode, 0);
 
 	pr_info("====Checking STR. Expected value: [0x%x]====\n", expected_tr);
 	pr_info("==Tests for register operands==\n");
@@ -240,6 +263,9 @@ static int test_smsw(void)
 {
 	unsigned long val;
 	unsigned long mask = 0xffff;
+	int exp_signum, exp_sigcode;
+
+	INIT_EXPECTED_SIGNAL(exp_signum, 0, exp_sigcode, 0);
 
 	pr_info("====Checking SMSW. Expected value: [0x%x]====\n", expected_msw);
 	pr_info("==Tests for register operands==\n");
@@ -256,6 +282,9 @@ static int test_sldt(void)
 {
 	unsigned long val;
 	unsigned long mask = 0xffff;
+	int exp_signum, exp_sigcode;
+
+	INIT_EXPECTED_SIGNAL(exp_signum, 0, exp_sigcode, 0);
 
 	pr_info("====Checking SLDT. Expected value: [0x%x]====\n", expected_ldt);
 	pr_info("==Tests for register operands==\n");
@@ -270,6 +299,8 @@ static int test_sldt(void)
 
 static void handler(int signum, siginfo_t *info, void *ctx_void)
 {
+	ucontext_t *ctx = (ucontext_t *)ctx_void;
+
         pr_info("si_signo[%d]\n", info->si_signo);
         pr_info("si_errno[%d]\n", info->si_errno);
         pr_info("si_code[%d]\n", info->si_code);
@@ -285,12 +316,19 @@ static void handler(int signum, siginfo_t *info, void *ctx_void)
 	else
 		pr_info("Unknown si_code!\n");
 
+	/*
+	 * Move to the next instruction; to move, increment the instruction
+	 * pointer by 10 bytes. 10 bytes is the size of the instruction
+	 * considering two prefix bytes, two opcode bytes, one
+	 * ModRM byte, one SIB byte and 4 displacement bytes. We have
+	 * a NOP sled after the instruction to ensure we continue execution
+	 * safely in case we overestimate the size of the instruction.
+	 */
 #ifdef __x86_64__
-	pr_pass(test_passed, "I got a SIGSEGV. UMIP not emulated in 64-bit\n");
+	ctx->uc_mcontext.gregs[REG_RIP] += 10;
 #else
-	pr_fail(test_failed, "FAIL: Whoa! I got a SIGSEGV. This is an error!\n");
+	ctx->uc_mcontext.gregs[REG_EIP] += 10;
 #endif
-	exit(1);
 }
 
 int main (void)
