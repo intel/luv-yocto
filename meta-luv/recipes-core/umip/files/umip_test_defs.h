@@ -57,6 +57,44 @@
 #define EXPECTED_IDT_BASE 0xffff0000
 #define EXPECTED_IDT_LIMIT 0x0
 
+/*
+ * EMULATE_ALL implies that all the UMIP-protected instructions are emulated.
+ * If not defined, the following rules apply:
+ *  + UMIP-protected instructions are not emulated for 64-bit processes. This
+ *    means that we always should get a SIGSEGV signal with code SI_KERNEL.
+ *  + In 32-bit processes, only SGDT, SIDT and SMSW are emulated, STR and
+ *    SLDT should cause a SIGSEGV signal with code SI_CODE.
+ */
+#ifdef EMULATE_ALL
+#define INIT_EXPECTED_SIGNAL(signum, exp_signum, sigcode, exp_sigcode)	\
+	do{								\
+		signum = exp_signum;					\
+		sigcode = exp_sigcode;					\
+	} while (0)
+#else /* EMULATE_ALL */
+#ifdef __x86_64__
+#define INIT_EXPECTED_SIGNAL(signum, exp_signum, sigcode, exp_sigcode)	\
+	do{								\
+		signum = SIGSEGV;					\
+		sigcode = SI_KERNEL;					\
+	} while(0)
+#else /* __x86_64__ */
+#define INIT_EXPECTED_SIGNAL(signum, exp_signum, sigcode, exp_sigcode)	\
+	do{								\
+		signum = exp_signum;					\
+		sigcode = exp_sigcode;					\
+	} while(0)
+#endif /* __x86_64__ */
+#endif /* EMULATE_ALL */
+
+#ifdef EMULATE_ALL
+#define INIT_EXPECTED_SIGNAL_STR_SLDT(signum, exp_signum, sigcode, exp_sigcode)	\
+	INIT_EXPECTED_SIGNAL(signum, exp_signum, sigcode, exp_sigcode)
+#else
+#define INIT_EXPECTED_SIGNAL_STR_SLDT(signum, exp_signum, sigcode, exp_sigcode)	\
+	INIT_EXPECTED_SIGNAL(signum, SIGSEGV, sigcode, SI_KERNEL)
+#endif
+
 struct table_desc {
 	unsigned short limit;
 	unsigned long base;
