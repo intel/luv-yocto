@@ -115,5 +115,6 @@ static const struct table_desc expected_idt = {
 };
 
 void print_results(void);
+int inspect_signal(int exp_signum, int exp_sigcode);
 
 #endif /* _UMIP_TEST_DEFS_H */
