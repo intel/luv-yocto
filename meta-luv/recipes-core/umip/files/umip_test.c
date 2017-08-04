@@ -22,14 +22,8 @@
 #define IDTR_LEN 6
 #endif
 
-static int test_passed, test_failed, test_error;
+int test_passed, test_failed, test_errors;
 static sig_atomic_t got_signal;
-
-static void print_results(void)
-{
-	printf("RESULTS: passed[%d], failed[%d], error[%d]\n",
-	       test_passed, test_failed, test_errors);
-}
 
 static void handler(int signum, siginfo_t *info, void *ctx_void)
 {
@@ -238,7 +232,7 @@ int main(void)
 	sigemptyset(&action.sa_mask);
 
 	if (sigaction(SIGSEGV, &action, NULL) < 0) {
-		pr_error(test_error, "Could not set the signal handler!");
+		pr_error(test_errors, "Could not set the signal handler!");
 		print_results();
 		exit(1);
 	}
@@ -254,7 +248,7 @@ int main(void)
 	sigemptyset(&action.sa_mask);
 
 	if (sigaction(SIGSEGV, &action, NULL) < 0) {
-		pr_error(test_error, "Could not remove signal handler!");
+		pr_error(test_errors, "Could not remove signal handler!");
 		print_results();
 		exit(1);
 	}

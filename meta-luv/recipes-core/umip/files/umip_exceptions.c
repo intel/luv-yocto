@@ -20,13 +20,7 @@
 static sig_atomic_t signal_code;
 static sig_atomic_t got_signal;
 
-static int test_passed, test_failed, test_errors;
-
-static void print_results(void)
-{
-	printf("RESULTS: passed[%d], failed[%d], error[%d]\n",
-	       test_passed, test_failed, test_errors);
-}
+int test_passed, test_failed, test_errors;
 
 static void handler(int signum, siginfo_t *info, void *ctx_void)
 {

@@ -34,13 +34,7 @@ unsigned short cs_orig;
 
 static sig_atomic_t got_signal;
 
-extern int test_passed, test_failed, test_errors;
-
-static void print_results(void)
-{
-	printf("RESULTS: passed[%d], failed[%d], error[%d]\n",
-	       test_passed, test_failed, test_errors);
-}
+int test_passed, test_failed, test_errors;
 
 void handler(int signum, siginfo_t *info, void *ctx_void)
 {

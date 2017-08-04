@@ -197,13 +197,7 @@
 #define INIT_LDTS INIT_VAL(15151515)
 
 static sig_atomic_t got_signal;
-static int test_passed, test_failed, test_errors;
-
-static void print_results(void)
-{
-	printf("RESULTS: passed[%d], failed[%d], error[%d]\n",
-	       test_passed, test_failed, test_errors);
-}
+int test_passed, test_failed, test_errors;
 
 static unsigned long get_mask(int op_size) {
 	switch (op_size) {
