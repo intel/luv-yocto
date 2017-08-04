@@ -28,6 +28,8 @@ sig_atomic_t got_sigcode;
 
 static void handler(int signum, siginfo_t *info, void *ctx_void)
 {
+	ucontext_t *ctx = (ucontext_t *)ctx_void;
+
         pr_info("si_signo[%d]\n", info->si_signo);
         pr_info("si_errno[%d]\n", info->si_errno);
         pr_info("si_code[%d]\n", info->si_code);
@@ -43,13 +45,19 @@ static void handler(int signum, siginfo_t *info, void *ctx_void)
 	else
 		pr_info("Unknown si_code!\n");
 
+	/*
+	 * Move to the next instruction; to move, increment the instruction
+	 * pointer by 10 bytes. 10 bytes is the size of the instruction
+	 * considering two prefix bytes, two opcode bytes, one
+	 * ModRM byte, one SIB byte and 4 displacement bytes. We have
+	 * a NOP sled after the instruction to ensure we continue execution
+	 * safely in case we overestimate the size of the instruction.
+	 */
 #ifdef __x86_64__
-	pr_pass(test_passed, "I got a SIGSEGV. UMIP not emulated in 64-bit\n");
+	ctx->uc_mcontext.gregs[REG_RIP] += 10;
 #else
-	pr_fail(test_failed, "FAIL: Whoa! I got a SIGSEGV. This is an error!\n");
+	ctx->uc_mcontext.gregs[REG_EIP] += 10;
 #endif
-	print_results();
-	exit(1);
 }
 
 static void call_sgdt()
@@ -66,7 +74,7 @@ static void call_sgdt()
 	for (i = 0; i < GDTR_LEN; i++)
 		val[i] = 0;
 	pr_info("Will issue SGDT and save at [%p]\n", val);
-	asm volatile("sgdt %0" : "=m" (val));
+	asm volatile("sgdt %0\n" NOP_SLED : "=m" (val));
 
 	if(inspect_signal(exp_signum, exp_sigcode))
 		return;
@@ -107,7 +115,7 @@ static void call_sidt()
 	for (i = 0; i < IDTR_LEN; i++)
 		val[i] = 0;
 	pr_info("Will issue SIDT and save at [%p]\n", val);
-	asm volatile("sidt %0" : "=m" (val));
+	asm volatile("sidt %0\n"  NOP_SLED : "=m" (val));
 
 	if(inspect_signal(exp_signum, exp_sigcode))
 		return;
@@ -147,7 +155,7 @@ static void call_sldt()
 	INIT_EXPECTED_SIGNAL_STR_SLDT(exp_signum, 0, exp_sigcode, 0);
 
 	pr_info("Will issue SLDT and save at [%p]\n", &val);
-	asm volatile("sldt %0" : "=m" (val));
+	asm volatile("sldt %0\n" NOP_SLED : "=m" (val));
 
 	if(inspect_signal(exp_signum, exp_sigcode))
 		return;
@@ -179,7 +187,7 @@ static void call_smsw()
 
 
 	pr_info("Will issue SMSW and save at [%p]\n", &val);
-	asm volatile("smsw %0" : "=m" (val));
+	asm volatile("smsw %0\n" NOP_SLED : "=m" (val));
 
 	if(inspect_signal(exp_signum, exp_sigcode))
 		return;
@@ -214,7 +222,7 @@ static void call_str()
 	unsigned long val64 = 0xa3a3a3a3a3a3a3a3;
 
 	pr_info("Will issue STR and save at m64[0x%p]\n", &val64);
-	asm volatile("str %0" : "=m" (val64));
+	asm volatile("str %0\n" NOP_SLED : "=m" (val64));
 
 	if(inspect_signal(exp_signum, exp_sigcode))
 		goto test_m32;
@@ -234,7 +242,7 @@ test_m32:
 	got_sigcode = 0;
 
 	pr_info("Will issue STR and save at m32[0x%p]\n", &val32);
-	asm volatile("str %0" : "=m" (val32));
+	asm volatile("str %0\n" NOP_SLED : "=m" (val32));
 
 	if(inspect_signal(exp_signum, exp_sigcode))
 		goto test_m16;
@@ -258,7 +266,7 @@ test_m16:
 	got_sigcode = 0;
 
 	pr_info("Will issue STR and save at m16[0x%p]\n", &val16);
-	asm volatile("str %0" : "=m" (val16));
+	asm volatile("str %0\n" NOP_SLED : "=m" (val16));
 
 	if(inspect_signal(exp_signum, exp_sigcode))
 		return;

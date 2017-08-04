@@ -95,6 +95,9 @@
 	INIT_EXPECTED_SIGNAL(signum, SIGSEGV, sigcode, SI_KERNEL)
 #endif
 
+#define NOP_SLED "nop\n" "nop\n" "nop\n" "nop\n" "nop\n" "nop\n" "nop\n" \
+		 "nop\n" "nop\n" "nop\n" "nop\n" "nop\n" "nop\n" "nop\n"
+
 struct table_desc {
 	unsigned short limit;
 	unsigned long base;
