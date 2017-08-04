@@ -23,7 +23,8 @@
 #endif
 
 int test_passed, test_failed, test_errors;
-static sig_atomic_t got_signal;
+sig_atomic_t got_signal;
+sig_atomic_t got_sigcode;
 
 static void handler(int signum, siginfo_t *info, void *ctx_void)
 {
@@ -56,12 +57,19 @@ static void call_sgdt()
 	unsigned char val[GDTR_LEN];
 	unsigned long base = INIT_VAL(89898989);
 	unsigned short limit = 0x3d3d;
-	int i;
+	int i, exp_signum, exp_sigcode;
+
+	got_signal = 0;
+	got_sigcode = 0;
+	INIT_EXPECTED_SIGNAL(exp_signum, 0, exp_sigcode, 0);
 
 	for (i = 0; i < GDTR_LEN; i++)
 		val[i] = 0;
 	pr_info("Will issue SGDT and save at [%p]\n", val);
 	asm volatile("sgdt %0" : "=m" (val));
+
+	if(inspect_signal(exp_signum, exp_sigcode))
+		return;
 
 	limit = val[1] << 8 | val[0];
 	pr_info("GDT Limit [0x%04x]\n", limit);
@@ -90,12 +98,19 @@ static void call_sidt()
 	unsigned char val[IDTR_LEN];
 	unsigned long base = INIT_VAL(73737373);
 	unsigned short limit = 0x9696;
-	int i;
+	int i, exp_signum, exp_sigcode;
+
+	got_signal = 0;
+	got_sigcode = 0;
+	INIT_EXPECTED_SIGNAL(exp_signum, 0, exp_sigcode, 0);
 
 	for (i = 0; i < IDTR_LEN; i++)
 		val[i] = 0;
 	pr_info("Will issue SIDT and save at [%p]\n", val);
 	asm volatile("sidt %0" : "=m" (val));
+
+	if(inspect_signal(exp_signum, exp_sigcode))
+		return;
 
 	limit = val[1] << 8 | val[0];
 	pr_info("IDT Limit [0x%04x]\n", limit);
@@ -125,9 +140,17 @@ static void call_sldt()
 	unsigned long init_val = INIT_VAL(a1a1a1a1);
 	/* if operand is memory, result is 16-bit */
 	unsigned short mask = 0xffff;
+	int exp_signum, exp_sigcode;
+
+	got_signal = 0;
+	got_sigcode = 0;
+	INIT_EXPECTED_SIGNAL_STR_SLDT(exp_signum, 0, exp_sigcode, 0);
 
 	pr_info("Will issue SLDT and save at [%p]\n", &val);
 	asm volatile("sldt %0" : "=m" (val));
+
+	if(inspect_signal(exp_signum, exp_sigcode))
+		return;
 
 	pr_info("SS for LDT[0x%08lx]\n", val);
 
@@ -148,9 +171,18 @@ static void call_smsw()
 	unsigned long val = INIT_VAL(a2a2a2a2);
 	unsigned long init_val = INIT_VAL(a2a2a2a2);
 	unsigned short mask = 0xffff;
+	int exp_signum, exp_sigcode;
+
+	got_signal = 0;
+	got_sigcode = 0;
+	INIT_EXPECTED_SIGNAL(exp_signum, 0, exp_sigcode, 0);
+
 
 	pr_info("Will issue SMSW and save at [%p]\n", &val);
 	asm volatile("smsw %0" : "=m" (val));
+
+	if(inspect_signal(exp_signum, exp_sigcode))
+		return;
 
 	pr_info("CR0[0x%08lx]\n", val);
 
@@ -172,11 +204,21 @@ static void call_str()
 	unsigned int init_val32 = 0xa4a4a4a4;
 	unsigned short val16 = 0xa5a5;
 	unsigned short init_val16 = 0xa5a5;
+	int exp_signum, exp_sigcode;
+
+	got_signal = 0;
+	got_sigcode = 0;
+	INIT_EXPECTED_SIGNAL_STR_SLDT(exp_signum, 0, exp_sigcode, 0);
+
 #if __x86_64__
 	unsigned long val64 = 0xa3a3a3a3a3a3a3a3;
 
 	pr_info("Will issue STR and save at m64[0x%p]\n", &val64);
 	asm volatile("str %0" : "=m" (val64));
+
+	if(inspect_signal(exp_signum, exp_sigcode))
+		goto test_m32;
+
 	pr_info("SS for TSS[0x%016lx]\n", val64);
 
 	/* All 64 bits are written */
@@ -184,10 +226,19 @@ static void call_str()
 		pr_pass(test_passed, "Obtained 64-bit expected value\n");
 	else
 		pr_fail(test_failed, "Obtained 64-bit unexpected value\n");
+
+test_m32:
 #endif
+
+	got_signal = 0;
+	got_sigcode = 0;
 
 	pr_info("Will issue STR and save at m32[0x%p]\n", &val32);
 	asm volatile("str %0" : "=m" (val32));
+
+	if(inspect_signal(exp_signum, exp_sigcode))
+		goto test_m16;
+
 	pr_info("SS for TSS[0x%08x]\n", val32);
 
 	/*
@@ -202,8 +253,16 @@ static void call_str()
 	else
 		pr_fail(test_failed, "Obtained 32-bit unexpected value\n");
 
+test_m16:
+	got_signal = 0;
+	got_sigcode = 0;
+
 	pr_info("Will issue STR and save at m16[0x%p]\n", &val16);
 	asm volatile("str %0" : "=m" (val16));
+
+	if(inspect_signal(exp_signum, exp_sigcode))
+		return;
+
 	pr_info("SS for TSS[0x%04x]\n", val16);
 
 	/*
