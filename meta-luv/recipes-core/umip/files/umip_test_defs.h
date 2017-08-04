@@ -76,4 +76,6 @@ static const struct table_desc expected_idt = {
 	.base = EXPECTED_IDT_BASE
 };
 
+void print_results(void);
+
 #endif /* _UMIP_TEST_DEFS_H */
