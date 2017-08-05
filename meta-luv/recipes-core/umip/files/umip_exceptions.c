@@ -53,14 +53,19 @@ static void handler(int signum, siginfo_t *info, void *ctx_void)
 
 	/* Save the signal code */
 	got_sigcode = info->si_code;
+
 	/*
-	 * Move to the next instruction. We have a cushion of
-	 * several NOPs. Thus, we can safely move 8 positions
+	 * Move to the next instruction; to move, increment the instruction
+	 * pointer by 10 bytes. 10 bytes is the size of the instruction
+	 * considering two prefix bytes, two opcode bytes, one
+	 * ModRM byte, one SIB byte and 4 displacement bytes. We have
+	 * a NOP sled after the instruction to ensure we continue execution
+	 * safely in case we overestimate the size of the instruction.
 	 */
 #ifdef __x86_64__
-	ctx->uc_mcontext.gregs[REG_RIP] += 8;
+	ctx->uc_mcontext.gregs[REG_RIP] += 10;
 #else
-	ctx->uc_mcontext.gregs[REG_EIP] += 4;
+	ctx->uc_mcontext.gregs[REG_EIP] += 10;
 #endif
 }
 
