@@ -95,16 +95,7 @@ static void __test_maperr_pf_##inst(void)					\
 	signal_code = 0;							\
 										\
 	pr_info("Test page fault because unmapped memory for %s with addr %p\n", #inst, val_bad);\
-	asm volatile (#inst" %0\n"						\
-		      "nop\n"							\
-		      "nop\n"							\
-		      "nop\n"							\
-		      "nop\n"							\
-		      "nop\n"							\
-		      "nop\n"							\
-		      "nop\n"							\
-		      "nop\n"							\
-		      "nop\n": "=m"(*val_bad));					\
+	asm volatile (#inst" %0\n" NOP_SLED : "=m"(*val_bad));			\
 										\
 	if (!got_signal) {							\
 		pr_fail(test_failed, "Signal not received!\n");			\
@@ -133,11 +124,7 @@ static void __test_lock_prefix_##name(void)				\
 {									\
 	pr_info("Test %s with lock prefix\n", #name);			\
 	/* name (%eax) with the LOCK prefix */				\
-	asm volatile(inst						\
-		      "nop\n"						\
-		      "nop\n"						\
-		      "nop\n"						\
-		      "nop\n");						\
+	asm volatile(inst NOP_SLED);						\
 									\
 	if (signal_code != ILL_ILLOPN) {				\
 		pr_fail(test_failed, "Signal code is not what we expect.\n");\
@@ -170,12 +157,7 @@ static void __test_register_operand_##name(void)				\
 {									\
 	pr_info("Test %s with register operand\n", #name);		\
 	/* name (%eax) with the LOCK prefix */				\
-	asm volatile(inst						\
-		      "nop\n"						\
-		      "nop\n"						\
-		      "nop\n"						\
-		      "nop\n"						\
-		      "nop\n");						\
+	asm volatile(inst NOP_SLED);						\
 									\
 	if (signal_code != ILL_ILLOPN) {				\
 		pr_fail(test_failed, "Signal code is not what we expect.\n");\
@@ -213,11 +195,7 @@ static void __test_null_segment_selector_##inst##_##reg(void)			\
 		     "mov $0, %ebx\n"						\
 		     "mov %bx, %" #reg "\n"					\
 		     "smsw %" #reg ":(%eax)\n"					\
-		     "nop\n"							\
-		     "nop\n"							\
-		     "nop\n"							\
-		     "nop\n"							\
-		     "nop\n"							\
+		     NOP_SLED							\
 		     "pop %ebx\n"						\
 		     "pop %eax\n"						\
 		     "pop %" #reg "\n");					\
@@ -349,11 +327,7 @@ static void __test_addresses_outside_segment_##inst##_##sel(void)		\
 		     "mov $0x2000, %%eax\n"				\
 		     "mov %0, %%" #sel "\n"				\
 		     #inst " %%" #sel ":(%%eax)\n"			\
-		     "nop\n"						\
-		     "nop\n"						\
-		     "nop\n"						\
-		     "nop\n"						\
-		     "nop\n"						\
+		     NOP_SLED 						\
 		     "pop %%ebx\n"					\
 		     "pop %%eax\n"					\
 		     "pop %%" #sel "\n"					\
