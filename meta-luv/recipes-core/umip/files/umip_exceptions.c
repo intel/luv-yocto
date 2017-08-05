@@ -17,8 +17,7 @@
 #include <sys/syscall.h>
 #include "umip_test_defs.h"
 
-static sig_atomic_t signal_code;
-static sig_atomic_t got_signal;
+sig_atomic_t got_signal, got_sigcode;
 
 int test_passed, test_failed, test_errors;
 
@@ -53,7 +52,7 @@ static void handler(int signum, siginfo_t *info, void *ctx_void)
 		errx(1, "ERROR: Received unexpected signal");
 
 	/* Save the signal code */
-	signal_code = info->si_code;
+	got_sigcode = info->si_code;
 	/*
 	 * Move to the next instruction. We have a cushion of
 	 * several NOPs. Thus, we can safely move 8 positions
@@ -65,43 +64,15 @@ static void handler(int signum, siginfo_t *info, void *ctx_void)
 #endif
 }
 
-#ifdef __x86_64__
-#define inspect_signal(sigcode)							\
-	do {									\
-		if (sigcode != SI_KERNEL) {					\
-			pr_fail(test_failed, "Signal code is not what we expect.\n");\
-			return;							\
-		}								\
-		pr_pass(test_passed, "A SEGV_MAPERR page fault was issued.\n");	\
-		return;								\
-	} while (0)
-#else
-#define inspect_signal(sigcode)							\
-	do {									\
-		if (sigcode != SEGV_MAPERR) {					\
-			pr_fail(test_failed, "Signal code is not what we expect.\n");\
-			return;							\
-		}								\
-		pr_pass(test_passed, "A SEGV_MAPERR page fault was issued.\n");	\
-		return;								\
-	} while (0)
-#endif
-
 #define gen_test_maperr_pf_inst(inst, bad_addr)					\
 static void __test_maperr_pf_##inst(void)					\
 {										\
 	unsigned long *val_bad = (unsigned long *)bad_addr;			\
 										\
-	signal_code = 0;							\
-										\
 	pr_info("Test page fault because unmapped memory for %s with addr %p\n", #inst, val_bad);\
 	asm volatile (#inst" %0\n" NOP_SLED : "=m"(*val_bad));			\
 										\
-	if (!got_signal) {							\
-		pr_fail(test_failed, "Signal not received!\n");			\
-		return;								\
-	}									\
-	inspect_signal(signal_code);						\
+	inspect_signal(SIGSEGV, SEGV_MAPERR);				\
 }
 
 gen_test_maperr_pf_inst(smsw, 0x100000)
@@ -122,19 +93,14 @@ static void test_maperr_pf(void)
 #define gen_test_lock_prefix_inst(name, inst)				\
 static void __test_lock_prefix_##name(void)				\
 {									\
+	got_signal = 0;							\
+	got_sigcode = 0;						\
+									\
 	pr_info("Test %s with lock prefix\n", #name);			\
 	/* name (%eax) with the LOCK prefix */				\
-	asm volatile(inst NOP_SLED);						\
+	asm volatile(inst NOP_SLED);					\
 									\
-	if (signal_code != ILL_ILLOPN) {				\
-		pr_fail(test_failed, "Signal code is not what we expect.\n");\
-		signal_code = 0;					\
-		return;							\
-	}								\
-	pr_pass(test_passed, "An ILL_ILLOPN exception was issued.\n");	\
-	signal_code = 0;						\
-									\
-	return;								\
+	inspect_signal(SIGILL, ILL_ILLOPN);				\
 }
 
 gen_test_lock_prefix_inst(SMSW, ".byte 0xf0, 0xf, 0x1, 0x20\n")
@@ -155,18 +121,14 @@ static void test_lock_prefix(void)
 #define gen_test_register_operand_inst(name, inst)			\
 static void __test_register_operand_##name(void)				\
 {									\
+	got_signal = 0;							\
+	got_sigcode = 0;						\
+									\
 	pr_info("Test %s with register operand\n", #name);		\
 	/* name (%eax) with the LOCK prefix */				\
 	asm volatile(inst NOP_SLED);						\
 									\
-	if (signal_code != ILL_ILLOPN) {				\
-		pr_fail(test_failed, "Signal code is not what we expect.\n");\
-		signal_code = 0;					\
-		return;							\
-	}								\
-	pr_pass(test_passed, "An ILL_ILLOPN exception was issued.\n");	\
-	signal_code = 0;						\
-									\
+	inspect_signal(SIGILL, ILL_ILLOPN);				\
 	return;								\
 }
 
@@ -175,8 +137,6 @@ gen_test_register_operand_inst(SGDT, ".byte 0xf, 0x1, 0xc0\n")
 
 static void test_register_operand(void)
 {
-	signal_code = 0;
-
 	__test_register_operand_SGDT();
 	__test_register_operand_SIDT();
 }
@@ -187,6 +147,9 @@ static void test_null_segment_selectors(void) {}
 #define gen_test_null_segment_selector(inst, reg)				\
 static void __test_null_segment_selector_##inst##_##reg(void)			\
 {										\
+	got_signal = 0;								\
+	got_sigcode = 0;							\
+										\
 	pr_info("Test using null seg sel for " #inst " with " #reg "\n");	\
 	asm volatile("push %" #reg "\n"						\
 		     "push %eax\n"						\
@@ -199,14 +162,8 @@ static void __test_null_segment_selector_##inst##_##reg(void)			\
 		     "pop %ebx\n"						\
 		     "pop %eax\n"						\
 		     "pop %" #reg "\n");					\
-	if (signal_code != SI_KERNEL) {						\
-		pr_fail(test_failed, "Signal code is not what we expect.\n");	\
-		signal_code = 0;						\
-	return;									\
-	}									\
-	pr_pass(test_passed, "An ILL_ILLOPN exception was issued.\n");		\
-	signal_code = 0;							\
 										\
+	inspect_signal(SIGSEGV, SI_KERNEL);					\
 	return;									\
 }
 
@@ -318,6 +275,10 @@ static void __test_addresses_outside_segment_##inst##_##sel(void)		\
 	int ret;							\
 	unsigned short seg_sel;						\
 									\
+	got_signal = 0;							\
+	got_sigcode = 0;						\
+									\
+									\
 	seg_sel = SEGMENT_SELECTOR(DATA_DESC_INDEX);			\
 									\
 	pr_info("Test address outside of segment limit for " #inst " with " #sel"\n");\
@@ -334,14 +295,7 @@ static void __test_addresses_outside_segment_##inst##_##sel(void)		\
 		     :							\
 		     :"m" (seg_sel));					\
 									\
-	if (signal_code != SI_KERNEL) {					\
-		pr_fail(test_failed, "Signal code is not what we expect.\n");	\
-		signal_code = 0;					\
-	return;								\
-	}								\
-	pr_pass(test_passed, "An ILL_ILLOPN exception was issued.\n");		\
-	signal_code = 0;						\
-									\
+	inspect_signal(SIGSEGV, SI_KERNEL);				\
 	return;								\
 }
 
