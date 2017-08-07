@@ -15,7 +15,7 @@ int exit_on_signal;
 
 void print_results(void)
 {
-	printf("RESULTS: passed[%d], failed[%d], error[%d]\n",
+	printf("RESULTS: passed[%d], failed[%d], errors[%d].\n",
 	       test_passed, test_failed, test_errors);
 }
 
