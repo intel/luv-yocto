@@ -1,6 +1,7 @@
 #ifndef _UMIP_TEST_DEFS_H
 #define _UMIP_TEST_DEFS_H
 #include <stdio.h>
+#include <signal.h>
 
 #define TEST_PASS "\x1b[32m[pass]\x1b[0m "
 #define TEST_FAIL "\x1b[31m[FAIL]\x1b[0m "
@@ -119,5 +120,6 @@ static const struct table_desc expected_idt = {
 
 void print_results(void);
 int inspect_signal(int exp_signum, int exp_sigcode);
+void signal_handler(int signum, siginfo_t *info, void *ctx_void);
 
 #endif /* _UMIP_TEST_DEFS_H */

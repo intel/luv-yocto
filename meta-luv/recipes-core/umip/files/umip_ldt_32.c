@@ -1,7 +1,6 @@
 /* Test cases for UMIP */
 /* Copyright Intel Corporation 2017 */
 
-#define _GNU_SOURCE
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,14 +9,13 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <string.h>
-#include <ucontext.h>
-#include <signal.h>
 #include "umip_test_defs.h"
 #include "test_umip_ldt_32.h"
 #include "test_umip_code_32.h"
 
 extern unsigned char test_umip[], test_umip_end[];
 extern unsigned char finish_testing[];
+extern int exit_on_signal;
 unsigned short cs_orig;
 
 #define CODE_DESC_INDEX 1
@@ -31,31 +29,7 @@ unsigned short cs_orig;
 #define TI_LDT 1
 #define SEGMENT_SELECTOR(index) (RPL3 | (TI_LDT << 2) | (index << 3))
 
-static sig_atomic_t got_signal;
-
 extern int test_passed, test_failed, test_errors;
-
-void handler(int signum, siginfo_t *info, void *ctx_void)
-{
-        pr_info("si_signo[%d]\n", info->si_signo);
-        pr_info("si_errno[%d]\n", info->si_errno);
-        pr_info("si_code[%d]\n", info->si_code);
-        pr_info("si_addr[0x%p]\n", info->si_addr);
-	if (signum != SIGSEGV)
-		pr_error(test_errors, "Received unexpected signal");
-	else
-		got_signal = signum;
-	if (info->si_code == SEGV_MAPERR)
-		pr_info("Signal because of unmapped object.\n");
-	else if (info->si_code == SI_KERNEL)
-		pr_info("Signal because of #GP\n");
-	else
-		pr_info("Unknown si_code!\n");
-
-	pr_fail(test_failed, "Whoa! I got a SIGSEGV! Something went wrong!\n");
-	print_results();
-	exit(1);
-}
 
 static int setup_data_segments()
 {
@@ -151,9 +125,11 @@ int run_umip_ldt_test(void)
 	PRINT_BITNESS;
 
 	memset(&action, 0, sizeof(action));
-	action.sa_sigaction = &handler;
+	action.sa_sigaction = &signal_handler;
 	action.sa_flags = SA_SIGINFO;
 	sigemptyset(&action.sa_mask);
+
+	exit_on_signal = 1;
 
 	if (sigaction(SIGSEGV, &action, NULL) < 0) {
 		pr_error(test_errors, "Could not set the signal handler!");
