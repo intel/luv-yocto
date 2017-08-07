@@ -1,31 +1,185 @@
-A quick guide for UMIP testing
+              A QUICK GUIDE FOR UMIP TESTING
 
-* Use umip_test for a very basic test that exercises the instructions smsw,
-  str, sidt, sldt and sgdt from protected mode using the global descriptor
-  table.
-* Use test2_32 for a collection of tests that exercises the instructions
-  str, sldt and smsw for register and memory operands. For registers,
-  operand sizes are of 16 and 32 bits. Memory operands are always 16-bits
-  long. Addresses in these tests are computed using only the ModRM
-  byte. Also, these tests use the normal __USER_DS segment with a base
+Contents
+
+  I. For the impatient
+ II. What is UMIP and how is supported in the Linux kernel?
+III. Testing UMIP
+     a) Overview
+     b) Testing full emulation
+     c) Testing 64-bit processes
+     d) Testing 32-bit processes
+     e) Testing output format
+     f) The test programs
+
+       ============================================================
+I. For the impatient
+
+If all you have is 10 seconds, all you need to know is this:
+
+Assuming you have a 64-bit distro install, here is what you need to do:
+
+   1. If in Ubuntu:
+      $ sudo apt-get install ia32-libs
+      If in other distros, not sure; a similar package
+   2. $ make x86_64
+   3. $ CFLAGS=-m32 make i586
+   4. $ umip_test_basic_64
+   5. $ umip_test_basic_32
+   6. $ umip_test_opnds_64
+   7. $ umip_test_opnds_32
+   8. $ umip_exceptions_64
+   9. $ umip_exceptions_32
+  10. $ umip_ldt_64
+  11. $ umip_ldt_32
+  12. $ umip_ldt_16
+
+For each of the steps 4 through 12, look for this output
+
+  RESULTS: passed[X], failed[0], errors[0].
+
+You should have 0 failures and 0 errors.
+
+You are done.
+
+       ============================================================
+II. What is UMIP and how is supported in the Linux kernel?
+
+User-mode Instruction Prevention, UMIP is a feature present in new Intel
+processors that prevents the execution of the instructions SGDT, SIDT, SLDT,
+SMSW and STR while running in CLP>0. In such a case, a general protection fault
+exception is issued.
+
+Functionality has been put in the kernel to trap this general protection fault
+exception. When this happens, the kernel provides to the caller dummy values
+as the result for these instructions. However, emulation is not done in every
+case. It is done only for 32-bit processes and only for the instructions SGDT,
+SIDT and SMSW. For 64-bit processes no emulation is provideded. The instructions
+STR and SLDT are not emulated in any case.
+
+However, the Linux kernel can be patched to provide emulation in all cases.
+
+       ============================================================
+III. Testing UMIP
+
+a) == Overview ===
+
+I have written several programs to test the behavior described above. Each
+program can be built for 32-bit and 64-bit processes. The makefile builds both
+versions and adds _32 or _64 suffixes to the executable test programs.
+
+b) == Achieving emulation for everything
+
+Also, each program can be built to test emulation for all the instructions in
+both 64 and 32-bits and for all the instructions. The makefile achieves this by
+adding -DEMULATE_ALL to the CFLAGS; the python scripts that generate code are
+run with the option --emulate-all. Test programs built with this configuration
+are added the suffix _emul_all.
+
+Hence, the naming convention for the test programs is:
+
+    test_program_32/64_[emul_all]
+
+c) == Testing 64-bit processes
+
+The makefile can the test programs for all these configurations.
+
+To build the 64-bit test programs you can do
+
+    $ make x86_64
+
+This will build the programs umip_test_basic, umip_test_opnds, umip_exceptions,
+and umip_ldt_64; see section III.a) for the relevant naming convention.
+
+In its default version, these programs will verify a general protection fault
+is seen when executing the UMIP-protected instructions. In the _emul_all
+version, programs will verify that emulation is successful and no exceptions are
+generated in the process (please see the umip_exceptions special case below).
+
+Both the default and _emul_all versions are built with the aforementioned
+command.
+
+d) == Testing 32-bit processes
+
+In a 64-bit distro, you will need to install the 32-bit compatibility libraries.
+In Ubuntu, this is done with:
+
+    $ sudo apt-get install ia32-libs
+
+In other distros, a similar procedure can be followed.
+
+Then, the 32-bit test programs can be built as:
+
+    $ CFLAGS=-m32 make i586
+
+This will build the programs umip_test_basic, umip_test_opnds, umip_exceptions,
+umip_ldt_32, and umip_ldt_16; see section III.a) for the relevant naming
+convention.
+
+In its default version, these programs will verify that emulation is successful
+for the instructions SGDT, SIDT and SMSW. They will also verify that a general
+proctection fault is seen for the instructions SLDT and STR.
+
+Both the default and _emul_all versions are built with the aforementioned
+commans.
+
+e) == The testing output format
+
+Test programs use the following output format
+
+[info] To print information about a test case.
+[pass] To inform that a test case passed.
+[FAIL] To inform that a test case failed.
+
+RESULTS: passed[X], failed[Y], error[Z]
+
+Ideally, you should see all test case passed. This means that you should see
+0 failures and 0 errors.
+
+f) The test programs
+
+Refer to section III.a) for the naming convention.
+
+* umip_est_basic. Use umip_test for a very basic test that exercises the
+  instructions smsw, str, sidt, sldt and sgdt from protected mode using the
+  global descriptortable.
+
+* umip_test_opnds. Use umip_test_opnds for a collection of tests that
+  exercises the instructions str, sldt and smsw for register and memory
+  operands. For registers, operand sizes are of 16 and 32 bits. Memory operands
+  are always 16-bits long. Addresses in these tests are computed using only the
+  ModRM  byte. Also, these tests use the normal __USER_DS segment with a base
   address of zero.
-* DEPRECATED. Now UMIP is made to support only 32-bit builds of the kernel.
-  Use test2_64 for a collection of tests that exercises the instructions
-  str, sldt and smsw for register and memory operands. For registers,
-  operand sizes are of 16, 32 and 64 bits. Memory operands are always
-  16-bit long. Addresses in these tests are computed using only the ModRM
-  byte. Also, these tests use the normal __USER_DS segment with a base
-  address of zero.
-* Use umip_exceptions to verify that a page fault is correctly issued when
-  UMIP-emulated code tries to write in an invalid memory address of the user
-  space memory.
-* Use umip_ldt to verify all the possible 32-bit address encodings in the
-  UMIP-emulated instructions. This includes all the ModRM, and SiB displacement
-  combinations. Furthermore, this test configure a Local Descriptor Table
-  whose segments have base addresses that are different from the __USER_DS
-  segment.
-* Use umip_ldt_16 to verify all the possible 16-bit address encodings in the
-  UMIP-emulated instructions. This includes all the ModRM and displacement
-  combinations. Furthermore, this test configure a Local Descriptor Table
-  whose segments have base addresses that are different from the __USER_DS
-  segment. Also, the code segment is configured for 16-bit addresses.
+
+* umip_exceptions. Use umip_exceptions that the emulation code issues the
+  exceptions for each of the UMIP-instructions as described in the Intel
+  Software Development Manual. Priority of the exceptions should be that
+  mentioned in the Volume 3, Section 16.9 of the aforementioned manual. That is,
+  for instance, if the instructions can lead to a general protection fault
+  exception and an illegal operand exception, verify that the latter is seen.
+
+* umip_ldt_64. Use umip_ldt_64 to verify all the possible 64-bit address
+  encodings in the UMIP-protected instructions. This includes all the ModRM,
+  and SiB displacement combinations. Furthermore, this test configures a Local
+  Descriptor Table whose segments have base addresses that are different from
+  the __USER_DS segment. Since this program runs in long mode, segmentation is
+  implemented using the FS and GS registers. The purpose of this test is to
+  verify that the emulation code is capable of succesfully computing linear
+  address out of the instruction operand and segment descriptor.
+  
+* umip_ldt_32. Use umip_ldt_32 to verify all the possible 32-bit address
+  encodings in the UMIP-protected instructions. This includes all the ModRM,
+  and SiB displacement combinations. Furthermore, this test configures a Local
+  Descriptor Table whose segments have base addresses that are different from
+  the __USER_DS segment. The purpose of this test is to verify that the
+  emulation code is capable of succesfully computing linear address out of the
+  instruction operand and segment descriptor.
+
+* umip_ldt_16. Use umip_ldt_16 to verify all the possible 16-bit address
+  encodings in the UMIP-protected instructions. This includes all the ModRM and
+  displacement combinations. Furthermore, this test configure a Local Descriptor
+  Table with segments that have base addresses different than the __USER_DS
+  segment. Also, the code segment is configured for 16-bit addresses. The
+  purpose of this test is to verify that the emulation code is capable of
+  succesfully computing linear address out of the instruction operand and
+  segment descriptor.
