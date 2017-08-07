@@ -2,7 +2,7 @@ x86_64_minimal:
 	$(CC) $(CFLAGS) -c umip_utils.c -o umip_utils_64.o
 
 	$(CC) $(CFLAGS) -o umip_test2_64 umip_utils_64.o umip_test2.c
-	$(CC) $(CFLAGS) -o umip_test_64 umip_utils_64.o umip_test.c
+	$(CC) $(CFLAGS) -o umip_test_basic_64 umip_utils_64.o umip_test_basic.c
 	$(CC) $(CFLAGS) -o umip_exceptions_64 umip_utils_64.o umip_exceptions.c
 
 	python umip_test_gen_64.py
@@ -15,7 +15,7 @@ x86_64_emul_all:
 	$(CC) $(CFLAGS) -c umip_utils.c -o umip_utils_64.o
 
 	$(CC) $(CFLAGS) -o umip_test2_64_emul_all umip_utils_64.o umip_test2.c
-	$(CC) $(CFLAGS) -o umip_test_64_emul_all umip_utils_64.o umip_test.c
+	$(CC) $(CFLAGS) -o umip_test_basic_64_emul_all umip_utils_64.o umip_test_basic.c
 	$(CC) $(CFLAGS) -o umip_exceptions_64_emul_all umip_utils_64.o umip_exceptions.c
 
 	python umip_test_gen_64.py --emulate-all
@@ -29,7 +29,7 @@ i686_minimal:
 	$(CC) $(CFLAGS) -c umip_utils.c -o umip_utils_32.o
 
 	$(CC) $(CFLAGS) -o umip_test2_32 umip_utils_32.o umip_test2.c
-	$(CC) $(CFLAGS) -o umip_test_32 umip_utils_32.o umip_test.c
+	$(CC) $(CFLAGS) -o umip_test_basic_32 umip_utils_32.o umip_test_basic.c
 	$(CC) $(CFLAGS) -o umip_exceptions_32 umip_utils_32.o umip_exceptions.c
 
 	python umip_test_gen_32.py
@@ -47,7 +47,7 @@ i686_emul_all:
 	$(CC) $(CFLAGS) -c umip_utils.c -o umip_utils_32.o
 
 	$(CC) $(CFLAGS) -o umip_test2_32_emul_all umip_utils_32.o umip_test2.c
-	$(CC) $(CFLAGS) -o umip_test_32_emul_all umip_utils_32.o umip_test.c
+	$(CC) $(CFLAGS) -o umip_test_basic_32_emul_all umip_utils_32.o umip_test_basic.c
 	$(CC) $(CFLAGS) -o umip_exceptions_32_emul_all umip_utils_32.o umip_exceptions.c
 
 	python umip_test_gen_32.py --emulate-all
@@ -66,10 +66,10 @@ i586: i686
 .PHONY: clean
 clean:
 	rm -f *.o
-	rm -f umip_test_64
-	rm -f umip_test_64_emul_all
-	rm -f umip_test_32
-	rm -f umip_test_32_emul_all
+	rm -f umip_test_basic_64
+	rm -f umip_test_basic_64_emul_all
+	rm -f umip_test_basic_32
+	rm -f umip_test_basic_32_emul_all
 	rm -f umip_test2_64
 	rm -f umip_test2_64_emul_all
 	rm -f umip_test2_32
