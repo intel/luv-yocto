@@ -66,12 +66,18 @@ i586: i686
 .PHONY: clean
 clean:
 	rm -f *.o
-	rm -f umip_test
+	rm -f umip_test_64
+	rm -f umip_test_64_emul_all
+	rm -f umip_test_32
+	rm -f umip_test_32_emul_all
 	rm -f umip_test2_64
 	rm -f umip_test2_64_emul_all
 	rm -f umip_test2_32
 	rm -f umip_test2_32_emul_all
-	rm -f umip_pf
+	rm -f umip_exceptions_64
+	rm -f umip_exceptions_64_emul_all
+	rm -f umip_exceptions_32
+	rm -f umip_exceptions_32_emul_all
 	rm -f umip_ldt_64
 	rm -f umip_ldt_64_emul_all
 	rm -f umip_ldt_32
