@@ -16,6 +16,8 @@
 
 extern unsigned char test_umip[], test_umip_end[];
 extern unsigned char finish_testing[];
+extern unsigned char data_fs[SEGMENT_SIZE];
+extern unsigned char data_gs[SEGMENT_SIZE];
 extern int exit_on_signal;
 unsigned long old_fsbase, old_gsbase;
 unsigned short old_fs, old_gs;
