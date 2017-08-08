@@ -40,6 +40,10 @@ do_install() {
                 install -m 755 ${WORKDIR}/umip_exceptions_64 ${D}${bindir}
                 install -m 755 ${WORKDIR}/umip_test_opnds_64 ${D}${bindir}
                 install -m 755 ${WORKDIR}/umip_ldt_64 ${D}${bindir}
+                install -m 755 ${WORKDIR}/umip_test_basic_64_emul_all ${D}${bindir}
+                install -m 755 ${WORKDIR}/umip_exceptions_64_emul_all ${D}${bindir}
+                install -m 755 ${WORKDIR}/umip_test_opnds_64_emul_all ${D}${bindir}
+                install -m 755 ${WORKDIR}/umip_ldt_64_emul_all ${D}${bindir}
         fi
         if [ "${TARGET_ARCH}" = "i586" ]; then
                 install -m 755 ${WORKDIR}/umip_test_basic_32 ${D}${bindir}
@@ -47,6 +51,11 @@ do_install() {
                 install -m 755 ${WORKDIR}/umip_test_opnds_32 ${D}${bindir}
                 install -m 755 ${WORKDIR}/umip_ldt_32 ${D}${bindir}
                 install -m 755 ${WORKDIR}/umip_ldt_16 ${D}${bindir}
+                install -m 755 ${WORKDIR}/umip_test_basic_32_emul_all ${D}${bindir}
+                install -m 755 ${WORKDIR}/umip_exceptions_32_emul_all ${D}${bindir}
+                install -m 755 ${WORKDIR}/umip_test_opnds_32_emul_all ${D}${bindir}
+                install -m 755 ${WORKDIR}/umip_ldt_32_emul_all ${D}${bindir}
+                install -m 755 ${WORKDIR}/umip_ldt_16_emul_all ${D}${bindir}
         fi
         if [ "${TARGET_ARCH}" = "i686" ]; then
                 install -m 755 ${WORKDIR}/umip_test_basic_32 ${D}${bindir}
@@ -54,6 +63,11 @@ do_install() {
                 install -m 755 ${WORKDIR}/umip_test_opnds_32 ${D}${bindir}
                 install -m 755 ${WORKDIR}/umip_ldt_32 ${D}${bindir}
                 install -m 755 ${WORKDIR}/umip_ldt_16 ${D}${bindir}
+                install -m 755 ${WORKDIR}/umip_test_basic_32_emul_all ${D}${bindir}
+                install -m 755 ${WORKDIR}/umip_exceptions_32_emul_all ${D}${bindir}
+                install -m 755 ${WORKDIR}/umip_test_opnds_32_emul_all ${D}${bindir}
+                install -m 755 ${WORKDIR}/umip_ldt_32_emul_all ${D}${bindir}
+                install -m 755 ${WORKDIR}/umip_ldt_16_emul_all ${D}${bindir}
         fi
 
 }
