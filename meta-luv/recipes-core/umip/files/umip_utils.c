@@ -19,6 +19,7 @@ void print_results(void)
 	       test_passed, test_failed, test_errors);
 }
 
+#if 0
 int inspect_signal(int exp_signum, int exp_sigcode)
 {
 	if (got_signal == exp_signum && got_sigcode == exp_sigcode) {
@@ -34,6 +35,51 @@ int inspect_signal(int exp_signum, int exp_sigcode)
 		return 1;
 	}
 }
+#else
+
+/**
+ * Inspect the contents of exp_signum and exp_sigcode to determine if they match
+ * the received got_signal signal and signal code, if any. A return value of
+ * 1 means that the test case is complete and no further action is needed (e.g.,
+ * examine values returned by instructions. A return value of 0 means that signal
+ * processing is not relevant for the caller can proceed with further test case
+ * validation.
+ */
+int inspect_signal(exp_signum, exp_sigcode)
+{
+	/* If we expect signal, make sure it is the one we expect. */
+	if (exp_signum) {
+		/* A signal was received, examine it */
+		if (got_signal == exp_signum) {
+			if (got_sigcode == exp_sigcode) {
+				/* All is good. Test case is complete. */
+				pr_pass(test_passed, "Received expected signal and code.\n");
+				return 1;
+			} else {
+				pr_fail(test_failed, "Received wrong signal code. Expected si_code[%d].\n", exp_sigcode);
+				return 1;
+			}
+		} else {
+			if (got_signal) {
+				/* Wrong signal */
+				pr_fail(test_failed, "Received wrong signal. Expected [%d]\n", exp_signum);
+				return 1;
+			} else {
+				/* signal did not come */
+				pr_fail(test_failed, "A signal [%d] was expected. None was not received.\n", exp_signum);
+				return 1;
+			}
+		}
+	} else { /* If no signal is expected, make sure we did not receive one */
+		if (got_signal) {
+			pr_fail(test_failed, "Received unexpected signal.\n");
+			return 1;
+		} else { /* Signal is not relevant.*/
+			return 0;
+		}
+	}
+}
+#endif
 
 void signal_handler(int signum, siginfo_t *info, void *ctx_void)
 {
