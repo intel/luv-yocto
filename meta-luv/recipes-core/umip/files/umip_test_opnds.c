@@ -118,30 +118,83 @@
 /* Memory operands */
 #if __x86_64__
 #define INSNmem(insn, reg, disp) \
-	"push %%rax\n"               /* rax used to copy values around. Make a copy */ \
-	"mov %0, %%rax\n"            /* Init our variable. Split into two instructions */ \
-	"mov %%rax, "disp"(%%rsp)\n" \
-	"mov %%"reg", %%rax\n"       /* make a backup of register under test */ \
-	"mov %%rsp, %%"reg"\n"       /* move rsp to our register under test */ \
-	insn" "disp"(%%"reg")\n"     /* execute our instruction */ \
-	NOP_SLED \
-	"push "disp"(%%"reg")\n"     /* save result to stack */ \
-	"mov %%rax, %%"reg"\n"       /* restore register under test */ \
-	"pop %1\n"                   /* copy result to our variable */ \
-	"pop %%rax\n"                /* restore rax */
+	/*
+	 * Move initialization value to %eax. Do it before changing %esp as some\
+	 * compilers refer local variables as an offset from %esp. This code	\
+	 * causes %eax to be clobbered. This is OK as long it is not used in	\
+	 * the caller function.							\
+	 */									\
+	"mov %0, %%rax\n"							\
+	/*									\
+	 * Make a backup of our scratch memory. Adjust wrt %rsp according to the\
+	 * two stack pushes below.						\
+	 */									\
+	"push ("disp"-0x8-0x8)(%%rsp)\n"					\
+	/* Make a backup of contents of test register */			\
+	"push %%"reg"\n"							\
+	/* Write our initialization value in scratch memory. */			\
+	"mov %%rax, "disp"(%%rsp)\n"						\
+	/* Make test register point to our scratch memory. */			\
+	"mov %%rsp, %%"reg"\n"							\
+	/* Run our test: register-indirect addressing with an offset. */	\
+	insn" "disp"(%%"reg")\n"						\
+	NOP_SLED								\
+	/* Save result to %rax */						\
+	"mov "disp"(%%rsp), %%rax\n"						\
+	/* Restore test register */						\
+	"pop %%"reg"\n"								\
+	/*									\
+	 * Restore scratch memory. Adjust offset wrt %rsp according to the	\
+	 * two stack pops above							\
+	 */									\
+	"pop ("disp"-0x8-0x8)(%%rsp)\n"						\
+	/*									\
+	 * Since some compilers refer local variables as an offset from %esp,	\
+	 * the test result can only be saved to a local variable only once %esp	\
+	 * has been restored by an equal number of stack pops and pushes.	\
+	 */									\
+	"mov %%rax, %0\n"
 #else
 #define INSNmem(insn, reg, disp) \
-	"push %%eax\n"               /* eax used to copy values around. Make a copy */ \
-	"mov %0, %%eax\n"            /* Init our variable. Split into two instructions */ \
-	"mov %%eax, "disp"(%%esp)\n" \
-	"mov %%"reg", %%eax\n"       /* make a backup of register under test */ \
-	"mov %%esp, %%"reg"\n"       /* move esp to our register under test */ \
-	insn" "disp"(%%"reg")\n"     /* execute our instruction */ \
-	NOP_SLED \
-	"push "disp"(%%"reg")\n"     /* save result to stack */ \
-	"mov %%eax, %%"reg"\n"       /* restore register under test */ \
-	"pop %1\n"                   /* copy result to our variable */ \
-	"pop %%eax\n"                /* restore eax */
+	/*
+	 * Move initialization value to %eax. Do it before changing %esp as some\
+	 * compilers refer local variables as an offset from %esp. This code	\
+	 * causes %eax to be clobbered. This is OK as long it is not used in	\
+	 * the caller function.							\
+	 */									\
+	"mov %0, %%eax\n"							\
+	/*									\
+	 * Make a backup of our scratch memory. Adjust wrt %rsp according to the\
+	 * two stack pushes below.						\
+	 */									\
+	"push ("disp"-0x4-0x4)(%%esp)\n"					\
+	/* Make a backup of contents of test register */			\
+	"push %%"reg"\n"							\
+	/*									\
+	 * Write our initialization value in scratch memory. Adjust offset	\
+	 * according to	the number of previous stack pushes.			\
+	 */									\
+	"mov %%eax, "disp"(%%esp)\n"						\
+	/* Make test register point to our scratch memory. */			\
+	"mov %%esp, %%"reg"\n"							\
+	/* Run our test: register-indirect addressing with an offset. */	\
+	insn" "disp"(%%"reg")\n"						\
+	NOP_SLED								\
+	/* Save result to %eax */						\
+	"mov "disp"(%%esp), %%eax\n"						\
+	/* Restore test register */						\
+	"pop %%"reg"\n"								\
+	/*									\
+	 * Restore scratch memory. Adjust offset wrt %rsp according to the	\
+	 * two stack pops above							\
+	 */									\
+	"pop ("disp"-0x4-0x4)(%%esp)\n"						\
+	/*									\
+	 * Since some compilers refer local variables as an offset from %esp,	\
+	 * the test result can only be saved to a local variable only once %esp	\
+	 * has been restored by an equal number of stack pops and pushes.	\
+	 */									\
+	"mov %%eax, %0\n"
 #endif
 
 /*
