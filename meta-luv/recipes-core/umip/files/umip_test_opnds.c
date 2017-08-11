@@ -117,14 +117,14 @@
 
 /* Memory operands */
 #if __x86_64__
-#define INSNmem(insn, reg, disp) \
+#define INSNmem(insn, reg, scratch, disp) \
 	/*
-	 * Move initialization value to %eax. Do it before changing %esp as some\
-	 * compilers refer local variables as an offset from %esp. This code	\
-	 * causes %eax to be clobbered. This is OK as long it is not used in	\
-	 * the caller function.							\
+	 * Move initialization value to %scratch. Do it before changing %rsp as	\
+	 * some compilers refer local variables as an offset from %esp. This	\
+	 * code causes %scratch to be clobbered. This is OK as long it is not	\
+	 * used in the caller function.						\
 	 */									\
-	"mov %0, %%rax\n"							\
+	"mov %0, %%"scratch"\n"							\
 	/*									\
 	 * Make a backup of our scratch memory. Adjust wrt %rsp according to the\
 	 * two stack pushes below.						\
@@ -133,14 +133,14 @@
 	/* Make a backup of contents of test register */			\
 	"push %%"reg"\n"							\
 	/* Write our initialization value in scratch memory. */			\
-	"mov %%rax, "disp"(%%rsp)\n"						\
+	"mov %%"scratch", "disp"(%%rsp)\n"					\
 	/* Make test register point to our scratch memory. */			\
 	"mov %%rsp, %%"reg"\n"							\
 	/* Run our test: register-indirect addressing with an offset. */	\
 	insn" "disp"(%%"reg")\n"						\
 	NOP_SLED								\
 	/* Save result to %rax */						\
-	"mov "disp"(%%rsp), %%rax\n"						\
+	"mov "disp"(%%rsp), %%"scratch"\n"						\
 	/* Restore test register */						\
 	"pop %%"reg"\n"								\
 	/*									\
@@ -153,16 +153,16 @@
 	 * the test result can only be saved to a local variable only once %esp	\
 	 * has been restored by an equal number of stack pops and pushes.	\
 	 */									\
-	"mov %%rax, %0\n"
+	"mov %%"scratch", %0\n"
 #else
-#define INSNmem(insn, reg, disp) \
+#define INSNmem(insn, reg, scratch, disp) \
 	/*
-	 * Move initialization value to %eax. Do it before changing %esp as some\
-	 * compilers refer local variables as an offset from %esp. This code	\
-	 * causes %eax to be clobbered. This is OK as long it is not used in	\
-	 * the caller function.							\
+	 * Move initialization value to %scratch. Do it before changing %esp as \
+	 * some compilers refer local variables as an offset from %esp. This	\
+	 * code causes %scratch to be clobbered. This is OK as long it is not	\
+	 * used in the caller function.						\
 	 */									\
-	"mov %0, %%eax\n"							\
+	"mov %0, %%"scratch"\n"							\
 	/*									\
 	 * Make a backup of our scratch memory. Adjust wrt %rsp according to the\
 	 * two stack pushes below.						\
@@ -174,14 +174,14 @@
 	 * Write our initialization value in scratch memory. Adjust offset	\
 	 * according to	the number of previous stack pushes.			\
 	 */									\
-	"mov %%eax, "disp"(%%esp)\n"						\
+	"mov %%"scratch", "disp"(%%esp)\n"					\
 	/* Make test register point to our scratch memory. */			\
 	"mov %%esp, %%"reg"\n"							\
 	/* Run our test: register-indirect addressing with an offset. */	\
 	insn" "disp"(%%"reg")\n"						\
 	NOP_SLED								\
 	/* Save result to %eax */						\
-	"mov "disp"(%%esp), %%eax\n"						\
+	"mov "disp"(%%esp), %%"scratch"\n"					\
 	/* Restore test register */						\
 	"pop %%"reg"\n"								\
 	/*									\
@@ -194,7 +194,7 @@
 	 * the test result can only be saved to a local variable only once %esp	\
 	 * has been restored by an equal number of stack pops and pushes.	\
 	 */									\
-	"mov %%eax, %0\n"
+	"mov %%"scratch", %0\n"
 #endif
 
 /*
@@ -202,10 +202,10 @@
  * Instead, it uses -0x0(%%reg). No displacement is OK unless the SIB byte
  * is used with RBP.
  */
-#define INSNmemdisp8(insn, reg) INSNmem(insn, reg, "-0x80")
-#define INSNmemdisp32(insn, reg) INSNmem(insn, reg, "-0x1000")
+#define INSNmemdisp8(insn, reg, scratch) INSNmem(insn, reg, scratch, "-0x80")
+#define INSNmemdisp32(insn, reg, scratch) INSNmem(insn, reg, scratch, "-0x1000")
 
-#define CHECK_INSNmemdisp(INSNmacro, insn, reg, val, init, exp) \
+#define CHECK_INSNmemdisp(INSNmacro, insn, reg, scratch, val, init, exp) \
 	val = init; \
 	/* Memory operands are always treated as 16-bit locations */ \
 	mask = get_mask(16); \
@@ -215,7 +215,7 @@
 		got_signal = 0; \
 		got_sigcode = 0; \
 	\
-	asm volatile(INSNmacro(insn, reg) : "=m" (val): "m"(val) : "%rax"); \
+	asm volatile(INSNmacro(insn, reg, scratch) : "=m" (val): "m"(val) : "%"scratch""); \
 	\
 	if(!inspect_signal(exp_signum, exp_sigcode)) { \
 		/* \
@@ -232,34 +232,38 @@
 		}\
 	}
 
-#define CHECK_INSNmem(insn, reg, val, init, exp) \
-	CHECK_INSNmemdisp(INSNmemdisp8, insn, reg, val, init, exp) \
-	CHECK_INSNmemdisp(INSNmemdisp32, insn, reg, val, init, exp)
+#define CHECK_INSNmem(insn, reg, scratch, val, init, exp) \
+	CHECK_INSNmemdisp(INSNmemdisp8, insn, reg, scratch, val, init, exp) \
+	CHECK_INSNmemdisp(INSNmemdisp32, insn, reg, scratch, val, init, exp)
 
 #if __x86_64__
 #define CHECK_ALLmem(insn, val, init, exp) \
-	CHECK_INSNmem(insn, "rax", val, init, exp) \
-	CHECK_INSNmem(insn, "rcx", val, init, exp) \
-	CHECK_INSNmem(insn, "rdx", val, init, exp) \
-	CHECK_INSNmem(insn, "rbp", val, init, exp) \
-	CHECK_INSNmem(insn, "rsi", val, init, exp) \
-	CHECK_INSNmem(insn, "rdi", val, init, exp) \
-	CHECK_INSNmem(insn, "r8", val, init, exp) \
-	CHECK_INSNmem(insn, "r9", val, init, exp) \
-	CHECK_INSNmem(insn, "r10", val, init, exp) \
-	CHECK_INSNmem(insn, "r11", val, init, exp) \
-	CHECK_INSNmem(insn, "r12", val, init, exp) \
-	CHECK_INSNmem(insn, "r13", val, init, exp) \
-	CHECK_INSNmem(insn, "r14", val, init, exp) \
-	CHECK_INSNmem(insn, "r15", val, init, exp)
+	CHECK_INSNmem(insn, "rax", "rcx", val, init, exp) \
+	CHECK_INSNmem(insn, "rcx", "rax", val, init, exp) \
+	CHECK_INSNmem(insn, "rdx", "rax", val, init, exp) \
+	CHECK_INSNmem(insn, "rbx", "rax", val, init, exp) \
+	CHECK_INSNmem(insn, "rsp", "rax", val, init, exp) \
+	CHECK_INSNmem(insn, "rbp", "rax", val, init, exp) \
+	CHECK_INSNmem(insn, "rsi", "rax", val, init, exp) \
+	CHECK_INSNmem(insn, "rdi", "rax", val, init, exp) \
+	CHECK_INSNmem(insn, "r8", "rax", val, init, exp) \
+	CHECK_INSNmem(insn, "r9", "rax", val, init, exp) \
+	CHECK_INSNmem(insn, "r10", "rax", val, init, exp) \
+	CHECK_INSNmem(insn, "r11", "rax", val, init, exp) \
+	CHECK_INSNmem(insn, "r12", "rax", val, init, exp) \
+	CHECK_INSNmem(insn, "r13", "rax", val, init, exp) \
+	CHECK_INSNmem(insn, "r14", "rax", val, init, exp) \
+	CHECK_INSNmem(insn, "r15", "rax", val, init, exp)
 #else
 #define CHECK_ALLmem(insn, val, init, exp) \
-	CHECK_INSNmem(insn, "eax", val, init, exp) \
-	CHECK_INSNmem(insn, "ecx", val, init, exp) \
-	CHECK_INSNmem(insn, "edx", val, init, exp) \
-	CHECK_INSNmem(insn, "ebp", val, init, exp) \
-	CHECK_INSNmem(insn, "esi", val, init, exp) \
-	CHECK_INSNmem(insn, "edi", val, init, exp)
+	CHECK_INSNmem(insn, "eax", "ecx", val, init, exp) \
+	CHECK_INSNmem(insn, "ecx", "eax", val, init, exp) \
+	CHECK_INSNmem(insn, "edx", "eax", val, init, exp) \
+	CHECK_INSNmem(insn, "ebx", "eax", val, init, exp) \
+	CHECK_INSNmem(insn, "esp", "eax", val, init, exp) \
+	CHECK_INSNmem(insn, "ebp", "eax", val, init, exp) \
+	CHECK_INSNmem(insn, "esi", "eax", val, init, exp) \
+	CHECK_INSNmem(insn, "edi", "eax", val, init, exp)
 #endif
 
 #define INIT_SS   INIT_VAL(13131313)
