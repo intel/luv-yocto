@@ -9,42 +9,106 @@
 #if __x86_64__
 #define PUSH(reg) "push %%r"reg"\n"
 #define POP(reg) "pop %%r"reg"\n"
+#define SAVE_SP(reg) "mov %%rsp, %%r"reg"\n"
+#define RESTORE_SP(reg) "mov %%r"reg", %%rsp\n"
 #else
 #define PUSH(reg) "push %%e"reg"\n"
 #define POP(reg) "pop %%e"reg"\n"
+#define SAVE_SP(reg) "mov %%esp, %%e"reg"\n"
+#define RESTORE_SP(reg) "mov %%e"reg", %%esp\n"
 #endif
 
-#define INSNreg16(insn, reg, aux) \
-	PUSH(aux) \
-	PUSH(reg) \
-	insn" %%"reg"\n"     \
-	NOP_SLED \
-	"mov %%"reg", %%"aux"\n" \
-	POP(reg) \
-	"mov %%"aux", %0\n" \
-	POP(aux)
+#define INSNreg16(insn, reg, scratch, scratch_sp) \
+	/*
+	 * Move initialization value to %scratch. Do it before changing %rsp as	\
+	 * some compilers refer local variables as an offset from %esp. This	\
+	 * code causes %scratch to be clobbered. This is OK as long it is not	\
+	 * used in the caller function.						\
+	 */									\
+	"mov %0, %%"scratch"\n"						\
+	/* Make a backup of test register */					\
+	PUSH(reg)								\
+	/* Write our initialization value in test register */			\
+	"mov %%"scratch", %%"reg"\n"						\
+	/* In case we are testing %esp, make a backup to restore after test */	\
+	SAVE_SP(scratch_sp)							\
+	/* Run our test: register operands */					\
+	insn" %%"reg"\n"							\
+	NOP_SLED								\
+	/* Save result to scratch */						\
+	"mov %%"reg", %%"scratch"\n"						\
+	/* Restore %esp */							\
+	RESTORE_SP(scratch_sp)							\
+	/* Restore test register */						\
+	POP(reg)								\
+	/*									\
+	 * Since some compilers refer local variables as an offset from %esp,	\
+	 * the test result can only be saved to a local variable only once %esp	\
+	 * has been restored by an equal number of stack pops and pushes.	\
+	 */									\
+	"mov %%"scratch", %1\n"
 
-#define INSNreg32(insn, reg, aux) \
-	PUSH(aux) \
-	PUSH(reg) \
-	insn" %%e"reg"\n"     \
-	NOP_SLED \
-	"mov %%e"reg", %%e"aux"\n" \
-	POP(reg) \
-	"movl %%e"aux", %0\n" \
-	POP(aux)
+#define INSNreg32(insn, reg, scratch, scratch_sp) \
+	/*
+	 * Move initialization value to %scratch. Do it before changing %rsp as	\
+	 * some compilers refer local variables as an offset from %esp. This	\
+	 * code causes %scratch to be clobbered. This is OK as long it is not	\
+	 * used in the caller function.						\
+	 */									\
+	"mov %0, %%e"scratch"\n"						\
+	/* Make a backup of test register */					\
+	PUSH(reg)								\
+	/* Write our initialization value in test register */			\
+	"mov %%e"scratch", %%e"reg"\n"						\
+	/* In case we are testing %esp, make a backup to restore after test */	\
+	SAVE_SP(scratch_sp)							\
+	/* Run our test: register operands */					\
+	insn" %%e"reg"\n"							\
+	NOP_SLED								\
+	/* Save result to scratch */						\
+	"mov %%e"reg", %%e"scratch"\n"						\
+	/* Restore %esp */							\
+	RESTORE_SP(scratch_sp)							\
+	/* Restore test register */						\
+	POP(reg)								\
+	/*									\
+	 * Since some compilers refer local variables as an offset from %esp,	\
+	 * the test result can only be saved to a local variable only once %esp	\
+	 * has been restored by an equal number of stack pops and pushes.	\
+	 */									\
+	"mov %%e"scratch", %1\n"
 
-#define INSNreg64(insn, reg, aux) \
-	"push %%"aux"\n" \
-	"push %%"reg"\n" \
-	insn" %%"reg"\n"     \
-	NOP_SLED \
-	"mov %%"reg", %%"aux"\n" \
-	"pop %%"reg"\n" \
-	"mov %%"aux", %0\n" \
-	"pop %%"aux"\n"
+#define INSNreg64(insn, reg, scratch, scratch_sp) \
+	/*
+	 * Move initialization value to %scratch. Do it before changing %rsp as	\
+	 * some compilers refer local variables as an offset from %esp. This	\
+	 * code causes %scratch to be clobbered. This is OK as long it is not	\
+	 * used in the caller function.						\
+	 */									\
+	"mov %0, %%"scratch"\n"						\
+	/* Make a backup of test register */					\
+	"push %%"reg"\n"							\
+	/* Write our initialization value in test register */			\
+	"mov %%"scratch", %%"reg"\n"						\
+	/* In case we are testing %esp, make a backup to restore after test */	\
+	"mov %%rsp, %%"scratch_sp"\n"						\
+	/* Run our test: register operands */					\
+	insn" %%"reg"\n"							\
+	NOP_SLED								\
+	/* Save result to scratch */						\
+	"mov %%"reg", %%"scratch"\n"						\
+	/* Restore %rsp */							\
+	"mov %%"scratch_sp", %%rsp\n"						\
+	/* Restore test register */						\
+	"pop %%"reg"\n"								\
+	/*									\
+	 * Since some compilers refer local variables as an offset from %rsp,	\
+	 * the test result can only be saved to a local variable only once %rsp	\
+	 * has been restored by an equal number of stack pops and pushes.	\
+	 */									\
+	"mov %%"scratch", %1\n"
 
-#define CHECK_INSN(op_size, insn, reg, val, aux, init, exp) \
+#define CHECK_INSN(op_size, insn, reg, val, scratch, scratch_sp, init, exp) \
 	do { \
 		val = init; \
 		mask = get_mask(op_size); \
@@ -54,7 +118,7 @@
 		got_signal = 0; \
 		got_sigcode = 0; \
 		\
-		asm volatile(INSNreg##op_size(insn, reg, aux) : "=m" (val)); \
+		asm volatile(INSNreg##op_size(insn, reg, scratch, scratch_sp) : "=m" (val) : "m" (val): "%"scratch, "%"scratch_sp ); \
 		\
 		if(inspect_signal(exp_signum, exp_sigcode)) \
 			break; \
@@ -73,37 +137,37 @@
 	} while(0);
 
 #define CHECK_ALLreg32(insn, val, init, exp) \
-	CHECK_INSN(16, insn,  "ax", val, "bx", init, exp); \
-	CHECK_INSN(16, insn,  "cx", val, "ax", init, exp); \
-	CHECK_INSN(16, insn,  "dx", val, "ax", init, exp); \
-	CHECK_INSN(16, insn,  "bx", val, "ax", init, exp); \
-	CHECK_INSN(16, insn, "bp", val, "ax", init, exp); \
-	CHECK_INSN(16, insn,  "si", val, "ax", init, exp); \
-	CHECK_INSN(16, insn,  "di", val, "ax", init, exp); \
-	CHECK_INSN(32, insn,  "ax", val, "bx", init, exp); \
-	CHECK_INSN(32, insn,  "cx", val, "ax", init, exp); \
-	CHECK_INSN(32, insn,  "dx", val, "ax", init ,exp); \
-	CHECK_INSN(32, insn,  "bx", val, "ax", init ,exp); \
-	CHECK_INSN(32, insn,  "bp", val, "ax", init, exp);\
-	CHECK_INSN(32, insn,  "si", val, "ax", init, exp); \
-	CHECK_INSN(32, insn,  "di", val, "ax", init, exp); \
+	CHECK_INSN(16, insn,  "ax", val, "cx", "dx", init, exp); \
+	CHECK_INSN(16, insn,  "cx", val, "ax", "dx", init, exp); \
+	CHECK_INSN(16, insn,  "dx", val, "ax", "cx", init, exp); \
+	CHECK_INSN(16, insn,  "bx", val, "ax", "dx", init, exp); \
+	CHECK_INSN(16, insn,  "bp", val, "ax", "dx", init, exp); \
+	CHECK_INSN(16, insn,  "si", val, "ax", "dx", init, exp); \
+	CHECK_INSN(16, insn,  "di", val, "ax", "dx", init, exp); \
+	CHECK_INSN(32, insn,  "ax", val, "cx", "dx", init, exp); \
+	CHECK_INSN(32, insn,  "cx", val, "ax", "dx", init, exp); \
+	CHECK_INSN(32, insn,  "dx", val, "ax", "cx", init ,exp); \
+	CHECK_INSN(32, insn,  "bx", val, "ax", "dx", init ,exp); \
+	CHECK_INSN(32, insn,  "bp", val, "ax", "dx", init, exp); \
+	CHECK_INSN(32, insn,  "si", val, "ax", "dx", init, exp); \
+	CHECK_INSN(32, insn,  "di", val, "ax", "dx", init, exp);
 
 #define CHECK_ALLreg64(insn, val, init, exp) \
-	CHECK_INSN(64, insn, "rax", val, "rbx", init, exp); \
-	CHECK_INSN(64, insn, "rcx", val, "rax", init, exp); \
-	CHECK_INSN(64, insn, "rdx", val, "rax", init, exp); \
-	CHECK_INSN(64, insn, "rbx", val, "rax", init, exp); \
-	CHECK_INSN(64, insn, "rbp", val, "rax", init, exp); \
-	CHECK_INSN(64, insn, "rsi", val, "rax", init, exp); \
-	CHECK_INSN(64, insn, "rdi", val, "rax", init, exp); \
-	CHECK_INSN(64, insn,  "r8", val, "rax", init, exp); \
-	CHECK_INSN(64, insn,  "r9", val, "rax", init, exp); \
-	CHECK_INSN(64, insn, "r10", val, "rax", init, exp); \
-	CHECK_INSN(64, insn, "r11", val, "rax", init, exp); \
-	CHECK_INSN(64, insn, "r12", val, "rax", init, exp); \
-	CHECK_INSN(64, insn, "r13", val, "rax", init, exp); \
-	CHECK_INSN(64, insn, "r14", val, "rax", init, exp); \
-	CHECK_INSN(64, insn, "r15", val, "rax", init, exp);
+	CHECK_INSN(64, insn, "rax", val, "rcx", "rdx", init, exp); \
+	CHECK_INSN(64, insn, "rcx", val, "rax", "rdx", init, exp); \
+	CHECK_INSN(64, insn, "rdx", val, "rax", "rcx", init, exp); \
+	CHECK_INSN(64, insn, "rbx", val, "rax", "rdx", init, exp); \
+	CHECK_INSN(64, insn, "rbp", val, "rax", "rdx", init, exp); \
+	CHECK_INSN(64, insn, "rsi", val, "rax", "rdx", init, exp); \
+	CHECK_INSN(64, insn, "rdi", val, "rax", "rdx", init, exp); \
+	CHECK_INSN(64, insn,  "r8", val, "rax", "rdx", init, exp); \
+	CHECK_INSN(64, insn,  "r9", val, "rax", "rdx", init, exp); \
+	CHECK_INSN(64, insn, "r10", val, "rax", "rdx", init, exp); \
+	CHECK_INSN(64, insn, "r11", val, "rax", "rdx", init, exp); \
+	CHECK_INSN(64, insn, "r12", val, "rax", "rdx", init, exp); \
+	CHECK_INSN(64, insn, "r13", val, "rax", "rdx", init, exp); \
+	CHECK_INSN(64, insn, "r14", val, "rax", "rdx", init, exp); \
+	CHECK_INSN(64, insn, "r15", val, "rax", "rdx", init, exp);
 
 #if __x86_64__
 #define CHECK_ALLreg(insn, val, init, exp) \
