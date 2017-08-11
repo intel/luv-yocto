@@ -11,11 +11,13 @@
 #define POP(reg) "pop %%r"reg"\n"
 #define SAVE_SP(reg) "mov %%rsp, %%r"reg"\n"
 #define RESTORE_SP(reg) "mov %%r"reg", %%rsp\n"
+#define PFX_ZEROS "16"
 #else
 #define PUSH(reg) "push %%e"reg"\n"
 #define POP(reg) "pop %%e"reg"\n"
 #define SAVE_SP(reg) "mov %%esp, %%e"reg"\n"
 #define RESTORE_SP(reg) "mov %%e"reg", %%esp\n"
+#define PFX_ZEROS "8"
 #endif
 
 #define INSNreg16(insn, reg, scratch, scratch_sp) \
@@ -128,10 +130,14 @@
 		 * does not change. \
 		 */ \
 		if (((val & mask) == (exp & mask)) && ((exp & ~mask) == (exp & ~mask))) \
-			pr_pass(test_passed, " On %s-bit '%s %s'! Got [0x%016lx] Exp[0x%016lx]\n", \
+			pr_pass(test_passed, " On %s-bit '%s %s'! " \
+					     "Got [0x%0"PFX_ZEROS"lx] " \
+					     "Exp[0x%0"PFX_ZEROS"lx]\n", \
 			        #op_size, insn, reg, val, (val&mask) | (init&~mask)); \
 		else { \
-			pr_fail(test_failed, "On %s-bit '%s %s'! Got[0x%016lx] Exp[0x%016lx]\n", \
+			pr_fail(test_failed, " On %s-bit '%s %s'! " \
+					     "Got[0x%0"PFX_ZEROS"lx] " \
+					     "Exp[0x%0"PFX_ZEROS"lx]\n", \
 			       #op_size, insn, reg, val, (val&mask) | (init&~mask)); \
 		} \
 	} while(0);
@@ -288,10 +294,14 @@
 		* does not change. \
 		*/ \
 		if (((val & mask) == (exp & mask)) && ((exp & ~mask) == (exp & ~mask))) \
-			pr_pass(test_passed, "On '%s %s(%s)'! Got [0x%016lx] Exp[0x%016lx]\n", \
+			pr_pass(test_passed, "On '%s %s(%s)'! " \
+					     "Got [0x%0"PFX_ZEROS"lx] " \
+					     "Exp[0x%0"PFX_ZEROS"lx]\n", \
 			insn, #INSNmacro, reg, val, (exp & mask) | (init & ~mask)); \
 		else { \
-			pr_fail(test_failed, "On '%s %s(%s)'! Got[0x%016lx] Exp[0x%016lx]\n", \
+			pr_fail(test_failed, "On '%s %s(%s)'! " \
+					     "Got[0x%0"PFX_ZEROS"lx] " \
+					     "Exp[0x%0"PFX_ZEROS"lx]\n", \
 				insn, #INSNmacro, reg, val, (exp & mask) | (init & ~mask)); \
 		}\
 	}
