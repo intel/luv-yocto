@@ -133,12 +133,12 @@
 			pr_pass(test_passed, " On %s-bit '%s %s'! " \
 					     "Got [0x%0"PFX_ZEROS"lx] " \
 					     "Exp[0x%0"PFX_ZEROS"lx]\n", \
-			        #op_size, insn, reg, val, (val&mask) | (init&~mask)); \
+			        #op_size, insn, reg, val, (exp&mask) | (init&~mask)); \
 		else { \
 			pr_fail(test_failed, " On %s-bit '%s %s'! " \
 					     "Got[0x%0"PFX_ZEROS"lx] " \
 					     "Exp[0x%0"PFX_ZEROS"lx]\n", \
-			       #op_size, insn, reg, val, (val&mask) | (init&~mask)); \
+			       #op_size, insn, reg, val, (exp&mask) | (init&~mask)); \
 		} \
 	} while(0);
 
