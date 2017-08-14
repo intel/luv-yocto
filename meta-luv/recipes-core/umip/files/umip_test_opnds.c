@@ -375,13 +375,13 @@ static int test_str(void)
 
 	INIT_EXPECTED_SIGNAL_STR_SLDT(exp_signum, 0, exp_sigcode, 0);
 
-	pr_info("====Checking STR. Expected value: [0x%x]====\n", expected_tr);
+	pr_info("====Checking STR. Expected value: [0x%lx]====\n", expected_tr);
 	pr_info("==Tests for register operands==\n");
-	pr_info("Value should be saved at [0x%p]. Init value[0x%0"PFX_ZEROS"x]\n",
+	pr_info("Value should be saved at [0x%p]. Init value[0x%0"PFX_ZEROS"lx]\n",
 		&val, expected_tr);
 	CHECK_ALLreg("str", val, INIT_SS, (unsigned long)expected_tr);
 	pr_info("==Tests for memory operands==\n");
-	pr_info("Value should be saved at [0x%p]. Init value[0x%0"PFX_ZEROS"x]\n",
+	pr_info("Value should be saved at [0x%p]. Init value[0x%0"PFX_ZEROS"lx]\n",
 		&val, expected_tr);
 	CHECK_ALLmem("str", val, INIT_SS, (unsigned long)expected_tr);
 	/* TODO: check with addressing using SIB byte */
@@ -397,13 +397,13 @@ static int test_smsw(void)
 
 	INIT_EXPECTED_SIGNAL(exp_signum, 0, exp_sigcode, 0);
 
-	pr_info("====Checking SMSW. Expected value: [0x%x]====\n", expected_msw);
+	pr_info("====Checking SMSW. Expected valuE: [0x%lx]====\n", expected_msw);
 	pr_info("==Tests for register operands==\n");
-	pr_info("Value should be saved at [0x%p]. Init value[0x%0"PFX_ZEROS"x]\n",
+	pr_info("Value should be saved at [0x%p]. Init value[0x%0"PFX_ZEROS"lx]\n",
 		&val, expected_msw);
 	CHECK_ALLreg("smsw", val, INIT_MSW, (unsigned long)expected_msw);
 	pr_info("==Tests for memory operands==\n");
-	pr_info("Value should be saved at [0x%p]. Init value[0x%0"PFX_ZEROS"x]\n",
+	pr_info("Value should be saved at [0x%p]. Init value[0x%0"PFX_ZEROS"lx]\n",
 		&val, expected_msw);
 	CHECK_ALLmem("smsw", val, INIT_MSW, (unsigned long)expected_msw);
 	/* TODO: check with addressing using SIB byte */
@@ -418,13 +418,13 @@ static int test_sldt(void)
 
 	INIT_EXPECTED_SIGNAL(exp_signum, 0, exp_sigcode, 0);
 
-	pr_info("====Checking SLDT. Expected value: [0x%x]====\n", expected_ldt);
+	pr_info("====Checking SLDT. Expected value: [0x%lx]====\n", expected_ldt);
 	pr_info("==Tests for register operands==\n");
-	pr_info("Value should be saved at [0x%p]. Init value[0x%0"PFX_ZEROS"x]\n",
+	pr_info("Value should be saved at [0x%p]. Init value[0x%0"PFX_ZEROS"lx]\n",
 		&val, expected_ldt);
 	CHECK_ALLreg("sldt", val, INIT_LDTS, (unsigned long)expected_ldt);
 	pr_info("==Tests for memory operands==\n");
-	pr_info("Value should be saved at [0x%p]. Init value[0x%0"PFX_ZEROS"x]\n",
+	pr_info("Value should be saved at [0x%p]. Init value[0x%0"PFX_ZEROS"lx]\n",
 		&val, expected_ldt);
 	CHECK_ALLmem("sldt", val, INIT_LDTS, (unsigned long)expected_ldt);
 	/* TODO: check with addressing using SIB byte */

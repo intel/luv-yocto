@@ -104,9 +104,9 @@ struct table_desc {
 	unsigned long base;
 } __attribute__((packed));
 
-static const unsigned short expected_msw = EXPECTED_SMSW;
-static const unsigned short expected_ldt = EXPECTED_SLDT;
-static const unsigned short expected_tr = EXPECTED_STR;
+static const unsigned long expected_msw = EXPECTED_SMSW;
+static const unsigned long expected_ldt = EXPECTED_SLDT;
+static const unsigned long expected_tr = EXPECTED_STR;
 
 static const struct table_desc expected_gdt = {
 	.limit = EXPECTED_GDT_LIMIT,
