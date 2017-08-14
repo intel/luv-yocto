@@ -129,7 +129,7 @@ static void call_sldt()
 	 * as well as that the bits that are not supposed to change
 	 * does not change.
 	 */ \
-	if ((val & mask) == expected_ldt &&
+	if ((val & mask) == (expected_ldt & mask) &&
 	    (val & ~mask) == (init_val & ~mask))
 		pr_pass(test_passed, "Obtained expected value\n");
 	else
@@ -161,7 +161,7 @@ static void call_smsw()
 	 * as well as that the bits that are not supposed to change
 	 * does not change.
 	 */ \
-	if ((val & mask) == expected_msw &&
+	if ((val & mask) == (expected_msw & mask) &&
 	    (val & ~mask) == (init_val & ~mask))
 		pr_pass(test_passed, "Obtained expected value\n");
 	else
@@ -182,6 +182,7 @@ static void call_str()
 
 #if __x86_64__
 	unsigned long val64 = 0xa3a3a3a3a3a3a3a3;
+	unsigned long init_val64 = 0xa3a3a3a3a3a3a3a3;
 
 	pr_info("Will issue STR and save at m64[0x%p]\n", &val64);
 	asm volatile("str %0\n" NOP_SLED : "=m" (val64));
@@ -191,8 +192,14 @@ static void call_str()
 
 	pr_info("SS for TSS[0x%016lx]\n", val64);
 
-	/* All 64 bits are written */
-	if (val64 == expected_tr)
+	/*
+	 * Check that the bits that are supposed to change does so
+	 * as well as that the bits that are not supposed to change
+	 * does not change. Since operand is memory, value will be
+	 * 16-bit.
+	 */
+	if ((val64 & 0xffff) == (expected_tr & 0xffff) &&
+	    (val64 & ~0xffff) == (init_val64 & ~0xffff))
 		pr_pass(test_passed, "Obtained 64-bit expected value\n");
 	else
 		pr_fail(test_failed, "Obtained 64-bit unexpected value\n");
@@ -217,7 +224,7 @@ test_m32:
 	 * does not change. Since operand is memory, value will be
 	 * 16-bit.
 	 */
-	if ((val32 & 0xffff) == expected_tr &&
+	if ((val32 & 0xffff) == (expected_tr & 0xffff) &&
 	    (val32 & ~0xffff) == (init_val32 & ~0xffff))
 		pr_pass(test_passed, "Obtained 32-bit expected value\n");
 	else
@@ -241,7 +248,7 @@ test_m16:
 	 * does not change. Since operand is memory, value will be
 	 * 16-bit.
 	 */
-	if ((val16 & 0xffff) == expected_tr &&
+	if ((val16 & 0xffff) == (expected_tr & 0xffff) &&
 	    (val16 & ~0xffff) == (init_val16 & ~0xffff))
 		pr_pass(test_passed, "Obtained 16-bit expected value\n");
 	else
