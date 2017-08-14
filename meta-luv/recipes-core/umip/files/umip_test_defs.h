@@ -50,7 +50,7 @@
 #define INIT_VAL(val) (0x##val)
 #endif
 
-#define EXPECTED_SMSW 0x33
+#define EXPECTED_SMSW 0x80050033
 #define EXPECTED_SLDT 0x0
 #define EXPECTED_STR 0x0
 #define EXPECTED_GDT_BASE 0xfffe0000
