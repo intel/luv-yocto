@@ -270,10 +270,10 @@ int run_umip_ldt_test(void)
 	    "push %%esi\n\t"
 	    "push %%ebp\n\t"
 	    /* set new data segment */
-	    "mov %0, %%ds\n\t"
-	    "mov %1, %%es\n\t"
-	    "mov %2, %%fs\n\t"
-	    "mov %3, %%gs\n\t"
+	    "mov %[test_ds_16], %%ds\n\t"
+	    "mov %[test_es_16], %%es\n\t"
+	    "mov %[test_fs_16], %%fs\n\t"
+	    "mov %[test_gs_16], %%gs\n\t"
 	    /*
 	     * Save current stack settings and pass them to the new code segment
 	     * via registers. We will save these as soon as we setup a new stack
@@ -285,24 +285,24 @@ int run_umip_ldt_test(void)
 	     * Give interim code the new stack segment. We cannot set it here as
 	     * we need it to jump to the test code via retf
 	     */
-	    "mov %4, %%ecx\n\t"
+	    "mov %[interim_ss], %%ecx\n\t"
 	    /*
 	     * Pass the code segment selector to the interim code so that it knows
 	     * where to return
 	     */
 	    "mov %%cs, %%edx\n\t"
-		/*
-		 * Pass the code and stacks segment selectors of the 16-bit code
-		 * as we only know them from this context.
-		 */
-		"mov %5, %%esi\n\t"
-		"mov %6, %%edi\n\t"
 	    /*
-		 *ljmp only takes constants. Instead use retf, which takes
+	     * Pass the code and stacks segment selectors of the 16-bit code
+	     * as we only know them from this context.
+	     */
+	    "mov %[test_ss_16], %%esi\n\t"
+	    "mov %[test_cs_16], %%edi\n\t"
+	    /*
+	     *ljmp only takes constants. Instead use retf, which takes
 	     * instruction pointer and code segment selector from the stack
-		 */
-	    "push %7\n\t"
-	    "push %8\n\t"
+	     */
+	    "push %[interim_cs]\n\t"
+	    "push %[interim_start_addr]\n\t"
 	    "retf \n\t"
 	    "finish_testing:\n\t"
 	    /* restore our stack */
@@ -321,8 +321,11 @@ int run_umip_ldt_test(void)
 	    "pop %%es\n\t"
 	    "pop %%ds\n\t"
 	    :
-	    :"m"(test_ds_16), "m"(test_es_16), "m"(test_fs_16), "m"(test_gs_16),
-	     "m"(interim_ss), "m"(test_ss_16), "m"(test_cs_16), "m"(interim_cs), "m"(interim_start_addr)
+	    : [test_ds_16]"m"(test_ds_16), [test_es_16]"m"(test_es_16),
+	      [test_fs_16]"m"(test_fs_16), [test_gs_16]"m"(test_gs_16),
+	      [interim_ss]"m"(interim_ss), [test_ss_16]"m"(test_ss_16),
+	      [test_cs_16]"m"(test_cs_16), [interim_cs]"m"(interim_cs),
+	      [interim_start_addr]"m"(interim_start_addr)
 	);
 
 	pr_info("===Test results===\n");
