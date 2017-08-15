@@ -1,3 +1,4 @@
+x86_64_minimal: CFLAGS += -fno-omit-frame-pointer
 x86_64_minimal:
 	$(CC) $(CFLAGS) -c umip_utils.c -o umip_utils_64.o
 
@@ -10,7 +11,7 @@ x86_64_minimal:
 	$(CC) $(CFLAGS) -c umip_ldt_64.c
 	$(CC) $(CFLAGS) -o umip_ldt_64 test_umip_ldt_64.o umip_ldt_64.o umip_utils_64.o
 
-x86_64_emul_all: CFLAGS += -DEMULATE_ALL
+x86_64_emul_all: CFLAGS += -DEMULATE_ALL -fno-omit-frame-pointer
 x86_64_emul_all: x86_64_minimal
 	$(CC) $(CFLAGS) -c umip_utils.c -o umip_utils_64.o
 
@@ -25,6 +26,7 @@ x86_64_emul_all: x86_64_minimal
 
 x86_64: x86_64_minimal x86_64_emul_all
 
+i686_minimal: CFLAGS += -fno-omit-frame-pointer
 i686_minimal:
 	$(CC) $(CFLAGS) -c umip_utils.c -o umip_utils_32.o
 
@@ -42,7 +44,7 @@ i686_minimal:
 	$(CC) $(CFLAGS) -c umip_ldt_16.c
 	$(CC) $(CFLAGS) -o umip_ldt_16 test_umip_ldt_16.o umip_ldt_16.o umip_utils_32.o
 
-i686_emul_all: CFLAGS += -DEMULATE_ALL
+i686_emul_all: CFLAGS += -DEMULATE_ALL -fno-omit-frame-pointer
 i686_emul_all: i686_minimal
 	$(CC) $(CFLAGS) -c umip_utils.c -o umip_utils_32.o
 
