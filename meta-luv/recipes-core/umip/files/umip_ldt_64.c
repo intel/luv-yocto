@@ -86,7 +86,11 @@ int main(void)
 	action.sa_flags = SA_SIGINFO;
 	sigemptyset(&action.sa_mask);
 
+#ifdef EMULATE_ALL
 	exit_on_signal = 1;
+#else
+	exit_on_signal = 2;
+#endif
 
 	if (sigaction(SIGSEGV, &action, NULL) < 0) {
 		pr_error(test_errors, "Could not set the signal handler!");
