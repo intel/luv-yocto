@@ -21,14 +21,14 @@ extern sig_atomic_t got_signal, got_sigcode;
 int test_passed, test_failed, test_errors;
 
 #define gen_test_maperr_pf_inst(inst, bad_addr)					\
-static void __test_maperr_pf_##inst(void)					\
+static void __test_maperr_pf_##inst(int exp_signum, int exp_sigcode)		\
 {										\
 	unsigned long *val_bad = (unsigned long *)bad_addr;			\
 										\
 	pr_info("Test page fault because unmapped memory for %s with addr %p\n", #inst, val_bad);\
 	asm volatile (#inst" %0\n" NOP_SLED : "=m"(*val_bad));			\
 										\
-	inspect_signal(SIGSEGV, SEGV_MAPERR);				\
+	inspect_signal(exp_signum, exp_sigcode);				\
 }
 
 gen_test_maperr_pf_inst(smsw, 0x100000)
@@ -39,11 +39,18 @@ gen_test_maperr_pf_inst(sldt, 0x100000)
 
 static void test_maperr_pf(void)
 {
-	__test_maperr_pf_smsw();
-	__test_maperr_pf_sidt();
-	__test_maperr_pf_sgdt();
-	__test_maperr_pf_str();
-	__test_maperr_pf_sldt();
+	int exp_signum, exp_sigcode;
+	int exp_signum_str_sldt, exp_sigcode_str_sldt;
+
+	INIT_EXPECTED_SIGNAL(exp_signum, SIGSEGV, exp_sigcode, SEGV_MAPERR);
+	INIT_EXPECTED_SIGNAL_STR_SLDT(exp_signum_str_sldt, SIGSEGV,
+				      exp_sigcode_str_sldt, SEGV_MAPERR);
+
+	__test_maperr_pf_smsw(exp_signum, exp_sigcode);
+	__test_maperr_pf_sidt(exp_signum, exp_sigcode);
+	__test_maperr_pf_sgdt(exp_signum, exp_sigcode);
+	__test_maperr_pf_str(exp_signum_str_sldt, exp_sigcode_str_sldt);
+	__test_maperr_pf_sldt(exp_signum_str_sldt, exp_sigcode_str_sldt);
 }
 
 #define gen_test_lock_prefix_inst(name, inst)				\
