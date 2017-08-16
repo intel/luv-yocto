@@ -25,7 +25,11 @@ static void __test_maperr_pf_##inst(int exp_signum, int exp_sigcode)		\
 {										\
 	unsigned long *val_bad = (unsigned long *)bad_addr;			\
 										\
-	pr_info("Test page fault because unmapped memory for %s with addr %p\n", #inst, val_bad);\
+	got_signal = 0;								\
+	got_sigcode = 0;							\
+										\
+	pr_info("Test page fault because unmapped memory for %s with addr %p\n",\
+		#inst, val_bad);						\
 	asm volatile (#inst" %0\n" NOP_SLED : "=m"(*val_bad));			\
 										\
 	inspect_signal(exp_signum, exp_sigcode);				\
