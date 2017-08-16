@@ -416,7 +416,7 @@ static int test_sldt(void)
 	unsigned long mask = 0xffff;
 	int exp_signum, exp_sigcode;
 
-	INIT_EXPECTED_SIGNAL(exp_signum, 0, exp_sigcode, 0);
+	INIT_EXPECTED_SIGNAL_STR_SLDT(exp_signum, 0, exp_sigcode, 0);
 
 	pr_info("====Checking SLDT. Expected value: [0x%lx]====\n", expected_ldt);
 	pr_info("==Tests for register operands==\n");
