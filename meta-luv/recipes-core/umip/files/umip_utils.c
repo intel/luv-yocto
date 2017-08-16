@@ -11,6 +11,13 @@
 
 extern int test_passed, test_failed, test_errors;
 sig_atomic_t got_signal, got_sigcode;
+
+/*
+ * Use:
+ * 0 no exit on signal
+ * 1 receiving a signal means the test failed
+ * 2 receiving a signal means the test passed
+ */
 int exit_on_signal;
 
 void print_results(void)
@@ -114,6 +121,16 @@ void signal_handler(int signum, siginfo_t *info, void *ctx_void)
 	/* Save the signal code */
 	got_sigcode = info->si_code;
 
+	if (exit_on_signal) {
+		if (exit_on_signal == 1)
+			pr_fail(test_failed, "Whoa! I got a signal! Something went wrong!\n");
+		else if (exit_on_signal == 2)
+			pr_pass(test_passed, "I got the expected signal.\n");
+		else
+			pr_fail(test_failed, "I don't know what to do on exit.\n");
+		exit(1);
+	}
+
 	/*
 	 * Move to the next instruction; to move, increment the instruction
 	 * pointer by 10 bytes. 10 bytes is the size of the instruction
@@ -122,11 +139,6 @@ void signal_handler(int signum, siginfo_t *info, void *ctx_void)
 	 * a NOP sled after the instruction to ensure we continue execution
 	 * safely in case we overestimate the size of the instruction.
 	 */
-
-	if (exit_on_signal) {
-		pr_fail(test_failed, "Whoa! I got a signal! Something went wrong!\n");
-		exit(1);
-	}
 #ifdef __x86_64__
 	ctx->uc_mcontext.gregs[REG_RIP] += 10;
 #else
