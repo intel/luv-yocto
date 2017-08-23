@@ -431,7 +431,16 @@ static int test_sldt(void)
 	return 0;
 }
 
-int main (void)
+void usage(void)
+{
+	printf("Usage: [l][m][t][a]\n");
+	printf("l      Test sldt register operands\n");
+	printf("m      Test smsw register operands\n");
+	printf("t      Test str register operands\n");
+	printf("a      Test all\n");
+}
+
+int main (int argc, char *argv[])
 {
 	int ret_str, ret_smsw, ret_sldt;
 	struct sigaction action;
@@ -442,6 +451,23 @@ int main (void)
 	action.sa_sigaction = &signal_handler;
 	action.sa_flags = SA_SIGINFO;
 	sigemptyset(&action.sa_mask);
+	char parm;
+
+	if (argc == 1)
+	{
+		usage();
+		exit(1);
+	}
+	else if (argc == 2)
+	{
+		sscanf(argv[1], "%c", &parm);
+		pr_info("1 parameters: parm=%c\n", parm);
+	}
+	else
+	{
+		sscanf(argv[1], "%c", &parm);
+		pr_info("Just get parm=%c\n", parm);
+	}
 
 	if (sigaction(SIGSEGV, &action, NULL) < 0) {
 		pr_error(test_errors, "Could not set the signal handler!");
@@ -449,9 +475,29 @@ int main (void)
 	}
 
 	pr_info("***Starting tests***\n");
-	ret_str = test_str();
-	ret_smsw = test_smsw();
-	ret_sldt = test_sldt();
+
+	switch (parm)
+	{
+		case 'a' : pr_info("Test all.\n");
+			pr_info("***Test str next***\n");
+			ret_str = test_str();
+			pr_info("***Test smsw next***\n");
+			ret_smsw = test_smsw();
+			pr_info("***Test sldt next***\n");
+			ret_sldt = test_sldt();
+			break;
+		case 't' : pr_info("***Test str next***\n");
+			ret_str = test_str();
+			break;
+		case 'm' : pr_info("***Test smsw next***\n");
+			ret_smsw = test_smsw();
+			break;
+		case 'l' : pr_info("***Test sldt next***\n");
+			ret_sldt = test_sldt();
+			break;
+		default: usage();
+			exit(1);
+	}
 
 	if (ret_str || ret_smsw || ret_sldt)
 		pr_info("***Test completed with errors str[%d] smsw[%d] sldt[%d]\n",

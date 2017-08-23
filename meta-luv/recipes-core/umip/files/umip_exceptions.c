@@ -320,7 +320,18 @@ static int test_addresses_outside_segment(void)
 }
 #endif
 
-int main (void)
+void usage(void)
+{
+	printf("Usage: [m][l][r][n][d][a]\n");
+	printf("m      Test test_maperr_pf\n");
+	printf("l      Test test_lock_prefix\n");
+	printf("r      Test test_register_operand\n");
+	printf("n      Test test_null_segment_selectors(TODO)\n");
+	printf("d      Test test_addresses_outside_segment(TODO)\n");
+	printf("a      Test all\n");
+}
+
+int main (int argc, char *argv[])
 {
 	struct sigaction action;
 
@@ -330,6 +341,23 @@ int main (void)
 	action.sa_sigaction = &signal_handler;
 	action.sa_flags = SA_SIGINFO;
 	sigemptyset(&action.sa_mask);
+	char parm;
+
+	if (argc == 1)
+	{
+		usage();
+		exit(1);
+	}
+	else if (argc == 2)
+	{
+		sscanf(argv[1], "%c", &parm);
+		pr_info("1 parameters: parm=%c\n", parm);
+	}
+	else
+	{
+		sscanf(argv[1], "%c", &parm);
+		pr_info("Just get parm=%c\n", parm);
+	}
 
 	if (sigaction(SIGSEGV, &action, NULL) < 0) {
 		pr_error(test_errors, "Could not set the signal handler for SIGSEGV!\n");
@@ -341,11 +369,38 @@ int main (void)
 		exit(1);
 	}
 
-	test_maperr_pf();
-	test_lock_prefix();
-	test_register_operand();
-	test_null_segment_selectors();
-	test_addresses_outside_segment();
+	switch (parm)
+	{
+		case 'a' : pr_info("Test all.\n");
+			pr_info("***Test test_maperr_pf next***\n");
+			test_maperr_pf();
+			pr_info("***Test test_lock_prefix next***\n");
+			test_lock_prefix();
+			pr_info("***Test test_register_operand next***\n");
+			test_register_operand();
+			pr_info("***Test test_null_segment_selectors next***\n");
+			test_null_segment_selectors();
+			pr_info("***Test test_addresses_outside_segment next***\n");
+			test_addresses_outside_segment();
+			break;
+		case 'm' : pr_info("***Test test_maperr_pf next***\n");
+			test_maperr_pf();
+			break;
+		case 'l' : pr_info("***Test test_lock_prefix next***\n");
+			test_lock_prefix();
+			break;
+		case 'r' : pr_info("***Test test_register_operand next***\n");
+			test_register_operand();
+			break;
+		case 'n' : pr_info("***Test test_null_segment_selectors next***");
+			test_null_segment_selectors();
+			break;
+		case 'd' : pr_info("***Test test_addresses_outside_segment next***");
+			test_addresses_outside_segment();
+			break;
+		default: usage();
+			exit(1);
+	}
 
 	memset(&action, 0, sizeof(action));
 	action.sa_handler = SIG_DFL;

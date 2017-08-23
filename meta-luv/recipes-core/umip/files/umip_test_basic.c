@@ -256,7 +256,18 @@ test_m16:
 
 }
 
-int main(void)
+void usage(void)
+{
+	printf("Usage: [g][i][l][m][t][a]\n");
+	printf("g      Test sgdt\n");
+	printf("i      Test sidt\n");
+	printf("l      Test sldt\n");
+	printf("m      Test smsw\n");
+	printf("t      Test str\n");
+	printf("a      Test all\n");
+}
+
+int main(int argc, char *argv[])
 {
 	struct sigaction action;
 
@@ -266,6 +277,23 @@ int main(void)
 	action.sa_sigaction = &signal_handler;
 	action.sa_flags = SA_SIGINFO;
 	sigemptyset(&action.sa_mask);
+	char parm;
+
+	if (argc == 1)
+	{
+		usage();
+		exit(1);
+	}
+	else if (argc == 2)
+	{
+		sscanf(argv[1], "%c", &parm);
+		pr_info("1 parameters: parm=%c\n", parm);
+	}
+	else
+	{
+		sscanf(argv[1], "%c", &parm);
+		pr_info("Just get parm=%c\n", parm);
+	}
 
 	if (sigaction(SIGSEGV, &action, NULL) < 0) {
 		pr_error(test_errors, "Could not set the signal handler!");
@@ -273,11 +301,28 @@ int main(void)
 		exit(1);
 	}
 
-	call_sgdt();
-	call_sidt();
-	call_sldt();
-	call_smsw();
-	call_str();
+	switch (parm)
+	{
+		case 'a' : pr_info("Test all.\n");
+			call_sgdt();
+			call_sidt();
+			call_sldt();
+			call_smsw();
+			call_str();
+			break;
+		case 'g' : call_sgdt();
+			break;
+		case 'i' : call_sidt();
+			break;
+		case 'l' : call_sldt();
+			break;
+		case 'm' : call_smsw();
+			break;
+		case 't' : call_str();
+			break;
+		default: usage();
+			exit(1);
+	}
 
 	memset(&action, 0, sizeof(action));
 	action.sa_handler = SIG_DFL;
