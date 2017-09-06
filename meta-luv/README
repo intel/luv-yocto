@@ -57,7 +57,7 @@ M: Naresh Bhat <naresh.bhat@linaro.org>
 Table of Contents
 =================
 
-   I. Adding the meta-luv layer to your build
+   I. Adding meta-luv and meta-oe layers to your build
   II. Building LUV
  III. Executing ACPI NFIT destructive tests
   IV. Use of Netconsole in LUV
@@ -66,11 +66,16 @@ Table of Contents
  VII. Submitting results to a remote location
 
 
-I. Adding the meta-luv layer to your build
+I. Adding meta-luv and meta-oe layers to your build
 =================================================
 
-In order to use this layer, you need to make the build system aware of
-it.
+LUV uses additional layers to build correctly. The meta-luv layer
+provides the LUV-specific software component needed to run tests
+and compile results. The meta-oe layer provides a collection of
+auxiliary packages needed when building a live image.
+
+In order to use these layers, you need to make the build system aware
+of them.
 
 Assuming the meta-luv layer exists at the top-level of your
 yocto build tree, you can add it to the build system by adding the
@@ -82,6 +87,7 @@ other layers needed. e.g.:
     /path/to/yocto/meta-yocto \
     /path/to/yocto/meta-yocto-bsp \
     /path/to/yocto/meta-luv \
+    /path/to/yocto/meta-oe \
     "
 
 II. Building LUV
