@@ -43,11 +43,13 @@ Descriptions of section entries:
 
 General Project Administration
 ------------------------------
-M: Ricardo Neri <ricardo.neri@intel.com>
+M: Megha Dey <megha.dey@intel.com>
+R: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
 T: https://github.com/01org/luv-yocto.git
 
 x86
-M: Ricardo Neri <ricardo.neri@intel.com>
+M: Megha Dey <megha.dey@intel.com>
+R: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
 
 AArch64
 M: Naresh Bhat <naresh.bhat@linaro.org>
