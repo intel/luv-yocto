@@ -3,8 +3,8 @@ SUMMARY = "Signing utility for UEFI secure boot"
 LICENSE = "GPLv3"
 LIC_FILES_CHKSUM = "file://LICENSE.GPLv3;md5=9eef91148a9b14ec7f9df333daebc746"
 
-SRC_URI = "git://kernel.ubuntu.com/jk/sbsigntool \
-    file://fix-mixed-implicit-and-normal-rules.patch;apply=0 \
+SRC_URI = "gitsm://kernel.ubuntu.com/jk/sbsigntool;protocol=git \
+    file://fix-mixed-implicit-and-normal-rules.patch;apply=1 \
     file://disable-man-page-creation.patch \
     file://0001-configure-fix-cross-compilation.patch \
 "
@@ -20,13 +20,6 @@ DEPENDS = "binutils openssl gnu-efi util-linux"
 S = "${WORKDIR}/git"
 
 do_configure() {
-    if [ ! -e lib/ccan.git/Makefile ]; then
-        git submodule init
-        git submodule update
-
-        patch -p1 -i ${WORKDIR}/fix-mixed-implicit-and-normal-rules.patch
-    fi
-
     OLD_CC="${CC}"
 
     if [ ! -e lib/ccan ]; then
