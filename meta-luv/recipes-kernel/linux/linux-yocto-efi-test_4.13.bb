@@ -76,6 +76,7 @@ SRC_URI += "file://0001-PCI-Vulcan-AHCI-PCI-bar-fix-for-Broadcom-Vulcan-earl.pat
             file://0005-x86-efi-Add-function-to-fixup-page-faults-in-illegal.patch \
             file://0006-x86-mm-Allocate-pages-without-sleeping.patch \
             file://0007-x86-efi-Fixup-faults-from-UEFI-firmware.patch \
+            file://0008-x86-efi-Introduce-EFI_WARN_ON_ILLEGAL_ACCESSES.patch \
            "
 
 COMMON_CFG_x86 = " file://qemux86/modules.cfg \
