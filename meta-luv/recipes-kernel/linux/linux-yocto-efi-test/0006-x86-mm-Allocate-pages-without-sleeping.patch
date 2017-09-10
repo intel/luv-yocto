@@ -1,0 +1,103 @@
+From ddb0428650039264f4e83aaff29fb68ad039fef0 Mon Sep 17 00:00:00 2001
+From: Sai Praneeth <sai.praneeth.prakhya@intel.com>
+Date: Sat, 9 Sep 2017 16:35:41 -0700
+Subject: [PATCH 6/8] x86/mm: Allocate pages without sleeping
+
+When CONFIG_EFI_WARN_ON_ILLEGAL_ACCESSES is enabled, and if some
+firmware does illegal accesses, kernel will be in interrupt context when
+it's trying to fixup this page fault. Hence, allocate pages without
+sleeping in interrupt context.
+
+This change shouldn't affect any other page allocations because this
+allocation is used only by efi functions and not any other.
+
+Signed-off-by: Sai Praneeth Prakhya <sai.praneeth.prakhya@intel.com>
+Cc: Lee, Chun-Yi <jlee@suse.com>
+Cc: Borislav Petkov <bp@alien8.de>
+Cc: Fenghua Yu <fenghua.yu@intel.com>
+Cc: Ravi Shankar <ravi.v.shankar@intel.com>
+Cc: Matt Fleming <matt@codeblueprint.co.uk>
+Cc: Ard Biesheuvel <ard.biesheuvel@linaro.org>
+CC: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ arch/x86/include/asm/pgalloc.h |  5 +++++
+ arch/x86/mm/pageattr.c         | 18 ++++++++++++++++--
+ arch/x86/platform/efi/quirks.c |  2 ++
+ 3 files changed, 23 insertions(+), 2 deletions(-)
+
+diff --git a/arch/x86/include/asm/pgalloc.h b/arch/x86/include/asm/pgalloc.h
+index b2d0cd8288aa..73d4668d04f8 100644
+--- a/arch/x86/include/asm/pgalloc.h
++++ b/arch/x86/include/asm/pgalloc.h
+@@ -30,6 +30,11 @@ static inline void paravirt_release_p4d(unsigned long pfn) {}
+ extern gfp_t __userpte_alloc_gfp;
+ 
+ /*
++ * Are we allocating pages to firmware while fixing illegal access
++ */
++extern bool fixing_efi_illegal_access;
++
++/*
+  * Allocate and free page tables.
+  */
+ extern pgd_t *pgd_alloc(struct mm_struct *);
+diff --git a/arch/x86/mm/pageattr.c b/arch/x86/mm/pageattr.c
+index 757b0bcdf712..5ddbc0de9cab 100644
+--- a/arch/x86/mm/pageattr.c
++++ b/arch/x86/mm/pageattr.c
+@@ -42,6 +42,8 @@ struct cpa_data {
+ 	struct page	**pages;
+ };
+ 
++bool fixing_efi_illegal_access = false;
++
+ /*
+  * Serialize cpa() (for !DEBUG_PAGEALLOC which uses large identity mappings)
+  * using cpa_lock. So that we don't allow any other cpu, with stale large tlb
+@@ -904,7 +906,13 @@ static void unmap_pud_range(p4d_t *p4d, unsigned long start, unsigned long end)
+ 
+ static int alloc_pte_page(pmd_t *pmd)
+ {
+-	pte_t *pte = (pte_t *)get_zeroed_page(GFP_KERNEL | __GFP_NOTRACK);
++	pte_t *pte;
++
++	if (fixing_efi_illegal_access)
++		pte = (pte_t *)get_zeroed_page(GFP_ATOMIC | __GFP_NOTRACK);
++	else
++		pte = (pte_t *)get_zeroed_page(GFP_KERNEL | __GFP_NOTRACK);
++
+ 	if (!pte)
+ 		return -1;
+ 
+@@ -914,7 +922,13 @@ static int alloc_pte_page(pmd_t *pmd)
+ 
+ static int alloc_pmd_page(pud_t *pud)
+ {
+-	pmd_t *pmd = (pmd_t *)get_zeroed_page(GFP_KERNEL | __GFP_NOTRACK);
++	pmd_t *pmd;
++
++	if (fixing_efi_illegal_access)
++		pmd = (pmd_t *)get_zeroed_page(GFP_ATOMIC | __GFP_NOTRACK);
++	else
++		pmd = (pmd_t *)get_zeroed_page(GFP_KERNEL | __GFP_NOTRACK);
++
+ 	if (!pmd)
+ 		return -1;
+ 
+diff --git a/arch/x86/platform/efi/quirks.c b/arch/x86/platform/efi/quirks.c
+index a0149893c403..80839151801e 100644
+--- a/arch/x86/platform/efi/quirks.c
++++ b/arch/x86/platform/efi/quirks.c
+@@ -798,7 +798,9 @@ int efi_illegal_accesses_fixup(unsigned long phys_addr)
+ 		 */
+ 		pr_warn(FW_BUG "Fixing illegal access to EFI region at PA: "
+ 			"0x%lx\n", phys_addr);
++		fixing_efi_illegal_access = true;
+ 		efi_map_region(&md);
++		fixing_efi_illegal_access = false;
+ 		fixed_page_fault = true;
+ 	}
+ 
+-- 
+2.1.4
+
