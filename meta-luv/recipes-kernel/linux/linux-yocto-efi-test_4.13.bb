@@ -71,6 +71,7 @@ SRC_URI += "file://0001-PCI-Vulcan-AHCI-PCI-bar-fix-for-Broadcom-Vulcan-earl.pat
             file://0002-ahci-thunderx2-Fix-for-errata-that-affects-stop-engi.patch \
             file://0001-x86-efi-remove-__init-attribute-from-memory-mapping-.patch \
             file://0002-x86-efi-Save-EFI_MEMORY_MAP-passed-by-firmware-perma.patch \
+            file://0003-x86-efi-Copy-support-functions-to-install-uninstall-.patch \
            "
 
 COMMON_CFG_x86 = " file://qemux86/modules.cfg \
