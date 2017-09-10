@@ -65,17 +65,7 @@ SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git;prot
 SRC_URI += "file://0001-serial-SPCR-check-bit-width-for-the-16550-UART.patch  \
            "
 
-# Detect illegal accesses to EFI regions (like EFI_CONVENTIONAL_MEMORY,
-# EFI_LOADER_CODE/DATA, EFI_BOOT_SERVICES_CODE/DATA) by firmware.
-SRC_URI += "file://0001-x86-mm-Allocate-pages-without-sleeping.patch \
-            file://0002-x86-efi-remove-__init-attribute-from-memory-mapping-.patch \
-            file://0003-x86-efi-Save-EFI_MEMORY_MAP-passed-by-firmware-perma.patch \
-            file://0004-x86-efi-Copy-support-functions-to-install-uninstall-.patch \
-            file://0005-efi-Allow-efi_mem_desc_lookup-find-illegally-accesse.patch \
-            file://0006-x86-efi-Add-function-to-fixup-page-faults-in-illegal.patch \
-            file://0007-x86-efi-Fixup-faults-from-UEFI-firmware.patch \
-            file://0008-x86-efi-Introduce-EFI_WARN_ON_ILLEGAL_ACCESSES.patch \
-            file://0001-PCI-Vulcan-AHCI-PCI-bar-fix-for-Broadcom-Vulcan-earl.patch \
+SRC_URI += "file://0001-PCI-Vulcan-AHCI-PCI-bar-fix-for-Broadcom-Vulcan-earl.patch \
             file://0002-ahci-thunderx2-Fix-for-errata-that-affects-stop-engi.patch \
            "
 
@@ -96,7 +86,6 @@ SRC_URI_append_x86 = "${COMMON_CFG_x86} \
                      "
 SRC_URI_append_x86-64 = "${COMMON_CFG_x86} \
                          file://qemux86/ndctl.cfg \
-                         file://qemux86-64/efi_x86-64.cfg \
                          file://qemux86-64/linux_quirks.cfg \
                         "
 SRC_URI_append_aarch64 = " file://qemuarm64/network.cfg \
