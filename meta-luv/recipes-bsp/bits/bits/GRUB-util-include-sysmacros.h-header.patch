@@ -1,0 +1,51 @@
+From 1b2cfed64a312700da5f28a3f1de6f77202d112d Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Tue, 12 Sep 2017 21:00:54 -0700
+Subject: [PATCH] grub : util : include sysmacros.h header
+
+When building bits, we get the following errors:
+
+/home/megha/luv-yocto/build/tmp/work/core2-64-oe-linux/bits/2079+gitAUTOINC+19da7046a7-r0/git/build/grub/util/getroot.c:1624:13:
+error: In the GNU C Library, "major" is defined by <sys/sysmacros.h>.
+/home/megha/luv-yocto/build/tmp/work/core2-64-oe-linux/bits/2079+gitAUTOINC+19da7046a7-r0/git/build/grub/util/raid.c:85:13:
+error: In the GNU C Library, "makedev" is defined by <sys/sysmacros.h>.
+For historical compatibility, it is currently defined by <sys/types.h> as well, but we plan to
+remove this soon. To use "major", include <sys/sysmacros.h>
+directly. If you did not intend to use a system-defined macro
+"major", you should undefine it after including <sys/types.h>. [-Werror]
+
+This patch includes the sysmacros.h header file in the required files
+
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
+---
+ deps/grub/util/getroot.c | 1 +
+ deps/grub/util/raid.c    | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/deps/grub/util/getroot.c b/deps/grub/util/getroot.c
+index e103fb6..fc358df 100644
+--- a/deps/grub/util/getroot.c
++++ b/deps/grub/util/getroot.c
+@@ -22,6 +22,7 @@
+ 
+ #include <sys/stat.h>
+ #include <sys/types.h>
++#include <sys/sysmacros.h>
+ #include <assert.h>
+ #include <fcntl.h>
+ #include <unistd.h>
+diff --git a/deps/grub/util/raid.c b/deps/grub/util/raid.c
+index f73ae76..880ae2c 100644
+--- a/deps/grub/util/raid.c
++++ b/deps/grub/util/raid.c
+@@ -28,6 +28,7 @@
+ #include <sys/ioctl.h>
+ #include <errno.h>
+ #include <sys/types.h>
++#include <sys/sysmacros.h>
+ 
+ #include <linux/types.h>
+ #include <linux/major.h>
+-- 
+1.9.1
+

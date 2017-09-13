@@ -54,6 +54,7 @@ SRC_URI = "gitsm://github.com/biosbits/bits.git;protocol=http  \
            file://luv-test-bits \
            file://luv-parser-bits \
            file://0001-only-output-to-log.patch;apply=no \
+           file://GRUB-util-include-sysmacros.h-header.patch \
           "
 
 S = "${WORKDIR}/git"
