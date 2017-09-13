@@ -45,6 +45,14 @@ LIC_FILES_CHKSUM = "\
     file://LICENSE.atmel;md5=aa74ac0c60595dee4d4e239107ea77a3 \
 "
 
+# Later in install, the netronome folder is removed. Then, bitbake
+# complains that there is no such directory. For now, create the
+# netronome directory.
+do_install_prepend () {
+           install -d ${D}${nonarch_base_libdir}/firmware/
+           install -d ${D}${nonarch_base_libdir}/firmware/netronome/
+}
+
 # For now we are only interested in firmware blobs for Ethernet. Thus,
 # remove non-Ethernet blobs.
 # Also, some drivers uses specific version of firmware binaries. Delete
