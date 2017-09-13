@@ -57,13 +57,14 @@ M: Naresh Bhat <naresh.bhat@linaro.org>
 Table of Contents
 =================
 
-   I. Adding meta-luv and meta-oe layers to your build
-  II. Building LUV
- III. Executing ACPI NFIT destructive tests
-  IV. Use of Netconsole in LUV
-   V. Obtaining debug information
-  VI. Other LUV boot parameters
- VII. Submitting results to a remote location
+    I. Adding meta-luv and meta-oe layers to your build
+   II. Using GIT with a proxy
+  III. Building LUV
+   IV. Executing ACPI NFIT destructive tests
+    V. Use of Netconsole in LUV
+   VI. Obtaining debug information
+  VII. Other LUV boot parameters
+ VIII. Submitting results to a remote location
 
 
 I. Adding meta-luv and meta-oe layers to your build
@@ -90,7 +91,19 @@ other layers needed. e.g.:
     /path/to/yocto/meta-oe \
     "
 
-II. Building LUV
+II. Using GIT with a proxy
+==========================
+
+To use git with a proxy, you must use an external git proxy command.
+To do so:
+1. Copy the site.conf.sample file from meta-poky/conf/ to build/conf/
+2. Rename this file as site.conf
+3. Uncomment the following in site.conf
+            GIT_PROXY_COMMAND ?= "oe-git-proxy"
+4. Replace "oe-git-proxy" with the git proxy command script on your
+   host system.
+
+III. Building LUV
 =================================================
 
 LUV can boot from either a local network or a disk. The process to build
@@ -116,7 +129,7 @@ Afterwards, you can simply do:
 
   bitbake luv-netboot-image
 
-III. Executing ACPI NFIT destructive tests
+IV. Executing ACPI NFIT destructive tests
 =================================================
 
 The NDCTL test suite includes a batch of destructive tests. These are
@@ -127,7 +140,7 @@ command that loads the Linux kernel. The file to implement this change
 is EFI/BOOT/grub.cfg located in the bootable partition of the LUV
 media.
 
-IV. Use of Netconsole in LUV
+V. Use of Netconsole in LUV
 =================================================
 
 Netconsole is a Linux feature and a kernel module that sends all
@@ -212,7 +225,7 @@ inet addr is the IP address we are looking for.
 Choose port numbers which are not reserved for any kernel activities
 like 4000's and above. port 64001 is chosen in luv-netconsole.
 
-V. Obtaining debug information
+VI. Obtaining debug information
 =================================================
 
 Sometimes is the execution of tests may end unexpectedly. In this kind
@@ -227,7 +240,7 @@ When luv.debug is enabled, the LUV test manager will leave a file
 named luv-debug.log inside the time-stamped directory luv-results-
 yyyy-mm-dd--hh-mm--ss with the debug data it collected.
 
-VI. Other LUV boot parameters
+VII. Other LUV boot parameters
 =================================================
 
 These parameters can be also added to the linux kernel command line
@@ -254,7 +267,7 @@ to alter the default behaviour of LUV.
     future. Unlike the other LUV boot parameters, this one is not intended
     to be used directly.
 
-VII. Submitting results to a remote location
+VIII. Submitting results to a remote location
 ==============================================
 
 When LUV boots via network (netboot), there is no way of storing the results
