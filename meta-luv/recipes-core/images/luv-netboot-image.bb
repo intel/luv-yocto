@@ -1,7 +1,8 @@
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=4d92cd373abda3937c2bc47fbc49d690"
 
-DEPENDS_${PN} = "bits"
+DEPENDS_append_x86 = " bits"
+DEPENDS_append_x86-64 = " bits"
 
 INITRD_IMAGE_LIVE = "core-image-efi-initramfs"
 IMGDEPLOYDIR = "${DEPLOY_DIR_IMAGE}"

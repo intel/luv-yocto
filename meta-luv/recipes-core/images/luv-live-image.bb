@@ -1,7 +1,9 @@
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=4d92cd373abda3937c2bc47fbc49d690"
 
-DEPENDS_${PN} = "grub-efi bits python-native"
+DEPENDS_${PN} = "python-native"
+DEPENDS_append_x86 = " grub-efi bits"
+DEPENDS_append_x86-64 = " grub-efi bits"
 
 HDDDIR = "${S}/hddimg"
 HDDIMG_ID = "423cc2c8"
