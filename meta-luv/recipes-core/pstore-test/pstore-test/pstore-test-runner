@@ -1,0 +1,15 @@
+#!/bin/sh
+#
+# Copyright 2017 Intel Corporation; author Megha Dey
+#
+# Script to run pstore tests
+echo "Kernel pstore tests"
+
+cd /usr/share/pstore-test/
+if grep -q luv.pstore-test /proc/cmdline; then
+       ./pstore_tests
+       ./pstore_crash_test
+else
+       ./pstore_tests
+       ./pstore_post_reboot_tests
+fi

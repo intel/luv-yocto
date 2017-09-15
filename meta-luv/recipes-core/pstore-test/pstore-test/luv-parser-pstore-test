@@ -1,0 +1,41 @@
+#!/bin/sh
+#
+# Parse the output of pstore-tests and write a luv-test-manager
+# compatible log to stdout.
+awk '/ing/ {
+       prev_test = test;
+        test=substr($0,1,index($0,"...")-2);
+        if (test == "")
+            test=substr($0,1,index($0,":")-3);
+        gsub(" ","_",test);
+       if (!parsing_tests) {
+               parsing_tests = 1;
+               prev_test = test;
+       } else {
+               printf ("1.0 pstore-tests %s END\n", prev_test);
+       }
+
+       printf ("1.0 pstore-tests %s START\n", test);
+       fflush("");
+    }
+
+    /ok/ {
+       printf ("1.0 pstore-tests %s RESULT 1 0 0 0\n", test);
+       fflush("");
+    }
+
+    /FAIL/ {
+       printf ("1.0 pstore-tests %s RESULT 0 1 0 0\n", test);
+       fflush("");
+    }
+
+    {
+       printf ("1.0 pstore-tests %s INFO %s\n", test, $0);
+       fflush("");
+    }
+
+    END {
+       printf ("1.0 pstore-tests %s END\n", test);
+       fflush("");
+    }
+'
