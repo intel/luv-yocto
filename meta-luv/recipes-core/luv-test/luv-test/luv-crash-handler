@@ -19,6 +19,9 @@ plymouth_hide() {
     /bin/plymouth hide-message --text="$1"
 }
 
+CURRENT_CMDLINE=`cat /proc/cmdline`
+KEXEC_APPEND="${CURRENT_CMDLINE} noluv systemd.unit=graphical.target irqpoll maxcpus=1 reset_devices luv.crash"
+
 # The command-line parameter luv.crash tells us if we are in a regular boot.
 # and we only have to prepare everything in case there is a kernel crash in
 # the future.
@@ -37,8 +40,7 @@ if [ $? -eq 1 ]; then
     if [ $? -eq 0 ]; then
         mount ${LUV_DISK_DEVICE} ${LUV_BOOT_PARTITION}
         if [ $? -eq 0 ]; then
-            kexec -p --initrd=${LUV_BOOT_PARTITION}initrd --reuse-cmdline \
-                  --append="noluv systemd.unit=graphical.target irqpoll maxcpus=1 reset_devices luv.crash" \
+            kexec -p --initrd=${LUV_BOOT_PARTITION}initrd --append="${KEXEC_APPEND}" \
                   ${LUV_BOOT_PARTITION}vmlinuz
             umount ${LUV_BOOT_PARTITION}
         fi
