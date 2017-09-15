@@ -287,7 +287,7 @@ gen_test_addresses_outside_segment(sldt, gs)
 gen_test_addresses_outside_segment(sgdt, gs)
 gen_test_addresses_outside_segment(sidt, gs)
 
-static int test_addresses_outside_segment(void)
+static void test_addresses_outside_segment(void)
 {
 	int ret;
 
