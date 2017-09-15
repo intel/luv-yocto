@@ -142,7 +142,7 @@ mkdir -p ${LUV_SAVE_RESULTS_DIR}parsed/
 
 if [ ! -z ${LUVDEBUG} ]; then
     # once we know where our storage is, redirect output to a file there
-    exec &> >(tee ${LUV_SAVE_RESULTS_DIR}luv-debug.log)
+    exec &> >(tee -a ${LUV_SAVE_RESULTS_DIR}luv-debug.log)
 fi
 
 
@@ -176,7 +176,7 @@ export LUV_HTML_REPORT=${LUV_SAVE_RESULTS_DIR}/luv.html
 html_start ${LUV_HTML_REPORT}
 
 # Begin the results files by stating the version of luv
-cat <<EOF | html_inline ${LUV_HTML_REPORT} | tee /dev/kmsg \
+cat <<EOF | html_inline ${LUV_HTML_REPORT} | tee -a /dev/kmsg \
     ${LUV_SAVE_RESULTS_DIR}/luv.results /tmp/luv.results
 $luv_version
 
@@ -236,8 +236,8 @@ for r in $runner_list; do
     }
 
     # Make /dev/console silent to avoid the results being printed twice
-    $runner |& tee ${LUV_LOG_DIR}/$r ${LUV_SAVE_RAW_DIR}/$r | $parser | \
-              tee ${LUV_SAVE_PARSED_DIR}/$r | ${LUV_PARSER_DIR}/test-manager | \
+    $runner |& tee -a ${LUV_LOG_DIR}/$r ${LUV_SAVE_RAW_DIR}/$r | $parser | \
+              tee -a ${LUV_SAVE_PARSED_DIR}/$r | ${LUV_PARSER_DIR}/test-manager | \
               parse_line | \
               tee -a /tmp/luv.results ${LUV_SAVE_RESULTS_DIR}/luv.results
     sync
