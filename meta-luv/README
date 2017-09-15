@@ -266,6 +266,8 @@ to alter the default behaviour of LUV.
     we have to prepare everything in case there is a kernel crash in the
     future. Unlike the other LUV boot parameters, this one is not intended
     to be used directly.
+  luv.pstore-test
+    This kernel parameter will enable the pstore-test suite
 
 VIII. Submitting results to a remote location
 ==============================================
