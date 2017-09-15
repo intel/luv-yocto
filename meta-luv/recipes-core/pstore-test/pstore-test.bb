@@ -1,0 +1,71 @@
+DESCRIPTION = "pstore tests"
+HOMEPAGE = "https://www.kernel.org/pub/linux/kernel"
+SECTION = "base"
+LICENSE = "GPLv2"
+LIC_FILES_CHKSUM = "file://${STAGING_KERNEL_DIR}/COPYING;md5=d7810fab7487fb0aad327b76f1be7cd7"
+KBRANCH="stable"
+
+# Picking up matts branch
+SRC_URI = "file://pstore-test-runner \
+           file://luv-parser-pstore-test"
+
+#we need some of the stuff below
+DEPENDS_class-native += "qemu-native"
+SRCREV="${AUTOREV}"
+inherit autotools luv-test
+
+do_fetch[noexec] = "1"
+do_unpack[depends] += "virtual/kernel:do_shared_workdir"
+do_patch[depends] += "virtual/kernel:do_shared_workdir"
+do_package[depends] += "virtual/kernel:do_populate_sysroot"
+
+do_unpack_append() {
+    bb.build.exec_func('unpack_test_code', d)
+}
+
+unpack_test_code() {
+    mkdir -p ${S}/src/pstore
+    cp -pRv ${STAGING_KERNEL_DIR}/tools/testing/selftests/pstore/* ${S}/src/pstore
+    cp -pRv ${STAGING_KERNEL_DIR}/tools/testing/selftests/lib.mk ${S}/src
+}
+
+EXTRA_OEMAKE = " \
+    CC='${CC}' \
+    -C ${S}/src/pstore"
+
+do_configure_prepend() {
+    # We need to ensure the --sysroot option in CC is preserved
+    if [ -e "${S}/src/pstore/Makefile" ]; then
+        sed -i 's,CC = $(CROSS_COMPILE)gcc,#CC,' ${S}/src/pstore/Makefile
+    fi
+
+    # Fix for rebuilding
+    oe_runmake clean
+}
+
+# Installing is nothing but putting things in place
+do_install() {
+    # Creating a directory
+    install -d ${D}${datadir}/pstore-test
+
+    # Copying some of the files, these are part of the linux code
+    install -m 0755 ${S}/src/pstore/common_tests ${D}${datadir}/pstore-test
+    install -m 0755 ${S}/src/pstore/pstore_crash_test ${D}${datadir}/pstore-test
+    install -m 0755 ${S}/src/pstore/pstore_post_reboot_tests ${D}${datadir}/pstore-test
+    install -m 0755 ${S}/src/pstore/pstore_tests ${D}${datadir}/pstore-test
+
+    # This is the script which will run all the tests
+    install -d ${D}${bindir}
+    install -m 0755 ${WORKDIR}/pstore-test-runner ${D}${bindir}
+}
+
+FILES_${PN} += "/usr/share/pstore-test/common_tests \
+               /usr/share/pstore-test/pstore_crash_test \
+               /usr/share/pstore-test/pstore_post_reboot \
+               /usr/share/pstore-test/pstore_tests \
+               ${bindir}/pstore-test-runner \
+               "
+
+LUV_TEST_LOG_PARSER="luv-parser-pstore-test"
+LUV_TEST="pstore-test-runner"
+LUV_TEST_ARGS=""
