@@ -242,7 +242,9 @@ for r in $runner_list; do
               tee -a /tmp/luv.results ${LUV_SAVE_RESULTS_DIR}/luv.results
     sync
     plymouth_hide "Running ${arr[-1]} ..."
-done | awk '/\[\+/  { units += 1 }
+done
+
+cat ${LUV_SAVE_RESULTS_DIR}/luv.results | awk '/\[\+/  { units += 1 }
     /\[\-/  { suites += 1 }
     /pass/ { passes += 1 }
     /fail/ { fails += $3 }
