@@ -52,7 +52,7 @@ int inspect_signal(int exp_signum, int exp_sigcode)
  * processing is not relevant for the caller can proceed with further test case
  * validation.
  */
-int inspect_signal(exp_signum, exp_sigcode)
+int inspect_signal(int exp_signum, int exp_sigcode)
 {
 	/* If we expect signal, make sure it is the one we expect. */
 	if (exp_signum) {
