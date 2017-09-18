@@ -29,9 +29,21 @@ unpack_test_code() {
     cp -pRv ${STAGING_KERNEL_DIR}/tools/testing/selftests/lib.mk ${S}/src
 }
 
+# If the LUV_STORAGE variable in luv_test_manager.bb ever changes,
+# the reboot_dir variable should be changed accordingly
+reboot_dir = "/mnt/luv-storage"
+
 EXTRA_OEMAKE = " \
     CC='${CC}' \
     -C ${S}/src/pstore"
+
+patch() {
+       sed -i 's,REBOOT_DIR,${reboot_dir},g' ${S}/src/pstore/common_tests
+}
+
+do_patch_append() {
+    bb.build.exec_func('patch', d)
+}
 
 do_configure_prepend() {
     # We need to ensure the --sysroot option in CC is preserved
