@@ -1,0 +1,46 @@
+From 1ef2fa8c8b5a26fa2181a873e74da4c99375a2d0 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Thu, 21 Sep 2017 16:21:16 -0700
+Subject: [PATCH] selftests: change reboot flag location
+
+The pstore self-tests create the reboot flag(which tells us that we are
+in the reboot kernel) in a directory which does not survive the reboot in
+LUV. Since we mount the results partition in /mnt/luv-storage directory,
+creating the reboot flag here will ensure it is present event after the
+reboot.
+
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
+---
+ tools/testing/selftests/pstore/common_tests      | 2 +-
+ tools/testing/selftests/pstore/pstore_crash_test | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/tools/testing/selftests/pstore/common_tests b/tools/testing/selftests/pstore/common_tests
+index 3ea64d7..9f40af7 100755
+--- a/tools/testing/selftests/pstore/common_tests
++++ b/tools/testing/selftests/pstore/common_tests
+@@ -56,7 +56,7 @@ operate_files() { # tested value, files, operation
+ # Parameters
+ TEST_STRING_PATTERN="Testing pstore: uuid="
+ UUID=`cat /proc/sys/kernel/random/uuid`
+-TOP_DIR=`absdir $0`
++TOP_DIR=REBOOT_DIR
+ LOG_DIR=$TOP_DIR/logs/`date +%Y%m%d-%H%M%S`_${UUID}/
+ REBOOT_FLAG=$TOP_DIR/reboot_flag
+ 
+diff --git a/tools/testing/selftests/pstore/pstore_crash_test b/tools/testing/selftests/pstore/pstore_crash_test
+index 1a4afe5..370afa9 100755
+--- a/tools/testing/selftests/pstore/pstore_crash_test
++++ b/tools/testing/selftests/pstore/pstore_crash_test
+@@ -18,7 +18,7 @@ echo 1 > /proc/sys/kernel/sysrq
+ echo 3 > /proc/sys/kernel/panic
+ 
+ # save uuid file by different name because next test execution will replace it.
+-mv $TOP_DIR/uuid $TOP_DIR/prev_uuid
++echo $UUID > $TOP_DIR/prev_uuid
+ 
+ # create a file as reboot flag
+ touch $REBOOT_FLAG
+-- 
+1.9.1
+
