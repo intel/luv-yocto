@@ -105,6 +105,7 @@ SRC_URI_append_aarch64 = " file://qemuarm64/network.cfg \
 
 # pstore, highmem and efi configs are common to all the supported architectures
 SRC_URI_append = "file://pstore.cfg \
+                  file://pstore-test.cfg \
                   file://efi.cfg \
                  "
 
