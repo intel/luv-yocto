@@ -126,12 +126,24 @@ else
     mkdir -p ${LUV_STORAGE}
 fi
 
-tstamp=$(date +"%Y-%m-%d--%H-%M-%S")
-n=$(ls ${LUV_STORAGE}/ | grep $tstamp | wc -l)
-if [ $n -ge 1 ]; then
-    LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}/luv-results-$tstamp-$n/
+# Create a file the first time LUV boots. Create the LUV result folder
+# with the current timestamp as suffix. Store this result folder name
+# into a variable; should there be a reboot because of any test-suite,
+# we want to have just one results folder and append the post reboot
+# results to it.
+if [ ! -e ${LUV_STORAGE}/first_boot  ]; then
+    touch ${LUV_STORAGE}/first_boot
+    tstamp=$(date +"%Y-%m-%d--%H-%M-%S")
+    n=$(ls ${LUV_STORAGE}/ | grep $tstamp | wc -l)
+    if [ $n -ge 1 ]; then
+        LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}/luv-results-$tstamp-$n/
+    else
+        LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}/luv-results-$tstamp/
+    fi
+    echo $LUV_SAVE_RESULTS_DIR > ${LUV_STORAGE}/store_dir
 else
-    LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}/luv-results-$tstamp/
+    DIR=`cat ${LUV_STORAGE}/store_dir`
+    LUV_SAVE_RESULTS_DIR=${DIR}/
 fi
 
 mkdir -p ${LUV_SAVE_RESULTS_DIR}raw/
