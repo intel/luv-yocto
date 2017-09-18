@@ -19,8 +19,12 @@ plymouth_hide() {
     /bin/plymouth hide-message --text="$1"
 }
 
-CURRENT_CMDLINE=`cat /proc/cmdline`
-KEXEC_APPEND="${CURRENT_CMDLINE} noluv systemd.unit=graphical.target irqpoll maxcpus=1 reset_devices luv.crash"
+CURRENT_CMDLINE=`cat /proc/cmdline | sed -e 's/\<luv.pstore-test\>//g'`
+if grep -q luv.pstore-test /proc/cmdline; then
+    KEXEC_APPEND="${CURRENT_CMDLINE}"
+else
+    KEXEC_APPEND="${CURRENT_CMDLINE} noluv systemd.unit=graphical.target irqpoll maxcpus=1 reset_devices luv.crash"
+fi
 
 # The command-line parameter luv.crash tells us if we are in a regular boot.
 # and we only have to prepare everything in case there is a kernel crash in
