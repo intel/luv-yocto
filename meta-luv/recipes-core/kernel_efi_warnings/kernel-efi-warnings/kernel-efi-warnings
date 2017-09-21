@@ -8,14 +8,26 @@
 # Search the kmsg buffer for the pattern in PTTRN. If found, print 3 lines
 # before and after the message. Also, print the test name, its description
 # as well as whether the test failed (PTTRN found) or passed (PTTRN not found).
+# If provided, SUPPORT_PTTRN is used to search for a string that indicates
+# that the kernel has the needed support to generate PTTRN in case of error.
 test_dmesg()
 {
     TESTN=${1}
     DESC=${2}
     PTTRN=${3}
+    SUPPORT_PTTRN=${4} # Optional
 
     echo "Test: ${TESTN}"
     echo "Description: ${DESC}"
+
+    # If we have a pattern to search for support for the test, use it.
+    if [ ! -z "${SUPPORT_PTTRN}" ]; then
+        dmesg | grep -q "${SUPPORT_PTTRN}"
+        if [ $? -ne 0 ]; then
+            echo "SKIP: Feature ${TESTN} not supported."
+            return 0
+        fi
+    fi
     errs=`dmesg | grep -c "${PTTRN}"`
     if [ $errs -gt 0 ]; then
         echo "FAIL: Found $errs instances of \"${PTTRN}\"."
