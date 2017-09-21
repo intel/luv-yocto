@@ -36,6 +36,10 @@ CMDLINE_append_x86-64 = "${COMMON_CMDLINE_x86}"
 LUVCFG_netconsole = "LUV_NETCONSOLE=none"
 LUVCFG_storage_url = "LUV_STORAGE_URL=none"
 
+EFI_LOADER_IMAGE_x86_64 = "bootx64.efi"
+EFI_LOADER_IMAGE_x86 = "bootia32.efi"
+EFI_LOADER_IMAGE_aarch64 = "bootaa64.efi"
+
 HDDDIR = "${S}/hddimg"
 
 inherit luv-efi
@@ -69,8 +73,8 @@ do_populate_image() {
 	if [ "${TARGET_ARCH}" != "aarch64" ]; then
 		efi_populate_bits ${HDDDIR}
 	else
-		echo "bootaa64.efi" > ${HDDDIR}${EFIDIR}/startup.nsh
-		install -m 0644 ${DEPLOY_DIR_IMAGE}/bootaa64.efi ${HDDDIR}${EFIDIR}
+		echo "${EFI_LOADER_IMAGE}" > ${HDDDIR}${EFIDIR}/startup.nsh
+		install -m 0644 ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${HDDDIR}${EFIDIR}
 	fi
 	install -m 0644 ${GRUBCFG} ${HDDDIR}${EFIDIR}
 	install -m 0644 ${LUV_CFG} ${HDDDIR}
@@ -88,9 +92,9 @@ python do_mkimage() {
 do_deploy() {
 	rm -f ${DEPLOY_DIR_IMAGE}/${PN}.efi
 	if [ "${TARGET_ARCH}" = "aarch64" ]; then
-		ln -s ${DEPLOY_DIR_IMAGE}/bootaa64.efi ${DEPLOY_DIR_IMAGE}/${PN}.efi
+		ln -s ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${DEPLOY_DIR_IMAGE}/${PN}.efi
 	else
-		ln -s ${DEPLOY_DIR_IMAGE}/bootx64.efi ${DEPLOY_DIR_IMAGE}/${PN}.efi
+		ln -s ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${DEPLOY_DIR_IMAGE}/${PN}.efi
 	fi
 }
 
