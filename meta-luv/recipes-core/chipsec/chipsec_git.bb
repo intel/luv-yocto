@@ -18,7 +18,7 @@ SRC_URI = "git://github.com/chipsec/chipsec.git \
 SRCREV="a82209970012e7835dc16f73af4b377f9f5329d7"
 PV="1.3.1"
 
-DEPENDS = "virtual/kernel python-core nasm-native python-setuptools-native"
+DEPENDS = "virtual/kernel python-core nasm-native python-setuptools-native virtual/${TARGET_PREFIX}gcc-initial"
 RDEPENDS_${PN} = "python python-shell python-stringold python-xml \
     python-ctypes python-fcntl python-importlib python-json python-mmap \
     python-resource"
@@ -33,6 +33,7 @@ inherit luv-test
 addtask make_scripts after do_patch before do_compile
 do_make_scripts[lockfiles] = "${TMPDIR}/kernel-scripts.lock"
 do_make_scripts[depends] += "virtual/kernel:do_shared_workdir"
+do_make_scripts[deptask] = "do_populate_sysroot"
 
 S = "${WORKDIR}/git"
 

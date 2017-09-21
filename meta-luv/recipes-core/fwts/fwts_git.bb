@@ -15,9 +15,11 @@ S = "${WORKDIR}/git"
 DEPENDS = "autoconf automake libtool libpcre json-c flex bison \
 	virtual/kernel glib-2.0"
 
-inherit autotools-brokensep luv-test module-base
+inherit autotools-brokensep luv-test module-base pkgconfig
 
-CFLAGS += "-I${STAGING_INCDIR}/json"
+CFLAGS += "-I${STAGING_INCDIR}/json-c"
+CFLAGS += "-I${STAGING_INCDIR}/glib-2.0"
+CFLAGS += "-I${STAGING_LIBDIR}/glib-2.0/include"
 
 do_unpack[depends] += "virtual/kernel:do_populate_sysroot"
 

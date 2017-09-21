@@ -1,7 +1,7 @@
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=4d92cd373abda3937c2bc47fbc49d690"
 
-DEPENDS = "python-native"
+DEPENDS = "python-native parted-native"
 DEPENDS_append_x86 = " grub-efi bits"
 DEPENDS_append_x86-64 = " grub-efi bits"
 

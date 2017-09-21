@@ -26,7 +26,7 @@ SRC_URI += "file://ndctl_runner"
 SRCREV = "0a628fdf4fe58a283b16c1bbaa49bb28b1842bf9"
 
 S = "${WORKDIR}/git"
-DEPENDS = "virtual/kernel kmod udev"
+DEPENDS = "virtual/kernel kmod udev json-c"
 EXTRA_OECONF += "--enable-test --enable-destructive --disable-docs"
 
 do_configure_prepend() {
