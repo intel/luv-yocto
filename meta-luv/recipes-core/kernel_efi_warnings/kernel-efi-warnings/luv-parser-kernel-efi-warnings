@@ -21,6 +21,11 @@ awk '/Test:/ {
 	fflush("");
     }
 
+    /SKIP/ {
+        printf ("1.0 kernel-efi-warnings %s RESULT 0 0 1 0\n", test);
+        fflush("");
+    }
+
     /FAIL/ {
 	printf ("1.0 kernel-efi-warnings %s RESULT 0 1 0 0\n", test);
 	fflush("");
