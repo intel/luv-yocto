@@ -10,12 +10,19 @@
 # as well as whether the test failed (PTTRN found) or passed (PTTRN not found).
 # If provided, SUPPORT_PTTRN is used to search for a string that indicates
 # that the kernel has the needed support to generate PTTRN in case of error.
+#
+# LEAD_LINES and TRAIL_LINES specify the number of lines before and after
+# PTTRN that should be printed.
 test_dmesg()
 {
     TESTN=${1}
     DESC=${2}
     PTTRN=${3}
+
+    # Optional parameters. If not neeed, should be passed as empty strings.
     SUPPORT_PTTRN=${4} # Optional
+    [ ! -z "${5}" ] && LEAD_LINES=${5}  || LEAD_LINES=3
+    [ ! -z "${6}" ] && TRAIL_LINES=${6} || TRAIL_LINES=3
 
     echo "Test: ${TESTN}"
     echo "Description: ${DESC}"
@@ -33,7 +40,7 @@ test_dmesg()
         echo "FAIL: Found $errs instances of \"${PTTRN}\"."
         echo "Related kernel information"
         echo "----------------------------------------------------------"
-        dmesg | grep -A 3 -B 3 "${PTTRN}"
+        dmesg | grep -A ${TRAIL_LINES} -B ${LEAD_LINES} "${PTTRN}"
         echo "----------------------------------------------------------"
     else
        echo "PASS: Pattern \"${PTTRN}\" not found."
