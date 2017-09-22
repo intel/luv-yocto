@@ -165,3 +165,12 @@ PTTRN="efi: memattr: No matching entry found in the EFI memory map"
 DESC="Check if entry is present in EFI Memory Map."
 
 test_dmesg "${TEST}" "${DESC}" "${PTTRN}"
+
+# Check if there ware any machine check errors were logged. These might
+# have been caused by buggy firmware or an actual hardware failure.
+TEST="Kernel_MCE"
+SUPPORT_PTTRN="mce: CPU supports [0-9]* MCE banks"
+DESC="Check if any machine check errors were logged."
+PTTRN="CPU [0-9]\+: Machine Check"
+
+test_dmesg "${TEST}" "${DESC}" "${PTTRN}" "${SUPPORT_PTTRN}" 0 6
