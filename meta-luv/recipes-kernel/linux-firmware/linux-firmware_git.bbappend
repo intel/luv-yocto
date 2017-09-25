@@ -51,6 +51,7 @@ LIC_FILES_CHKSUM = "\
 do_install_prepend () {
            install -d ${D}${nonarch_base_libdir}/firmware/
            install -d ${D}${nonarch_base_libdir}/firmware/netronome/
+           touch ${D}${nonarch_base_libdir}/firmware/check_whence.py
 }
 
 # For now we are only interested in firmware blobs for Ethernet. Thus,
