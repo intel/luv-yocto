@@ -20,10 +20,13 @@ do_install_ptest () {
 	       -e "s,${STAGING_BINDIR_NATIVE}/perl-native/,${bindir}/,g" \
 	       -e "s,${STAGING_BINDIR_NATIVE}/,,g" \
 	       -e "s,${STAGING_BINDIR_TOOLCHAIN}/${TARGET_PREFIX},${bindir},g" \
-	    ${D}${PTEST_PATH}/lib/Config.pm
+	    ${D}${PTEST_PATH}/lib/Config.pm \
+	    ${D}${PTEST_PATH}/cpan/podlators/scripts/pod2man \
+	    ${D}${PTEST_PATH}/cpan/podlators/scripts/pod2text
 
 	ln -sf ${bindir}/perl ${D}${PTEST_PATH}/t/perl
-
+	# Remove plan9 related stuff
+	rm -rf ${D}${PTEST_PATH}/plan9 ${D}${PTEST_PATH}/README.plan9 ${D}${PTEST_PATH}/pod/perlplan9.pod
 }
 
 python populate_packages_prepend() {

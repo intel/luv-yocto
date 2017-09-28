@@ -19,6 +19,11 @@ SRC_URI = "ftp://xmlsoft.org/libxml2/libxml2-${PV}.tar.gz;name=libtar \
            file://run-ptest \
            file://python-sitepackages-dir.patch \
            file://libxml-m4-use-pkgconfig.patch \
+           file://libxml2-fix_node_comparison.patch \
+           file://libxml2-CVE-2016-5131.patch \
+           file://libxml2-CVE-2016-4658.patch \
+           file://libxml2-fix_NULL_pointer_derefs.patch \
+           file://CVE-2016-9318.patch \
           "
 
 SRC_URI[libtar.md5sum] = "ae249165c173b1ff386ee8ad676815f5"
@@ -28,21 +33,23 @@ SRC_URI[testtar.sha256sum] = "96151685cec997e1f9f3387e3626d61e6284d4d6e66e0e440c
 
 BINCONFIG = "${bindir}/xml2-config"
 
-inherit autotools pkgconfig binconfig-disabled pythonnative ptest
+PACKAGECONFIG ??= "python \
+    ${@bb.utils.filter('DISTRO_FEATURES', 'ipv6', d)} \
+"
+PACKAGECONFIG[python] = "--with-python=${PYTHON},--without-python,python"
+PACKAGECONFIG[ipv6] = "--enable-ipv6,--disable-ipv6,"
 
-RDEPENDS_${PN}-ptest += "python-core"
+inherit autotools pkgconfig binconfig-disabled ptest
 
-RDEPENDS_${PN}-python += "python-core"
+inherit ${@bb.utils.contains('PACKAGECONFIG', 'python', 'pythonnative', '', d)}
+
+RDEPENDS_${PN}-ptest += "make ${@bb.utils.contains('PACKAGECONFIG', 'python', 'python-core', '', d)}"
+
+RDEPENDS_${PN}-python += "${@bb.utils.contains('PACKAGECONFIG', 'python', 'python-core', '', d)}"
 
 RDEPENDS_${PN}-ptest_append_libc-glibc = " glibc-gconv-ebcdic-us glibc-gconv-ibm1141"
 
 export PYTHON_SITE_PACKAGES="${PYTHON_SITEPACKAGES_DIR}"
-
-PACKAGECONFIG ??= "python \
-    ${@bb.utils.contains('DISTRO_FEATURES', 'ipv6', 'ipv6', '', d)} \
-"
-PACKAGECONFIG[python] = "--with-python=${PYTHON},--without-python,python"
-PACKAGECONFIG[ipv6] = "--enable-ipv6,--disable-ipv6,"
 
 # WARNING: zlib is require for RPM use
 EXTRA_OECONF = "--without-debug --without-legacy --with-catalog --without-docbook --with-c14n --without-lzma --with-fexceptions"
@@ -52,7 +59,7 @@ EXTRA_OECONF_linuxstdbase = "--with-debug --with-legacy --with-docbook --with-c1
 
 python populate_packages_prepend () {
     # autonamer would call this libxml2-2, but we don't want that
-    if d.getVar('DEBIAN_NAMES', True):
+    if d.getVar('DEBIAN_NAMES'):
         d.setVar('PKG_libxml2', '${MLPREFIX}libxml2')
 }
 
@@ -70,6 +77,11 @@ do_configure_prepend () {
 
 do_install_ptest () {
 	cp -r ${WORKDIR}/xmlconf ${D}${PTEST_PATH}
+}
+
+do_install_append_class-native () {
+	# Docs are not needed in the native case
+	rm ${D}${datadir}/gtk-doc -rf
 }
 
 BBCLASSEXTEND = "native nativesdk"

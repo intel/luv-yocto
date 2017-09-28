@@ -22,9 +22,9 @@ import glob
 import argparse
 import subprocess
 
-def logger_create(name):
+def logger_create(name, stream=None):
     logger = logging.getLogger(name)
-    loggerhandler = logging.StreamHandler()
+    loggerhandler = logging.StreamHandler(stream=stream)
     loggerhandler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
     logger.addHandler(loggerhandler)
     logger.setLevel(logging.INFO)
@@ -52,10 +52,14 @@ def load_plugins(logger, plugins, pluginpath):
             if fp:
                 fp.close()
 
+    def plugin_name(filename):
+        return os.path.splitext(os.path.basename(filename))[0]
+
+    known_plugins = [plugin_name(p.__name__) for p in plugins]
     logger.debug('Loading plugins from %s...' % pluginpath)
     for fn in glob.glob(os.path.join(pluginpath, '*.py')):
-        name = os.path.splitext(os.path.basename(fn))[0]
-        if name != '__init__':
+        name = plugin_name(fn)
+        if name != '__init__' and name not in known_plugins:
             plugin = load_plugin(name)
             if hasattr(plugin, 'plugin_init'):
                 plugin.plugin_init(plugins)
@@ -89,7 +93,7 @@ def fetch_uri(d, uri, destdir, srcrev=None):
         fetcher.download()
         for u in fetcher.ud:
             ud = fetcher.ud[u]
-            if ud.localpath.rstrip(os.sep) == localdata.getVar('DL_DIR', True).rstrip(os.sep):
+            if ud.localpath.rstrip(os.sep) == localdata.getVar('DL_DIR').rstrip(os.sep):
                 raise Exception('Local path is download directory - please check that the URI "%s" is correct' % uri)
         fetcher.unpack(destdir)
         for u in fetcher.ud:

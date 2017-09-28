@@ -37,7 +37,7 @@
        <link linkend='var-S'>S</link>
        <link linkend='var-T'>T</link>
        <link linkend='var-UBOOT_CONFIG'>U</link>
-<!--               <link linkend='var-glossary-v'>V</link> -->
+       <link linkend='var-VOLATILE_LOG_DIR'>V</link>
        <link linkend='var-WARN_QA'>W</link>
        <link linkend='var-XSERVER'>X</link>
 <!--               <link linkend='var-glossary-y'>Y</link> -->
@@ -484,6 +484,12 @@
                     in your recipe so that it does contain
                     <filename>${SRCPV}</filename>.
                 </para>
+
+                <para>
+                    For more information see the
+                    "<ulink url='&YOCTO_DOCS_DEV_URL;#automatically-incrementing-a-binary-package-revision-number'>Automatically Incrementing a Binary Package Revision Number</ulink>"
+                    section in the Yocto Project Development Manual.
+                    </para>
             </glossdef>
         </glossentry>
 
@@ -1221,6 +1227,42 @@
                         slash character to ensure you match just that directory
                         name.
                     </note>
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-BBMULTICONFIG'><glossterm>BBMULTICONFIG</glossterm>
+            <info>
+                BBMULTICONFIG[doc] = "Specifies each separate configuration when you are building targets with multiple configurations."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Specifies each separate configuration when you are
+                    building targets with multiple configurations.
+                    Use this variable in your
+                    <filename>conf/local.conf</filename> configuration file.
+                    Specify a <replaceable>multiconfigname</replaceable> for
+                    each configuration file you are using.
+                    For example, the following line specifies three
+                    configuration files:
+                    <literallayout class='monospaced'>
+     BBMULTIFONFIG = "configA configB configC"
+                    </literallayout>
+                    Each configuration file you use must reside in the
+                    <ulink url='&YOCTO_DOCS_DEV_URL;#build-directory'>Build Directory's</ulink>
+                    <filename>conf/multiconfig</filename> directory
+                    (e.g.
+                    <replaceable>build_directory</replaceable><filename>/conf/multiconfig/configA.conf</filename>).
+                </para>
+
+                <para>
+                    For information on how to use
+                    <filename>BBMULTICONFIG</filename> in an environment that
+                    supports building targets with multiple configurations,
+                    see the
+                    "<ulink url='&YOCTO_DOCS_DEV_URL;#platdev-building-targets-with-multiple-configurations'>Building Targets with Multiple Configurations</ulink>"
+                    section in the Yocto Project Development Manual.
                 </para>
             </glossdef>
         </glossentry>
@@ -2237,12 +2279,13 @@
 
         <glossentry id='var-CONFIG_INITRAMFS_SOURCE'><glossterm>CONFIG_INITRAMFS_SOURCE</glossterm>
             <info>
-                CONFIG_INITRAMFS_SOURCE[doc] = "Identifies the initial RAM disk (initramfs) source files. The OpenEmbedded build system receives and uses this kernel Kconfig variable as an environment variable."
+                CONFIG_INITRAMFS_SOURCE[doc] = "Identifies the initial RAM filesystem (initramfs) source files. The OpenEmbedded build system receives and uses this kernel Kconfig variable as an environment variable."
             </info>
             <glossdef>
                 <para role="glossdeffirst">
 <!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
-                    Identifies the initial RAM disk (initramfs) source files.
+                    Identifies the initial RAM filesystem (initramfs) source
+                    files.
                     The OpenEmbedded build system receives and uses
                     this kernel Kconfig variable as an environment variable.
                     By default, the variable is set to null ("").
@@ -2267,6 +2310,12 @@
                 <para>
                     If you specify multiple directories and files, the
                     initramfs image will be the aggregate of all of them.
+                </para>
+
+                <para>
+                    For information on creating an initramfs, see the
+                    "<ulink url='&YOCTO_DOCS_DEV_URL;#building-an-initramfs-image'>Building an Initial RAM Filesystem (initramfs) Image</ulink>"
+                    section in the Yocto Project Development Manual.
                 </para>
             </glossdef>
         </glossentry>
@@ -2317,6 +2366,160 @@
                     <filename>DISTRO_FEATURES</filename> within the
                     current configuration, an error occurs and the
                     build stops.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-COPYLEFT_LICENSE_EXCLUDE'><glossterm>COPYLEFT_LICENSE_EXCLUDE</glossterm>
+            <info>
+                COPYLEFT_LICENSE_EXCLUDE[doc] = "Licenses to exclude in the source archived by the archiver class."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    A space-separated list of licenses to exclude from the
+                    source archived by the
+                    <link linkend='ref-classes-archiver'><filename>archiver</filename></link>
+                    class.
+                    In other words, if a license in a recipe's
+                    <link linkend='var-LICENSE'><filename>LICENSE</filename></link>
+                    value is in the value of
+                    <filename>COPYLEFT_LICENSE_EXCLUDE</filename>, then its
+                    source is not archived by the class.
+                    <note>
+                        The <filename>COPYLEFT_LICENSE_EXCLUDE</filename>
+                        variable takes precedence over the
+                        <link linkend='var-COPYLEFT_LICENSE_INCLUDE'><filename>COPYLEFT_LICENSE_INCLUDE</filename></link>
+                        variable.
+                    </note>
+                    The default value, which is "CLOSED Proprietary", for
+                    <filename>COPYLEFT_LICENSE_EXCLUDE</filename> is set
+                    by the
+                    <link linkend='ref-classes-copyleft_filter'><filename>copyleft_filter</filename></link>
+                    class, which is inherited by the
+                    <filename>archiver</filename> class.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-COPYLEFT_LICENSE_INCLUDE'><glossterm>COPYLEFT_LICENSE_INCLUDE</glossterm>
+            <info>
+                COPYLEFT_LICENSE_INCLUDE[doc] = "Licenses to include in the source archived by the archiver class."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    A space-separated list of licenses to include in the
+                    source archived by the
+                    <link linkend='ref-classes-archiver'><filename>archiver</filename></link>
+                    class.
+                    In other words, if a license in a recipe's
+                    <link linkend='var-LICENSE'><filename>LICENSE</filename></link>
+                    value is in the value of
+                    <filename>COPYLEFT_LICENSE_INCLUDE</filename>, then its
+                    source is archived by the class.
+                </para>
+
+                <para>
+                    The default value is set by the
+                    <link linkend='ref-classes-copyleft_filter'><filename>copyleft_filter</filename></link>
+                    class, which is inherited by the
+                    <filename>archiver</filename> class.
+                    The default value includes "GPL*", "LGPL*", and "AGPL*".
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-COPYLEFT_PN_EXCLUDE'><glossterm>COPYLEFT_PN_EXCLUDE</glossterm>
+            <info>
+                COPYLEFT_PN_EXCLUDE[doc] = "Recipes to exclude in the source archived by the archiver class."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    A list of recipes to exclude in the source archived
+                    by the
+                    <link linkend='ref-classes-archiver'><filename>archiver</filename></link>
+                    class.
+                    The <filename>COPYLEFT_PN_EXCLUDE</filename> variable
+                    overrides the license inclusion and exclusion caused
+                    through the
+                    <link linkend='var-COPYLEFT_LICENSE_INCLUDE'><filename>COPYLEFT_LICENSE_INCLUDE</filename></link>
+                    and
+                    <link linkend='var-COPYLEFT_LICENSE_EXCLUDE'><filename>COPYLEFT_LICENSE_EXCLUDE</filename></link>
+                    variables, respectively.
+                </para>
+
+                <para>
+                    The default value, which is "" indicating to not explicitly
+                    exclude any recipes by name, for
+                    <filename>COPYLEFT_PN_EXCLUDE</filename> is set
+                    by the
+                    <link linkend='ref-classes-copyleft_filter'><filename>copyleft_filter</filename></link>
+                    class, which is inherited by the
+                    <filename>archiver</filename> class.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-COPYLEFT_PN_INCLUDE'><glossterm>COPYLEFT_PN_INCLUDE</glossterm>
+            <info>
+                COPYLEFT_PN_INCLUDE[doc] = "Recipes to include in the source archived by the archiver class."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    A list of recipes to include in the source archived
+                    by the
+                    <link linkend='ref-classes-archiver'><filename>archiver</filename></link>
+                    class.
+                    The <filename>COPYLEFT_PN_INCLUDE</filename> variable
+                    overrides the license inclusion and exclusion caused
+                    through the
+                    <link linkend='var-COPYLEFT_LICENSE_INCLUDE'><filename>COPYLEFT_LICENSE_INCLUDE</filename></link>
+                    and
+                    <link linkend='var-COPYLEFT_LICENSE_EXCLUDE'><filename>COPYLEFT_LICENSE_EXCLUDE</filename></link>
+                    variables, respectively.
+                </para>
+
+                <para>
+                    The default value, which is "" indicating to not explicitly
+                    include any recipes by name, for
+                    <filename>COPYLEFT_PN_INCLUDE</filename> is set
+                    by the
+                    <link linkend='ref-classes-copyleft_filter'><filename>copyleft_filter</filename></link>
+                    class, which is inherited by the
+                    <filename>archiver</filename> class.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-COPYLEFT_RECIPE_TYPES'><glossterm>COPYLEFT_RECIPE_TYPES</glossterm>
+            <info>
+                COPYLEFT_RECIPE_TYPES[doc] = "Recipe types to include in the source archived by the archiver class."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    A space-separated list of recipe types to include
+                    in the source archived by the
+                    <link linkend='ref-classes-archiver'><filename>archiver</filename></link>
+                    class.
+                    Recipe types are <filename>target</filename>,
+                    <filename>native</filename>,
+                    <filename>nativesdk</filename>,
+                    <filename>cross</filename>,
+                    <filename>crosssdk</filename>, and
+                    <filename>cross-canadian</filename>.
+                </para>
+
+                <para>
+                    The default value, which is "target*", for
+                    <filename>COPYLEFT_RECIPE_TYPES</filename> is set
+                    by the
+                    <link linkend='ref-classes-copyleft_filter'><filename>copyleft_filter</filename></link>
+                    class, which is inherited by the
+                    <filename>archiver</filename> class.
                 </para>
             </glossdef>
         </glossentry>
@@ -3420,6 +3623,47 @@
             </glossdef>
         </glossentry>
 
+        <glossentry id='var-DISTRO_FEATURES_FILTER_NATIVE'><glossterm>DISTRO_FEATURES_FILTER_NATIVE</glossterm>
+            <info>
+                DISTRO_FEATURES_FILTER_NATIVE[doc] = "Specifies a list of features that if present in the target DISTRO_FEATURES value should be included in DISTRO_FEATURES when building native recipes."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Specifies a list of features that if present in
+                    the target
+                    <link linkend='var-DISTRO_FEATURES'><filename>DISTRO_FEATURES</filename></link>
+                    value should be included in
+                    <filename>DISTRO_FEATURES</filename> when building native
+                    recipes.
+                    This variable is used in addition to the features
+                    filtered using the
+                    <link linkend='var-DISTRO_FEATURES_NATIVE'><filename>DISTRO_FEATURES_NATIVE</filename></link>
+                    variable.
+               </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-DISTRO_FEATURES_FILTER_NATIVESDK'><glossterm>DISTRO_FEATURES_FILTER_NATIVESDK</glossterm>
+            <info>
+                DISTRO_FEATURES_FILTER_NATIVESDK[doc] = "Specifies a list of features that if present in the target DISTRO_FEATURES value should be included in DISTRO_FEATURES when building nativesdk recipes."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Specifies a list of features that if present in the target
+                    <link linkend='var-DISTRO_FEATURES'><filename>DISTRO_FEATURES</filename></link>
+                    value should be included in
+                    <filename>DISTRO_FEATURES</filename> when building
+                    nativesdk recipes.
+                    This variable is used in addition to the features
+                    filtered using the
+                    <link linkend='var-DISTRO_FEATURES_NATIVESDK'><filename>DISTRO_FEATURES_NATIVESDK</filename></link>
+                    variable.
+               </para>
+            </glossdef>
+        </glossentry>
+
         <glossentry id='var-DISTRO_FEATURES_LIBC'><glossterm>DISTRO_FEATURES_LIBC</glossterm>
             <info>
                 DISTRO_FEATURES_LIBC[doc] = "Specifies the list of distro features that are specific to the C library (libc)."
@@ -3433,6 +3677,42 @@
                     Typically, these features are prefixed with "libc-" and
                     control which features are enabled at during the build
                     within the C library itself.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-DISTRO_FEATURES_NATIVE'><glossterm>DISTRO_FEATURES_NATIVE</glossterm>
+            <info>
+                DISTRO_FEATURES_NATIVE[doc] = "Specifies a list of features that should be included in DISTRO_FEATURES when building native recipes."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Specifies a list of features that should be included in
+                    <link linkend='var-DISTRO_FEATURES'><filename>DISTRO_FEATURES</filename></link>
+                    when building native recipes.
+                    This variable is used in addition to the features
+                    filtered using the
+                    <link linkend='var-DISTRO_FEATURES_FILTER_NATIVE'><filename>DISTRO_FEATURES_FILTER_NATIVE</filename></link>
+                    variable.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-DISTRO_FEATURES_NATIVESDK'><glossterm>DISTRO_FEATURES_NATIVESDK</glossterm>
+            <info>
+                DISTRO_FEATURES_NATIVESDK[doc] = "Specifies a list of features that should be included in DISTRO_FEATURES when building nativesdk recipes."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Specifies a list of features that should be included in
+                    <link linkend='var-DISTRO_FEATURES'><filename>DISTRO_FEATURES</filename></link>
+                    when building nativesdk recipes.
+                    This variable is used in addition to the features
+                    filtered using the
+                    <link linkend='var-DISTRO_FEATURES_FILTER_NATIVESDK'><filename>DISTRO_FEATURES_FILTER_NATIVESDK</filename></link>
+                    variable.
                 </para>
             </glossdef>
         </glossentry>
@@ -4911,6 +5191,53 @@
             </glossdef>
         </glossentry>
 
+        <glossentry id='var-HOSTTOOLS'><glossterm>HOSTTOOLS</glossterm>
+            <info>
+                HOSTTOOLS[doc] = "A space-separated list (filter) of tools on the build host that should be allowed to be called from within build tasks."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    A space-separated list (filter) of tools on the build host
+                    that should be allowed to be called from within build tasks.
+                    Using this filter helps reduce the possibility of host
+                    contamination.
+                    If a tool specified in the value of
+                    <filename>HOSTTOOLS</filename> is not found on the
+                    build host, the OpenEmbedded build system produces
+                    an error and the build is not started.
+                </para>
+
+                <para>
+                    For additional information, see
+                    <link linkend='var-HOSTTOOLS_NONFATAL'><filename>HOSTTOOLS_NONFATAL</filename></link>.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-HOSTTOOLS_NONFATAL'><glossterm>HOSTTOOLS_NONFATAL</glossterm>
+            <info>
+                HOSTTOOLS_NONFATAL[doc] = "A space-separated list (filter) of tools on the build host that should be allowed to be called from within build tasks."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    A space-separated list (filter) of tools on the build host
+                    that should be allowed to be called from within build tasks.
+                    Using this filter helps reduce the possibility of host
+                    contamination.
+                    Unlike
+                    <link linkend='var-HOSTTOOLS'><filename>HOSTTOOLS</filename></link>,
+                    the OpenEmbedded build system does not produce and error
+                    if a tool specified in the value of
+                    <filename>HOSTTOOLS_NONFATAL</filename> is not found on the
+                    build host.
+                    Thus, you can use <filename>HOSTTOOLS_NONFATAL</filename>
+                    to filter optional host tools.
+                </para>
+            </glossdef>
+        </glossentry>
+
         <glossentry id='var-HOST_VENDOR'><glossterm>HOST_VENDOR</glossterm>
             <info>
                 HOST_VENDOR[doc] = "The name of the vendor. Normally same as the TARGET_VENDOR."
@@ -5369,9 +5696,12 @@
                         variable to specify packages for installation.
                         Instead, use the
                         <link linkend='var-PACKAGE_INSTALL'><filename>PACKAGE_INSTALL</filename></link>
-                        variable, which allows the initial RAM disk (initramfs)
-                        recipe to use a fixed set of packages and not be
-                        affected by <filename>IMAGE_INSTALL</filename>.
+                        variable, which allows the initial RAM filesystem
+                        (initramfs) recipe to use a fixed set of packages and
+                        not be affected by <filename>IMAGE_INSTALL</filename>.
+                        For information on creating an initramfs, see the
+                        "<ulink url='&YOCTO_DOCS_DEV_URL;#building-an-initramfs-image'>Building an Initial RAM Filesystem (initramfs) Image</ulink>"
+                        section in the Yocto Project Development Manual.
                     </note>
                 </para>
 
@@ -6097,13 +6427,13 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
 
         <glossentry id='var-INITRAMFS_FSTYPES'><glossterm>INITRAMFS_FSTYPES</glossterm>
             <info>
-                INITRAMFS_FSTYPES[doc] = "Defines the format for the output image of an initial RAM disk (initramfs), which is used during boot."
+                INITRAMFS_FSTYPES[doc] = "Defines the format for the output image of an initial RAM filesystem (initramfs), which is used during boot."
             </info>
             <glossdef>
                 <para role="glossdeffirst">
 <!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
                     Defines the format for the output image of an initial
-                    RAM disk (initramfs), which is used during boot.
+                    RAM filesystem (initramfs), which is used during boot.
                     Supported formats are the same as those supported by the
                     <link linkend='var-IMAGE_FSTYPES'><filename>IMAGE_FSTYPES</filename></link>
                     variable.
@@ -6116,7 +6446,7 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     <ulink url='&YOCTO_DOCS_DEV_URL;#source-directory'>Source Directory</ulink>,
                     is "cpio.gz".
                     The Linux kernel's initramfs mechanism, as opposed to the
-                    initial RAM disk
+                    initial RAM filesystem
                     <ulink url='https://en.wikipedia.org/wiki/Initrd'>initrd</ulink>
                     mechanism, expects an optionally compressed cpio
                     archive.
@@ -6126,7 +6456,7 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
 
         <glossentry id='var-INITRAMFS_IMAGE'><glossterm>INITRAMFS_IMAGE</glossterm>
             <info>
-                INITRAMFS_IMAGE[doc] = "Specifies the PROVIDES name of an image recipe that is used to build an initial RAM disk (initramfs) image."
+                INITRAMFS_IMAGE[doc] = "Specifies the PROVIDES name of an image recipe that is used to build an initial RAM filesystem (initramfs) image."
             </info>
             <glossdef>
                 <para role="glossdeffirst">
@@ -6134,7 +6464,7 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     Specifies the
                     <link linkend='var-PROVIDES'><filename>PROVIDES</filename></link>
                     name of an image recipe that is used to build an initial
-                    RAM disk (initramfs) image.
+                    RAM filesystem (initramfs) image.
                     An initramfs provides a temporary root filesystem used for
                     early system initialization (e.g. loading of modules
                     needed to locate and mount the "real" root filesystem).
@@ -6175,17 +6505,21 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                 </para>
 
                 <para>
-                    Finally, for more information you can also see the
+                    For more information, you can also see the
                     <link linkend='var-INITRAMFS_IMAGE_BUNDLE'><filename>INITRAMFS_IMAGE_BUNDLE</filename></link>
                     variable, which allows the generated image to be bundled
                     inside the kernel image.
+                    Additionally, for information on creating an initramfs, see
+                    the
+                    "<ulink url='&YOCTO_DOCS_DEV_URL;#building-an-initramfs-image'>Building an Initial RAM Filesystem (initramfs) Image</ulink>"
+                    section in the Yocto Project Development Manual.
                 </para>
             </glossdef>
         </glossentry>
 
         <glossentry id='var-INITRAMFS_IMAGE_BUNDLE'><glossterm>INITRAMFS_IMAGE_BUNDLE</glossterm>
             <info>
-                INITRAMFS_IMAGE_BUNDLE[doc] = "Controls whether or not the image recipe specified by INITRAMFS_IMAGE is run through an extra pass (do_bundle_initramfs) during kernel compilation in order to build a single binary that contains both the kernel image and the initial RAM disk (initramfs)."
+                INITRAMFS_IMAGE_BUNDLE[doc] = "Controls whether or not the image recipe specified by INITRAMFS_IMAGE is run through an extra pass (do_bundle_initramfs) during kernel compilation in order to build a single binary that contains both the kernel image and the initial RAM filesystem (initramfs)."
             </info>
             <glossdef>
                 <para role="glossdeffirst">
@@ -6195,8 +6529,8 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     is run through an extra pass
                     (<link linkend='ref-tasks-bundle_initramfs'><filename>do_bundle_initramfs</filename></link>)
                     during kernel compilation in order to build a single binary
-                    that contains both the kernel image and the initial RAM disk
-                    (initramfs).
+                    that contains both the kernel image and the initial RAM
+                    filesystem (initramfs) image.
                     This makes use of the
                     <link linkend='var-CONFIG_INITRAMFS_SOURCE'><filename>CONFIG_INITRAMFS_SOURCE</filename></link>
                     kernel feature.
@@ -6243,6 +6577,9 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     See the
                     <ulink url='&YOCTO_GIT_URL;/cgit/cgit.cgi/poky/tree/meta-poky/conf/local.conf.sample.extended'><filename>local.conf.sample.extended</filename></ulink>
                     file for additional information.
+                    Also, for information on creating an initramfs, see the
+                    "<ulink url='&YOCTO_DOCS_DEV_URL;#building-an-initramfs-image'>Building an Initial RAM Filesystem (initramfs) Image</ulink>"
+                    section in the Yocto Project Development Manual.
                 </para>
             </glossdef>
         </glossentry>
@@ -6730,13 +7067,12 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     <link linkend='ref-classes-kernel'>kernel</link> class
                     as follows:
                     <literallayout class='monospaced'>
-     KERNEL_IMAGE_BASE_NAME ?= "${KERNEL_IMAGETYPE}-${PKGE}-${PKGV}-${PKGR}-${MACHINE}-${DATETIME}"
+     KERNEL_IMAGE_BASE_NAME ?= "${PKGE}-${PKGV}-${PKGR}-${MACHINE}-${DATETIME}"
                     </literallayout>
                 </para>
 
                 <para>
                     See the
-                    <link linkend='var-KERNEL_IMAGETYPE'><filename>KERNEL_IMAGETYPE</filename></link>,
                     <link linkend='var-PKGE'><filename>PKGE</filename></link>,
                     <link linkend='var-PKGV'><filename>PKGV</filename></link>,
                     <link linkend='var-PKGR'><filename>PKGR</filename></link>,
@@ -8146,13 +8482,16 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
             </glossdef>
         </glossentry>
 
+<!--
         <glossentry id='var-MULTIMACH_HOST_SYS'><glossterm>MULTIMACH_HOST_SYS</glossterm>
             <info>
                 MULTIMACH_HOST_SYS[doc] = "Separates files for different machines such that you can build for multiple host machines using the same output directories."
             </info>
             <glossdef>
                 <para role="glossdeffirst">
+-->
 <!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+<!--
                     Serves the same purpose as
                     <link linkend='var-MULTIMACH_TARGET_SYS'><filename>MULTIMACH_TARGET_SYS</filename></link>,
                     but for the "HOST" system, in situations that involve a
@@ -8170,6 +8509,7 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                 </para>
             </glossdef>
         </glossentry>
+-->
 
         <glossentry id='var-MULTIMACH_TARGET_SYS'><glossterm>MULTIMACH_TARGET_SYS</glossterm>
             <info>
@@ -8199,9 +8539,6 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     See the
                     <link linkend='var-STAMP'><filename>STAMP</filename></link>
                     variable for an example.
-                    <link linkend='var-MULTIMACH_HOST_SYS'><filename>MULTIMACH_HOST_SYS</filename></link>
-                    is the corresponding variable for the host system in
-                    situations that involve a "HOST" and a "TARGET" system.
                     See the
                     <link linkend='var-STAGING_DIR_TARGET'><filename>STAGING_DIR_TARGET</filename></link>
                     variable for more information.
@@ -8280,7 +8617,7 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     <filename>local.conf</filename> file or you can attach it to
                     a specific image recipe by using the recipe name override:
                     <literallayout class='monospaced'>
-     NO_RECOMMENDATIONS_pn-<replaceable>target_image</replaceable> = "<replaceable>package_name</replaceable>"
+     NO_RECOMMENDATIONS_pn-<replaceable>target_image</replaceable> = "1"
                     </literallayout>
                 </para>
 
@@ -9070,9 +9407,12 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     the
                     <link linkend='images-core-image-minimal-initramfs'><filename>core-image-minimal-initramfs</filename></link>
                     image.
-                    When working with an initial RAM disk (initramfs)
+                    When working with an initial RAM filesystem (initramfs)
                     image, use the <filename>PACKAGE_INSTALL</filename>
                     variable.
+                    For information on creating an initramfs, see the
+                    "<ulink url='&YOCTO_DOCS_DEV_URL;#building-an-initramfs-image'>Building an Initial RAM Filesystem (initramfs) Image</ulink>"
+                    section in the Yocto Project Development Manual.
                 </para>
             </glossdef>
         </glossentry>
@@ -9104,6 +9444,31 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     <link linkend='var-PKGD'><filename>PKGD</filename></link>
                     directory prior to splitting the files out to individual
                     packages.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-PACKAGE_WRITE_DEPS'><glossterm>PACKAGE_WRITE_DEPS</glossterm>
+            <info>
+                PACKAGE_WRITE_DEPS[doc] = "Specifies post-installation and pre-installation script dependencies on native/cross tools."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Specifies a list of dependencies for post-installation and
+                    pre-installation scripts on native/cross tools.
+                    If your post-installation or pre-installation script can
+                    execute at rootfs creation time rather than on the
+                    target but depends on a native tool in order to execute,
+                    you need to list the tools in
+                    <filename>PACKAGE_WRITE_DEPENDS</filename>.
+                </para>
+
+                <para>
+                    For information on running post-installation scripts, see
+                    the
+                    "<ulink url='&YOCTO_DOCS_DEV_URL;#new-recipe-post-installation-scripts'>Post-Installation Scripts</ulink>"
+                    section in the Yocto Project Development Manual.
                 </para>
             </glossdef>
         </glossentry>
@@ -10621,7 +10986,7 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     <literallayout class='monospaced'>
      RDEPENDS_${PN} = "<replaceable>package</replaceable> (<replaceable>operator</replaceable> <replaceable>version</replaceable>)"
                     </literallayout>
-                    For <filename>operator</filename>, you can specify the
+                    For <replaceable>operator</replaceable>, you can specify the
                     following:
                     <literallayout class='monospaced'>
      =
@@ -10630,6 +10995,13 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
      &lt;=
      &gt;=
                     </literallayout>
+                    For <replaceable>version</replaceable>, provide the version
+                    number.
+                    <note><title>Tip</title>
+                        You can use
+                        <link linkend='var-EXTENDPKGV'><filename>EXTENDPKGV</filename></link>
+                        to provide a full package version specification.
+                    </note>
                     For example, the following sets up a dependency on version
                     1.2 or greater of the package <filename>foo</filename>:
                     <literallayout class='monospaced'>
@@ -12437,15 +12809,17 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     every time BitBake parses your recipe, you should specify
                     a <filename>SRCREV</filename> that is a
                     full revision identifier and not just a tag.
+                    <note>
+                        For information on limitations when inheriting the
+                        latest revision of software using
+                        <filename>SRCREV</filename>, see the
+                        <link linkend='var-AUTOREV'><filename>AUTOREV</filename></link>
+                        variable description and the
+                        "<ulink url='&YOCTO_DOCS_DEV_URL;#automatically-incrementing-a-binary-package-revision-number'>Automatically Incrementing a Binary Package Revision Number</ulink>"
+                        section, which is in the Yocto Project Development Manual.
+                    </note>
                 </para>
 
-                <note>
-                    For information on limitations when inheriting the latest
-                    revision of software using <filename>SRCREV</filename>,
-                    see the
-                    <link linkend='var-AUTOREV'><filename>AUTOREV</filename></link>
-                    variable description.
-                </note>
             </glossdef>
         </glossentry>
 
@@ -12522,6 +12896,35 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
      file://.* http://<replaceable>someserver</replaceable>.tld/share/sstate/PATH;downloadfilename=PATH \n \
      file://.* file:///<replaceable>some-local-dir</replaceable>/sstate/PATH"
                     </literallayout>
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-SSTATE_SCAN_FILES'><glossterm>SSTATE_SCAN_FILES</glossterm>
+            <info>
+                SSTATE_SCAN_FILES[doc] = "Controls the list of files the OpenEmbedded build system scans for hardcoded installation paths."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Controls the list of files the OpenEmbedded build system
+                    scans for hardcoded installation paths.
+                </para>
+
+                <para>
+                    During a build, the OpenEmbedded build system creates a
+                    shared state (sstate) object during the first stage of
+                    preparing the sysroots.
+                    During the build, the object is scanned for hardcoded paths
+                    for original installation locations.
+                    The list of files that are scanned for paths is controlled
+                    by the <filename>SSTATE_SCAN_FILES</filename> variable.
+                </para>
+
+                <para>
+                    For details on the process, see the
+                    <link linkend='ref-classes-staging'><filename>staging</filename></link>
+                    class.
                 </para>
             </glossdef>
         </glossentry>
@@ -12649,9 +13052,22 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     Specifies the path to the top-level sysroots directory
                     (i.e.
                     <filename>${</filename><link linkend='var-TMPDIR'><filename>TMPDIR</filename></link><filename>}/sysroots</filename>).
+                </para>
+
+                <para>
+                    <filename>STAGING_DIR</filename> contains the directories
+                    that are staged into the sysroot by the
+                    <link linkend='ref-tasks-populate_sysroot'><filename>do_populate_sysroot</filename></link>
+                    task.
+                    See the
+                    <link linkend='var-SYSROOT_DIRS'><filename>SYSROOT_DIRS</filename></link>
+                    variable and the
+                    "<ulink url='&YOCTO_DOCS_DEV_URL;#new-sharing-files-between-recipes'>Sharing Files Between Recipes</ulink>"
+                    section for more information.
                     <note>
                         Recipes should never write files directly under
-                        this directory because the OpenEmbedded build system
+                        the <filename>STAGING_DIR</filename> directory because
+                        the OpenEmbedded build system
                         manages the directory automatically.
                         Instead, files should be installed to
                         <filename>${</filename><link linkend='var-D'><filename>D</filename></link><filename>}</filename>
@@ -12726,12 +13142,7 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                                 they make use of host headers and libraries.
                                 </para>
                                 </note>
-                           </para></listitem>
-                        <listitem><para>For native SDK
-                           recipes that build for the SDK
-                           (<filename>nativesdk</filename>), the value is
-                           "${STAGING_DIR}/${<link linkend='var-MULTIMACH_HOST_SYS'>MULTIMACH_HOST_SYS</link>}".
-                           </para></listitem>
+                            </para></listitem>
                     </itemizedlist>
                 </para>
             </glossdef>
@@ -14122,8 +14533,9 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     <note>
                         The <filename>TEST_SERVER_IP</filename> variable
                         is only used for a small number of tests such as
-                        the "smart" test suite, which needs to download
-                        packages from <filename>DEPLOY_DIR/rpm</filename>.
+                        the "dnf" test suite, which needs to download
+                        packages from
+                        <filename>WORKDIR/oe-rootfs-repo</filename>.
                     </note>
                 </para>
             </glossdef>
@@ -14383,6 +14795,10 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     </literallayout>
                     In this case, a default list of packages is set in this
                     variable, but you can add additional packages to the list.
+                    See the
+                    "<ulink url='&YOCTO_DOCS_SDK_URL;#sdk-adding-individual-packages'>Adding Individual Packages to the Standard SDK</ulink>"
+                    section in the Yocto Project Software Development Kit (SDK)
+                    Developer's Guide for more information.
                 </para>
 
                 <para>
@@ -14434,6 +14850,12 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     uses when it creates the target part of an SDK
                     (i.e. the part built for the target hardware), which
                     includes libraries and headers.
+                    Use this variable to add individual packages to the
+                    part of the SDK that runs on the target.
+                    See the
+                    "<ulink url='&YOCTO_DOCS_SDK_URL;#sdk-adding-individual-packages'>Adding Individual Packages to the Standard SDK</ulink>"
+                    section in the Yocto Project Software Development Kit (SDK)
+                    Developer's Guide for more information.
                 </para>
 
                 <para>
@@ -15459,8 +15881,30 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
 
     </glossdiv>
 
-<!--            <glossdiv id='var-glossary-v'><title>V</title>-->
-<!--            </glossdiv>-->
+    <glossdiv id='var-glossary-v'><title>V</title>
+
+        <glossentry id='var-VOLATILE_LOG_DIR'><glossterm>VOLATILE_LOG_DIR</glossterm>
+            <info>
+               VOLATILE_LOG_DIR[doc] = "Specifies the persistence of the target's /var/log directory, which is used to house postinstall target log files."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Specifies the persistence of the target's
+                    <filename>/var/log</filename> directory, which is used to
+                    house postinstall target log files.
+                </para>
+
+                <para>
+                    By default, <filename>VOLATILE_LOG_DIR</filename> is set
+                    to "yes", which means the file is not persistent.
+                    You can override this setting by setting the
+                    variable to "no" to make the log directory persistent.
+                </para>
+            </glossdef>
+        </glossentry>
+
+    </glossdiv>
 
     <glossdiv id='var-glossary-w'><title>W</title>
 
@@ -15479,6 +15923,70 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     see the
                     "<link linkend='ref-classes-insane'><filename>insane.bbclass</filename></link>"
                     section.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-WKS_FILE_DEPENDS'><glossterm>WKS_FILE_DEPENDS</glossterm>
+            <info>
+               WKS_FILE_DEPENDS[doc] = "Lists a recipe's build-time dependencies specific to Wic."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+                    When placed in the recipe that builds your image, this
+                    variable lists build-time dependencies.
+                    The <filename>WKS_FILE_DEPENDS</filename> variable is only
+                    applicable when Wic images are active (i.e. when
+                    <link linkend='var-IMAGE_FSTYPES'><filename>IMAGE_FSTYPES</filename></link>
+                    contains entries related to Wic).
+                    If your recipe does not create Wic images, the variable
+                    has no effect.
+                </para>
+
+                <para>
+                    The <filename>WKS_FILE_DEPENDS</filename> variable is
+                    similar to the
+                    <link linkend='var-DEPENDS'><filename>DEPENDS</filename></link>
+                    variable.
+                    When you use the variable in your recipe that builds the
+                    Wic image, dependencies you list in the
+                    <filename>WIC_FILE_DEPENDS</filename> variable are added to
+                    the <filename>DEPENDS</filename> variable.
+                </para>
+
+                <para>
+                    With the <filename>WKS_FILE_DEPENDS</filename> variable,
+                    you have the possibility to specify a list of additional
+                    dependencies (e.g. native tools, bootloaders, and so forth),
+                    that are required to build Wic images.
+                    Following is an example:
+                    <literallayout class='monospaced'>
+     WKS_FILE_DEPENDS = "<replaceable>some-native-tool</replaceable>"
+                    </literallayout>
+                    In the previous example,
+                    <replaceable>some-native-tool</replaceable> would be
+                    replaced with an actual native tool on which the build
+                    would depend.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-WKS_FILE'><glossterm>WKS_FILE</glossterm>
+            <info>
+               WKS_FILE[doc] = "Specifies the name of the wic kickstart file."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+                    Specifies the location of the Wic
+                    kickstart file that is used by the OpenEmbedded build
+                    system to create a partitioned image
+                    (<replaceable>image</replaceable><filename>.wic</filename>).
+                    For information on how to create a
+                    partitioned image, see the
+                    "<ulink url='&YOCTO_DOCS_DEV_URL;#creating-wic-images-oe'>Creating Partitioned Images</ulink>"
+                    section.
+                    For details on the kickstart file format, see the
+                    "<ulink url='&YOCTO_DOCS_DEV_URL;#openembedded-kickstart-wks-reference'>OpenEmbedded Kickstart (<filename>.wks</filename>) Reference</ulink>.
                 </para>
             </glossdef>
         </glossentry>

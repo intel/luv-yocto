@@ -1,11 +1,11 @@
 SUMMARY = "A shell-script tool for converting XML files to various formats"
-HOMEPAGE = "https://fedorahosted.org/xmlto/"
+HOMEPAGE = "https://releases.pagure.org/xmlto/"
 SECTION = "docs/xmlto"
 LICENSE = "GPLv2"
 
 LIC_FILES_CHKSUM = "file://COPYING;md5=59530bdf33659b29e73d4adb9f9f6552"
 
-SRC_URI = "https://fedorahosted.org/releases/x/m/xmlto/xmlto-${PV}.tar.gz \
+SRC_URI = "https://releases.pagure.org/xmlto/xmlto-${PV}.tar.gz \
            file://configure.in-drop-the-test-of-xmllint-and-xsltproc.patch \
            file://catalog.xml \
 "
@@ -26,7 +26,7 @@ RDEPENDS_${PN}_append_class-target = " \
                   libxslt-bin \
                   coreutils \
 "
-CACHED_CONFIGUREVARS += "ac_cv_path_TAIL=${bindir}/tail"
+CACHED_CONFIGUREVARS += "ac_cv_path_TAIL=tail"
 
 BBCLASSEXTEND = "native"
 

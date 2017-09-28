@@ -867,6 +867,19 @@
             <para>
                 This step in the build process consists of three tasks:
                 <itemizedlist>
+                    <listitem><para>
+                        <emphasis><link linkend='ref-tasks-prepare_recipe_sysroot'><filename>do_prepare_recipe_sysroot</filename></link>:</emphasis>
+                        This task sets up the two sysroots in
+                        <filename>${</filename><link linkend='var-WORKDIR'><filename>WORKDIR</filename></link><filename>}</filename>
+                        (i.e. <filename>recipe-sysroot</filename> and
+                        <filename>recipe-sysroot-native</filename>) so that
+                        the sysroots contain the contents of the
+                        <link linkend='ref-tasks-populate_sysroot'><filename>do_populate_sysroot</filename></link>
+                        tasks of the recipes on which the recipe
+                        containing the tasks depends.
+                        A sysroot exists for both the target and for the native
+                        binaries, which run on the host system.
+                        </para></listitem>
                     <listitem><para><emphasis><filename>do_configure</filename>:</emphasis>
                         This task configures the source by enabling and
                         disabling any build-time and configuration options for
@@ -1054,7 +1067,7 @@
 
             <para>
                 Package installation is under control of the package manager
-                (e.g. smart/rpm, opkg, or apt/dpkg) regardless of whether or
+                (e.g. dnf/rpm, opkg, or apt/dpkg) regardless of whether or
                 not package management is enabled for the target.
                 At the end of the process, if package management is not
                 enabled for the target, the package manager's data files
@@ -1391,17 +1404,6 @@
                 dependency needs to be followed, and whether for any given
                 relationship the function needs to be passed.
                 The function returns a True or False value.
-            </para>
-
-            <para>
-                Once the setscene process completes, the OpenEmbedded build
-                system has a list of tasks that it believes it can "accelerate"
-                and therefore does not need to run.
-                There is a final function call to the function specified by the
-                <ulink url='&YOCTO_DOCS_BB_URL;#var-BB_SETSCENE_VERIFY_FUNCTION2'><filename>BB_SETSCENE_VERIFY_FUNCTION2</filename></ulink>
-                variable that is able to require the tasks to be run that
-                that the OpenEmbedded build system initially was going to
-                skip.
             </para>
         </section>
     </section>

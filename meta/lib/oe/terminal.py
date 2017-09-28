@@ -11,7 +11,8 @@ class UnsupportedTerminal(Exception):
     pass
 
 class NoSupportedTerminals(Exception):
-    pass
+    def __init__(self, terms):
+        self.terms = terms
 
 
 class Registry(oe.classutils.ClassRegistry):
@@ -98,7 +99,7 @@ class Terminology(XTerminal):
     priority = 2
 
 class Konsole(XTerminal):
-    command = 'konsole --nofork --workdir . -p tabtitle="{title}" -e {command}'
+    command = 'konsole --separate --workdir . -p tabtitle="{title}" -e {command}'
     priority = 2
 
     def __init__(self, sh_cmd, title=None, env=None, d=None):
@@ -107,6 +108,9 @@ class Konsole(XTerminal):
         if vernum and LooseVersion(vernum) < '2.0.0':
             # Konsole from KDE 3.x
             self.command = 'konsole -T "{title}" -e {command}'
+        elif vernum and LooseVersion(vernum) < '16.08.1':
+            # Konsole pre 16.08.01 Has nofork
+            self.command = 'konsole --nofork --workdir . -p tabtitle="{title}" -e {command}'
         XTerminal.__init__(self, sh_cmd, title, env, d)
 
 class XTerm(XTerminal):
@@ -193,7 +197,7 @@ class Custom(Terminal):
     priority = 3
 
     def __init__(self, sh_cmd, title=None, env=None, d=None):
-        self.command = d and d.getVar('OE_TERMINAL_CUSTOMCMD', True)
+        self.command = d and d.getVar('OE_TERMINAL_CUSTOMCMD')
         if self.command:
             if not '{command}' in self.command:
                 self.command += ' {command}'
@@ -207,6 +211,14 @@ class Custom(Terminal):
 def prioritized():
     return Registry.prioritized()
 
+def get_cmd_list():
+    terms = Registry.prioritized()
+    cmds = []
+    for term in terms:
+        if term.command:
+            cmds.append(term.command)
+    return cmds
+
 def spawn_preferred(sh_cmd, title=None, env=None, d=None):
     """Spawn the first supported terminal, by priority"""
     for terminal in prioritized():
@@ -216,7 +228,7 @@ def spawn_preferred(sh_cmd, title=None, env=None, d=None):
         except UnsupportedTerminal:
             continue
     else:
-        raise NoSupportedTerminals()
+        raise NoSupportedTerminals(get_cmd_list())
 
 def spawn(name, sh_cmd, title=None, env=None, d=None):
     """Spawn the specified terminal, by name"""
@@ -228,6 +240,8 @@ def spawn(name, sh_cmd, title=None, env=None, d=None):
 
     pipe = terminal(sh_cmd, title, env, d)
     output = pipe.communicate()[0]
+    if output:
+        output = output.decode("utf-8")
     if pipe.returncode != 0:
         raise ExecutionError(sh_cmd, pipe.returncode, output)
 

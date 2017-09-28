@@ -7,7 +7,6 @@
 
 EXTRAOPKGCONFIG ?= ""
 ROOTFS_PKGMANAGE = "opkg ${EXTRAOPKGCONFIG}"
-ROOTFS_PKGMANAGE_BOOTSTRAP  = "run-postinsts"
 
 do_rootfs[depends] += "opkg-native:do_populate_sysroot opkg-utils-native:do_populate_sysroot"
 do_populate_sdk[depends] += "opkg-native:do_populate_sysroot opkg-utils-native:do_populate_sysroot"
@@ -27,8 +26,8 @@ MULTILIBRE_ALLOW_REP = "${OPKGLIBDIR}/opkg|/usr/lib/opkg"
 
 python () {
 
-    if d.getVar('BUILD_IMAGES_FROM_FEEDS', True):
-        flags = d.getVarFlag('do_rootfs', 'recrdeptask', True)
+    if d.getVar('BUILD_IMAGES_FROM_FEEDS'):
+        flags = d.getVarFlag('do_rootfs', 'recrdeptask')
         flags = flags.replace("do_package_write_ipk", "")
         flags = flags.replace("do_deploy", "")
         flags = flags.replace("do_populate_sysroot", "")

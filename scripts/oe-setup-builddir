@@ -23,6 +23,14 @@ if [ -z "$BUILDDIR" ]; then
     exit 1
 fi
 
+if [ "$1" = '--help' -o "$1" = '-h' ]; then
+    echo 'Usage: oe-setup-builddir'
+    echo ''
+    echo "OpenEmbedded setup-builddir - setup build directory $BUILDDIR"
+    echo ''
+    exit 2
+fi
+
 mkdir -p "$BUILDDIR/conf"
 
 if [ ! -d "$BUILDDIR" ]; then
@@ -61,7 +69,7 @@ if [ -n "$TEMPLATECONF" ]; then
             TEMPLATECONF="$OEROOT/$TEMPLATECONF"
         fi
         if [ ! -d "$TEMPLATECONF" ]; then
-            echo >&2 "Error: '$TEMPLATECONF' must be a directory containing local.conf & bblayers.conf"
+            echo >&2 "Error: TEMPLATECONF value points to nonexistent directory '$TEMPLATECONF'"
             exit 1
         fi
     fi

@@ -31,8 +31,10 @@ def runqemu(args, config, basepath, workspace):
 
     tinfoil = setup_tinfoil(config_only=True, basepath=basepath)
     try:
-        machine = tinfoil.config_data.getVar('MACHINE', True)
-        bindir_native = tinfoil.config_data.getVar('STAGING_BINDIR_NATIVE', True)
+        machine = tinfoil.config_data.getVar('MACHINE')
+        bindir_native = os.path.join(tinfoil.config_data.getVar('STAGING_DIR'),
+                                     tinfoil.config_data.getVar('BUILD_ARCH'),
+                                     tinfoil.config_data.getVar('bindir_native').lstrip(os.path.sep))
     finally:
         tinfoil.shutdown()
 
@@ -48,7 +50,12 @@ def runqemu(args, config, basepath, workspace):
         raise DevtoolError('Unable to determine image name to run, please specify one')
 
     try:
-        exec_build_env_command(config.init_path, basepath, 'runqemu %s %s %s' % (machine, imagename, " ".join(args.args)), watch=True)
+        # FIXME runqemu assumes that if OECORE_NATIVE_SYSROOT is set then it shouldn't
+        # run bitbake to find out the values of various environment variables, which
+        # isn't the case for the extensible SDK. Work around it for now.
+        newenv = dict(os.environ)
+        newenv.pop('OECORE_NATIVE_SYSROOT', '')
+        exec_build_env_command(config.init_path, basepath, 'runqemu %s %s %s' % (machine, imagename, " ".join(args.args)), watch=True, env=newenv)
     except bb.process.ExecutionError as e:
         # We've already seen the output since watch=True, so just ensure we return something to the user
         return e.exitcode

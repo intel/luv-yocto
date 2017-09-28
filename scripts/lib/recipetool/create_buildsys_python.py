@@ -512,7 +512,7 @@ class PythonRecipeHandler(RecipeHandler):
         except (OSError, subprocess.CalledProcessError):
             pass
         else:
-            for line in dep_output.decode('utf-8').splitlines():
+            for line in dep_output.splitlines():
                 line = line.rstrip()
                 dep, filename = line.split('\t', 1)
                 if filename.endswith('/setup.py'):
@@ -532,11 +532,11 @@ class PythonRecipeHandler(RecipeHandler):
 
     def parse_pkgdata_for_python_packages(self):
         suffixes = [t[0] for t in imp.get_suffixes()]
-        pkgdata_dir = tinfoil.config_data.getVar('PKGDATA_DIR', True)
+        pkgdata_dir = tinfoil.config_data.getVar('PKGDATA_DIR')
 
         ldata = tinfoil.config_data.createCopy()
         bb.parse.handle('classes/python-dir.bbclass', ldata, True)
-        python_sitedir = ldata.getVar('PYTHON_SITEPACKAGES_DIR', True)
+        python_sitedir = ldata.getVar('PYTHON_SITEPACKAGES_DIR')
 
         dynload_dir = os.path.join(os.path.dirname(python_sitedir), 'lib-dynload')
         python_dirs = [python_sitedir + os.sep,
@@ -591,7 +591,7 @@ class PythonRecipeHandler(RecipeHandler):
         if 'stderr' not in popenargs:
             popenargs['stderr'] = subprocess.STDOUT
         try:
-            return subprocess.check_output(cmd, **popenargs)
+            return subprocess.check_output(cmd, **popenargs).decode('utf-8')
         except OSError as exc:
             logger.error('Unable to run `{}`: {}', ' '.join(cmd), exc)
             raise
