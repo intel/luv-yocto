@@ -29,9 +29,13 @@ _RDEPENDS = "${@get_grub_depends(d)}"
 do_bootimg[depends] += "${_RDEPENDS}:do_deploy \
                         sbsigntool-native:do_populate_sysroot"
 
-EFI_LOADER_IMAGE_x86_64 = "bootx64.efi"
-EFI_LOADER_IMAGE_x86 = "bootia32.efi"
-EFI_LOADER_IMAGE_aarch64 = "bootaa64.efi"
+GRUB_EFI_LOADER_IMAGE_x86-64 = "grub-efi-bootx64.efi"
+GRUB_EFI_LOADER_IMAGE_x86 = "grub-efi-bootia32.efi"
+GRUB_EFI_LOADER_IMAGE_aarch64 = "grub-efi-bootaa64.efi"
+
+DEST_EFI_LOADER_IMAGE_x86-64 = "bootx64.efi"
+DEST_EFI_LOADER_IMAGE_x86 = "bootia32.efi"
+DEST_EFI_LOADER_IMAGE_aarch64 = "bootaa64.efi"
 
 EFIDIR = "/EFI/BOOT"
 
@@ -60,32 +64,29 @@ efi_populate() {
 
     # Install grub2 in EFI directory
     if [ "${TARGET_ARCH}" = "aarch64" ]; then
-		install -m 0644 ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${DEST}${EFIDIR}
-                echo "${EFI_LOADER_IMAGE}" > ${DEST}${EFIDIR}/startup.nsh
+		install -m 0644 ${DEPLOY_DIR_IMAGE}/${GRUB_EFI_LOADER_IMAGE} ${DEST}${EFIDIR}/${DEST_EFI_LOADER_IMAGE}
+                echo "${DEST_EFI_LOADER_IMAGE}" > ${DEST}${EFIDIR}/startup.nsh
 
     # TODO: need conditional signing; e.g., if (DISTRO_FEATURES contains secure_boot)
     # shim bootloader does not seem to work with i386. Thus we don't use it for 32-bit
     elif [ "${TARGET_ARCH}" = "x86_64" ] && [ "${LUV_FOR_NETBOOT}" = "0"  ]; then
                 # sign grub2 bootloader
                 sbsign --key ${DEPLOY_DIR_IMAGE}/LUV.key --cert ${DEPLOY_DIR_IMAGE}/LUV.crt \
-                       --output ${DEPLOY_DIR_IMAGE}/grubx64.efi ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE}
+                       --output ${DEPLOY_DIR_IMAGE}/grubx64.efi ${DEPLOY_DIR_IMAGE}/${GRUB_EFI_LOADER_IMAGE}
 
-                # temporarily rename the unsigned grub2 bootloader
-                mv ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE}-unsigned
                 # shim will become our main bootloader
-                mv ${DEPLOY_DIR_IMAGE}/shim.efi  ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE}
+                mv ${DEPLOY_DIR_IMAGE}/shim.efi  ${DEPLOY_DIR_IMAGE}/${DEST_EFI_LOADER_IMAGE}
 
                 # install everything
-                install -m 0644 ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${DEST}${EFIDIR}
+                install -m 0644 ${DEPLOY_DIR_IMAGE}/${DEST_EFI_LOADER_IMAGE} ${DEST}${EFIDIR}
                 install -m 0644 ${DEPLOY_DIR_IMAGE}/grubx64.efi ${DEST}${EFIDIR}
                 install -m 0644 ${DEPLOY_DIR_IMAGE}/MokManager.efi ${DEST}${EFIDIR}
                 install -m 0644 ${DEPLOY_DIR_IMAGE}/LUV.cer ${DEST}
 
                 # restore files to leave all in good shape for all the callers of the funciton
-                mv ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${DEPLOY_DIR_IMAGE}/shim.efi
-                mv ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE}-unsigned ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE}
+                cp ${DEPLOY_DIR_IMAGE}/${DEST_EFI_LOADER_IMAGE} ${DEPLOY_DIR_IMAGE}/shim.efi
     else
-		install -m 0644 ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${DEST}${EFIDIR}
+		install -m 0644 ${DEPLOY_DIR_IMAGE}/${GRUB_EFI_LOADER_IMAGE} ${DEST}${EFIDIR}/${DEST_EFI_LOADER_IMAGE}
     fi
 
     if echo "${TARGET_ARCH}" | grep -q "i.86" || [ "${TARGET_ARCH}" = "x86_64" ]; then
@@ -101,6 +102,7 @@ efi_populate() {
     install -m 0644 ${LUV_CFG} ${DEST}
 }
 
+BITS_EFI_LOADER_IMAGE = "${DEST_EFI_LOADER_IMAGE}"
 efi_populate_bits() {
     DEST=$1
     # TODO: weird behavior here. When building luv-live-image,
@@ -117,21 +119,21 @@ efi_populate_bits() {
     install -d ${DEST}${EFIDIR}/bits
 
     if [ "${LUV_FOR_NETBOOT}" = "0" ]; then
-        mv ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
-           ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}-unsigned
+        mv ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${BITS_EFI_LOADER_IMAGE} \
+           ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${BITS_EFI_LOADER_IMAGE}-unsigned
 
         sbsign --key ${DEPLOY_DIR_IMAGE}/LUV.key --cert ${DEPLOY_DIR_IMAGE}/LUV.crt \
-               --output ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
-               ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}-unsigned
+               --output ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${BITS_EFI_LOADER_IMAGE} \
+               ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${BITS_EFI_LOADER_IMAGE}-unsigned
 
-        install -m 0644 ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
+        install -m 0644 ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${BITS_EFI_LOADER_IMAGE} \
                 ${DEST}${EFIDIR}/bits/
         # restore files
-        rm ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}
-        mv ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}-unsigned \
-           ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE}
+        rm ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${BITS_EFI_LOADER_IMAGE}
+        mv ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${BITS_EFI_LOADER_IMAGE}-unsigned \
+           ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${BITS_EFI_LOADER_IMAGE}
     else
-        install -m 0644 ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${EFI_LOADER_IMAGE} \
+        install -m 0644 ${DEPLOY_DIR_IMAGE}/bits/efi/boot/${BITS_EFI_LOADER_IMAGE} \
                 ${DEST}${EFIDIR}/bits/
     fi
 }
@@ -144,7 +146,7 @@ efi_iso_populate() {
     cp -r $iso_dir/${EFIDIR}/* ${EFIIMGDIR}${EFIDIR}
 
     if [ "${TARGET_ARCH}" = "aarch64" ] ; then
-        echo "${EFI_LOADER_IMAGE}" > ${EFIIMGDIR}/startup.nsh
+        echo "${DEST_EFI_LOADER_IMAGE}" > ${EFIIMGDIR}/startup.nsh
     fi
     if echo "${TARGET_ARCH}" | grep -q "i.86" || [ "${TARGET_ARCH}" = "x86_64" ]; then
         echo "${GRUB_IMAGE}" > ${EFIIMGDIR}/startup.nsh
@@ -197,9 +199,9 @@ python build_efi_cfg() {
     cfgfile.write(' %s' % extra_initrd)
     cfgfile.write('\n}\n')
 
-    loader = d.getVar('EFI_LOADER_IMAGE', True)
+    loader = d.getVar('DEST_EFI_LOADER_IMAGE', True)
     if not loader:
-        raise bb.build.FuncFailed('Unable to find EFI_LOADER_IMAGE')
+        raise bb.build.FuncFailed('Unable to find DEST_EFI_LOADER_IMAGE')
 
     if re.search("(x86_64|i.86)", target):
        cfgfile.write('menuentry \'bits\' {\n')
