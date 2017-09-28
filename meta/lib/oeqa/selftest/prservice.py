@@ -12,10 +12,13 @@ from oeqa.utils.decorators import testcase
 from oeqa.utils.network import get_free_port
 
 class BitbakePrTests(oeSelfTest):
- 
+
+    @classmethod
+    def setUpClass(cls):
+        cls.pkgdata_dir = get_bb_var('PKGDATA_DIR')
+
     def get_pr_version(self, package_name):
-        pkgdata_dir = get_bb_var('PKGDATA_DIR')
-        package_data_file = os.path.join(pkgdata_dir, 'runtime', package_name)
+        package_data_file = os.path.join(self.pkgdata_dir, 'runtime', package_name)
         package_data = ftools.read_file(package_data_file)
         find_pr = re.search("PKGR: r[0-9]+\.([0-9]+)", package_data)
         self.assertTrue(find_pr, "No PKG revision found in %s" % package_data_file)
@@ -37,7 +40,6 @@ class BitbakePrTests(oeSelfTest):
     def increment_package_pr(self, package_name):
         inc_data = "do_package_append() {\n    bb.build.exec_func('do_test_prserv', d)\n}\ndo_test_prserv() {\necho \"The current date is: %s\"\n}" % datetime.datetime.now()
         self.write_recipeinc(package_name, inc_data)
-        bitbake("-ccleansstate %s" % package_name)
         res = bitbake(package_name, ignore_status=True)
         self.delete_recipeinc(package_name)
         self.assertEqual(res.status, 0, msg=res.output)
@@ -60,7 +62,6 @@ class BitbakePrTests(oeSelfTest):
         pr_2 = self.get_pr_version(package_name)
         stamp_2 = self.get_task_stamp(package_name, track_task)
 
-        bitbake("-ccleansstate %s" % package_name)
         self.assertTrue(pr_2 - pr_1 == 1, "Step between same pkg. revision is greater than 1")
         self.assertTrue(stamp_1 != stamp_2, "Different pkg rev. but same stamp: %s" % stamp_1)
 
@@ -86,7 +87,6 @@ class BitbakePrTests(oeSelfTest):
         self.increment_package_pr(package_name)
         pr_2 = self.get_pr_version(package_name)
 
-        bitbake("-ccleansstate %s" % package_name)
         self.assertTrue(pr_2 - pr_1 == 1, "Step between same pkg. revision is greater than 1")
 
     @testcase(930)

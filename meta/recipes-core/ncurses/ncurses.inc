@@ -7,7 +7,8 @@ SECTION = "libs"
 DEPENDS = "ncurses-native"
 DEPENDS_class-native = ""
 
-BINCONFIG = "${bindir}/ncurses5-config ${bindir}/ncursesw5-config"
+BINCONFIG = "${bindir}/ncurses5-config ${bindir}/ncursesw5-config \
+	${bindir}/ncurses6-config ${bindir}/ncursesw6-config"
 
 inherit autotools binconfig-disabled multilib_header pkgconfig
 
@@ -65,7 +66,6 @@ ncurses_configure() {
 	cd $1
 	shift
 	oe_runconf \
-	        --disable-static \
 	        --without-debug \
 	        --without-ada \
 	        --without-gpm \
@@ -278,6 +278,8 @@ FILES_${PN} = "\
   ${bindir}/tset \
   ${bindir}/ncurses5-config \
   ${bindir}/ncursesw5-config \
+  ${bindir}/ncurses6-config \
+  ${bindir}/ncursesw6-config \
   ${datadir}/tabset \
 "
 

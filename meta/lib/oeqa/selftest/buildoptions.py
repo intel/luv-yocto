@@ -5,7 +5,7 @@ import shutil
 import tempfile
 from oeqa.selftest.base import oeSelfTest
 from oeqa.selftest.buildhistory import BuildhistoryBase
-from oeqa.utils.commands import runCmd, bitbake, get_bb_var
+from oeqa.utils.commands import runCmd, bitbake, get_bb_var, get_bb_vars
 import oeqa.utils.ftools as ftools
 from oeqa.utils.decorators import testcase
 
@@ -16,33 +16,38 @@ class ImageOptionsTests(oeSelfTest):
         image_pkgtype = get_bb_var("IMAGE_PKGTYPE")
         if image_pkgtype != 'rpm':
             self.skipTest('Not using RPM as main package format')
-        bitbake("-c cleanall core-image-minimal")
+        bitbake("-c clean core-image-minimal")
         self.write_config('INC_RPM_IMAGE_GEN = "1"')
         self.append_config('IMAGE_FEATURES += "ssh-server-openssh"')
         bitbake("core-image-minimal")
         log_data_file = os.path.join(get_bb_var("WORKDIR", "core-image-minimal"), "temp/log.do_rootfs")
         log_data_created = ftools.read_file(log_data_file)
-        incremental_created = re.search("NOTE: load old install solution for incremental install\nNOTE: old install solution not exist\nNOTE: creating new install solution for incremental install(\n.*)*NOTE: Installing the following packages:.*packagegroup-core-ssh-openssh", log_data_created)
+        incremental_created = re.search("Installing  : packagegroup-core-ssh-openssh", log_data_created)
         self.remove_config('IMAGE_FEATURES += "ssh-server-openssh"')
         self.assertTrue(incremental_created, msg = "Match failed in:\n%s" % log_data_created)
         bitbake("core-image-minimal")
         log_data_removed = ftools.read_file(log_data_file)
-        incremental_removed = re.search("NOTE: load old install solution for incremental install\nNOTE: creating new install solution for incremental install(\n.*)*NOTE: incremental removed:.*openssh-sshd-.*", log_data_removed)
+        incremental_removed = re.search("Erasing     : packagegroup-core-ssh-openssh", log_data_removed)
         self.assertTrue(incremental_removed, msg = "Match failed in:\n%s" % log_data_removed)
 
     @testcase(286)
     def test_ccache_tool(self):
         bitbake("ccache-native")
-        self.assertTrue(os.path.isfile(os.path.join(get_bb_var('STAGING_BINDIR_NATIVE', 'ccache-native'), "ccache")), msg = "No ccache found under %s" % str(get_bb_var('STAGING_BINDIR_NATIVE', 'ccache-native')))
+        bb_vars = get_bb_vars(['SYSROOT_DESTDIR', 'bindir'], 'ccache-native')
+        p = bb_vars['SYSROOT_DESTDIR'] + bb_vars['bindir'] + "/" + "ccache"
+        self.assertTrue(os.path.isfile(p), msg = "No ccache found (%s)" % p)
         self.write_config('INHERIT += "ccache"')
-        bitbake("m4 -c cleansstate")
-        bitbake("m4 -c compile")
-        self.addCleanup(bitbake, 'ccache-native -ccleansstate')
-        res = runCmd("grep ccache %s" % (os.path.join(get_bb_var("WORKDIR","m4"),"temp/log.do_compile")), ignore_status=True)
-        self.assertEqual(0, res.status, msg="No match for ccache in m4 log.do_compile. For further details: %s" % os.path.join(get_bb_var("WORKDIR","m4"),"temp/log.do_compile"))
+        self.add_command_to_tearDown('bitbake -c clean m4')
+        bitbake("m4 -f -c compile")
+        log_compile = os.path.join(get_bb_var("WORKDIR","m4"), "temp/log.do_compile")
+        res = runCmd("grep ccache %s" % log_compile, ignore_status=True)
+        self.assertEqual(0, res.status, msg="No match for ccache in m4 log.do_compile. For further details: %s" % log_compile)
 
     @testcase(1435)
     def test_read_only_image(self):
+        distro_features = get_bb_var('DISTRO_FEATURES')
+        if not ('x11' in distro_features and 'opengl' in distro_features):
+            self.skipTest('core-image-sato requires x11 and opengl in distro features')
         self.write_config('IMAGE_FEATURES += "read-only-rootfs"')
         bitbake("core-image-sato")
         # do_image will fail if there are any pending postinsts
@@ -71,14 +76,14 @@ class SanityOptionsTest(oeSelfTest):
 
     @testcase(927)
     def test_options_warnqa_errorqa_switch(self):
-        bitbake("xcursor-transparent-theme -ccleansstate")
 
         self.write_config("INHERIT_remove = \"report-error\"")
         if "packages-list" not in get_bb_var("ERROR_QA"):
             self.append_config("ERROR_QA_append = \" packages-list\"")
 
         self.write_recipeinc('xcursor-transparent-theme', 'PACKAGES += \"${PN}-dbg\"')
-        res = bitbake("xcursor-transparent-theme", ignore_status=True)
+        self.add_command_to_tearDown('bitbake -c clean xcursor-transparent-theme')
+        res = bitbake("xcursor-transparent-theme -f -c package", ignore_status=True)
         self.delete_recipeinc('xcursor-transparent-theme')
         line = self.getline(res, "QA Issue: xcursor-transparent-theme-dbg is listed in PACKAGES multiple times, this leads to packaging errors.")
         self.assertTrue(line and line.startswith("ERROR:"), msg=res.output)
@@ -86,8 +91,7 @@ class SanityOptionsTest(oeSelfTest):
         self.write_recipeinc('xcursor-transparent-theme', 'PACKAGES += \"${PN}-dbg\"')
         self.append_config('ERROR_QA_remove = "packages-list"')
         self.append_config('WARN_QA_append = " packages-list"')
-        bitbake("xcursor-transparent-theme -ccleansstate")
-        res = bitbake("xcursor-transparent-theme")
+        res = bitbake("xcursor-transparent-theme -f -c package")
         self.delete_recipeinc('xcursor-transparent-theme')
         line = self.getline(res, "QA Issue: xcursor-transparent-theme-dbg is listed in PACKAGES multiple times, this leads to packaging errors.")
         self.assertTrue(line and line.startswith("WARNING:"), msg=res.output)
@@ -96,8 +100,8 @@ class SanityOptionsTest(oeSelfTest):
     def test_sanity_unsafe_script_references(self):
         self.write_config('WARN_QA_append = " unsafe-references-in-scripts"')
 
-        bitbake("-ccleansstate gzip")
-        res = bitbake("gzip")
+        self.add_command_to_tearDown('bitbake -c clean gzip')
+        res = bitbake("gzip -f -c package_qa")
         line = self.getline(res, "QA Issue: gzip")
         self.assertFalse(line, "WARNING: QA Issue: gzip message is present in bitbake's output and shouldn't be: %s" % res.output)
 
@@ -106,28 +110,9 @@ do_install_append_pn-gzip () {
 	echo "\n${bindir}/test" >> ${D}${bindir}/zcat
 }
 """)
-        res = bitbake("gzip")
+        res = bitbake("gzip -f -c package_qa")
         line = self.getline(res, "QA Issue: gzip")
         self.assertTrue(line and line.startswith("WARNING:"), "WARNING: QA Issue: gzip message is not present in bitbake's output: %s" % res.output)
-
-    @testcase(1434)
-    def test_sanity_unsafe_binary_references(self):
-        self.write_config('WARN_QA_append = " unsafe-references-in-binaries"')
-
-        bitbake("-ccleansstate nfs-utils")
-        #res = bitbake("nfs-utils")
-        # FIXME when nfs-utils passes this test
-        #line = self.getline(res, "QA Issue: nfs-utils")
-        #self.assertFalse(line, "WARNING: QA Issue: nfs-utils message is present in bitbake's output and shouldn't be: %s" % res.output)
-
-#        self.append_config("""
-#do_install_append_pn-nfs-utils () {
-#	echo "\n${bindir}/test" >> ${D}${base_sbindir}/osd_login
-#}
-#""")
-        res = bitbake("nfs-utils")
-        line = self.getline(res, "QA Issue: nfs-utils")
-        self.assertTrue(line and line.startswith("WARNING:"), "WARNING: QA Issue: nfs-utils message is not present in bitbake's output: %s" % res.output)
 
     @testcase(1421)
     def test_layer_without_git_dir(self):
@@ -178,7 +163,6 @@ class BuildhistoryTests(BuildhistoryBase):
 
     @testcase(294)
     def test_buildhistory_buildtime_pr_backwards(self):
-        self.add_command_to_tearDown('cleanup-workdir')
         target = 'xcursor-transparent-theme'
         error = "ERROR:.*QA Issue: Package version for package %s went backwards which would break package feeds from (.*-r1.* to .*-r0.*)" % target
         self.run_buildhistory_operation(target, target_config="PR = \"r1\"", change_bh_location=True)
@@ -190,11 +174,11 @@ class ArchiverTest(oeSelfTest):
         """
         Test for archiving the work directory and exporting the source files.
         """
-        self.add_command_to_tearDown('cleanup-workdir')
         self.write_config("INHERIT += \"archiver\"\nARCHIVER_MODE[src] = \"original\"\nARCHIVER_MODE[srpm] = \"1\"")
         res = bitbake("xcursor-transparent-theme", ignore_status=True)
         self.assertEqual(res.status, 0, "\nCouldn't build xcursortransparenttheme.\nbitbake output %s" % res.output)
-        pkgs_path = g.glob(str(self.builddir) + "/tmp/deploy/sources/allarch*/xcurs*")
+        deploy_dir_src = get_bb_var('DEPLOY_DIR_SRC')
+        pkgs_path = g.glob(str(deploy_dir_src) + "/allarch*/xcurs*")
         src_file_glob = str(pkgs_path[0]) + "/xcursor*.src.rpm"
         tar_file_glob = str(pkgs_path[0]) + "/xcursor*.tar.gz"
-        self.assertTrue((g.glob(src_file_glob) and g.glob(tar_file_glob)), "Couldn't find .src.rpm and .tar.gz files under tmp/deploy/sources/allarch*/xcursor*")
+        self.assertTrue((g.glob(src_file_glob) and g.glob(tar_file_glob)), "Couldn't find .src.rpm and .tar.gz files under %s/allarch*/xcursor*" % deploy_dir_src)

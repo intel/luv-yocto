@@ -1,9 +1,11 @@
 import os
 import logging
+import shutil
 import tempfile
 import urllib.parse
 
-from oeqa.utils.commands import runCmd, bitbake, get_bb_var, create_temp_layer
+from oeqa.utils.commands import runCmd, bitbake, get_bb_var
+from oeqa.utils.commands import get_bb_vars, create_temp_layer
 from oeqa.utils.decorators import testcase
 from oeqa.selftest import devtool
 
@@ -24,6 +26,7 @@ def tearDownModule():
 
 
 class RecipetoolBase(devtool.DevtoolBase):
+
     def setUpLocal(self):
         self.templayerdir = templayerdir
         self.tempdir = tempfile.mkdtemp(prefix='recipetoolqa')
@@ -64,17 +67,16 @@ class RecipetoolBase(devtool.DevtoolBase):
 
 
 class RecipetoolTests(RecipetoolBase):
+
     @classmethod
     def setUpClass(cls):
         # Ensure we have the right data in shlibs/pkgdata
         logger = logging.getLogger("selftest")
         logger.info('Running bitbake to generate pkgdata')
         bitbake('-c packagedata base-files coreutils busybox selftest-recipetool-appendfile')
-
-    @classmethod
-    def tearDownClass(cls):
-        # Shouldn't leave any traces of this artificial recipe behind
-        bitbake('-c cleansstate selftest-recipetool-appendfile')
+        bb_vars = get_bb_vars(['COREBASE', 'BBPATH'])
+        cls.corebase = bb_vars['COREBASE']
+        cls.bbpath = bb_vars['BBPATH']
 
     def _try_recipetool_appendfile(self, testrecipe, destfile, newfile, options, expectedlines, expectedfiles):
         cmd = 'recipetool appendfile %s %s %s %s' % (self.templayerdir, destfile, newfile, options)
@@ -108,9 +110,8 @@ class RecipetoolTests(RecipetoolBase):
         # Now try with a file we know should be an alternative
         # (this is very much a fake example, but one we know is reliably an alternative)
         self._try_recipetool_appendfile_fail('/bin/ls', self.testfile, ['ERROR: File /bin/ls is an alternative possibly provided by the following recipes:', 'coreutils', 'busybox'])
-        corebase = get_bb_var('COREBASE')
         # Need a test file - should be executable
-        testfile2 = os.path.join(corebase, 'oe-init-build-env')
+        testfile2 = os.path.join(self.corebase, 'oe-init-build-env')
         testfile2name = os.path.basename(testfile2)
         expectedlines = ['FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"\n',
                          '\n',
@@ -139,7 +140,6 @@ class RecipetoolTests(RecipetoolBase):
 
     @testcase(1173)
     def test_recipetool_appendfile_add(self):
-        corebase = get_bb_var('COREBASE')
         # Try arbitrary file add to a recipe
         expectedlines = ['FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"\n',
                          '\n',
@@ -152,7 +152,7 @@ class RecipetoolTests(RecipetoolBase):
         self._try_recipetool_appendfile('netbase', '/usr/share/something', self.testfile, '-r netbase', expectedlines, ['testfile'])
         # Try adding another file, this time where the source file is executable
         # (so we're testing that, plus modifying an existing bbappend)
-        testfile2 = os.path.join(corebase, 'oe-init-build-env')
+        testfile2 = os.path.join(self.corebase, 'oe-init-build-env')
         testfile2name = os.path.basename(testfile2)
         expectedlines = ['FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"\n',
                          '\n',
@@ -369,19 +369,21 @@ class RecipetoolTests(RecipetoolBase):
         tempsrc = os.path.join(self.tempdir, 'srctree')
         os.makedirs(tempsrc)
         recipefile = os.path.join(self.tempdir, 'logrotate_3.8.7.bb')
-        srcuri = 'https://fedorahosted.org/releases/l/o/logrotate/logrotate-3.8.7.tar.gz'
+        srcuri = 'https://github.com/logrotate/logrotate/archive/r3-8-7.tar.gz'
         result = runCmd('recipetool create -o %s %s -x %s' % (recipefile, srcuri, tempsrc))
         self.assertTrue(os.path.isfile(recipefile))
         checkvars = {}
         checkvars['LICENSE'] = 'GPLv2'
         checkvars['LIC_FILES_CHKSUM'] = 'file://COPYING;md5=18810669f13b87348459e611d31ab760'
-        checkvars['SRC_URI'] = 'https://fedorahosted.org/releases/l/o/logrotate/logrotate-${PV}.tar.gz'
-        checkvars['SRC_URI[md5sum]'] = '99e08503ef24c3e2e3ff74cc5f3be213'
-        checkvars['SRC_URI[sha256sum]'] = 'f6ba691f40e30e640efa2752c1f9499a3f9738257660994de70a45fe00d12b64'
+        checkvars['SRC_URI'] = 'https://github.com/logrotate/logrotate/archive/r3-8-7.tar.gz'
+        checkvars['SRC_URI[md5sum]'] = '6b1aa0e0d07eda3c9a2526520850397a'
+        checkvars['SRC_URI[sha256sum]'] = 'dece4bfeb9d8374a0ecafa34be139b5a697db5c926dcc69a9b8715431a22e733'
         self._test_recipe_contents(recipefile, checkvars, [])
 
     @testcase(1194)
     def test_recipetool_create_git(self):
+        if 'x11' not in get_bb_var('DISTRO_FEATURES'):
+            self.skipTest('Test requires x11 as distro feature')
         # Ensure we have the right data in shlibs/pkgdata
         bitbake('libpng pango libx11 libxext jpeg libcheck')
         # Try adding a recipe
@@ -485,6 +487,46 @@ class RecipetoolTests(RecipetoolBase):
         inherits = ['pkgconfig', 'autotools']
         self._test_recipe_contents(recipefile, checkvars, inherits)
 
+    def _copy_file_with_cleanup(self, srcfile, basedstdir, *paths):
+        dstdir = basedstdir
+        self.assertTrue(os.path.exists(dstdir))
+        for p in paths:
+            dstdir = os.path.join(dstdir, p)
+            if not os.path.exists(dstdir):
+                os.makedirs(dstdir)
+                self.track_for_cleanup(dstdir)
+        dstfile = os.path.join(dstdir, os.path.basename(srcfile))
+        if srcfile != dstfile:
+            shutil.copy(srcfile, dstfile)
+            self.track_for_cleanup(dstfile)
+
+    def test_recipetool_load_plugin(self):
+        """Test that recipetool loads only the first found plugin in BBPATH."""
+
+        recipetool = runCmd("which recipetool")
+        fromname = runCmd("recipetool --quiet pluginfile")
+        srcfile = fromname.output
+        searchpath = self.bbpath.split(':') + [os.path.dirname(recipetool.output)]
+        plugincontent = []
+        with open(srcfile) as fh:
+            plugincontent = fh.readlines()
+        try:
+            self.assertIn('meta-selftest', srcfile, 'wrong bbpath plugin found')
+            for path in searchpath:
+                self._copy_file_with_cleanup(srcfile, path, 'lib', 'recipetool')
+            result = runCmd("recipetool --quiet count")
+            self.assertEqual(result.output, '1')
+            result = runCmd("recipetool --quiet multiloaded")
+            self.assertEqual(result.output, "no")
+            for path in searchpath:
+                result = runCmd("recipetool --quiet bbdir")
+                self.assertEqual(result.output, path)
+                os.unlink(os.path.join(result.output, 'lib', 'recipetool', 'bbpath.py'))
+        finally:
+            with open(srcfile, 'w') as fh:
+                fh.writelines(plugincontent)
+
+
 class RecipetoolAppendsrcBase(RecipetoolBase):
     def _try_recipetool_appendsrcfile(self, testrecipe, newfile, destfile, options, expectedlines, expectedfiles):
         cmd = 'recipetool appendsrcfile %s %s %s %s %s' % (options, self.templayerdir, testrecipe, newfile, destfile)
@@ -560,18 +602,21 @@ class RecipetoolAppendsrcBase(RecipetoolBase):
 
         self._try_recipetool_appendsrcfiles(testrecipe, newfiles, expectedfiles=expectedfiles, destdir=destdir, options=options)
 
-        src_uri = get_bb_var('SRC_URI', testrecipe).split()
+        bb_vars = get_bb_vars(['SRC_URI', 'FILE', 'FILESEXTRAPATHS'], testrecipe)
+        src_uri = bb_vars['SRC_URI'].split()
         for f in expectedfiles:
             if destdir:
                 self.assertIn('file://%s;subdir=%s' % (f, destdir), src_uri)
             else:
                 self.assertIn('file://%s' % f, src_uri)
 
-        recipefile = get_bb_var('FILE', testrecipe)
+        recipefile = bb_vars['FILE']
         bbappendfile = self._check_bbappend(testrecipe, recipefile, self.templayerdir)
         filesdir = os.path.join(os.path.dirname(bbappendfile), testrecipe)
-        filesextrapaths = get_bb_var('FILESEXTRAPATHS', testrecipe).split(':')
+        filesextrapaths = bb_vars['FILESEXTRAPATHS'].split(':')
         self.assertIn(filesdir, filesextrapaths)
+
+
 
 
 class RecipetoolAppendsrcTests(RecipetoolAppendsrcBase):
@@ -599,8 +644,9 @@ class RecipetoolAppendsrcTests(RecipetoolAppendsrcBase):
     @testcase(1280)
     def test_recipetool_appendsrcfile_srcdir_basic(self):
         testrecipe = 'bash'
-        srcdir = get_bb_var('S', testrecipe)
-        workdir = get_bb_var('WORKDIR', testrecipe)
+        bb_vars = get_bb_vars(['S', 'WORKDIR'], testrecipe)
+        srcdir = bb_vars['S']
+        workdir = bb_vars['WORKDIR']
         subdir = os.path.relpath(srcdir, workdir)
         self._test_appendsrcfile(testrecipe, 'a-file', srcdir=subdir)
 
@@ -625,8 +671,9 @@ class RecipetoolAppendsrcTests(RecipetoolAppendsrcBase):
     def test_recipetool_appendsrcfile_replace_file_srcdir(self):
         testrecipe = 'bash'
         filepath = 'Makefile.in'
-        srcdir = get_bb_var('S', testrecipe)
-        workdir = get_bb_var('WORKDIR', testrecipe)
+        bb_vars = get_bb_vars(['S', 'WORKDIR'], testrecipe)
+        srcdir = bb_vars['S']
+        workdir = bb_vars['WORKDIR']
         subdir = os.path.relpath(srcdir, workdir)
 
         self._test_appendsrcfile(testrecipe, filepath, srcdir=subdir)

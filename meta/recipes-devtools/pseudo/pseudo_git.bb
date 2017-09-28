@@ -1,7 +1,7 @@
 require pseudo.inc
 
-SRCREV = "befc6dbd6469d428c9e0830dbe51bdf7ac39d9ae"
-PV = "1.8.1+git${SRCPV}"
+SRCREV = "02168305b0a19f981ffe857f36eb256ba8810b77"
+PV = "1.8.2+git${SRCPV}"
 
 DEFAULT_PREFERENCE = "-1"
 

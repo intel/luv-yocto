@@ -18,23 +18,24 @@ def runstrip(arg):
         newmode = origmode | stat.S_IWRITE | stat.S_IREAD
         os.chmod(file, newmode)
 
-    extraflags = ""
+    stripcmd = [strip]
 
     # kernel module    
     if elftype & 16:
-        extraflags = "--strip-debug --remove-section=.comment --remove-section=.note --preserve-dates"
+        stripcmd.extend(["--strip-debug", "--remove-section=.comment",
+            "--remove-section=.note", "--preserve-dates"])
     # .so and shared library
     elif ".so" in file and elftype & 8:
-        extraflags = "--remove-section=.comment --remove-section=.note --strip-unneeded"
+        stripcmd.extend(["--remove-section=.comment", "--remove-section=.note", "--strip-unneeded"])
     # shared or executable:
     elif elftype & 8 or elftype & 4:
-        extraflags = "--remove-section=.comment --remove-section=.note"
+        stripcmd.extend(["--remove-section=.comment", "--remove-section=.note"])
 
-    stripcmd = "'%s' %s '%s'" % (strip, extraflags, file)
+    stripcmd.append(file)
     bb.debug(1, "runstrip: %s" % stripcmd)
 
     try:
-        output = subprocess.check_output(stripcmd, stderr=subprocess.STDOUT, shell=True)
+        output = subprocess.check_output(stripcmd, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
         bb.error("runstrip: '%s' strip command failed with %s (%s)" % (stripcmd, e.returncode, e.output))
 
@@ -56,7 +57,7 @@ def file_translate(file):
 def filedeprunner(arg):
     import re, subprocess, shlex
 
-    (pkg, pkgfiles, rpmdeps, pkgdest) = arg
+    (pkg, pkgfiles, rpmdeps, pkgdest, magic) = arg
     provides = {}
     requires = {}
 
@@ -89,8 +90,11 @@ def filedeprunner(arg):
 
         return provides, requires
 
+    env = os.environ.copy()
+    env["MAGIC"] = magic
+
     try:
-        dep_popen = subprocess.Popen(shlex.split(rpmdeps) + pkgfiles, stdout=subprocess.PIPE)
+        dep_popen = subprocess.Popen(shlex.split(rpmdeps) + pkgfiles, stdout=subprocess.PIPE, env=env)
         provides, requires = process_deps(dep_popen.stdout, pkg, pkgdest, provides, requires)
     except OSError as e:
         bb.error("rpmdeps: '%s' command failed, '%s'" % (shlex.split(rpmdeps) + pkgfiles, e))
@@ -103,7 +107,7 @@ def read_shlib_providers(d):
     import re
 
     shlib_provider = {}
-    shlibs_dirs = d.getVar('SHLIBSDIRS', True).split()
+    shlibs_dirs = d.getVar('SHLIBSDIRS').split()
     list_re = re.compile('^(.*)\.list$')
     # Go from least to most specific since the last one found wins
     for dir in reversed(shlibs_dirs):
@@ -149,6 +153,7 @@ def npm_split_package_dirs(pkgdir):
                         continue
                     pkgitems.append(pathitem)
                 pkgname = '-'.join(pkgitems).replace('_', '-')
+                pkgname = pkgname.replace('@', '')
                 pkgfile = os.path.join(root, dn, 'package.json')
                 data = None
                 if os.path.exists(pkgfile):
