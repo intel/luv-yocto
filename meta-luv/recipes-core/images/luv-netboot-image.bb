@@ -36,9 +36,13 @@ CMDLINE_append_x86-64 = "${COMMON_CMDLINE_x86}"
 LUVCFG_netconsole = "LUV_NETCONSOLE=none"
 LUVCFG_storage_url = "LUV_STORAGE_URL=none"
 
-EFI_LOADER_IMAGE_x86_64 = "bootx64.efi"
-EFI_LOADER_IMAGE_x86 = "bootia32.efi"
-EFI_LOADER_IMAGE_aarch64 = "bootaa64.efi"
+GRUB_EFI_LOADER_IMAGE_x86-64 = "grub-efi-bootx64.efi"
+GRUB_EFI_LOADER_IMAGE_x86 = "grub-efi-bootia32.efi"
+GRUB_EFI_LOADER_IMAGE_aarch64 = "grub-efi-bootaa64.efi"
+
+DEST_EFI_LOADER_IMAGE_x86-64 = "bootx64.efi"
+DEST_EFI_LOADER_IMAGE_x86 = "bootia32.efi"
+DEST_EFI_LOADER_IMAGE_aarch64 = "bootaa64.efi"
 
 HDDDIR = "${S}/hddimg"
 
@@ -73,8 +77,8 @@ do_populate_image() {
 	if [ "${TARGET_ARCH}" != "aarch64" ]; then
 		efi_populate_bits ${HDDDIR}
 	else
-		echo "${EFI_LOADER_IMAGE}" > ${HDDDIR}${EFIDIR}/startup.nsh
-		install -m 0644 ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${HDDDIR}${EFIDIR}
+		echo "${DEST_EFI_LOADER_IMAGE}" > ${HDDDIR}${EFIDIR}/startup.nsh
+		install -m 0644 ${DEPLOY_DIR_IMAGE}/${GRUB_EFI_LOADER_IMAGE} ${HDDDIR}${EFIDIR}/${DEST_EFI_LOADER_IMAGE}
 	fi
 	install -m 0644 ${GRUBCFG} ${HDDDIR}${EFIDIR}
 	install -m 0644 ${LUV_CFG} ${HDDDIR}
@@ -92,9 +96,9 @@ python do_mkimage() {
 do_deploy() {
 	rm -f ${DEPLOY_DIR_IMAGE}/${PN}.efi
 	if [ "${TARGET_ARCH}" = "aarch64" ]; then
-		ln -s ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${DEPLOY_DIR_IMAGE}/${PN}.efi
+		ln -s ${DEPLOY_DIR_IMAGE}/${GRUB_EFI_LOADER_IMAGE} ${DEPLOY_DIR_IMAGE}/${PN}.efi
 	else
-		ln -s ${DEPLOY_DIR_IMAGE}/${EFI_LOADER_IMAGE} ${DEPLOY_DIR_IMAGE}/${PN}.efi
+		ln -s ${DEPLOY_DIR_IMAGE}/${GRUB_EFI_LOADER_IMAGE} ${DEPLOY_DIR_IMAGE}/${PN}.efi
 	fi
 }
 
