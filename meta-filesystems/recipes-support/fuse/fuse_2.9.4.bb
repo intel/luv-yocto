@@ -29,10 +29,7 @@ DEPENDS = "gettext-native"
 
 PACKAGES =+ "fuse-utils-dbg fuse-utils libulockmgr libulockmgr-dev libulockmgr-dbg"
 
-# Fusermount requires features from the util-linux version of mount.
-RDEPENDS_${PN} += "util-linux-mount"
-
-RRECOMMENDS_${PN} = "kernel-module-fuse libulockmgr fuse-utils"
+RRECOMMENDS_${PN}_class-target = "kernel-module-fuse libulockmgr fuse-utils"
 
 FILES_${PN} += "${libdir}/libfuse.so.*"
 FILES_${PN}-dev += "${libdir}/libfuse*.la"
@@ -62,3 +59,5 @@ do_install_append() {
         install -m 0644 ${WORKDIR}/fuse.conf ${D}${sysconfdir}/modules-load.d
     fi
 }
+
+BBCLASSEXTEND = "native nativesdk"

@@ -54,8 +54,7 @@ Maintenance
 Send patches / pull requests to openembedded-devel@lists.openembedded.org
 with '[meta-webserver][morty]' in the subject.
 
-morty branch maintainer(s):
-Armin Kuster <akuster808@gmail.com>
+Layer maintainer: Derek Straka <derek@asterius.io>
 
 
 License

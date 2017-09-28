@@ -7,7 +7,7 @@ This package contains the core DBus services and some utilities."
 HOMEPAGE = "http://code.google.com/p/imsettings/"
 SECTION = "Applications/System"
 
-inherit autotools gtk-doc
+inherit autotools gtk-doc gobject-introspection
 
 SRC_URI = "https://bitbucket.org/tagoh/imsettings/downloads/${BPN}-${PV}.tar.bz2 \
            file://gtk-is-required-by-notify.patch \
