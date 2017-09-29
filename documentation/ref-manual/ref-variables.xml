@@ -3880,7 +3880,9 @@
                 <para>
                     See the
                     <link linkend='ref-classes-systemd-boot'><filename>systemd-boot</filename></link>
-                    class for more information.
+                    and
+                    <link linkend='ref-classes-image-live'><filename>image-live</filename></link>
+                    classes for more information.
                 </para>
             </glossdef>
         </glossentry>
@@ -5129,9 +5131,9 @@
                     is normally the same as the
                     <link linkend='var-TARGET_OS'><filename>TARGET_OS</filename></link>.
                     The variable can be set to "linux" for <filename>glibc</filename>-based systems and
-                    to "linux-uclibc" for <filename>uclibc</filename>.
+                    to "linux-musl" for <filename>musl</filename>.
                     For ARM/EABI targets, there are also "linux-gnueabi" and
-                    "linux-uclibc-gnueabi" values possible.
+                    "linux-musleabi" values possible.
                 </para>
             </glossdef>
         </glossentry>
@@ -6314,14 +6316,24 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
 
         <glossentry id='var-INHERIT'><glossterm>INHERIT</glossterm>
             <info>
-                INHERIT[doc] = "Causes the named class to be inherited at this point during parsing. The variable is only valid in configuration files."
+                INHERIT[doc] = "Causes the named class or classes to be inherited globally."
             </info>
             <glossdef>
                 <para role="glossdeffirst">
 <!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
-                    Causes the named class to be inherited at
-                    this point during parsing.
-                    The variable is only valid in configuration files.
+                    Causes the named class or classes to be inherited globally.
+                    Anonymous functions in the class or classes
+                    are not executed for the
+                    base configuration and in each individual recipe.
+                    The OpenEmbedded build system ignores changes to
+                    <filename>INHERIT</filename> in individual recipes.
+                </para>
+
+                <para>
+                    For more information on <filename>INHERIT</filename>, see
+                    the
+                    "<ulink url="&YOCTO_DOCS_BB_URL;#inherit-configuration-directive"><filename>INHERIT</filename> Configuration Directive</ulink>"
+                    section in the Yocto Project Bitbake User Manual.
                 </para>
             </glossdef>
         </glossentry>
@@ -7429,21 +7441,30 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
 
         <glossentry id='var-LAYERDEPENDS'><glossterm>LAYERDEPENDS</glossterm>
             <info>
-                LAYERDEPENDS[doc] = "Lists the layers, separated by spaces, upon which this recipe depends. This variable is used in the conf/layer.conf file and must be suffixed with the name of the specific layer."
+                LAYERDEPENDS[doc] = "Lists the layers, separated by spaces, on which this recipe depends. This variable is used in the conf/layer.conf file and must be suffixed with the name of the specific layer."
             </info>
             <glossdef>
                 <para role="glossdeffirst">
 <!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
-                    Lists the layers that this recipe depends upon, separated by spaces.
-                    Optionally, you can specify a specific layer version for a dependency
-                    by adding it to the end of the layer name with a colon, (e.g. "anotherlayer:3"
-                    to be compared against
-                    <link linkend='var-LAYERVERSION'><filename>LAYERVERSION</filename></link><filename>_anotherlayer</filename>
-                    in this case).
-                    An error will be produced if any dependency is missing or
-                    the version numbers do not match exactly (if specified).
-                    This variable is used in the <filename>conf/layer.conf</filename> file
-                    and must be suffixed with the name of the specific layer (e.g.
+                    Lists the layers, separated by spaces, on which this
+                    recipe depends.
+                    Optionally, you can specify a specific layer version for a
+                    dependency by adding it to the end of the layer name.
+                    Here is an example:
+                    <literallayout class='monospaced'>
+     LAYERDEPENDS_mylayer = "anotherlayer (=3)"
+                    </literallayout>
+                    In this previous example, version 3 of "anotherlayer"
+                    is compared against
+                    <link linkend='var-LAYERVERSION'><filename>LAYERVERSION</filename></link><filename>_anotherlayer</filename>.
+                </para>
+
+                <para>
+                    An error is produced if any dependency is missing or
+                    the version numbers (if specified) do not match exactly.
+                    This variable is used in the
+                    <filename>conf/layer.conf</filename> file and must be
+                    suffixed with the name of the specific layer (e.g.
                     <filename>LAYERDEPENDS_mylayer</filename>).
                 </para>
             </glossdef>
@@ -7460,6 +7481,39 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     file, this variable provides the path of the current layer.
                     This variable is not available outside of <filename>layer.conf</filename>
                     and references are expanded immediately when parsing of the file completes.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-LAYERRECOMMENDS'><glossterm>LAYERRECOMMENDS</glossterm>
+            <info>
+                LAYERRECOMMENDS[doc] = "Lists the layers, separated by spaces, recommended for use with this layer."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Lists the layers, separated by spaces, recommended for
+                    use with this layer.
+                </para>
+
+                <para>
+                    Optionally, you can specify a specific layer version for a
+                    recommendation by adding the version to the end of the
+                    layer name.
+                    Here is an example:
+                    <literallayout class='monospaced'>
+     LAYERRECOMMENDS_mylayer = "anotherlayer (=3)"
+                    </literallayout>
+                    In this previous example, version 3 of "anotherlayer" is
+                    compared against
+                    <filename>LAYERVERSION_anotherlayer</filename>.
+                </para>
+
+                <para>
+                    This variable is used in the
+                    <filename>conf/layer.conf</filename> file and must be
+                    suffixed with the name of the specific layer (e.g.
+                    <filename>LAYERRECOMMENDS_mylayer</filename>).
                 </para>
             </glossdef>
         </glossentry>
@@ -9609,29 +9663,22 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     from the
                     <link linkend='var-PACKAGECONFIG'><filename>PACKAGECONFIG</filename></link>
                     setting.
-                    This list of options helps other classes and
-                    recipes take advantage of the
-                    <filename>PACKAGECONFIG</filename> mechanism without
-                    having to include options from
-                    <link linkend='var-EXTRA_OECONF'><filename>EXTRA_OECONF</filename></link>.
                 </para>
 
                 <para>
-                    To illustrate how to use
-                    <filename>PACKAGECONFIG_CONFARGS</filename>, consider the
-                    following example:
-                    <literallayout class='monospaced'>
-     PACKAGECONFIG_CONFARGS = " \
-          -prefix ${prefix} \
-          -sysroot ${STAGING_DIR_NATIVE} \
-          -no-gcc-sysroot
-          "
-                    </literallayout>
-                    In the previous example,
-                    <filename>PACKAGECONFIG_CONFARGS</filename> is set with
-                    three configuration options that can be passed using the
-                    <filename>PACKAGECONFIG</filename> mechanism, thus
-                    avoiding having to use <filename>EXTRA_OECONF</filename>.
+                    Classes such as
+                    <link linkend='ref-classes-autotools'><filename>autotools</filename></link>
+                    and
+                    <link linkend='ref-classes-cmake'><filename>cmake</filename></link>
+                    use <filename>PACKAGECONFIG_CONFARGS</filename> to pass
+                    <link linkend='var-PACKAGECONFIG'><filename>PACKAGECONFIG</filename></link>
+                    options to <filename>configure</filename> and
+                    <filename>cmake</filename>, respectively.
+                    If you are using
+                    <filename>PACKAGECONFIG</filename> but not a class that
+                    handles the <filename>do_configure</filename> task, then
+                    you need to use
+                    <filename>PACKAGECONFIG_CONFARGS</filename> appropriately.
                 </para>
 
                 <para>
@@ -12908,17 +12955,23 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                 <para role="glossdeffirst">
 <!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
                     Controls the list of files the OpenEmbedded build system
-                    scans for hardcoded installation paths.
+                    scans for hardcoded installation paths. The variable uses a
+                    space-separated list of filenames (not paths) with standard
+                    wildcard characters allowed.
                 </para>
 
                 <para>
                     During a build, the OpenEmbedded build system creates a
                     shared state (sstate) object during the first stage of
-                    preparing the sysroots.
-                    During the build, the object is scanned for hardcoded paths
-                    for original installation locations.
+                    preparing the sysroots. That object is scanned for
+                    hardcoded paths for original installation locations.
                     The list of files that are scanned for paths is controlled
                     by the <filename>SSTATE_SCAN_FILES</filename> variable.
+                    Typically, recipes add files they want to be scanned to the
+                    value of <filename>SSTATE_SCAN_FILES</filename> rather than
+                    the variable being comprehensively set. The
+                    <link linkend='ref-classes-sstate'><filename>sstate</filename></link>
+                    class specifies the default list of files.
                 </para>
 
                 <para>
@@ -13521,6 +13574,28 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
             </glossdef>
         </glossentry>
 
+        <glossentry id='var-SYSROOT_DESTDIR'><glossterm>SYSROOT_DESTDIR</glossterm>
+            <info>
+                SYSROOT_DESTDIR[doc] = "Points to the temporary work directory (default ${WORKDIR}/sysroot-destdir) where the files that will be populated into the sysroot are assembled during the do_populate_sysroot task."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Points to the temporary directory under the work directory
+                    (default
+                    <filename>${</filename><link linkend='var-WORKDIR'><filename>WORKDIR</filename></link><filename>}/sysroot-destidir</filename>)
+                    where the files
+                    that will be populated into the sysroot are assembled
+                    during the
+                    <link linkend='ref-tasks-populate_sysroot'><filename>do_populate_sysroot</filename></link>
+                    task.
+                    <literallayout class='monospaced'>
+     SYSROOT_DESTDIR ?= "console=ttyS0,115200"
+                    </literallayout>
+                </para>
+            </glossdef>
+        </glossentry>
+
         <glossentry id='var-SYSROOT_DIRS'><glossterm>SYSROOT_DIRS</glossterm>
             <info>
                 SYSROOT_DIRS[doc] = "Directories that are staged into the sysroot by the do_populate_sysroot task."
@@ -14106,9 +14181,9 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
 <!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
                     Specifies the target's operating system.
                     The variable can be set to "linux" for <filename>glibc</filename>-based systems and
-                    to "linux-uclibc" for <filename>uclibc</filename>.
+                    to "linux-musl" for <filename>musl</filename>.
                     For ARM/EABI targets, there are also "linux-gnueabi" and
-                    "linux-uclibc-gnueabi" values possible.
+                    "linux-musleabi" values possible.
                 </para>
             </glossdef>
         </glossentry>
@@ -14237,7 +14312,7 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
 
         <glossentry id='var-TCLIBC'><glossterm>TCLIBC</glossterm>
             <info>
-                TCLIBC[doc] = "Specifies GNU standard C library (libc) variant to use during the build process. You can select 'glibc' or 'uclibc'."
+                TCLIBC[doc] = "Specifies GNU standard C library (libc) variant to use during the build process. You can select 'glibc' or 'musl'."
             </info>
             <glossdef>
                 <para role="glossdeffirst">
@@ -14249,7 +14324,7 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                 </para>
 
                 <para>
-                    You can select "glibc" or "uclibc".
+                    You can select "glibc" or "musl".
                 </para>
             </glossdef>
         </glossentry>
@@ -14288,7 +14363,7 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     <link linkend='var-TCLIBC'><filename>TCLIBC</filename></link>,
                     which controls the variant of the GNU standard C library
                     (<filename>libc</filename>) used during the build process:
-                    <filename>glibc</filename> or <filename>uclibc</filename>.
+                    <filename>glibc</filename> or <filename>musl</filename>.
                 </para>
 
                 <para>

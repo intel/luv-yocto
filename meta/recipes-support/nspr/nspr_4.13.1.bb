@@ -10,6 +10,7 @@ SRC_URI = "http://ftp.mozilla.org/pub/nspr/releases/v${PV}/src/nspr-${PV}.tar.gz
            file://fix-build-on-x86_64.patch \
            file://remove-srcdir-from-configure-in.patch \
            file://0002-Add-nios2-support.patch \
+           file://0001-include-stdint.h-for-SSIZE_MAX-and-SIZE_MAX-definiti.patch \
            file://nspr.pc.in \
 "
 
@@ -23,6 +24,8 @@ UPSTREAM_CHECK_REGEX = "v(?P<pver>\d+(\.\d+)+)/"
 
 SRC_URI[md5sum] = "9c44298a6fc478b3c0a4e98f4f9981ed"
 SRC_URI[sha256sum] = "5e4c1751339a76e7c772c0c04747488d7f8c98980b434dc846977e43117833ab"
+
+CVE_PRODUCT = "netscape_portable_runtime"
 
 S = "${WORKDIR}/nspr-${PV}/nspr"
 

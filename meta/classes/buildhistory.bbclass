@@ -301,6 +301,8 @@ python buildhistory_emit_outputsigs() {
     if not "task" in (d.getVar('BUILDHISTORY_FEATURES') or "").split():
         return
 
+    import hashlib
+
     taskoutdir = os.path.join(d.getVar('BUILDHISTORY_DIR'), 'task', 'output')
     bb.utils.mkdirhier(taskoutdir)
     currenttask = d.getVar('BB_CURRENTTASK')
@@ -314,7 +316,17 @@ python buildhistory_emit_outputsigs() {
             if fname == 'fixmepath':
                 continue
             fullpath = os.path.join(root, fname)
-            filesigs[os.path.relpath(fullpath, cwd)] = bb.utils.sha256_file(fullpath)
+            try:
+                if os.path.islink(fullpath):
+                    sha256 = hashlib.sha256(os.readlink(fullpath).encode('utf-8')).hexdigest()
+                elif os.path.isfile(fullpath):
+                    sha256 = bb.utils.sha256_file(fullpath)
+                else:
+                    continue
+            except OSError:
+                bb.warn('buildhistory: unable to read %s to get output signature' % fullpath)
+                continue
+            filesigs[os.path.relpath(fullpath, cwd)] = sha256
     with open(taskfile, 'w') as f:
         for fpath, fsig in sorted(filesigs.items(), key=lambda item: item[0]):
             f.write('%s %s\n' % (fpath, fsig))
@@ -434,13 +446,20 @@ buildhistory_get_installed() {
 
 	# Produce dependency graph
 	# First, quote each name to handle characters that cause issues for dot
-	sed 's:\([^| ]*\):"\1":g' ${WORKDIR}/bh_installed_pkgs_deps.txt > $1/depends.tmp && \
+	sed 's:\([^| ]*\):"\1":g' ${WORKDIR}/bh_installed_pkgs_deps.txt > $1/depends.tmp &&
 		rm ${WORKDIR}/bh_installed_pkgs_deps.txt
-	# Change delimiter from pipe to -> and set style for recommend lines
-	sed -i -e 's:|: -> :' -e 's:"\[REC\]":[style=dotted]:' -e 's:$:;:' $1/depends.tmp
+	# Remove lines with rpmlib(...) and config(...) dependencies, change the
+	# delimiter from pipe to "->", set the style for recommend lines and
+	# turn versioned dependencies into edge labels.
+	sed -i -e '/rpmlib(/d' \
+	       -e '/config(/d' \
+	       -e 's:|: -> :' \
+	       -e 's:"\[REC\]":[style=dotted]:' \
+	       -e 's:"\([<>=]\+\)" "\([^"]*\)":[label="\1 \2"]:' \
+		$1/depends.tmp
 	# Add header, sorted and de-duped contents and footer and then delete the temp file
 	printf "digraph depends {\n    node [shape=plaintext]\n" > $1/depends.dot
-	cat $1/depends.tmp | sort | uniq >> $1/depends.dot
+	cat $1/depends.tmp | sort -u >> $1/depends.dot
 	echo "}" >>  $1/depends.dot
 	rm $1/depends.tmp
 

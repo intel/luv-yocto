@@ -5,6 +5,10 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=b2beded7103a3d8a442a2a0391d607b0"
 SRC_URI = "git://anongit.freedesktop.org/piglit \
            file://0001-cmake-install-bash-completions-in-the-right-place.patch \
            file://0001-tests-Use-FE_UPWARD-only-if-its-defined-in-fenv.h.patch \
+           file://0001-CMake-define-GBM_BO_MAP-only-when-symbol-is-found.patch \
+           file://0002-util-egl-Honour-Surfaceless-MESA-in-get_default_disp.patch \
+           file://0003-egl_mesa_platform_surfaceless-Don-t-use-eglGetPlatfo.patch \
+           file://0004-egl_mesa_platform_surfaceless-Use-EXT-functions-for-.patch \
            "
 
 # From 2017-02-06
@@ -14,7 +18,7 @@ PV = "1.0+gitr${SRCPV}"
 
 S = "${WORKDIR}/git"
 
-DEPENDS = "libpng virtual/libx11 libxkbcommon libxrender waffle virtual/libgl libglu python3-mako-native python3-numpy-native python3-six-native"
+DEPENDS = "libpng virtual/libx11 libxkbcommon libxrender waffle virtual/libgl libglu python3-mako-native python3-numpy-native python3-six-native virtual/egl"
 
 inherit cmake python3native distro_features_check bash-completion
 # depends on virtual/libx11

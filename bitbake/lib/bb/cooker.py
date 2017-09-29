@@ -192,6 +192,8 @@ class BBCooker:
         bb.parse.__mtime_cache = {}
         bb.parse.BBHandler.cached_statements = {}
 
+        self.ui_cmdline = None
+
         self.initConfigurationData()
 
         # we log all events to a file if so directed
@@ -271,12 +273,15 @@ class BBCooker:
             self.inotify_modified_files.append(event.pathname)
         self.parsecache_valid = False
 
-    def add_filewatch(self, deps, watcher=None):
+    def add_filewatch(self, deps, watcher=None, dirs=False):
         if not watcher:
             watcher = self.watcher
         for i in deps:
             watcher.bbwatchedfiles.append(i[0])
-            f = os.path.dirname(i[0])
+            if dirs:
+                f = i[0]
+            else:
+                f = os.path.dirname(i[0])
             if f in watcher.bbseen:
                 continue
             watcher.bbseen.append(f)
@@ -362,6 +367,8 @@ class BBCooker:
 
         if consolelog:
             self.data.setVar("BB_CONSOLELOG", consolelog)
+
+        self.data.setVar('BB_CMDLINE', self.ui_cmdline)
 
         #
         # Copy of the data store which has been expanded.
@@ -540,7 +547,8 @@ class BBCooker:
 
         self.handleCollections(self.data.getVar("BBFILE_COLLECTIONS"))
 
-    def updateConfigOpts(self, options, environment):
+    def updateConfigOpts(self, options, environment, cmdline):
+        self.ui_cmdline = cmdline
         clean = True
         for o in options:
             if o in ['prefile', 'postfile']:
@@ -1290,13 +1298,13 @@ class BBCooker:
                 elif regex == "":
                     parselog.debug(1, "BBFILE_PATTERN_%s is empty" % c)
                     errors = False
-                    continue
-                try:
-                    cre = re.compile(regex)
-                except re.error:
-                    parselog.error("BBFILE_PATTERN_%s \"%s\" is not a valid regular expression", c, regex)
-                    errors = True
-                    continue
+                else:
+                    try:
+                        cre = re.compile(regex)
+                    except re.error:
+                        parselog.error("BBFILE_PATTERN_%s \"%s\" is not a valid regular expression", c, regex)
+                        errors = True
+                        continue
                 self.bbfile_config_priorities.append((c, regex, cre, collection_priorities[c]))
         if errors:
             # We've already printed the actual error(s)
@@ -1321,7 +1329,7 @@ class BBCooker:
             bf = os.path.abspath(bf)
 
         self.collection = CookerCollectFiles(self.bbfile_config_priorities)
-        filelist, masked = self.collection.collect_bbfiles(self.data, self.data)
+        filelist, masked, searchdirs = self.collection.collect_bbfiles(self.data, self.data)
         try:
             os.stat(bf)
             bf = os.path.abspath(bf)
@@ -1641,7 +1649,11 @@ class BBCooker:
                     self.recipecaches[mc].ignored_dependencies.add(dep)
 
             self.collection = CookerCollectFiles(self.bbfile_config_priorities)
-            (filelist, masked) = self.collection.collect_bbfiles(self.data, self.data)
+            (filelist, masked, searchdirs) = self.collection.collect_bbfiles(self.data, self.data)
+
+            # Add inotify watches for directories searched for bb/bbappend files
+            for dirent in searchdirs:
+                self.add_filewatch([[dirent]], dirs=True)
 
             self.parser = CookerParser(self, filelist, masked)
             self.parsecache_valid = True
@@ -1876,22 +1888,36 @@ class CookerCollectFiles(object):
             collectlog.error("no recipe files to build, check your BBPATH and BBFILES?")
             bb.event.fire(CookerExit(), eventdata)
 
-        # Can't use set here as order is important
-        newfiles = []
-        for f in files:
-            if os.path.isdir(f):
-                dirfiles = self.find_bbfiles(f)
-                for g in dirfiles:
-                    if g not in newfiles:
-                        newfiles.append(g)
-            else:
-                globbed = glob.glob(f)
-                if not globbed and os.path.exists(f):
-                    globbed = [f]
-                # glob gives files in order on disk. Sort to be deterministic.
-                for g in sorted(globbed):
-                    if g not in newfiles:
-                        newfiles.append(g)
+        # We need to track where we look so that we can add inotify watches. There
+        # is no nice way to do this, this is horrid. We intercept the os.listdir()
+        # calls while we run glob().
+        origlistdir = os.listdir
+        searchdirs = []
+
+        def ourlistdir(d):
+            searchdirs.append(d)
+            return origlistdir(d)
+
+        os.listdir = ourlistdir
+        try:
+            # Can't use set here as order is important
+            newfiles = []
+            for f in files:
+                if os.path.isdir(f):
+                    dirfiles = self.find_bbfiles(f)
+                    for g in dirfiles:
+                        if g not in newfiles:
+                            newfiles.append(g)
+                else:
+                    globbed = glob.glob(f)
+                    if not globbed and os.path.exists(f):
+                        globbed = [f]
+                    # glob gives files in order on disk. Sort to be deterministic.
+                    for g in sorted(globbed):
+                        if g not in newfiles:
+                            newfiles.append(g)
+        finally:
+            os.listdir = origlistdir
 
         bbmask = config.getVar('BBMASK')
 
@@ -1951,7 +1977,7 @@ class CookerCollectFiles(object):
                 topfile = bbfile_seen[base]
                 self.overlayed[topfile].append(f)
 
-        return (bbfiles, masked)
+        return (bbfiles, masked, searchdirs)
 
     def get_file_appends(self, fn):
         """

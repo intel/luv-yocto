@@ -33,6 +33,7 @@ SRC_URI += " \
            file://0018-check-for-uchar.h-in-configure.patch \
            file://0019-socket-util-don-t-fail-if-libc-doesn-t-support-IDN.patch \
            file://0020-back-port-233-don-t-use-the-unified-hierarchy-for-the-systemd.patch \
+           file://0001-core-load-fragment-refuse-units-with-errors-in-certa.patch \
 "
 SRC_URI_append_libc-uclibc = "\
            file://0002-units-Prefer-getty-to-agetty-in-console-setup-system.patch \
@@ -159,6 +160,9 @@ CFLAGS .= "${@bb.utils.contains('PACKAGECONFIG', 'valgrind', ' -DVALGRIND=1', ''
 
 # disable problematic GCC 5.2 optimizations [YOCTO #8291]
 FULL_OPTIMIZATION_append_arm = " -fno-schedule-insns -fno-schedule-insns2"
+
+# Avoid login failure on qemumips64 when pam is enabled
+FULL_OPTIMIZATION_append_mips64 = " -fno-tree-switch-conversion -fno-tree-tail-merge"
 
 do_configure_prepend() {
 	export NM="${HOST_PREFIX}gcc-nm"

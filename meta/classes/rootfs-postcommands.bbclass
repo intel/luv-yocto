@@ -156,7 +156,10 @@ ssh_allow_empty_password () {
 	fi
 
 	if [ -d ${IMAGE_ROOTFS}${sysconfdir}/pam.d ] ; then
-		sed -i 's/nullok_secure/nullok/' ${IMAGE_ROOTFS}${sysconfdir}/pam.d/*
+		for f in `find ${IMAGE_ROOTFS}${sysconfdir}/pam.d/* -type f -exec test -e {} \; -print`
+		do
+			sed -i 's/nullok_secure/nullok/' $f
+		done
 	fi
 }
 
@@ -286,7 +289,6 @@ rootfs_sysroot_relativelinks () {
 	sysroot-relativelinks.py ${SDK_OUTPUT}/${SDKTARGETSYSROOT}
 }
 
-
 # Generated test data json file
 python write_image_test_data() {
     from oe.data import export2json
@@ -298,7 +300,20 @@ python write_image_test_data() {
     searchString = "%s/"%(d.getVar("TOPDIR")).replace("//","/")
     export2json(d, testdata,searchString=searchString,replaceString="")
 
-    if os.path.lexists(testdata_link):
-       os.remove(testdata_link)
-    os.symlink(os.path.basename(testdata), testdata_link)
+    if testdata_link != testdata:
+        if os.path.lexists(testdata_link):
+           os.remove(testdata_link)
+        os.symlink(os.path.basename(testdata), testdata_link)
+}
+
+# Check for unsatisfied recommendations (RRECOMMENDS)
+python rootfs_log_check_recommends() {
+    log_path = d.expand("${T}/log.do_rootfs")
+    with open(log_path, 'r') as log:
+        for line in log:
+            if 'log_check' in line:
+                continue
+
+            if 'unsatisfied recommendation for' in line:
+                bb.warn('[log_check] %s: %s' % (d.getVar('PN', True), line))
 }

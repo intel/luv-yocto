@@ -200,6 +200,10 @@ class LocalhostBEController(BuildEnvironmentController):
 
         logger.debug("localhostbecontroller: current layer list %s " % pformat(layerlist))
 
+        if self.pokydirname is None and os.path.exists(os.path.join(self.be.sourcedir, "oe-init-build-env")):
+            logger.debug("localhostbecontroller: selected poky dir name %s" % self.be.sourcedir)
+            self.pokydirname = self.be.sourcedir
+
         # 5. create custom layer and add custom recipes to it
         for target in targets:
             try:
@@ -217,7 +221,7 @@ class LocalhostBEController(BuildEnvironmentController):
                 continue  # not a custom recipe, skip
 
         layerlist.extend(nongitlayerlist)
-        logger.debug("\n\nset layers gives this list \n %s" % ''.join(layerlist))
+        logger.debug("\n\nset layers gives this list %s" % pformat(layerlist))
         self.islayerset = True
         return layerlist
 
