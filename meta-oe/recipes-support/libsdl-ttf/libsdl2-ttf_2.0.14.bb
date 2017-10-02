@@ -13,7 +13,7 @@ SRC_URI[sha256sum] = "34db5e20bcf64e7071fe9ae25acaa7d72bdc4f11ab3ce59acc768ab62f
 
 S = "${WORKDIR}/SDL2_ttf-${PV}"
 
-inherit autotools
+inherit autotools pkgconfig
 
 do_configure_prepend() {
     touch ${S}/NEWS ${S}/README ${S}/AUTHORS ${S}/ChangeLog
