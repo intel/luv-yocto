@@ -265,10 +265,8 @@ for r in $runner_list; do
     echo $r >> ${LUV_STORAGE}/first_boot
 done
 
-# NUM_SUITES contain the number of test-suites completed
-NUM_SUITES=`cat ${LUV_STORAGE}/first_boot | wc -w`
-
-cat ${LUV_SAVE_RESULTS_DIR}/luv.results | awk -v suites=${NUM_SUITES} '/\[\+/  { units += 1 }
+cat ${LUV_SAVE_RESULTS_DIR}/luv.results | awk '/\[\+/  { units += 1 }
+    /\[\-/ { suites += 1 }
     /pass/ { passes += 1 }
     /fail/ { fails += $3 }
     /skip/ { skips += 1 }
