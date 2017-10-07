@@ -39,6 +39,7 @@ EXTRA_OEMAKE = " \
 
 patch() {
        sed -i 's,REBOOT_DIR,${reboot_dir},g' ${S}/src/pstore/common_tests
+       sed -i 's,REBOOT_DIR,${reboot_dir},g' ${WORKDIR}/luv-parser-pstore-test
 }
 
 do_patch_append() {

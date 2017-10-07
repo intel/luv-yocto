@@ -2,7 +2,12 @@
 #
 # Parse the output of pstore-tests and write a luv-test-manager
 # compatible log to stdout.
-awk '/ing/ {
+
+if [ -e REBOOT_DIR/reboot_flag ]; then
+    REBOOT_TEST=1
+fi
+
+awk -v reboot_test=${REBOOT_TEST} '/ing/ {
        prev_test = test;
         test=substr($0,1,index($0,"...")-2);
         if (test == "")
@@ -12,30 +17,30 @@ awk '/ing/ {
                parsing_tests = 1;
                prev_test = test;
        } else {
-               printf ("1.0 pstore-tests %s END\n", prev_test);
+               printf ("1.2 pstore-tests %d %s END\n", reboot_test, prev_test);
        }
 
-       printf ("1.0 pstore-tests %s START\n", test);
+       printf ("1.2 pstore-tests %d %s START\n", reboot_test, test);
        fflush("");
     }
 
     /ok/ {
-       printf ("1.0 pstore-tests %s RESULT 1 0 0 0\n", test);
+       printf ("1.2 pstore-tests %d %s RESULT 1 0 0 0\n", reboot_test, test);
        fflush("");
     }
 
     /FAIL/ {
-       printf ("1.0 pstore-tests %s RESULT 0 1 0 0\n", test);
+       printf ("1.2 pstore-tests %d %s RESULT 0 1 0 0\n", reboot_test, test);
        fflush("");
     }
 
     {
-       printf ("1.0 pstore-tests %s INFO %s\n", test, $0);
+       printf ("1.2 pstore-tests %d %s INFO %s\n", reboot_test, test, $0);
        fflush("");
     }
 
     END {
-       printf ("1.0 pstore-tests %s END\n", test);
+       printf ("1.2 pstore-tests %d %s END\n", reboot_test, test);
        fflush("");
     }
 '
