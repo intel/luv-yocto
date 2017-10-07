@@ -1,0 +1,34 @@
+From b423dbb13d1fc26230b4c1a7782b9982d78770a8 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Thu, 5 Oct 2017 16:02:01 -0700
+Subject: [PATCH] remove log directory when running pstore-tests
+
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
+---
+ tools/testing/selftests/pstore/common_tests | 7 +------
+ 1 file changed, 1 insertion(+), 6 deletions(-)
+
+diff --git a/tools/testing/selftests/pstore/common_tests b/tools/testing/selftests/pstore/common_tests
+index 9f40af7..422b46a 100755
+--- a/tools/testing/selftests/pstore/common_tests
++++ b/tools/testing/selftests/pstore/common_tests
+@@ -57,15 +57,10 @@ operate_files() { # tested value, files, operation
+ TEST_STRING_PATTERN="Testing pstore: uuid="
+ UUID=`cat /proc/sys/kernel/random/uuid`
+ TOP_DIR=REBOOT_DIR
+-LOG_DIR=$TOP_DIR/logs/`date +%Y%m%d-%H%M%S`_${UUID}/
+ REBOOT_FLAG=$TOP_DIR/reboot_flag
+
+-# Preparing logs
+-LOG_FILE=$LOG_DIR/`basename $0`.log
+-mkdir -p $LOG_DIR || errexit "Failed to make a log directory: $LOG_DIR"
+-date > $LOG_FILE
+ prlog() { # messages
+-    /bin/echo "$@" | tee -a $LOG_FILE
++    /bin/echo "$@"
+ }
+
+ # Starting tests
+--
+1.9.1
+
