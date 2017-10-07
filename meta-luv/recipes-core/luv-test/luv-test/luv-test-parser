@@ -68,6 +68,21 @@ function html_create_testinfo_ctrl_link(id, text)
         return html;
 }
 
+/^1.2/ {
+	testsuite=$2
+	continue_parsing=$3
+	unittest=$4
+	tag=$5
+
+	if (tag == "RESULT") {
+		passes=$6
+		fails=$7
+		aborts=$8
+		skips=$9
+		warns=$10
+	}
+}
+
 /^1.1/ {
 	testsuite=$3
 	unittest=$4
@@ -102,14 +117,16 @@ function html_create_testinfo_ctrl_link(id, text)
 			HTML = "/dev/null"
 		}
 		b = 1;
-		printf ("    [-] %s\n", testsuite);
-		fflush("");
-		# begin HTML code for this test suite
-		ts_content =  html_create_testinfo_ctrl_link(testsuite,
-							     testsuite);
-		ts_content =  ts_content html_create_div("content_" testsuite,
-							 "testsuite", "", 0);
-		print html_create_div(testsuite, "", ts_content, 0) >> HTML;
+		if (!continue_parsing) {
+			printf ("    [-] %s\n", testsuite);
+			fflush("");
+			# begin HTML code for this test suite
+			ts_content =  html_create_testinfo_ctrl_link(testsuite,
+								     testsuite);
+			ts_content =  ts_content html_create_div("content_" testsuite,
+								 "testsuite", "", 0);
+			print html_create_div(testsuite, "", ts_content, 0) >> HTML;
+		}
 	}
 
 	#
