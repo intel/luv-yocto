@@ -121,8 +121,8 @@ int main(void)
 	asm volatile("movw %%fs, %0" : "=m" (old_fs));
 	asm volatile("movw %%gs, %0" : "=m" (old_gs));
 
-	syscall(SYS_arch_prctl, ARCH_SET_FS, (unsigned long)&data_fs);
-	syscall(SYS_arch_prctl, ARCH_SET_GS, (unsigned long)&data_gs);
+	syscall(SYS_arch_prctl, ARCH_SET_FS, (unsigned long)data_fs);
+	syscall(SYS_arch_prctl, ARCH_SET_GS, (unsigned long)data_gs);
 
 	asm(/* make a backup of everything */
 	    "push %%rax\n\t"
@@ -151,8 +151,9 @@ int main(void)
 
 	asm volatile("movw %0,%%fs" : :"m" (old_fs));
 	asm volatile("movw %0, %%gs" : : "m" (old_gs));
-	syscall(SYS_arch_prctl, ARCH_SET_FS, &old_fsbase);
-	syscall(SYS_arch_prctl, ARCH_SET_GS, &old_gsbase);
+
+	syscall(SYS_arch_prctl, ARCH_SET_FS, old_fsbase);
+	syscall(SYS_arch_prctl, ARCH_SET_GS, old_gsbase);
 
 	printf("===Test results===\n");
 	check_results();
