@@ -135,6 +135,44 @@ create_luv_dirs()
     else
         LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}/luv-results-$tstamp/
     fi
+
+    mkdir -p ${LUV_SAVE_RESULTS_DIR}raw/
+    [ $? -eq 0 ] && LUV_SAVE_RAW_DIR=${LUV_SAVE_RESULTS_DIR}raw/
+
+    mkdir -p ${LUV_SAVE_RESULTS_DIR}parsed/
+    [ $? -eq 0 ] && LUV_SAVE_PARSED_DIR=${LUV_SAVE_RESULTS_DIR}parsed
+}
+
+display_luv_version()
+{
+    luv_version=$(cut -d\\ -f1 /etc/issue)
+
+    cat <<EOF | tee /dev/kmsg
+    Welcome to ${luv_version}
+
+    Running tests...
+EOF
+}
+
+start_reports()
+{
+    # Start the HTML report
+    # We need to export LUV_HTML_REPORT to be consumed by the LUV test parser
+    export LUV_HTML_REPORT=${LUV_SAVE_RESULTS_DIR}/luv.html
+    html_start ${LUV_HTML_REPORT}
+
+    # Begin the results files by stating the version of luv
+    cat <<EOF | html_inline ${LUV_HTML_REPORT} | tee -a /dev/kmsg \
+        ${LUV_SAVE_RESULTS_DIR}/luv.results /tmp/luv.results
+    $luv_version
+
+    Date and time of the system : $tstamp
+
+    System: $(cat /proc/cpuinfo | grep 'model name' | cut -d: -f2 | uniq) x $(nproc)
+
+    Test results summary:
+
+EOF
 }
 
 # Create a file the first time LUV boots. Create the LUV result folder
@@ -147,32 +185,24 @@ if [ ! -e ${LUV_STORAGE}/first_boot  ]; then
 
     create_luv_dirs
 
+    display_luv_version
+
+    start_reports
+
     echo LUV_SAVE_RESULTS_DIR=$LUV_SAVE_RESULTS_DIR > ${LUV_STORAGE}/first_boot
 else
     LUV_SAVE_RESULTS_DIR=`grep LUV_SAVE_RESULTS_DIR ${LUV_STORAGE}/first_boot | cut -d "=" -f2`
+    LUV_SAVE_RAW_DIR=${LUV_SAVE_RESULTS_DIR}raw/
+    LUV_SAVE_PARSED_DIR=${LUV_SAVE_RESULTS_DIR}parsed
+    export LUV_HTML_REPORT=${LUV_SAVE_RESULTS_DIR}/luv.html
 fi
-
-mkdir -p ${LUV_SAVE_RESULTS_DIR}raw/
-[ $? -eq 0 ] && LUV_SAVE_RAW_DIR=${LUV_SAVE_RESULTS_DIR}raw/
-
-mkdir -p ${LUV_SAVE_RESULTS_DIR}parsed/
-[ $? -eq 0 ] && LUV_SAVE_PARSED_DIR=${LUV_SAVE_RESULTS_DIR}parsed
 
 if [ ! -z ${LUVDEBUG} ]; then
     # once we know where our storage is, redirect output to a file there
     exec &> >(tee -a ${LUV_SAVE_RESULTS_DIR}luv-debug.log)
 fi
 
-
 plymouth_write "Running tests..."
-
-luv_version=$(cut -d\\ -f1 /etc/issue)
-
-cat <<EOF | tee /dev/kmsg
-Welcome to ${luv_version}
-
-Running tests...
-EOF
 
 #
 # Every test must create a runner script and place it in $LUV_TESTS_DIR.
@@ -184,24 +214,6 @@ EOF
 #
 LUV_TESTS_DIR=/etc/luv/tests/
 LUV_PARSER_DIR=/etc/luv/parsers/
-
-# Start the HTML report
-# We need to export LUV_HTML_REPORT to be consumed by the LUV test parser
-export LUV_HTML_REPORT=${LUV_SAVE_RESULTS_DIR}/luv.html
-html_start ${LUV_HTML_REPORT}
-
-# Begin the results files by stating the version of luv
-cat <<EOF | html_inline ${LUV_HTML_REPORT} | tee -a /dev/kmsg \
-    ${LUV_SAVE_RESULTS_DIR}/luv.results /tmp/luv.results
-$luv_version
-
-Date and time of the system : $tstamp
-
-System: $(cat /proc/cpuinfo | grep 'model name' | cut -d: -f2 | uniq) x $(nproc)
-
-Test results summary:
-
-EOF
 
 # all the messages from dmesg buffer comes with timestamp and since the
 # user space messages are being directed to dmesg via /dev/kmsg, most of
