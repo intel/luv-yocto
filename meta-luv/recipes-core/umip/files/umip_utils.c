@@ -10,6 +10,7 @@
 #include "umip_test_defs.h"
 
 extern int test_passed, test_failed, test_errors;
+void (*cleanup)(void) = NULL;
 sig_atomic_t got_signal, got_sigcode;
 
 /*
@@ -128,6 +129,10 @@ void signal_handler(int signum, siginfo_t *info, void *ctx_void)
 			pr_pass(test_passed, "I got the expected signal.\n");
 		else
 			pr_fail(test_failed, "I don't know what to do on exit.\n");
+
+		if (cleanup)
+			(*cleanup)();
+
 		exit(1);
 	}
 
