@@ -267,7 +267,6 @@ done
 
 # NUM_SUITES contain the number of test-suites completed
 NUM_SUITES=`cat ${LUV_STORAGE}/first_boot | wc -w`
-rm ${LUV_STORAGE}/first_boot
 
 cat ${LUV_SAVE_RESULTS_DIR}/luv.results | awk -v suites=${NUM_SUITES} '/\[\+/  { units += 1 }
     /pass/ { passes += 1 }
@@ -287,6 +286,8 @@ plymouth_write "$result"
 sleep 2
 
 html_finish ${LUV_HTML_REPORT}
+
+rm ${LUV_STORAGE}/first_boot
 
 mountpoint -q ${LUV_EFI}
 if [ $? -eq 0 ]; then
