@@ -184,9 +184,6 @@ EOF
 #
 LUV_TESTS_DIR=/etc/luv/tests/
 LUV_PARSER_DIR=/etc/luv/parsers/
-LUV_LOG_DIR=/var/log/luv/
-
-mkdir -p ${LUV_LOG_DIR}
 
 # Start the HTML report
 # We need to export LUV_HTML_REPORT to be consumed by the LUV test parser
@@ -261,7 +258,7 @@ for r in $runner_list; do
     }
 
     # Make /dev/console silent to avoid the results being printed twice
-    $runner |& tee -a ${LUV_LOG_DIR}/$r ${LUV_SAVE_RAW_DIR}/$r | $parser | \
+    $runner |& tee -a ${LUV_SAVE_RAW_DIR}/$r | $parser | \
               tee -a ${LUV_SAVE_PARSED_DIR}/$r | ${LUV_PARSER_DIR}/test-manager | \
               parse_line | \
               tee -a /tmp/luv.results ${LUV_SAVE_RESULTS_DIR}/luv.results
