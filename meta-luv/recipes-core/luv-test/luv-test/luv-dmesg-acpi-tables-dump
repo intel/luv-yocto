@@ -11,26 +11,18 @@
 #
 #####################################################################
 
-# Definitions for disk partitions and mount points
-DUMP=/mnt/dump/
-LUV_STORAGE_UUID=05D6-1523
+# Definition for luv results folder
 LUV_SAVE_RESULTS_DIR=$1
 
-# Create a temporary mount point and run "fwts -d" command to dump dmesg,
-# cpuinfo and ACPI tables
+# Create a directory named "dumps" in luv results folder and run
+# "fwts -d" command to dump dmesg, cpuinfo and ACPI tables
 gen_dmesg_acpi_dumps() {
-    # Definitions for disk partitions and mount points
-    mkdir -p ${DUMP}
-    if [ $? -eq 0 ]; then
-        mount /dev/disk/by-uuid/${LUV_STORAGE_UUID} ${DUMP}
-        if [ $? -eq 0 ]; then
-			mkdir -p ${DUMP}${LUV_SAVE_RESULTS_DIR}/dumps
-            if [ $? -eq 0 ] ; then
-				cd ${DUMP}${LUV_SAVE_RESULTS_DIR}/dumps
-				fwts -d
-				umount ${DUMP}
-            fi
-        fi
+    mkdir -p ${LUV_SAVE_RESULTS_DIR}/dumps
+    if [ $? -eq 0 ] ; then
+        cd ${LUV_SAVE_RESULTS_DIR}/dumps
+        fwts -d
+    else
+        echo "Failed to create dumps directory"
     fi
 }
 
