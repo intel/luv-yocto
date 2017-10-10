@@ -19,6 +19,7 @@ extern unsigned char finish_testing[];
 extern unsigned char data_fs[SEGMENT_SIZE];
 extern unsigned char data_gs[SEGMENT_SIZE];
 extern int exit_on_signal;
+extern void (*cleanup)(void);
 unsigned long old_fsbase, old_gsbase;
 unsigned short old_fs, old_gs;
 
@@ -72,6 +73,15 @@ static int setup_data_segments()
 	return 0;
 }
 
+static void cleanup_segments(void)
+{
+	asm volatile("movw %0,%%fs" : :"m" (old_fs));
+	asm volatile("movw %0, %%gs" : : "m" (old_gs));
+
+	syscall(SYS_arch_prctl, ARCH_SET_FS, old_fsbase);
+	syscall(SYS_arch_prctl, ARCH_SET_GS, old_gsbase);
+}
+
 int main(void)
 {
 	int ret;
@@ -92,6 +102,7 @@ int main(void)
 	exit_on_signal = 2;
 #endif
 
+	cleanup = cleanup_segments;
 	if (sigaction(SIGSEGV, &action, NULL) < 0) {
 		pr_error(test_errors, "Could not set the signal handler!");
 		goto err_out;
@@ -149,11 +160,7 @@ int main(void)
 	    :"m"(test_fs), "m"(test_gs), "m"(code)
 	   );
 
-	asm volatile("movw %0,%%fs" : :"m" (old_fs));
-	asm volatile("movw %0, %%gs" : : "m" (old_gs));
-
-	syscall(SYS_arch_prctl, ARCH_SET_FS, old_fsbase);
-	syscall(SYS_arch_prctl, ARCH_SET_GS, old_gsbase);
+	cleanup_segments();
 
 	printf("===Test results===\n");
 	check_results();
