@@ -140,10 +140,9 @@ if [ ! -e ${LUV_STORAGE}/first_boot  ]; then
     else
         LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}/luv-results-$tstamp/
     fi
-    echo $LUV_SAVE_RESULTS_DIR > ${LUV_STORAGE}/first_boot
+    echo LUV_SAVE_RESULTS_DIR=$LUV_SAVE_RESULTS_DIR > ${LUV_STORAGE}/first_boot
 else
-    DIR=`cat ${LUV_STORAGE}/first_boot`
-    LUV_SAVE_RESULTS_DIR=${DIR}/
+    LUV_SAVE_RESULTS_DIR=`grep LUV_SAVE_RESULTS_DIR ${LUV_STORAGE}/first_boot | cut -d "=" -f2`
 fi
 
 mkdir -p ${LUV_SAVE_RESULTS_DIR}raw/
