@@ -10,6 +10,10 @@ if grep -q luv.pstore-test /proc/cmdline; then
        ./pstore_tests
        ./pstore_crash_test
 else
-       ./pstore_tests
-       ./pstore_post_reboot_tests
+       if [ ! -e REBOOT_DIR/reboot_flag ]; then
+              ./pstore_tests
+       else
+              ./pstore_post_reboot_tests
+       fi
+       rm REBOOT_DIR/prev_uuid
 fi
