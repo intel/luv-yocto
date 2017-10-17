@@ -35,6 +35,10 @@ SRC_URI = "git://github.com/rpm-software-management/rpm \
            file://0001-Fix-build-with-musl-C-library.patch \
            file://0001-Add-a-color-setting-for-mips64_n32-binaries.patch \
            file://0001-Add-PYTHON_ABI-when-searching-for-python-libraries.patch \
+           file://0011-Do-not-require-that-ELF-binaries-are-executable-to-b.patch \
+           file://0012-Use-conditional-to-access-_docdir-in-macros.in.patch \
+           file://0013-Add-a-new-option-alldeps-to-rpmdeps.patch \
+           file://0001-perl-disable-auto-reqs.patch \
            "
 
 PV = "4.13.90+git${SRCPV}"
@@ -67,65 +71,38 @@ BBCLASSEXTEND = "native nativesdk"
 # Direct rpm-native to read configuration from our sysroot, not the one it was compiled in
 # libmagic also has sysroot path contamination, so override it
 do_install_append_class-native() {
-        create_wrapper ${D}/${bindir}/rpmbuild \
-                RPM_CONFIGDIR=${STAGING_LIBDIR_NATIVE}/rpm \
-                RPM_ETCCONFIGDIR=${STAGING_DIR_NATIVE} \
-                MAGIC=${STAGING_DIR_NATIVE}${datadir_native}/misc/magic.mgc \
-                RPM_NO_CHROOT_FOR_SCRIPTS=1
+        tools="\
+                ${bindir}/rpm \
+                ${bindir}/rpm2archive \
+                ${bindir}/rpm2cpio \
+                ${bindir}/rpmbuild \
+                ${bindir}/rpmdb \
+                ${bindir}/rpmgraph \
+                ${bindir}/rpmkeys \
+                ${bindir}/rpmsign \
+                ${bindir}/rpmspec \
+                ${libdir}/rpm/rpmdeps \
+        "
 
-        create_wrapper ${D}/${bindir}/rpmsign \
-                RPM_CONFIGDIR=${STAGING_LIBDIR_NATIVE}/rpm \
-                RPM_ETCCONFIGDIR=${STAGING_DIR_NATIVE} \
-                MAGIC=${STAGING_DIR_NATIVE}${datadir_native}/misc/magic.mgc \
-                RPM_NO_CHROOT_FOR_SCRIPTS=1
-
-        create_wrapper ${D}/${bindir}/rpmkeys \
-                RPM_CONFIGDIR=${STAGING_LIBDIR_NATIVE}/rpm \
-                RPM_ETCCONFIGDIR=${STAGING_DIR_NATIVE} \
-                MAGIC=${STAGING_DIR_NATIVE}${datadir_native}/misc/magic.mgc \
-                RPM_NO_CHROOT_FOR_SCRIPTS=1
-
-        create_wrapper ${D}/${bindir}/rpm \
-                RPM_CONFIGDIR=${STAGING_LIBDIR_NATIVE}/rpm \
-                RPM_ETCCONFIGDIR=${STAGING_DIR_NATIVE} \
-                MAGIC=${STAGING_DIR_NATIVE}${datadir_native}/misc/magic.mgc \
-                RPM_NO_CHROOT_FOR_SCRIPTS=1
-
-        create_wrapper ${D}/${bindir}/rpm2archive \
-                RPM_CONFIGDIR=${STAGING_LIBDIR_NATIVE}/rpm \
-                RPM_ETCCONFIGDIR=${STAGING_DIR_NATIVE} \
-                MAGIC=${STAGING_DIR_NATIVE}${datadir_native}/misc/magic.mgc \
-                RPM_NO_CHROOT_FOR_SCRIPTS=1
-
-        create_wrapper ${D}/${bindir}/rpm2cpio \
-                RPM_CONFIGDIR=${STAGING_LIBDIR_NATIVE}/rpm \
-                RPM_ETCCONFIGDIR=${STAGING_DIR_NATIVE} \
-                MAGIC=${STAGING_DIR_NATIVE}${datadir_native}/misc/magic.mgc \
-                RPM_NO_CHROOT_FOR_SCRIPTS=1
-
-        create_wrapper ${D}/${bindir}/rpmdb \
-                RPM_CONFIGDIR=${STAGING_LIBDIR_NATIVE}/rpm \
-                RPM_ETCCONFIGDIR=${STAGING_DIR_NATIVE} \
-                MAGIC=${STAGING_DIR_NATIVE}${datadir_native}/misc/magic.mgc \
-                RPM_NO_CHROOT_FOR_SCRIPTS=1
-
-        create_wrapper ${D}/${bindir}/rpmgraph \
-                RPM_CONFIGDIR=${STAGING_LIBDIR_NATIVE}/rpm \
-                RPM_ETCCONFIGDIR=${STAGING_DIR_NATIVE} \
-                MAGIC=${STAGING_DIR_NATIVE}${datadir_native}/misc/magic.mgc \
-                RPM_NO_CHROOT_FOR_SCRIPTS=1
-
-        create_wrapper ${D}/${bindir}/rpmspec \
-                RPM_CONFIGDIR=${STAGING_LIBDIR_NATIVE}/rpm \
-                RPM_ETCCONFIGDIR=${STAGING_DIR_NATIVE} \
-                MAGIC=${STAGING_DIR_NATIVE}${datadir_native}/misc/magic.mgc \
-                RPM_NO_CHROOT_FOR_SCRIPTS=1
+        for tool in $tools; do
+                create_wrapper ${D}$tool \
+                        RPM_CONFIGDIR=${STAGING_LIBDIR_NATIVE}/rpm \
+                        RPM_ETCCONFIGDIR=${STAGING_DIR_NATIVE} \
+                        MAGIC=${STAGING_DIR_NATIVE}${datadir_native}/misc/magic.mgc \
+                        RPM_NO_CHROOT_FOR_SCRIPTS=1
+        done
 }
-
 
 # Rpm's make install creates var/tmp which clashes with base-files packaging
 do_install_append_class-target() {
     rm -rf ${D}/var
+}
+
+do_install_append () {
+	sed -i -e 's:${HOSTTOOLS_DIR}/::g' ${D}/${libdir}/rpm/macros
+
+	sed -i -e 's|/usr/bin/python|${USRBINPATH}/env ${PYTHON_PN}|' \
+	    ${D}${libdir}/rpm/pythondistdeps.py
 }
 
 FILES_${PN} += "${libdir}/rpm-plugins/*.so \
@@ -140,3 +117,5 @@ FILES_python3-rpm = "${PYTHON_SITEPACKAGES_DIR}/rpm/*"
 
 # rpm 5.x was packaging the rpm build tools separately
 RPROVIDES_${PN} += "rpm-build"
+
+RDEPENDS_${PN} = "bash perl python3-core"

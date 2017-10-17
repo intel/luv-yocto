@@ -4,6 +4,7 @@
 # Released under the MIT license (see COPYING.MIT)
 
 import os
+import re
 import subprocess
 from enum import Enum
 
@@ -189,10 +190,22 @@ def add_layer_dependencies(bblayersconf, layer, layers, logger):
     if layer_depends is None:
         return False
     else:
+        # Don't add a layer that is already present.
+        added = set()
+        output = check_command('Getting existing layers failed.', 'bitbake-layers show-layers').decode('utf-8')
+        for layer, path, pri in re.findall(r'^(\S+) +([^\n]*?) +(\d+)$', output, re.MULTILINE):
+            added.add(path)
+
         for layer_depend in layer_depends:
-            logger.info('Adding layer dependency %s' % layer_depend['name'])
+            name = layer_depend['name']
+            path = layer_depend['path']
+            if path in added:
+                continue
+            else:
+                added.add(path)
+            logger.info('Adding layer dependency %s' % name)
             with open(bblayersconf, 'a+') as f:
-                f.write("\nBBLAYERS += \"%s\"\n" % layer_depend['path'])
+                f.write("\nBBLAYERS += \"%s\"\n" % path)
     return True
 
 def add_layer(bblayersconf, layer, layers, logger):
@@ -277,7 +290,7 @@ def get_signatures(builddir, failsafe=False, machine=None):
 
     return (sigs, tune2tasks)
 
-def get_depgraph(targets=['world']):
+def get_depgraph(targets=['world'], failsafe=False):
     '''
     Returns the dependency graph for the given target(s).
     The dependency graph is taken directly from DepTreeEvent.
@@ -296,6 +309,11 @@ def get_depgraph(targets=['world']):
                 elif isinstance(event, bb.command.CommandCompleted):
                     break
                 elif isinstance(event, bb.event.NoProvider):
+                    if failsafe:
+                        # The event is informational, we will get information about the
+                        # remaining dependencies eventually and thus can ignore this
+                        # here like we do in get_signatures(), if desired.
+                        continue
                     if event._reasons:
                         raise RuntimeError('Nothing provides %s: %s' % (event._item, event._reasons))
                     else:
@@ -306,3 +324,69 @@ def get_depgraph(targets=['world']):
     if depgraph is None:
         raise RuntimeError('Could not retrieve the depgraph.')
     return depgraph
+
+def compare_signatures(old_sigs, curr_sigs):
+    '''
+    Compares the result of two get_signatures() calls. Returns None if no
+    problems found, otherwise a string that can be used as additional
+    explanation in self.fail().
+    '''
+    # task -> (old signature, new signature)
+    sig_diff = {}
+    for task in old_sigs:
+        if task in curr_sigs and \
+           old_sigs[task] != curr_sigs[task]:
+            sig_diff[task] = (old_sigs[task], curr_sigs[task])
+
+    if not sig_diff:
+        return None
+
+    # Beware, depgraph uses task=<pn>.<taskname> whereas get_signatures()
+    # uses <pn>:<taskname>. Need to convert sometimes. The output follows
+    # the convention from get_signatures() because that seems closer to
+    # normal bitbake output.
+    def sig2graph(task):
+        pn, taskname = task.rsplit(':', 1)
+        return pn + '.' + taskname
+    def graph2sig(task):
+        pn, taskname = task.rsplit('.', 1)
+        return pn + ':' + taskname
+    depgraph = get_depgraph(failsafe=True)
+    depends = depgraph['tdepends']
+
+    # If a task A has a changed signature, but none of its
+    # dependencies, then we need to report it because it is
+    # the one which introduces a change. Any task depending on
+    # A (directly or indirectly) will also have a changed
+    # signature, but we don't need to report it. It might have
+    # its own changes, which will become apparent once the
+    # issues that we do report are fixed and the test gets run
+    # again.
+    sig_diff_filtered = []
+    for task, (old_sig, new_sig) in sig_diff.items():
+        deps_tainted = False
+        for dep in depends.get(sig2graph(task), ()):
+            if graph2sig(dep) in sig_diff:
+                deps_tainted = True
+                break
+        if not deps_tainted:
+            sig_diff_filtered.append((task, old_sig, new_sig))
+
+    msg = []
+    msg.append('%d signatures changed, initial differences (first hash before, second after):' %
+               len(sig_diff))
+    for diff in sorted(sig_diff_filtered):
+        recipe, taskname = diff[0].rsplit(':', 1)
+        cmd = 'bitbake-diffsigs --task %s %s --signature %s %s' % \
+              (recipe, taskname, diff[1], diff[2])
+        msg.append('   %s: %s -> %s' % diff)
+        msg.append('      %s' % cmd)
+        try:
+            output = check_command('Determining signature difference failed.',
+                                   cmd).decode('utf-8')
+        except RuntimeError as error:
+            output = str(error)
+        if output:
+            msg.extend(['      ' + line for line in output.splitlines()])
+            msg.append('')
+    return '\n'.join(msg)

@@ -252,7 +252,7 @@ def staging_processfixme(fixme, target, recipesysroot, recipesysrootnative, d):
     for fixmevar in ['COMPONENTS_DIR', 'HOSTTOOLS_DIR', 'PKGDATA_DIR']:
         fixme_path = d.getVar(fixmevar)
         cmd += " -e 's:FIXME_%s:%s:g'" % (fixmevar, fixme_path)
-    bb.note(cmd)
+    bb.debug(2, cmd)
     subprocess.check_output(cmd, shell=True)
 
 
@@ -328,15 +328,30 @@ python extend_recipe_sysroot() {
     import subprocess
     import errno
     import collections
+    import glob
 
     taskdepdata = d.getVar("BB_TASKDEPDATA", False)
     mytaskname = d.getVar("BB_RUNTASK")
+    if mytaskname.endswith("_setscene"):
+        mytaskname = mytaskname.replace("_setscene", "")
     workdir = d.getVar("WORKDIR")
     #bb.warn(str(taskdepdata))
     pn = d.getVar("PN")
 
-    if mytaskname.endswith("_setscene"):
-        mytaskname = mytaskname.replace("_setscene", "")
+    stagingdir = d.getVar("STAGING_DIR")
+    sharedmanifests = d.getVar("COMPONENTS_DIR") + "/manifests"
+    recipesysroot = d.getVar("RECIPE_SYSROOT")
+    recipesysrootnative = d.getVar("RECIPE_SYSROOT_NATIVE")
+    current_variant = d.getVar("BBEXTENDVARIANT")
+
+    # Detect bitbake -b usage
+    nodeps = d.getVar("BB_LIMITEDDEPS") or False
+    if nodeps:
+        lock = bb.utils.lockfile(recipesysroot + "/sysroot.lock")
+        staging_populate_sysroot_dir(recipesysroot, recipesysrootnative, True, d)
+        staging_populate_sysroot_dir(recipesysroot, recipesysrootnative, False, d)
+        bb.utils.unlockfile(lock)
+        return
 
     start = None
     configuredeps = []
@@ -441,20 +456,6 @@ python extend_recipe_sysroot() {
 
     bb.note("\n".join(msgbuf))
 
-    stagingdir = d.getVar("STAGING_DIR")
-    sharedmanifests = d.getVar("COMPONENTS_DIR") + "/manifests"
-    recipesysroot = d.getVar("RECIPE_SYSROOT")
-    recipesysrootnative = d.getVar("RECIPE_SYSROOT_NATIVE")
-    current_variant = d.getVar("BBEXTENDVARIANT")
-
-    # Detect bitbake -b usage
-    nodeps = d.getVar("BB_LIMITEDDEPS") or False
-    if nodeps:
-        lock = bb.utils.lockfile(recipesysroot + "/sysroot.lock")
-        staging_populate_sysroot_dir(recipesysroot, recipesysrootnative, True, d)
-        staging_populate_sysroot_dir(recipesysroot, recipesysrootnative, False, d)
-        bb.utils.unlockfile(lock)
-
     depdir = recipesysrootnative + "/installeddeps"
     bb.utils.mkdirhier(depdir)
     bb.utils.mkdirhier(sharedmanifests)
@@ -469,8 +470,6 @@ python extend_recipe_sysroot() {
     multilibs = {}
     manifests = {}
 
-    installed = []
-
     for f in os.listdir(depdir):
         if not f.endswith(".complete"):
             continue
@@ -482,15 +481,52 @@ python extend_recipe_sysroot() {
             os.unlink(f)
             os.unlink(f.replace(".complete", ""))
 
+    installed = []
     for dep in configuredeps:
         c = setscenedeps[dep][0]
-        taskhash = setscenedeps[dep][5]
-        taskmanifest = depdir + "/" + c + "." + taskhash
         if mytaskname in ["do_sdk_depends", "do_populate_sdk_ext"] and c.endswith("-initial"):
             bb.note("Skipping initial setscene dependency %s for installation into the sysroot" % c)
             continue
-
         installed.append(c)
+
+    # We want to remove anything which this task previously installed but is no longer a dependency
+    taskindex = depdir + "/" + "index." + mytaskname
+    if os.path.exists(taskindex):
+        potential = []
+        with open(taskindex, "r") as f:
+            for l in f:
+                l = l.strip()
+                if l not in installed:
+                    fl = depdir + "/" + l
+                    if not os.path.exists(fl):
+                        # Was likely already uninstalled
+                        continue
+                    potential.append(l)
+        # We need to ensure not other task needs this dependency. We hold the sysroot
+        # lock so we ca search the indexes to check
+        if potential:
+            for i in glob.glob(depdir + "/index.*"):
+                if i.endswith("." + mytaskname):
+                    continue
+                with open(i, "r") as f:
+                    for l in f:
+                        l = l.strip()
+                        if l in potential:
+                            potential.remove(l)
+        for l in potential:
+            fl = depdir + "/" + l
+            bb.note("Task %s no longer depends on %s, removing from sysroot" % (mytaskname, l))
+            lnk = os.readlink(fl)
+            sstate_clean_manifest(depdir + "/" + lnk, d, workdir)
+            os.unlink(fl)
+            os.unlink(fl + ".complete")
+
+    for dep in configuredeps:
+        c = setscenedeps[dep][0]
+        if c not in installed:
+            continue
+        taskhash = setscenedeps[dep][5]
+        taskmanifest = depdir + "/" + c + "." + taskhash
 
         if os.path.exists(depdir + "/" + c):
             lnk = os.readlink(depdir + "/" + c)
@@ -606,25 +642,6 @@ python extend_recipe_sysroot() {
         c = setscenedeps[dep][0]
         os.symlink(manifests[dep], depdir + "/" + c + ".complete")
 
-    # We want to remove anything which this task previously installed but is no longer a dependency
-    # This could potentially race against another task which also installed it but still requires it
-    # but the alternative is not doing anything at all and that race window should be small enough
-    # to be insignificant
-    taskindex = depdir + "/" + "index." + mytaskname
-    if os.path.exists(taskindex):
-        with open(taskindex, "r") as f:
-            for l in f:
-                l = l.strip()
-                if l not in installed:
-                    l = depdir + "/" + l
-                    if not os.path.exists(l):
-                        # Was likely already uninstalled
-                        continue
-                    bb.note("Task %s no longer depends on %s, removing from sysroot" % (mytaskname, l))
-                    lnk = os.readlink(l)
-                    sstate_clean_manifest(depdir + "/" + lnk, d, workdir)
-                    os.unlink(l)
-                    os.unlink(l + ".complete")
     with open(taskindex, "w") as f:
         for l in sorted(installed):
             f.write(l + "\n")

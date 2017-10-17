@@ -399,6 +399,7 @@ class PackageManager(object, metaclass=ABCMeta):
             pkgs = self.list_installed()
             output = oe.utils.format_pkg_list(pkgs, "arch")
             installed_pkgs.write(output)
+            installed_pkgs.flush()
 
             cmd = [bb.utils.which(os.getenv('PATH'), "oe-pkgdata-util"),
                    "-p", self.d.getVar('PKGDATA_DIR'), "glob", installed_pkgs.name,
@@ -493,9 +494,11 @@ class RpmPM(PackageManager):
         # This prevents accidental matching against libsolv's built-in policies
         if len(archs) <= 1:
             archs = archs + ["bogusarch"]
-        archconfdir = "%s/%s" %(self.target_rootfs, "etc/dnf/vars/")
-        bb.utils.mkdirhier(archconfdir)
-        open(archconfdir + "arch", 'w').write(":".join(archs))
+        confdir = "%s/%s" %(self.target_rootfs, "etc/dnf/vars/")
+        bb.utils.mkdirhier(confdir)
+        open(confdir + "arch", 'w').write(":".join(archs))
+        distro_codename = self.d.getVar('DISTRO_CODENAME')
+        open(confdir + "releasever", 'w').write(distro_codename if distro_codename is not None else '')
 
         open(oe.path.join(self.target_rootfs, "etc/dnf/dnf.conf"), 'w').write("")
 
@@ -582,7 +585,7 @@ class RpmPM(PackageManager):
 
         output = self._invoke_dnf((["--skip-broken"] if attempt_only else []) +
                          (["-x", ",".join(exclude_pkgs)] if len(exclude_pkgs) > 0 else []) +
-                         (["--setopt=install_weak_deps=False"] if self.d.getVar('NO_RECOMMENDATIONS') == 1 else []) +
+                         (["--setopt=install_weak_deps=False"] if self.d.getVar('NO_RECOMMENDATIONS') == "1" else []) +
                          (["--nogpgcheck"] if self.d.getVar('RPM_SIGN_PACKAGES') != '1' else ["--setopt=gpgcheck=True"]) +
                          ["install"] +
                          pkgs)
@@ -647,7 +650,7 @@ class RpmPM(PackageManager):
                             symlinks=True)
 
     def list_installed(self):
-        output = self._invoke_dnf(["repoquery", "--installed", "--queryformat", "Package: %{name} %{arch} %{version} %{sourcerpm}\nDependencies:\n%{requires}\nRecommendations:\n%{recommends}\nDependenciesEndHere:\n"],
+        output = self._invoke_dnf(["repoquery", "--installed", "--queryformat", "Package: %{name} %{arch} %{version} %{name}-%{version}-%{release}.%{arch}.rpm\nDependencies:\n%{requires}\nRecommendations:\n%{recommends}\nDependenciesEndHere:\n"],
                                   print_output = False)
         packages = {}
         current_package = None
@@ -659,8 +662,8 @@ class RpmPM(PackageManager):
                 current_package = package_info[0]
                 package_arch = package_info[1]
                 package_version = package_info[2]
-                package_srpm = package_info[3]
-                packages[current_package] = {"arch":package_arch, "ver":package_version, "filename":package_srpm}
+                package_rpm = package_info[3]
+                packages[current_package] = {"arch":package_arch, "ver":package_version, "filename":package_rpm}
                 current_deps = []
             elif line.startswith("Dependencies:"):
                 current_state = "dependencies"

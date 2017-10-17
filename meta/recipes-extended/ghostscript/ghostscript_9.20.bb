@@ -35,6 +35,19 @@ SRC_URI = "${SRC_URI_BASE} \
            file://CVE-2016-10219.patch \
            file://CVE-2016-10220.patch \
            file://CVE-2017-5951.patch \
+           file://CVE-2016-8602.patch \
+           file://CVE-2017-7975.patch \
+           file://CVE-2016-7977.patch \
+           file://CVE-2016-7978.patch \
+           file://CVE-2016-7979.patch \
+           file://CVE-2017-9216.patch \
+           file://CVE-2017-9611.patch \
+           file://CVE-2017-9612.patch \
+           file://CVE-2017-9739.patch \
+           file://CVE-2017-9726.patch \
+           file://CVE-2017-9727.patch \
+           file://CVE-2017-9835.patch \
+           file://CVE-2017-11714.patch \
            "
 
 SRC_URI_class-native = "${SRC_URI_BASE} \
