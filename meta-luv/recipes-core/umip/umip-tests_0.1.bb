@@ -29,6 +29,7 @@ EXTRA_OEMAKE += " ${TARGET_ARCH}"
 S = "${WORKDIR}"
 
 do_compile() {
+        sed -i 's/\-m32//g' ${S}/Makefile
 	oe_runmake
 }
 
