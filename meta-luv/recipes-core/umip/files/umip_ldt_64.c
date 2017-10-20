@@ -153,7 +153,7 @@ int main(void)
 	    "push %%r15\n\t"
 	    /* set new data segment */
             /* jump to test code */
-	    "call *%2\n\t"
+	    "call *%0\n\t"
 	    /* After running tests, we return here */
             "finish_testing:\n\t"
 	    /* restore everything */
@@ -173,7 +173,7 @@ int main(void)
 	    "pop %%rbx\n\t"
 	    "pop %%rax\n\t"
 	    :
-	    :"m"(test_fs), "m"(test_gs), "m"(code)
+	    :"m"(code)
 	   );
 
 	cleanup_segments();
