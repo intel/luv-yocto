@@ -11,6 +11,7 @@ III. Testing UMIP
      d) Testing 32-bit processes
      e) Testing output format
      f) The test programs
+     g) Things to do
 
        ============================================================
 I. For the impatient
@@ -183,3 +184,9 @@ Refer to section III.a) for the naming convention.
   purpose of this test is to verify that the emulation code is capable of
   succesfully computing linear address out of the instruction operand and
   segment descriptor.
+
+g) Things to do
+
+* In umip_ldt_64, test %rsp and %r12
+* Add tests for address size override prefixes
+* Add test to include more than one segment override prefix
