@@ -12,12 +12,11 @@ BUGTRACKER = "https://github.com/01org/luv-yocto/issues"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
-SYSTEMD_PACKAGES =+ "${PN}-manager ${PN}-netconsole ${PN}-crash"
-PACKAGES =+ "${PN}-manager ${PN}-netconsole ${PN}-crash"
+SYSTEMD_PACKAGES =+ "${PN}"
 
-SYSTEMD_SERVICE_${PN}-manager = "luv-test-manager.service"
-SYSTEMD_SERVICE_${PN}-netconsole = "luv-netconsole.service"
-SYSTEMD_SERVICE_${PN}-crash = "luv-crash-handler.service"
+SYSTEMD_SERVICE_${PN} = "luv-test-manager.service \
+			 luv-netconsole.service \
+			 luv-crash-handler.service"
 
 inherit systemd
 FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
@@ -35,10 +34,7 @@ SRC_URI += "file://luv-test-manager file://luv-test-parser \
             file://luv-dmesg-acpi-tables-dump \
           "
 
-RDEPENDS_${PN}-netconsole+= "kernel-modules curl iputils iproute2 bash init-ifupdown dhcp-client"
-RDEPENDS_${PN}-crash+="bash"
-RDEPENDS_${PN}-manager+= "bash"
-RDEPENDS_${PN}+= "bash gzip"
+RDEPENDS_${PN}+= "kernel-modules curl iputils iproute2 bash init-ifupdown dhcp-client gzip"
 
 do_install_append() {
        install -d ${D}${sbindir}/
@@ -84,14 +80,14 @@ do_install_append() {
        install -m 0755 ${WORKDIR}/luv-dmesg-acpi-tables-dump ${D}${bindir}
 }
 
-FILES_${PN}-manager += "${datadir}/luv/html/luv-scripts \
-			${datadir}/luv/html/luv-css-styles \
-			${systemd_unitdir}/system/luv-test-manager.service \
-			${sbindir}/luv-test-manager"
-FILES_${PN}-crash += "${systemd_unitdir}/system/luv-crash-handler.service \
-		      ${sbindir}/luv-crash-handler \
-		      ${sysconfdir}/luv/parsers/test-manager"
-FILES_${PN}-netconsole += "${systemd_unitdir}/system/luv-netconsole.service \
-			   ${sbindir}/luv-netconsole ${bindir}/luv-netconsole-params"
-FILES_${PN} += "${sysconfdir}/luv/parsers/test-manager \
+FILES_${PN} += "${datadir}/luv/html/luv-scripts \
+		${datadir}/luv/html/luv-css-styles \
+		${systemd_unitdir}/system/luv-test-manager.service \
+		${sbindir}/luv-test-manager \
+		${systemd_unitdir}/system/luv-crash-handler.service \
+		${sbindir}/luv-crash-handler \
+		${sysconfdir}/luv/parsers/test-manager \
+		${systemd_unitdir}/system/luv-netconsole.service \
+		${sbindir}/luv-netconsole ${bindir}/luv-netconsole-params \
+		${sysconfdir}/luv/parsers/test-manager \
 		${bindir}/submit_results"
