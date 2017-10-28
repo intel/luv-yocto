@@ -16,7 +16,8 @@ SYSTEMD_PACKAGES =+ "${PN}"
 
 SYSTEMD_SERVICE_${PN} = "luv-test-manager.service \
 			 luv-netconsole.service \
-			 luv-crash-handler.service"
+			 luv-crash-handler.service \
+			 luv-reboot-poweroff.service"
 
 inherit systemd
 FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
@@ -32,6 +33,8 @@ SRC_URI += "file://luv-test-manager file://luv-test-parser \
             file://luv-crash-handler.service \
             file://luv-netconsole.service \
             file://luv-dmesg-acpi-tables-dump \
+            file://luv-reboot-poweroff.service \
+            file://luv-reboot-poweroff \
           "
 
 RDEPENDS_${PN}+= "kernel-modules curl iputils iproute2 bash init-ifupdown dhcp-client gzip"
@@ -58,6 +61,8 @@ do_install_append() {
        install -d ${D}${bindir}
        install -m 0755 ${WORKDIR}/submit_results ${D}${bindir}
 
+       install -m 755 ${WORKDIR}/luv-reboot-poweroff ${D}${sbindir}/
+
        # Install HTML base code files
        echo "data dir is ${datadir}"
        install -d ${D}${datadir}/luv/html
@@ -75,6 +80,9 @@ do_install_append() {
        install -m 0644 ${WORKDIR}/luv-crash-handler.service ${D}${systemd_unitdir}/system
        sed -i -e 's,@SBINDIR@,${sbindir},g' ${D}${systemd_unitdir}/system/luv-crash-handler.service
 
+       install -m 0644 ${WORKDIR}/luv-reboot-poweroff.service ${D}${systemd_unitdir}/system
+       sed -i -e 's,@SBINDIR@,${sbindir},g' ${D}${systemd_unitdir}/system/luv-reboot-poweroff.service
+
        # Install luv-dmesg-acpi-tables-dump in bin directory
        install -d ${D}${bindir}
        install -m 0755 ${WORKDIR}/luv-dmesg-acpi-tables-dump ${D}${bindir}
@@ -89,5 +97,7 @@ FILES_${PN} += "${datadir}/luv/html/luv-scripts \
 		${sysconfdir}/luv/parsers/test-manager \
 		${systemd_unitdir}/system/luv-netconsole.service \
 		${sbindir}/luv-netconsole ${bindir}/luv-netconsole-params \
+		${systemd_unitdir}/system/luv-reboot-poweroff.service \
+		${sbindir}/luv-reboot-poweroff \
 		${sysconfdir}/luv/parsers/test-manager \
 		${bindir}/submit_results"

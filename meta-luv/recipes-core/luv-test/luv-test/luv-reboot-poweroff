@@ -1,0 +1,20 @@
+#!/bin/sh
+
+REBOOT_TIMEOUT=$((5*60))
+
+timeout_file="/sys/firmware/efi/efivars/LuvTimeout-3b6bf55d-a6f6-45cf-9f7e-ebf3bdadf74e"
+if [ -e ${timeout_file} ] ; then
+    REBOOT_TIMEOUT=`hexdump -e '"%08u\n"' ${timeout_file} | tail -n1`
+fi
+
+grep -q luv.reboot /proc/cmdline
+if [ $? -ne 1 ]; then
+    sleep ${REBOOT_TIMEOUT}
+    reboot
+fi
+
+grep -q luv.poweroff /proc/cmdline
+if [ $? -ne 1 ]; then
+    sleep ${REBOOT_TIMEOUT}
+    poweroff
+fi
