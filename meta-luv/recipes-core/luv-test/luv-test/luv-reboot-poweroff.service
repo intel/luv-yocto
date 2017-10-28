@@ -1,0 +1,10 @@
+[Unit]
+Description=Automatically reboot system
+After=luv-test-manager.service
+
+[Service]
+Type=oneshot
+ExecStart=@SBINDIR@/luv-reboot-poweroff
+
+[Install]
+WantedBy=multi-user.target
