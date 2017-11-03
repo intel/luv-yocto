@@ -1,7 +1,7 @@
-From 97d4df507e1eae7c44f5c511149f34c7cb7f0230 Mon Sep 17 00:00:00 2001
-From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
-Date: Tue, 16 Feb 2016 09:58:09 -0800
-Subject: [PATCH] grub: core: loader: add support for memdisks
+From 7bc84837472d5c1cbf763e6cc0ebb49a167888af Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Fri, 3 Nov 2017 16:13:58 -0700
+Subject: [PATCH 1/2] grub: core: loader: add support for memdisks
 
 The grub EFI chainloader uses the UEFI LoadImage boot service to load an
 executable image. Unfortunately, this service requires a device_handle and it
@@ -14,15 +14,16 @@ TODO: add secure boot verification. Whould this need a shim with netboot
 support?
 
 Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
 ---
  grub-core/loader/efi/chainloader.c | 93 ++++++++++++++++++++++----------------
  1 file changed, 55 insertions(+), 38 deletions(-)
 
 diff --git a/grub-core/loader/efi/chainloader.c b/grub-core/loader/efi/chainloader.c
-index c07c861..0e5691e 100644
+index 065a710..5065947 100644
 --- a/grub-core/loader/efi/chainloader.c
 +++ b/grub-core/loader/efi/chainloader.c
-@@ -805,22 +805,6 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
+@@ -812,22 +812,6 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
        dev_handle = grub_efinet_get_device_handle (inf->card);
      }
  
@@ -45,15 +46,15 @@ index c07c861..0e5691e 100644
    size = grub_file_size (file);
    if (!size)
      {
-@@ -850,37 +834,70 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
-       goto fail;
+@@ -894,37 +878,70 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
      }
+ #endif
  
 -  status = efi_call_6 (b->load_image, 0, grub_efi_image_handle, file_path,
--			  (void *) ((grub_addr_t) address), size,
--			  &image_handle);
+-		       boot_image, size,
+-		       &image_handle);
 -  if (status != GRUB_EFI_SUCCESS)
-+  if (dev_handle)
++    if (dev_handle)
      {
 -      if (status == GRUB_EFI_OUT_OF_RESOURCES)
 -        {
@@ -62,7 +63,7 @@ index c07c861..0e5691e 100644
 -        }
 -      /* try with shim */
 -      else if (status == GRUB_EFI_SECURITY_VIOLATION)
-+      dp = grub_efi_get_device_path (dev_handle);
++	      dp = grub_efi_get_device_path (dev_handle);
 +      if (! dp)
 +      {
 +        grub_error (GRUB_ERR_BAD_DEVICE, "not a valid root device");
@@ -77,25 +78,25 @@ index c07c861..0e5691e 100644
 +      grub_efi_print_device_path (file_path);
 +
 +      status = efi_call_6 (b->load_image, 0, grub_efi_image_handle, file_path,
-+			               (void *) ((grub_addr_t) address), size,
-+			               &image_handle);
++                                      (void *) ((grub_addr_t) address), size,
++                                      &image_handle);
 +      if (status != GRUB_EFI_SUCCESS)
          {
 -          status = grub_shim_verify (address, size);
 -          if (status != GRUB_EFI_SUCCESS)
-+          if (status == GRUB_EFI_OUT_OF_RESOURCES)
++	    if (status == GRUB_EFI_OUT_OF_RESOURCES)
              {
 -              grub_error (GRUB_ERR_BAD_OS, "shim verification failed");
-+              grub_error (GRUB_ERR_OUT_OF_MEMORY, "out of resources");
++		grub_error (GRUB_ERR_OUT_OF_MEMORY, "out of resources");
                goto fail;
              }
 -          status = grub_shim_load_image (address, size, &context);
 -          if (status != GRUB_EFI_SUCCESS)
-+            /* try with shim */
++	     /* try with shim */
 +          else if (status == GRUB_EFI_SECURITY_VIOLATION)
              {
 -              grub_error (GRUB_ERR_BAD_OS, "shim cannot load image");
-+              status = grub_shim_verify (address, size);
++	      status = grub_shim_verify (address, size);
 +              if (status != GRUB_EFI_SUCCESS)
 +                {
 +                  grub_error (GRUB_ERR_BAD_OS, "shim verification failed");
@@ -109,22 +110,22 @@ index c07c861..0e5691e 100644
 +                }
 +            }
 +          else
-+	        {
++               {
 +              grub_error (GRUB_ERR_BAD_OS, "cannot load image");
                goto fail;
              }
-+        }
++          }
  	}
 -      else
 -	{
 -	  grub_error (GRUB_ERR_BAD_OS, "cannot load image");
 -	  goto fail;
 -	}
-+  /* if could not get a dev_handle to an efidisk, try with a ramdisk */
++	  /* if could not get a dev_handle to an efidisk, try with a ramdisk */
 +  else if (dev->disk->dev->id == GRUB_DISK_DEVICE_MEMDISK_ID)
 +    {
 +      /* TODO: add secure boot check if needed */
-+	  status = grub_shim_load_image (address, size, &context);
++         status = grub_shim_load_image (address, size, &context);
 +      if (status != GRUB_EFI_SUCCESS)
 +        {
 +          grub_error (GRUB_ERR_BAD_OS, "shim cannot load image");
