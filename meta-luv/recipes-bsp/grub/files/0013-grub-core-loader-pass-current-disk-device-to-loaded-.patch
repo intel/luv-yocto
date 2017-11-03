@@ -1,7 +1,8 @@
-From b9be351553598adc0c30238465d943d675fce1e3 Mon Sep 17 00:00:00 2001
-From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
-Date: Tue, 16 Feb 2016 10:05:41 -0800
-Subject: [PATCH] grub: core: loader: pass current disk device to loaded image
+From cb111e20788ef6d11cfda8cf7a975b69a063c8d7 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Fri, 3 Nov 2017 16:18:05 -0700
+Subject: [PATCH 2/2] grub: core: loader: pass current disk device to loaded
+ image
 
 Pass the disk device in use by GRUB to the loaded image. This useful
 for the particular case of ramdisks so that they can be accessed
@@ -13,15 +14,16 @@ might have modified the device (e.g., add elements to the disk list
 that will not longer exist when returning to GRUB).
 
 Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
 ---
- grub-core/loader/efi/chainloader.c | 19 ++++++++++++++++++-
- 1 file changed, 18 insertions(+), 1 deletion(-)
+ grub-core/loader/efi/chainloader.c | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
 
 diff --git a/grub-core/loader/efi/chainloader.c b/grub-core/loader/efi/chainloader.c
-index 0e5691e..73198ed 100644
+index 5065947..20e1346 100644
 --- a/grub-core/loader/efi/chainloader.c
 +++ b/grub-core/loader/efi/chainloader.c
-@@ -50,6 +50,7 @@ static grub_int32_t shim_used;
+@@ -54,6 +54,7 @@ static grub_int32_t shim_used;
  static grub_efi_physical_address_t shim_buffer;
  static grub_efi_uintn_t shim_pages;
  static grub_efi_loaded_image_t shim_li_bak;
@@ -29,7 +31,7 @@ index 0e5691e..73198ed 100644
  static grub_efi_status_t (*shim_entry_point) (grub_efi_handle_t image_handle,
  					      grub_efi_system_table_t *systab);
  
-@@ -608,6 +609,7 @@ grub_chainloader_boot (void)
+@@ -613,6 +614,7 @@ grub_chainloader_boot (void)
    grub_efi_uintn_t exit_data_size;
    grub_efi_char16_t *exit_data = NULL;
    grub_efi_loaded_image_t *loaded_image = NULL;
@@ -37,7 +39,7 @@ index 0e5691e..73198ed 100644
    grub_efi_status_t
    (*saved_exit) (grub_efi_handle_t image_handle,
  		 grub_efi_status_t exit_status,
-@@ -635,6 +637,15 @@ grub_chainloader_boot (void)
+@@ -640,6 +642,16 @@ grub_chainloader_boot (void)
        else
  	/* restore loaded image */
  	grub_memcpy(loaded_image, &shim_li_bak, sizeof(shim_li_bak));
@@ -50,12 +52,13 @@ index 0e5691e..73198ed 100644
 +      else
 +        grub_memcpy(dev->disk->dev, &disk_dev_bak, sizeof(disk_dev_bak));
 +
++
      }
    if (status != GRUB_EFI_SUCCESS)
      {
-@@ -966,7 +977,13 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
-       loader_options->cmdline_size = 0;
-     }
+@@ -1004,7 +1016,14 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
+         loader_options->cmdline_size = 0;
+    }
  
 -  loader_options->disk_dev = 0;
 +  /* backup disk in case is changed by callee */
@@ -65,6 +68,7 @@ index 0e5691e..73198ed 100644
 +    loader_options->disk_dev = dev->disk->dev;
 +  else
 +    loader_options->disk_dev = 0;
++
    loaded_image->load_options = loader_options;
    loaded_image->load_options_size = sizeof(*loader_options);
  
