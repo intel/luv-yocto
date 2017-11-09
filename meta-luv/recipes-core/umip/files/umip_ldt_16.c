@@ -139,7 +139,7 @@ static int setup_data_segments()
 	desc.entry_number = DATA_FS_DESC_INDEX;
 	desc.base_addr = (unsigned long)&data_fs;
 
-	memset(data_es, 0x66, SEGMENT_SIZE);
+	memset(data_fs, 0x66, SEGMENT_SIZE);
 
 	ret = syscall(SYS_modify_ldt, 1, &desc, sizeof(desc));
 	if (ret) {
@@ -150,7 +150,7 @@ static int setup_data_segments()
 	desc.entry_number = DATA_GS_DESC_INDEX;
 	desc.base_addr = (unsigned long)&data_gs;
 
-	memset(data_es, 0x55, SEGMENT_SIZE);
+	memset(data_gs, 0x55, SEGMENT_SIZE);
 
 	ret = syscall(SYS_modify_ldt, 1, &desc, sizeof(desc));
 	if (ret) {
