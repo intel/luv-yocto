@@ -1,0 +1,34 @@
+From 44d9d78fd347b9d5cea36c84ce0b0de022d033c4 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Tue, 7 Nov 2017 18:22:17 -0800
+Subject: [PATCH] python: Fix gcc7 warnings when calling PyMem_MALLOC macros
+
+When building python with gcc7, it throws an warning when an expression
+evaluating to an int can/should in itself be used as a Boolean (i.e.,
+without being compared to 0).
+This patch fixes those warnings.
+
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
+---
+ deps/python/Include/pymem.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/deps/python/Include/pymem.h b/deps/python/Include/pymem.h
+index 10b5bea..ca7084d 100644
+--- a/deps/python/Include/pymem.h
++++ b/deps/python/Include/pymem.h
+@@ -72,9 +72,9 @@ PyAPI_FUNC(void) PyMem_Free(void *);
+ /* Returns NULL to indicate error if a negative size or size larger than
+    Py_ssize_t can represent is supplied.  Helps prevents security holes. */
+ #define PyMem_MALLOC(n)		((size_t)(n) > (size_t)PY_SSIZE_T_MAX ? NULL \
+-				: malloc((n) ? (n) : 1))
++				: malloc((n) > 0 ? (n) : 1))
+ #define PyMem_REALLOC(p, n)	((size_t)(n) > (size_t)PY_SSIZE_T_MAX  ? NULL \
+-				: realloc((p), (n) ? (n) : 1))
++				: realloc((p), (n) > 0 ? (n) : 1))
+ #define PyMem_FREE		free
+
+ #endif	/* PYMALLOC_DEBUG */
+--
+1.9.1
+

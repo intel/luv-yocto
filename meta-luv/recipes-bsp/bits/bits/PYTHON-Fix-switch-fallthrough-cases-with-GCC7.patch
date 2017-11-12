@@ -1,0 +1,494 @@
+From 7c7e59083c92f41c3c66ab638349015a4e3f02d0 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Sun, 12 Nov 2017 12:41:46 -0800
+Subject: [PATCH] python : Fix switch fallthrough cases with GCC7
+
+    Add the fallthrough comment to some files in python to make it
+    compliant with GCC7 and avoid the implicit-fallthrough errors.
+
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
+---
+ deps/python/Modules/_ctypes/_ctypes.c |  2 ++
+ deps/python/Modules/zlib/inflate.c    | 29 +++++++++++++++++++++++++++++
+ deps/python/Objects/stringobject.c    |  2 +-
+ deps/python/Objects/unicodeobject.c   |  1 +
+ deps/python/Python/ast.c              | 16 ++++++++++++++++
+ deps/python/Python/ceval.c            |  9 +++++++++
+ deps/python/Python/compile.c          |  2 ++
+ deps/python/Python/dtoa.c             |  4 ++++
+ deps/python/Python/getargs.c          |  2 +-
+ 9 files changed, 65 insertions(+), 2 deletions(-)
+
+diff --git a/deps/python/Modules/_ctypes/_ctypes.c b/deps/python/Modules/_ctypes/_ctypes.c
+index aa34478..d96d7d8 100644
+--- a/deps/python/Modules/_ctypes/_ctypes.c
++++ b/deps/python/Modules/_ctypes/_ctypes.c
+@@ -3704,7 +3704,9 @@ _build_callargs(PyCFuncPtrObject *self, PyObject *argtypes,
+             *pinoutmask |= (1 << i); /* mark as inout arg */
+             (*pnumretvals)++;
+             /* fall through to PARAMFLAG_FIN... */
++	    /* fall through */
+         case 0:
++	    /* fall through */
+         case PARAMFLAG_FIN:
+             /* 'in' parameter.  Copy it from inargs. */
+             ob =_get_arg(&inargs_index, name, defval, inargs, kwds);
+diff --git a/deps/python/Modules/zlib/inflate.c b/deps/python/Modules/zlib/inflate.c
+index 870f89b..9eec5ea 100644
+--- a/deps/python/Modules/zlib/inflate.c
++++ b/deps/python/Modules/zlib/inflate.c
+@@ -702,6 +702,7 @@ int flush;
+             if (state->flags & 0x0200) CRC2(state->check, hold);
+             INITBITS();
+             state->mode = TIME;
++	    /* fall through */
+         case TIME:
+             NEEDBITS(32);
+             if (state->head != Z_NULL)
+@@ -709,6 +710,7 @@ int flush;
+             if (state->flags & 0x0200) CRC4(state->check, hold);
+             INITBITS();
+             state->mode = OS;
++	    /* fall through */
+         case OS:
+             NEEDBITS(16);
+             if (state->head != Z_NULL) {
+@@ -718,6 +720,7 @@ int flush;
+             if (state->flags & 0x0200) CRC2(state->check, hold);
+             INITBITS();
+             state->mode = EXLEN;
++	    /* fall through */
+         case EXLEN:
+             if (state->flags & 0x0400) {
+                 NEEDBITS(16);
+@@ -730,6 +733,7 @@ int flush;
+             else if (state->head != Z_NULL)
+                 state->head->extra = Z_NULL;
+             state->mode = EXTRA;
++	    /* fall through */
+         case EXTRA:
+             if (state->flags & 0x0400) {
+                 copy = state->length;
+@@ -752,6 +756,7 @@ int flush;
+             }
+             state->length = 0;
+             state->mode = NAME;
++	    /* fall through */
+         case NAME:
+             if (state->flags & 0x0800) {
+                 if (have == 0) goto inf_leave;
+@@ -773,6 +778,7 @@ int flush;
+                 state->head->name = Z_NULL;
+             state->length = 0;
+             state->mode = COMMENT;
++	    /* fall through */
+         case COMMENT:
+             if (state->flags & 0x1000) {
+                 if (have == 0) goto inf_leave;
+@@ -793,6 +799,7 @@ int flush;
+             else if (state->head != Z_NULL)
+                 state->head->comment = Z_NULL;
+             state->mode = HCRC;
++	    /* fall through */
+         case HCRC:
+             if (state->flags & 0x0200) {
+                 NEEDBITS(16);
+@@ -816,6 +823,7 @@ int flush;
+             strm->adler = state->check = ZSWAP32(hold);
+             INITBITS();
+             state->mode = DICT;
++	    /* fall through */
+         case DICT:
+             if (state->havedict == 0) {
+                 RESTORE();
+@@ -823,8 +831,10 @@ int flush;
+             }
+             strm->adler = state->check = adler32(0L, Z_NULL, 0);
+             state->mode = TYPE;
++	    /* fall through */
+         case TYPE:
+             if (flush == Z_BLOCK || flush == Z_TREES) goto inf_leave;
++	    /* fall through */
+         case TYPEDO:
+             if (state->last) {
+                 BYTEBITS();
+@@ -858,6 +868,7 @@ int flush;
+             case 3:
+                 strm->msg = (char *)"invalid block type";
+                 state->mode = BAD;
++	    /* fall through */
+             }
+             DROPBITS(2);
+             break;
+@@ -875,8 +886,10 @@ int flush;
+             INITBITS();
+             state->mode = COPY_;
+             if (flush == Z_TREES) goto inf_leave;
++	    /* fall through */
+         case COPY_:
+             state->mode = COPY;
++	    /* fall through */
+         case COPY:
+             copy = state->length;
+             if (copy) {
+@@ -912,6 +925,7 @@ int flush;
+             Tracev((stderr, "inflate:       table sizes ok\n"));
+             state->have = 0;
+             state->mode = LENLENS;
++	    /* fall through */
+         case LENLENS:
+             while (state->have < state->ncode) {
+                 NEEDBITS(3);
+@@ -933,6 +947,7 @@ int flush;
+             Tracev((stderr, "inflate:       code lengths ok\n"));
+             state->have = 0;
+             state->mode = CODELENS;
++	    /* fall through */
+         case CODELENS:
+             while (state->have < state->nlen + state->ndist) {
+                 for (;;) {
+@@ -1016,8 +1031,10 @@ int flush;
+             Tracev((stderr, "inflate:       codes ok\n"));
+             state->mode = LEN_;
+             if (flush == Z_TREES) goto inf_leave;
++	    /* fall through */
+         case LEN_:
+             state->mode = LEN;
++	    /* fall through */
+         case LEN:
+             if (have >= 6 && left >= 258) {
+                 RESTORE();
+@@ -1067,6 +1084,7 @@ int flush;
+             }
+             state->extra = (unsigned)(here.op) & 15;
+             state->mode = LENEXT;
++	    /* fall through */
+         case LENEXT:
+             if (state->extra) {
+                 NEEDBITS(state->extra);
+@@ -1077,6 +1095,7 @@ int flush;
+             Tracevv((stderr, "inflate:         length %u\n", state->length));
+             state->was = state->length;
+             state->mode = DIST;
++	    /* fall through */
+         case DIST:
+             for (;;) {
+                 here = state->distcode[BITS(state->distbits)];
+@@ -1104,6 +1123,7 @@ int flush;
+             state->offset = (unsigned)here.val;
+             state->extra = (unsigned)(here.op) & 15;
+             state->mode = DISTEXT;
++	    /* fall through */
+         case DISTEXT:
+             if (state->extra) {
+                 NEEDBITS(state->extra);
+@@ -1120,6 +1140,7 @@ int flush;
+ #endif
+             Tracevv((stderr, "inflate:         distance %u\n", state->offset));
+             state->mode = MATCH;
++	    /* fall through */
+         case MATCH:
+             if (left == 0) goto inf_leave;
+             copy = out - left;
+@@ -1165,12 +1186,14 @@ int flush;
+             } while (--copy);
+             if (state->length == 0) state->mode = LEN;
+             break;
++	    /* fall through */
+         case LIT:
+             if (left == 0) goto inf_leave;
+             *put++ = (unsigned char)(state->length);
+             left--;
+             state->mode = LEN;
+             break;
++	    /* fall through */
+         case CHECK:
+             if (state->wrap) {
+                 NEEDBITS(32);
+@@ -1195,6 +1218,7 @@ int flush;
+             }
+ #ifdef GUNZIP
+             state->mode = LENGTH;
++	    /* fall through */
+         case LENGTH:
+             if (state->wrap && state->flags) {
+                 NEEDBITS(32);
+@@ -1208,15 +1232,20 @@ int flush;
+             }
+ #endif
+             state->mode = DONE;
++	    /* fall through */
+         case DONE:
+             ret = Z_STREAM_END;
+             goto inf_leave;
++	    /* fall through */
+         case BAD:
+             ret = Z_DATA_ERROR;
+             goto inf_leave;
++	    /* fall through */
+         case MEM:
+             return Z_MEM_ERROR;
++	    /* fall through */
+         case SYNC:
++	    /* fall through */
+         default:
+             return Z_STREAM_ERROR;
+         }
+diff --git a/deps/python/Objects/stringobject.c b/deps/python/Objects/stringobject.c
+index c1e12a7..0b2e021 100644
+--- a/deps/python/Objects/stringobject.c
++++ b/deps/python/Objects/stringobject.c
+@@ -590,7 +590,7 @@ string_dealloc(PyObject *op)
+
+         case SSTATE_INTERNED_IMMORTAL:
+             Py_FatalError("Immortal interned string died.");
+-
++	/* fall through */
+         default:
+             Py_FatalError("Inconsistent interned string state.");
+     }
+diff --git a/deps/python/Objects/unicodeobject.c b/deps/python/Objects/unicodeobject.c
+index 08723ac..8c9f682 100644
+--- a/deps/python/Objects/unicodeobject.c
++++ b/deps/python/Objects/unicodeobject.c
+@@ -796,6 +796,7 @@ PyUnicode_FromFormatV(const char *format, va_list vargs)
+ #endif
+                 /* fall through... */
+             }
++	    /* fall through */
+             case '%':
+                 n++;
+                 break;
+diff --git a/deps/python/Python/ast.c b/deps/python/Python/ast.c
+index e5d7ac6..37e708b 100644
+--- a/deps/python/Python/ast.c
++++ b/deps/python/Python/ast.c
+@@ -268,6 +268,7 @@ PyAST_FromNode(const node *n, PyCompilerFlags *flags, const char *filename,
+                 }
+             }
+             return Module(stmts, arena);
++	/* fall through */
+         case eval_input: {
+             expr_ty testlist_ast;
+
+@@ -277,6 +278,7 @@ PyAST_FromNode(const node *n, PyCompilerFlags *flags, const char *filename,
+                 goto error;
+             return Expression(testlist_ast, arena);
+         }
++	/* fall through */
+         case single_input:
+             if (TYPE(CHILD(n, 0)) == NEWLINE) {
+                 stmts = asdl_seq_new(1, arena);
+@@ -315,6 +317,7 @@ PyAST_FromNode(const node *n, PyCompilerFlags *flags, const char *filename,
+
+                 return Interactive(stmts, arena);
+             }
++	/* fall through */
+         default:
+             PyErr_Format(PyExc_SystemError,
+                          "invalid node %d for PyAST_FromNode", TYPE(n));
+@@ -534,21 +537,28 @@ ast_for_comp_op(struct compiling *c, const node *n)
+         switch (TYPE(n)) {
+             case LESS:
+                 return Lt;
++	    /* fall through */
+             case GREATER:
+                 return Gt;
++	    /* fall through */
+             case EQEQUAL:                       /* == */
+                 return Eq;
++	    /* fall through */
+             case LESSEQUAL:
+                 return LtE;
++	    /* fall through */
+             case GREATEREQUAL:
+                 return GtE;
++	    /* fall through */
+             case NOTEQUAL:
+                 return NotEq;
++	    /* fall through */
+             case NAME:
+                 if (strcmp(STR(n), "in") == 0)
+                     return In;
+                 if (strcmp(STR(n), "is") == 0)
+                     return Is;
++	    /* fall through */
+             default:
+                 PyErr_Format(PyExc_SystemError, "invalid comp_op: %s",
+                              STR(n));
+@@ -563,6 +573,7 @@ ast_for_comp_op(struct compiling *c, const node *n)
+                     return NotIn;
+                 if (strcmp(STR(CHILD(n, 0)), "is") == 0)
+                     return IsNot;
++	    /* fall through */
+             default:
+                 PyErr_Format(PyExc_SystemError, "invalid comp_op: %s %s",
+                              STR(CHILD(n, 0)), STR(CHILD(n, 1)));
+@@ -2359,14 +2370,17 @@ ast_for_flow_stmt(struct compiling *c, const node *n)
+     switch (TYPE(ch)) {
+         case break_stmt:
+             return Break(LINENO(n), n->n_col_offset, c->c_arena);
++	/* fall through */
+         case continue_stmt:
+             return Continue(LINENO(n), n->n_col_offset, c->c_arena);
++	/* fall through */
+         case yield_stmt: { /* will reduce to yield_expr */
+             expr_ty exp = ast_for_expr(c, CHILD(ch, 0));
+             if (!exp)
+                 return NULL;
+             return Expr(exp, LINENO(n), n->n_col_offset, c->c_arena);
+         }
++	/* fall through */
+         case return_stmt:
+             if (NCH(ch) == 1)
+                 return Return(NULL, LINENO(n), n->n_col_offset, c->c_arena);
+@@ -2377,6 +2391,7 @@ ast_for_flow_stmt(struct compiling *c, const node *n)
+                 return Return(expression, LINENO(n), n->n_col_offset,
+                               c->c_arena);
+             }
++	/* fall through */
+         case raise_stmt:
+             if (NCH(ch) == 1)
+                 return Raise(NULL, NULL, NULL, LINENO(n), n->n_col_offset,
+@@ -2417,6 +2432,7 @@ ast_for_flow_stmt(struct compiling *c, const node *n)
+                 return Raise(expr1, expr2, expr3, LINENO(n), n->n_col_offset,
+                              c->c_arena);
+             }
++	/* fall through */
+         default:
+             PyErr_Format(PyExc_SystemError,
+                          "unexpected flow_stmt: %d", TYPE(ch));
+diff --git a/deps/python/Python/ceval.c b/deps/python/Python/ceval.c
+index fa9e7e0..0ecb441 100644
+--- a/deps/python/Python/ceval.c
++++ b/deps/python/Python/ceval.c
+@@ -712,24 +712,28 @@ PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
+		TARGET_##op: \
+		opcode = op; \
+		oparg = NEXTARG(); \
++		/* fall through */ \
+		case op: \
+		goto impl; \
+
+ #define TARGET_WITH_IMPL_NOARG(op, impl) \
+		TARGET_##op: \
+		opcode = op; \
++		/* fall through */ \
+		case op: \
+		goto impl; \
+
+ #define TARGET_NOARG(op) \
+		TARGET_##op: \
+		opcode = op; \
++		/* fall through */ \
+		case op:\
+
+ #define TARGET(op) \
+		TARGET_##op: \
+		opcode = op; \
+		oparg = NEXTARG(); \
++		/* fall through */ \
+		case op:\
+
+
+@@ -764,17 +768,21 @@ PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
+
+ #else
+ #define TARGET(op) \
++		/* fall through */ \
+		case op:
+ #define TARGET_WITH_IMPL(op, impl) \
+		/* silence compiler warnings about `impl` unused */ \
+		if (0) goto impl; \
++		/* fall through */ \
+		case op:\
+
+ #define TARGET_NOARG(op) \
++		/* fall through */ \
+		case op:\
+
+ #define TARGET_WITH_IMPL_NOARG(op, impl) \
+		if (0) goto impl; \
++		/* fall through */ \
+		case op:\
+
+ #define DISPATCH() continue
+@@ -2057,6 +2065,7 @@ PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
+                 /* Fallthrough */
+             case 1:
+                 w = POP(); /* exc */
++		/* fall through */
+             case 0: /* Fallthrough */
+                 why = do_raise(w, v, u);
+                 break;
+diff --git a/deps/python/Python/compile.c b/deps/python/Python/compile.c
+index 2900757..6efa846 100644
+--- a/deps/python/Python/compile.c
++++ b/deps/python/Python/compile.c
+@@ -3079,12 +3079,14 @@ compiler_visit_expr(struct compiler *c, expr_ty e)
+         switch (e->v.Attribute.ctx) {
+         case AugLoad:
+             ADDOP(c, DUP_TOP);
++	     /* fall through */
+             /* Fall through to load */
+         case Load:
+             ADDOP_NAME(c, LOAD_ATTR, e->v.Attribute.attr, names);
+             break;
+         case AugStore:
+             ADDOP(c, ROT_TWO);
++	     /* fall through */
+             /* Fall through to save */
+         case Store:
+             ADDOP_NAME(c, STORE_ATTR, e->v.Attribute.attr, names);
+diff --git a/deps/python/Python/dtoa.c b/deps/python/Python/dtoa.c
+index 73e23af..01f59c5 100644
+--- a/deps/python/Python/dtoa.c
++++ b/deps/python/Python/dtoa.c
+@@ -1528,6 +1528,7 @@ _Py_dg_strtod(const char *s00, char **se)
+     case '-':
+         sign = 1;
+         /* no break */
++	 /* fall through */
+     case '+':
+         c = *++s;
+     }
+@@ -1597,6 +1598,7 @@ _Py_dg_strtod(const char *s00, char **se)
+         case '-':
+             esign = 1;
+             /* no break */
++	 /* fall through */
+         case '+':
+             c = *++s;
+         }
+@@ -2515,6 +2517,7 @@ _Py_dg_dtoa(double dd, int mode, int ndigits,
+     case 2:
+         leftright = 0;
+         /* no break */
++	 /* fall through */
+     case 4:
+         if (ndigits <= 0)
+             ndigits = 1;
+@@ -2523,6 +2526,7 @@ _Py_dg_dtoa(double dd, int mode, int ndigits,
+     case 3:
+         leftright = 0;
+         /* no break */
++	 /* fall through */
+     case 5:
+         i = ndigits + k + 1;
+         ilim = i;
+diff --git a/deps/python/Python/getargs.c b/deps/python/Python/getargs.c
+index 81a2721..bb1beec 100644
+--- a/deps/python/Python/getargs.c
++++ b/deps/python/Python/getargs.c
+@@ -1738,7 +1738,7 @@ skipitem(const char **p_format, va_list *p_va, int flags)
+             format++;
+             /* explicit fallthrough to string cases */
+         }
+-
++	/* fall through */
+     case 's': /* string */
+     case 'z': /* string or None */
+ #ifdef Py_USING_UNICODE
+--
+1.9.1
+
