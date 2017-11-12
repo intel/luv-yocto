@@ -1,0 +1,96 @@
+From 70c69d424e46b5e824737dc724662f0134bc222e Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Mon, 13 Nov 2017 15:11:55 -0800
+Subject: [PATCH] libffi gcc
+
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
+---
+ deps/libffi/src/x86/ffi.c   |  1 +
+ deps/libffi/src/x86/ffi64.c | 11 ++++++++++-
+ 2 files changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/deps/libffi/src/x86/ffi.c b/deps/libffi/src/x86/ffi.c
+index feb5cbb..394a299 100644
+--- a/deps/libffi/src/x86/ffi.c
++++ b/deps/libffi/src/x86/ffi.c
+@@ -522,6 +522,7 @@ ffi_prep_closure_loc (ffi_closure* closure,
+     case FFI_REGISTER:
+       dest = ffi_closure_REGISTER;
+       op = 0x68;  /* pushl imm */
++    /* fall through */
+     default:
+       return FFI_BAD_ABI;
+     }
+diff --git a/deps/libffi/src/x86/ffi64.c b/deps/libffi/src/x86/ffi64.c
+index f52749e..0909ecd 100644
+--- a/deps/libffi/src/x86/ffi64.c
++++ b/deps/libffi/src/x86/ffi64.c
+@@ -198,22 +198,27 @@ classify_argument (ffi_type *type, enum x86_64_reg_class classes[],
+	  }
+	else
+	  FFI_ASSERT (0);
++
+       }
++    /* fall through */
+     case FFI_TYPE_FLOAT:
+       if (!(byte_offset % 8))
+	classes[0] = X86_64_SSESF_CLASS;
+       else
+	classes[0] = X86_64_SSE_CLASS;
+       return 1;
++    /* fall through */
+     case FFI_TYPE_DOUBLE:
+       classes[0] = X86_64_SSEDF_CLASS;
+       return 1;
++    /* fall through */
+ #if FFI_TYPE_LONGDOUBLE != FFI_TYPE_DOUBLE
+     case FFI_TYPE_LONGDOUBLE:
+       classes[0] = X86_64_X87_CLASS;
+       classes[1] = X86_64_X87UP_CLASS;
+       return 2;
+ #endif
++    /* fall through */
+     case FFI_TYPE_STRUCT:
+       {
+	const size_t UNITS_PER_WORD = 8;
+@@ -233,6 +238,7 @@ classify_argument (ffi_type *type, enum x86_64_reg_class classes[],
+	   signalize memory class, so handle it as special case.  */
+	if (!words)
+	  {
++    /* fall through */
+     case FFI_TYPE_VOID:
+	    classes[0] = X86_64_NO_CLASS;
+	    return 1;
+@@ -303,6 +309,7 @@ classify_argument (ffi_type *type, enum x86_64_reg_class classes[],
+	  }
+	return words;
+       }
++    /* fall through */
+     case FFI_TYPE_COMPLEX:
+       {
+	ffi_type *inner = type->elements[0];
+@@ -318,7 +325,7 @@ classify_argument (ffi_type *type, enum x86_64_reg_class classes[],
+	  case FFI_TYPE_UINT64:
+	  case FFI_TYPE_SINT64:
+	    goto do_integer;
+-
++	  /* fall through */
+	  case FFI_TYPE_FLOAT:
+	    classes[0] = X86_64_SSE_CLASS;
+	    if (byte_offset % 8)
+@@ -327,10 +334,12 @@ classify_argument (ffi_type *type, enum x86_64_reg_class classes[],
+		return 2;
+	      }
+	    return 1;
++	  /* fall through */
+	  case FFI_TYPE_DOUBLE:
+	    classes[0] = classes[1] = X86_64_SSEDF_CLASS;
+	    return 2;
+ #if FFI_TYPE_LONGDOUBLE != FFI_TYPE_DOUBLE
++	  /* fall through */
+	  case FFI_TYPE_LONGDOUBLE:
+	    classes[0] = X86_64_COMPLEX_X87_CLASS;
+	    return 1;
+--
+1.9.1
+

@@ -55,6 +55,11 @@ SRC_URI = "gitsm://github.com/biosbits/bits.git;protocol=http  \
            file://luv-parser-bits \
            file://0001-only-output-to-log.patch;apply=no \
            file://GRUB-util-include-sysmacros.h-header.patch \
+           file://GRUB-fix-switch-fallthrough-cases-with-GCC7.patch \
+           file://GRUB-btrfs-avoid-used-uninitialized-error-with-GCC7.patch \
+           file://PYTHON-Fix-gcc7-warnings-when-calling-PyMem_MALLOC-macros.patch \
+           file://libffi-fix-switch-fallthrough-cases-with-GCC7.patch \
+           file://PYTHON-Fix-switch-fallthrough-cases-with-GCC7.patch \
           "
 
 S = "${WORKDIR}/git"
