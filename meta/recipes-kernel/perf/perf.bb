@@ -5,14 +5,13 @@ performance analysis. It covers hardware level \
 (CPU/PMU, Performance Monitoring Unit) features \
 and software features (software counters, tracepoints) \
 as well."
+HOMEPAGE = "https://perf.wiki.kernel.org/index.php/Main_Page"
 
 LICENSE = "GPLv2"
 
 PR = "r9"
 
-BUILDPERF_libc-uclibc = "no"
-
-PACKAGECONFIG ??= "scripting tui"
+PACKAGECONFIG ??= "scripting tui libunwind"
 PACKAGECONFIG[scripting] = ",NO_LIBPERL=1 NO_LIBPYTHON=1,perl python"
 # gui support was added with kernel 3.6.35
 # since 3.10 libnewt was replaced by slang

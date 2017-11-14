@@ -20,12 +20,16 @@ def sstate_rundepfilter(siggen, fn, recipename, task, dep, depname, dataCache):
     def isImage(fn):
         return "/image.bbclass" in " ".join(dataCache.inherits[fn])
 
-    # Always include our own inter-task dependencies
+    # (Almost) always include our own inter-task dependencies.
+    # The exception is the special do_kernel_configme->do_unpack_and_patch
+    # dependency from archiver.bbclass.
     if recipename == depname:
+        if task == "do_kernel_configme" and dep.endswith(".do_unpack_and_patch"):
+            return False
         return True
 
     # Quilt (patch application) changing isn't likely to affect anything
-    excludelist = ['quilt-native', 'subversion-native', 'git-native']
+    excludelist = ['quilt-native', 'subversion-native', 'git-native', 'ccache-native']
     if depname in excludelist and recipename != depname:
         return False
 

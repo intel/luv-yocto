@@ -113,7 +113,7 @@ do_kernel_metadata() {
 				sccs="${WORKDIR}/defconfig"
 			fi
 		else
-			bbfatal "A KBUILD_DECONFIG '${KBUILD_DEFCONFIG}' was specified, but not present in the source tree"
+			bbfatal "A KBUILD_DEFCONFIG '${KBUILD_DEFCONFIG}' was specified, but not present in the source tree"
 		fi
 	fi
 
@@ -143,6 +143,12 @@ do_kernel_metadata() {
 
 	# expand kernel features into their full path equivalents
 	bsp_definition=$(spp ${includes} --find -DKMACHINE=${KMACHINE} -DKTYPE=${LINUX_KERNEL_TYPE})
+	if [ -z "$bsp_definition" ]; then
+		echo "$sccs" | grep -q defconfig
+		if [ $? -ne 0 ]; then
+			bberror "Could not locate BSP definition for ${KMACHINE}/${LINUX_KERNEL_TYPE} and no defconfig was provided"
+		fi
+	fi
 	meta_dir=$(kgit --meta)
 
 	# run1: pull all the configuration fragments, no matter where they come from
@@ -281,7 +287,8 @@ do_kernel_configme() {
 
 	meta_dir=$(kgit --meta)
 	configs="$(scc --configs -o ${meta_dir})"
-	if [ -z "${configs}" ]; then
+	if [ $? -ne 0 ]; then
+		bberror "${configs}"
 		bbfatal_log "Could not find configuration queue (${meta_dir}/config.queue)"
 	fi
 

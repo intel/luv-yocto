@@ -108,7 +108,7 @@ PKG_CONFIG_SYSROOT_DIR = ""
 PKG_CONFIG_SYSTEM_LIBRARY_PATH[unexport] = "1"
 PKG_CONFIG_SYSTEM_INCLUDE_PATH[unexport] = "1"
 
-# we dont want libc-uclibc or libc-glibc to kick in for native recipes
+# we dont want libc-*libc to kick in for native recipes
 LIBCOVERRIDE = ""
 CLASSOVERRIDE = "class-native"
 MACHINEOVERRIDES = ""
@@ -129,7 +129,7 @@ python native_virtclass_handler () {
     # from modifying native distro features
     features = set(d.getVar("DISTRO_FEATURES_NATIVE").split())
     filtered = set(bb.utils.filter("DISTRO_FEATURES", d.getVar("DISTRO_FEATURES_FILTER_NATIVE"), d).split())
-    d.setVar("DISTRO_FEATURES", " ".join(features | filtered))
+    d.setVar("DISTRO_FEATURES", " ".join(sorted(features | filtered)))
 
     classextend = e.data.getVar('BBCLASSEXTEND') or ""
     if "native" not in classextend:

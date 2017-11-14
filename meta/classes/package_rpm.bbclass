@@ -7,9 +7,27 @@ RPMBUILD="rpmbuild"
 
 PKGWRITEDIRRPM = "${WORKDIR}/deploy-rpms"
 
-# Maintaining the perfile dependencies has singificant overhead when writing the 
+# Maintaining the perfile dependencies has singificant overhead when writing the
 # packages. When set, this value merges them for efficiency.
 MERGEPERFILEDEPS = "1"
+
+# Filter dependencies based on a provided function.
+def filter_deps(var, f):
+    import collections
+
+    depends_dict = bb.utils.explode_dep_versions2(var)
+    newdeps_dict = collections.OrderedDict()
+    for dep in depends_dict:
+        if f(dep):
+            newdeps_dict[dep] = depends_dict[dep]
+    return bb.utils.join_deps(newdeps_dict, commasep=False)
+
+# Filter out absolute paths (typically /bin/sh and /usr/bin/env) and any perl
+# dependencies for nativesdk packages.
+def filter_nativesdk_deps(srcname, var):
+    if var and srcname.startswith("nativesdk-"):
+        var = filter_deps(var, lambda dep: not dep.startswith('/') and dep != 'perl' and not dep.startswith('perl('))
+    return var
 
 # Construct per file dependencies file
 def write_rpm_perfiledata(srcname, d):
@@ -26,7 +44,8 @@ def write_rpm_perfiledata(srcname, d):
             dependsflist = (d.getVar(dependsflist_key) or "")
             for dfile in dependsflist.split():
                 key = "FILE" + varname + "_" + dfile + "_" + pkg
-                depends_dict = bb.utils.explode_dep_versions(d.getVar(key) or "")
+                deps = filter_nativesdk_deps(srcname, d.getVar(key) or "")
+                depends_dict = bb.utils.explode_dep_versions(deps)
                 file = dfile.replace("@underscore@", "_")
                 file = file.replace("@closebrace@", "]")
                 file = file.replace("@openbrace@", "[")
@@ -359,6 +378,8 @@ python write_specfile () {
             splitrdepends = splitrdepends + " " + get_perfile('RDEPENDS', pkg, d)
             splitrprovides = splitrprovides + " " + get_perfile('RPROVIDES', pkg, d)
 
+        splitrdepends = filter_nativesdk_deps(srcname, splitrdepends)
+
         # Gather special src/first package data
         if srcname == splitname:
             srcrdepends    = splitrdepends
@@ -643,6 +664,10 @@ python do_package_rpm () {
     cmd = cmd + " --define '_builddir " + d.getVar('S') + "'"
     cmd = cmd + " --define '_build_name_fmt %%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm'"
     cmd = cmd + " --define '_use_internal_dependency_generator 0'"
+    cmd = cmd + " --define '_binaries_in_noarch_packages_terminate_build 0'"
+    cmd = cmd + " --define '_build_id_links none'"
+    cmd = cmd + " --define '_binary_payload w6T.xzdio'"
+    cmd = cmd + " --define '_source_payload w6T.xzdio'"
     if perfiledeps:
         cmd = cmd + " --define '__find_requires " + outdepends + "'"
         cmd = cmd + " --define '__find_provides " + outprovides + "'"

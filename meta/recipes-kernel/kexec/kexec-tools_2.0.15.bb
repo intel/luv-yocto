@@ -7,10 +7,14 @@ SRC_URI += "${KERNELORG_MIRROR}/linux/utils/kernel/kexec/kexec-tools-${PV}.tar.g
             file://0001-purgatory-Pass-r-directly-to-linker.patch \
             file://0010-kexec-ARM-Fix-add_buffer_phys_virt-align-issue.patch \
             file://kexec-x32.patch \
+            file://0001-Disable-PIE-during-link.patch \
+            file://0001-arm64-Disable-PIC.patch \
          "
 
 SRC_URI[md5sum] = "78906fdc255656fa2b9996c8acb3ef62"
 SRC_URI[sha256sum] = "42dbd0dab9964cd1ed89fa4571c8d13191eb7132b361ade5ac44517c91ecb97e"
+
+SECURITY_PIE_CFLAGS_remove = "-fPIE -pie"
 
 PACKAGES =+ "kexec kdump vmcore-dmesg"
 

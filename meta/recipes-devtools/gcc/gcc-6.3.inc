@@ -32,12 +32,6 @@ BASEURI ?= "${GNU_MIRROR}/gcc/gcc-${PV}/gcc-${PV}.tar.bz2"
 SRC_URI = "\
            ${BASEURI} \
            file://0001-gcc-4.3.1-ARCH_FLAGS_FOR_TARGET.patch \
-           file://0002-uclibc-conf.patch \
-           file://0003-gcc-uclibc-locale-ctype_touplow_t.patch \
-           file://0004-uclibc-locale.patch \
-           file://0005-uclibc-locale-no__x.patch \
-           file://0006-uclibc-locale-wchar_fix.patch \
-           file://0007-uclibc-locale-update.patch \
            file://0008-missing-execinfo_h.patch \
            file://0009-c99-snprintf.patch \
            file://0010-gcc-poison-system-directories.patch \
@@ -80,6 +74,8 @@ SRC_URI = "\
            file://0047-libgcc_s-Use-alias-for-__cpu_indicator_init-instead-.patch \
            file://0048-sync-gcc-stddef.h-with-musl.patch \
            file://0054_all_nopie-all-flags.patch \
+           file://0055-unwind_h-glibc26.patch \
+           file://0056-LRA-PR70904-relax-the-restriction-on-subreg-reload-f.patch \
            ${BACKPORTS} \
 "
 BACKPORTS = "\
@@ -127,8 +123,6 @@ EXTRA_OECONF_INITIAL = "\
     --without-isl \
     gcc_cv_libc_provides_ssp=yes \
 "
-
-EXTRA_OECONF_append_libc-uclibc = " --disable-decimal-float "
 
 EXTRA_OECONF_PATHS = "\
     --with-gxx-include-dir=/not/exist{target_includedir}/c++/${BINV} \

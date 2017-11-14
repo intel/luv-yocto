@@ -1,4 +1,5 @@
 SUMMARY = "Script-directed dynamic tracing and performance analysis tool for Linux"
+HOMEPAGE = "https://sourceware.org/systemtap/"
 
 require systemtap_git.inc
 
@@ -25,4 +26,4 @@ PACKAGECONFIG[python3-probes] = "--with-python3-probes,--without-python3-probes,
 
 inherit autotools gettext pkgconfig distutils3-base
 
-BBCLASSEXTEND = "native nativesdk"
+BBCLASSEXTEND = "nativesdk"
