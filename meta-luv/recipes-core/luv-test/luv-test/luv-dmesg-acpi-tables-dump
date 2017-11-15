@@ -26,4 +26,58 @@ gen_dmesg_acpi_dumps() {
     fi
 }
 
+# SSDT and DSDT are ACPI tables that contain code and hence they
+# are the ones to have _DSM's. There can only be one DSDT in ACPI and
+# multiple SSDT's; i.e. a DSDT is mandatory while SSDT's are not. If we
+# didn't find any DSDT table after extracting ACPI dump, it means
+# something's wrong, hence log the failure and return.
+#
+# acpixtract -a	:	Extract all tables, not just DSDT/SSDT (to list table
+# 					name along with _DSM name path) - O/p: *.dat files
+# iasl -d <file> :	Disassemble binary ACPI tables (*.dat to *.dsl)
+# iasl -so <file>:	Create namespace AML offset table in C (*.offset.h)
+list_dsms() {
+	cd ${LUV_SAVE_RESULTS_DIR}/dumps
+	if [ $? -eq 0 ] ; then
+		mkdir -p temp
+		if [ $? -eq 0 ] ; then
+			cd temp
+			acpixtract -a ../acpidump.log
+			dsdt_dat_file=`ls | grep "dsdt.dat"`
+			if [ -z "${dsdt_dat_file}" ] ; then
+				echo "Unable to find DSDT.dat file, aborting listing dsm's!"
+				return 1
+			fi
+			ssdt_dat_files=`ls | grep "ssdt*"`
+			if [ -z "${ssdt_dat_files}" ] ; then
+				echo "Didn't find any SSDT .dat files"
+			else
+				iasl -d ${ssdt_dat_files}
+				ssdt_dsl_files=`ls | grep ".dsl"`
+				iasl -so ${ssdt_dsl_files}
+			fi
+			iasl -d dsdt.dat
+			iasl -so dsdt.dsl
+			off_h_files=`ls | grep "offset.h"`
+			if [ -z "${off_h_files}" ] ; then
+				echo "Unable to find any offset.h files, aborting listing dsm's!"
+				return 1
+			fi
+			grep -H -e "_DSM" $off_h_files | grep -e "METHOD" | \
+				awk -F':' -F'"' '{print$1$2}' | tr -d { > ../list_of_dsms
+			cd ..
+			rm -rf temp
+			num_of_dsms=`wc -w < list_of_dsms`
+			if [ ${num_of_dsms} -eq 0 ] ; then
+				echo "No _DSM's found" > list_of_dsms
+			fi
+		else
+			echo "Failed to create directory to extract ACPI tables"
+		fi
+	else
+		echo "Failed to find dumps directory"
+	fi
+}
+
 gen_dmesg_acpi_dumps
+list_dsms
