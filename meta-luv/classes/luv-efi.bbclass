@@ -42,7 +42,7 @@ def extra_initrd(d):
 
     target = d.getVar('TARGET_ARCH', True)
     if re.search('86', target):
-        return '/boot/bitsrd'
+        return ''
     else:
         return ''
 
