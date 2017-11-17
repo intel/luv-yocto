@@ -6,6 +6,7 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=d32239bcb673463ab874e80d47fae504"
 SRC_URI = "http://quitte.de/dsp/${PN}_${PV}.tar.bz2 \
            file://Avoid-ambiguity-in-div-invocation.patch \
            file://0001-basic.h-Use-c99-supported-stdint-types.patch \
+           file://append_ldflags.patch \
            "
 
 SRC_URI[md5sum] = "c1d634038dcb54702306c0e30cb1c626"
@@ -16,6 +17,7 @@ S = "${WORKDIR}/${PN}-${PV}"
 EXTRA_OEMAKE = " \
     CC='${CXX}' \
     CFLAGS='${CFLAGS} -ffast-math -funroll-loops -fPIC -DPIC' \
+    ARCH='' \
 "
 do_compile() {
     oe_runmake all
