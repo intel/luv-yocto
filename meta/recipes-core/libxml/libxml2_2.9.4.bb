@@ -11,7 +11,7 @@ LIC_FILES_CHKSUM = "file://Copyright;md5=2044417e2e5006b65a8b9067b683fcf1 \
 
 DEPENDS = "zlib virtual/libiconv"
 
-SRC_URI = "ftp://xmlsoft.org/libxml2/libxml2-${PV}.tar.gz;name=libtar \
+SRC_URI = "http://www.xmlsoft.org/sources/libxml2-${PV}.tar.gz;name=libtar \
            http://www.w3.org/XML/Test/xmlts20080827.tar.gz;name=testtar \
            file://libxml-64bit.patch \
            file://ansidecl.patch \
@@ -23,8 +23,14 @@ SRC_URI = "ftp://xmlsoft.org/libxml2/libxml2-${PV}.tar.gz;name=libtar \
            file://libxml2-CVE-2016-5131.patch \
            file://libxml2-CVE-2016-4658.patch \
            file://libxml2-fix_NULL_pointer_derefs.patch \
-           file://CVE-2016-9318.patch \
-          "
+           file://libxml2-fix_and_simplify_xmlParseStartTag2.patch \
+           file://libxml2-CVE-2017-9047_CVE-2017-9048.patch \
+           file://libxml2-CVE-2017-9049_CVE-2017-9050.patch \
+           file://libxml2-CVE-2017-5969.patch \
+           file://libxml2-CVE-2017-0663.patch \
+           file://libxml2-CVE-2017-8872.patch \
+           file://0001-Make-ptest-run-the-python-tests-if-python-is-enabled.patch \
+           "
 
 SRC_URI[libtar.md5sum] = "ae249165c173b1ff386ee8ad676815f5"
 SRC_URI[libtar.sha256sum] = "ffb911191e509b966deb55de705387f14156e1a56b21824357cdf0053233633c"
@@ -36,22 +42,22 @@ BINCONFIG = "${bindir}/xml2-config"
 PACKAGECONFIG ??= "python \
     ${@bb.utils.filter('DISTRO_FEATURES', 'ipv6', d)} \
 "
-PACKAGECONFIG[python] = "--with-python=${PYTHON},--without-python,python"
+PACKAGECONFIG[python] = "--with-python=${PYTHON},--without-python,python3"
 PACKAGECONFIG[ipv6] = "--enable-ipv6,--disable-ipv6,"
 
 inherit autotools pkgconfig binconfig-disabled ptest
 
-inherit ${@bb.utils.contains('PACKAGECONFIG', 'python', 'pythonnative', '', d)}
+inherit ${@bb.utils.contains('PACKAGECONFIG', 'python', 'python3native', '', d)}
 
-RDEPENDS_${PN}-ptest += "make ${@bb.utils.contains('PACKAGECONFIG', 'python', 'python-core', '', d)}"
+RDEPENDS_${PN}-ptest += "make ${@bb.utils.contains('PACKAGECONFIG', 'python', 'libgcc python3-core python3-argparse python3-logging python3-shell python3-signal python3-stringold python3-threading python3-unittest ${PN}-python', '', d)}"
 
-RDEPENDS_${PN}-python += "${@bb.utils.contains('PACKAGECONFIG', 'python', 'python-core', '', d)}"
+RDEPENDS_${PN}-python += "${@bb.utils.contains('PACKAGECONFIG', 'python', 'python3-core', '', d)}"
 
-RDEPENDS_${PN}-ptest_append_libc-glibc = " glibc-gconv-ebcdic-us glibc-gconv-ibm1141"
+RDEPENDS_${PN}-ptest_append_libc-glibc = " glibc-gconv-ebcdic-us glibc-gconv-ibm1141 glibc-gconv-iso8859-5"
 
 export PYTHON_SITE_PACKAGES="${PYTHON_SITEPACKAGES_DIR}"
 
-# WARNING: zlib is require for RPM use
+# WARNING: zlib is required for RPM use
 EXTRA_OECONF = "--without-debug --without-legacy --with-catalog --without-docbook --with-c14n --without-lzma --with-fexceptions"
 EXTRA_OECONF_class-native = "--without-legacy --without-docbook --with-c14n --without-lzma --with-zlib"
 EXTRA_OECONF_class-nativesdk = "--without-legacy --without-docbook --with-c14n --without-lzma --with-zlib"
@@ -77,6 +83,23 @@ do_configure_prepend () {
 
 do_install_ptest () {
 	cp -r ${WORKDIR}/xmlconf ${D}${PTEST_PATH}
+	if [ "${@bb.utils.filter('PACKAGECONFIG', 'python', d)}" ]; then
+		sed -i -e 's|^\(PYTHON = \).*|\1${USRBINPATH}/${PYTHON_PN}|' \
+		    ${D}${PTEST_PATH}/python/tests/Makefile
+		grep -lrZ '#!/usr/bin/python' ${D}${PTEST_PATH}/python |
+			xargs -0 sed -i -e 's|/usr/bin/python|${USRBINPATH}/${PYTHON_PN}|'
+	fi
+	#Remove build host references from various Makefiles
+	find "${D}${PTEST_PATH}" -name Makefile -type f -exec \
+	    sed -i \
+	    -e 's,--sysroot=${STAGING_DIR_TARGET},,g' \
+	    -e 's|${DEBUG_PREFIX_MAP}||g' \
+	    -e 's:${HOSTTOOLS_DIR}/::g' \
+	    -e 's:${RECIPE_SYSROOT_NATIVE}::g' \
+	    -e 's:${RECIPE_SYSROOT}::g' \
+	    -e 's:${BASE_WORKDIR}/${MULTIMACH_TARGET_SYS}::g' \
+	    -e '/^RELDATE/d' \
+	    {} +
 }
 
 do_install_append_class-native () {

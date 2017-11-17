@@ -36,7 +36,8 @@
                 </question>
                 <answer>
                     <para>
-                        Refer to the "<link linkend='generating-configuration-files'>Generating Configuration Files</link>"
+                        Refer to the
+                        "<link linkend='creating-config-fragments'>Creating Configuration Fragments</link>"
                         section for information.
                     </para>
                 </answer>
@@ -72,9 +73,10 @@
                         <filename>RDEPENDS_kernel-base</filename> to include or not
                         include "kernel-image".</para>
                         <para>See the
-                        "<ulink url='&YOCTO_DOCS_DEV_URL;#using-bbappend-files'>Using .bbappend Files</ulink>"
-                        section in the Yocto Project Development Manual for information on
-                        how to use an append file to override metadata.
+                        "<ulink url='&YOCTO_DOCS_DEV_URL;#using-bbappend-files'>Using .bbappend Files in Your Layer</ulink>"
+                        section in the Yocto Project Development Tasks Manual
+                        for information on how to use an append file to
+                        override metadata.
                     </para>
                 </answer>
             </qandaentry>

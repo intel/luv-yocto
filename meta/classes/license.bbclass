@@ -255,14 +255,9 @@ def get_boot_dependencies(d):
     """
 
     depends = []
-    boot_depends_string = ""
     taskdepdata = d.getVar("BB_TASKDEPDATA", False)
-    # Only bootimg and bootdirectdisk include the depends flag
-    boot_tasks = ["do_bootimg", "do_bootdirectdisk",]
-
-    for task in boot_tasks:
-        boot_depends_string = "%s %s" % (boot_depends_string,
-                d.getVarFlag(task, "depends") or "")
+    # Only bootimg includes the depends flag
+    boot_depends_string = d.getVarFlag("do_bootimg", "depends") or ""
     boot_depends = [dep.split(":")[0] for dep
                 in boot_depends_string.split()
                 if not dep.split(":")[0].endswith("-native")]
@@ -491,7 +486,7 @@ def find_license_files(d):
         except bb.fetch.MalformedUrl:
             bb.fatal("%s: LIC_FILES_CHKSUM contains an invalid URL:  %s" % (d.getVar('PF'), url))
         # We want the license filename and path
-        chksum = parm['md5'] if 'md5' in parm else parm['sha256']
+        chksum = parm.get('md5', None)
         beginline = parm.get('beginline')
         endline = parm.get('endline')
         lic_chksums[path] = (chksum, beginline, endline)

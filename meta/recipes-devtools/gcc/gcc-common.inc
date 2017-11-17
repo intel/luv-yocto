@@ -5,6 +5,8 @@ LICENSE = "GPL"
 
 NATIVEDEPS = ""
 
+CVE_PRODUCT = "gcc"
+
 inherit autotools gettext texinfo
 
 BPN = "gcc"
@@ -41,7 +43,7 @@ def get_gcc_ppc_plt_settings(bb, d):
     return ""
 
 def get_long_double_setting(bb, d):
-    if d.getVar('TRANSLATED_TARGET_ARCH') in [ 'powerpc', 'powerpc64' ] and d.getVar('TCLIBC') in [ 'uclibc', 'glibc' ]:
+    if d.getVar('TRANSLATED_TARGET_ARCH') in [ 'powerpc', 'powerpc64' ] and d.getVar('TCLIBC') in [ 'glibc' ]:
         return "--with-long-double-128"
     else:
         return "--without-long-double-128"

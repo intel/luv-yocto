@@ -7,7 +7,7 @@ SECTION = "devel"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://install-sh;endline=42;md5=b3549726c1022bee09c174c72a0ca4a5"
 
-SRC_URI = "ftp://invisible-island.net/diffstat/diffstat-${PV}.tgz \
+SRC_URI = "http://invisible-mirror.net/archives/${BPN}/${BP}.tgz \
            file://run-ptest \
 "
 
@@ -18,14 +18,9 @@ S = "${WORKDIR}/diffstat-${PV}"
 
 inherit autotools gettext ptest
 
-LDFLAGS += "${TOOLCHAIN_OPTIONS}"
+EXTRA_AUTORECONF += "--exclude=aclocal"
 
-do_configure () {
-	if [ ! -e ${S}/acinclude.m4 ]; then
-		mv ${S}/aclocal.m4 ${S}/acinclude.m4
-	fi
-	autotools_do_configure
-}
+LDFLAGS += "${TOOLCHAIN_OPTIONS}"
 
 do_install_ptest() {
 	cp -r ${S}/testing ${D}${PTEST_PATH}

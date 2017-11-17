@@ -69,6 +69,10 @@ class SignatureGenerator(object):
     def set_taskdata(self, data):
         self.runtaskdeps, self.taskhash, self.file_checksum_values, self.taints, self.basehash = data
 
+    def reset(self, data):
+        self.__init__(data)
+
+
 class SignatureGeneratorBasic(SignatureGenerator):
     """
     """
@@ -667,7 +671,8 @@ def calc_taskhash(sigdata):
         data = data + sigdata['runtaskhashes'][dep]
 
     for c in sigdata['file_checksum_values']:
-        data = data + c[1]
+        if c[1]:
+            data = data + c[1]
 
     if 'taint' in sigdata:
         if 'nostamp:' in sigdata['taint']:

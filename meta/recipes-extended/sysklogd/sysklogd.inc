@@ -16,6 +16,8 @@ inherit update-rc.d update-alternatives systemd
 SRC_URI = "http://www.infodrom.org/projects/sysklogd/download/sysklogd-${PV}.tar.gz \
            file://no-strip-install.patch \
            file://0001-Fix-build-with-musl.patch \
+           file://0001-fix-problems-that-causes-a-segmentation-fault-under-.patch \
+           file://0002-Make-way-for-respecting-flags-from-environment.patch \
            file://sysklogd \
            file://syslog.conf \
            file://syslogd.service \
@@ -30,11 +32,10 @@ SYSTEMD_SERVICE_${PN} = "syslogd.service klogd.service"
 SYSTEMD_AUTO_ENABLE = "enable"
 
 INITSCRIPT_NAME = "syslog"
-CONFFILES_${PN} = "${sysconfdir}/syslog.conf.${BPN}"
+CONFFILES_${PN} = "${sysconfdir}/syslog.conf"
+RCONFLICTS_${PN}-syslog = "rsyslog busybox-syslog syslog-ng"
 
-EXTRA_OEMAKE = "-e MAKEFLAGS="
-
-CFLAGS_append = " -DSYSV"
+CFLAGS += "-DSYSV -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE"
 
 do_install () {
 	install -d ${D}${mandir}/man8 \
@@ -57,20 +58,15 @@ do_install () {
 
 FILES_${PN} += "${@bb.utils.contains('DISTRO_FEATURES','systemd','${exec_prefix}/lib/tmpfiles.d/sysklogd.conf', '', d)}"
 
-# sysklogd package has no internal systemd support, so we weigh busybox's
-# sysklogd utility over it in case of systemd
-ALTERNATIVE_PRIORITY = "${@bb.utils.contains('DISTRO_FEATURES','systemd','10','100',d)}"
+ALTERNATIVE_PRIORITY = "100"
 
-ALTERNATIVE_${PN} = "syslogd klogd syslog-conf \
-    ${@bb.utils.contains('DISTRO_FEATURES','sysvinit','syslog-init','',d)}"
+ALTERNATIVE_${PN} = "syslogd klogd"
 
 ALTERNATIVE_${PN}-doc = "syslogd.8"
 ALTERNATIVE_LINK_NAME[syslogd.8] = "${mandir}/man8/syslogd.8"
 
 ALTERNATIVE_LINK_NAME[syslogd] = "${base_sbindir}/syslogd"
 ALTERNATIVE_LINK_NAME[klogd] = "${base_sbindir}/klogd"
-ALTERNATIVE_LINK_NAME[syslog-init] = "${sysconfdir}/init.d/syslog"
-ALTERNATIVE_LINK_NAME[syslog-conf] = "${sysconfdir}/syslog.conf"
 
 pkg_prerm_${PN} () {
 	if test "x$D" = "x"; then

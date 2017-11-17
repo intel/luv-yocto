@@ -793,6 +793,7 @@ class FetchLatestVersionTest(FetcherTest):
                 ud = bb.fetch2.FetchData(k[1], self.d)
                 pupver= ud.method.latest_versionstring(ud, self.d)
                 verstring = pupver[0]
+                self.assertTrue(verstring, msg="Could not find upstream version")
                 r = bb.utils.vercmp_string(v, verstring)
                 self.assertTrue(r == -1 or r == 0, msg="Package %s, version: %s <= %s" % (k[0], v, verstring))
 
@@ -804,6 +805,7 @@ class FetchLatestVersionTest(FetcherTest):
                 ud = bb.fetch2.FetchData(k[1], self.d)
                 pupver = ud.method.latest_versionstring(ud, self.d)
                 verstring = pupver[0]
+                self.assertTrue(verstring, msg="Could not find upstream version")
                 r = bb.utils.vercmp_string(v, verstring)
                 self.assertTrue(r == -1 or r == 0, msg="Package %s, version: %s <= %s" % (k[0], v, verstring))
 
@@ -852,3 +854,606 @@ class FetchCheckStatusTest(FetcherTest):
                 self.assertTrue(ret, msg="URI %s, can't check status" % (u))
 
             connection_cache.close_connections()
+
+
+class GitMakeShallowTest(FetcherTest):
+    bitbake_dir = os.path.join(os.path.dirname(os.path.join(__file__)), '..', '..', '..')
+    make_shallow_path = os.path.join(bitbake_dir, 'bin', 'git-make-shallow')
+
+    def setUp(self):
+        FetcherTest.setUp(self)
+        self.gitdir = os.path.join(self.tempdir, 'gitshallow')
+        bb.utils.mkdirhier(self.gitdir)
+        bb.process.run('git init', cwd=self.gitdir)
+
+    def assertRefs(self, expected_refs):
+        actual_refs = self.git(['for-each-ref', '--format=%(refname)']).splitlines()
+        full_expected = self.git(['rev-parse', '--symbolic-full-name'] + expected_refs).splitlines()
+        self.assertEqual(sorted(full_expected), sorted(actual_refs))
+
+    def assertRevCount(self, expected_count, args=None):
+        if args is None:
+            args = ['HEAD']
+        revs = self.git(['rev-list'] + args)
+        actual_count = len(revs.splitlines())
+        self.assertEqual(expected_count, actual_count, msg='Object count `%d` is not the expected `%d`' % (actual_count, expected_count))
+
+    def git(self, cmd):
+        if isinstance(cmd, str):
+            cmd = 'git ' + cmd
+        else:
+            cmd = ['git'] + cmd
+        return bb.process.run(cmd, cwd=self.gitdir)[0]
+
+    def make_shallow(self, args=None):
+        if args is None:
+            args = ['HEAD']
+        return bb.process.run([self.make_shallow_path] + args, cwd=self.gitdir)
+
+    def add_empty_file(self, path, msg=None):
+        if msg is None:
+            msg = path
+        open(os.path.join(self.gitdir, path), 'w').close()
+        self.git(['add', path])
+        self.git(['commit', '-m', msg, path])
+
+    def test_make_shallow_single_branch_no_merge(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+        self.assertRevCount(2)
+        self.make_shallow()
+        self.assertRevCount(1)
+
+    def test_make_shallow_single_branch_one_merge(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+        self.git('checkout -b a_branch')
+        self.add_empty_file('c')
+        self.git('checkout master')
+        self.add_empty_file('d')
+        self.git('merge --no-ff --no-edit a_branch')
+        self.git('branch -d a_branch')
+        self.add_empty_file('e')
+        self.assertRevCount(6)
+        self.make_shallow(['HEAD~2'])
+        self.assertRevCount(5)
+
+    def test_make_shallow_at_merge(self):
+        self.add_empty_file('a')
+        self.git('checkout -b a_branch')
+        self.add_empty_file('b')
+        self.git('checkout master')
+        self.git('merge --no-ff --no-edit a_branch')
+        self.git('branch -d a_branch')
+        self.assertRevCount(3)
+        self.make_shallow()
+        self.assertRevCount(1)
+
+    def test_make_shallow_annotated_tag(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+        self.git('tag -a -m a_tag a_tag')
+        self.assertRevCount(2)
+        self.make_shallow(['a_tag'])
+        self.assertRevCount(1)
+
+    def test_make_shallow_multi_ref(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+        self.git('checkout -b a_branch')
+        self.add_empty_file('c')
+        self.git('checkout master')
+        self.add_empty_file('d')
+        self.git('checkout -b a_branch_2')
+        self.add_empty_file('a_tag')
+        self.git('tag a_tag')
+        self.git('checkout master')
+        self.git('branch -D a_branch_2')
+        self.add_empty_file('e')
+        self.assertRevCount(6, ['--all'])
+        self.make_shallow()
+        self.assertRevCount(5, ['--all'])
+
+    def test_make_shallow_multi_ref_trim(self):
+        self.add_empty_file('a')
+        self.git('checkout -b a_branch')
+        self.add_empty_file('c')
+        self.git('checkout master')
+        self.assertRevCount(1)
+        self.assertRevCount(2, ['--all'])
+        self.assertRefs(['master', 'a_branch'])
+        self.make_shallow(['-r', 'master', 'HEAD'])
+        self.assertRevCount(1, ['--all'])
+        self.assertRefs(['master'])
+
+    def test_make_shallow_noop(self):
+        self.add_empty_file('a')
+        self.assertRevCount(1)
+        self.make_shallow()
+        self.assertRevCount(1)
+
+    if os.environ.get("BB_SKIP_NETTESTS") == "yes":
+        print("Unset BB_SKIP_NETTESTS to run network tests")
+    else:
+        def test_make_shallow_bitbake(self):
+            self.git('remote add origin https://github.com/openembedded/bitbake')
+            self.git('fetch --tags origin')
+            orig_revs = len(self.git('rev-list --all').splitlines())
+            self.make_shallow(['refs/tags/1.10.0'])
+            self.assertRevCount(orig_revs - 1746, ['--all'])
+
+class GitShallowTest(FetcherTest):
+    def setUp(self):
+        FetcherTest.setUp(self)
+        self.gitdir = os.path.join(self.tempdir, 'git')
+        self.srcdir = os.path.join(self.tempdir, 'gitsource')
+
+        bb.utils.mkdirhier(self.srcdir)
+        self.git('init', cwd=self.srcdir)
+        self.d.setVar('WORKDIR', self.tempdir)
+        self.d.setVar('S', self.gitdir)
+        self.d.delVar('PREMIRRORS')
+        self.d.delVar('MIRRORS')
+
+        uri = 'git://%s;protocol=file;subdir=${S}' % self.srcdir
+        self.d.setVar('SRC_URI', uri)
+        self.d.setVar('SRCREV', '${AUTOREV}')
+        self.d.setVar('AUTOREV', '${@bb.fetch2.get_autorev(d)}')
+
+        self.d.setVar('BB_GIT_SHALLOW', '1')
+        self.d.setVar('BB_GENERATE_MIRROR_TARBALLS', '0')
+        self.d.setVar('BB_GENERATE_SHALLOW_TARBALLS', '1')
+
+    def assertRefs(self, expected_refs, cwd=None):
+        if cwd is None:
+            cwd = self.gitdir
+        actual_refs = self.git(['for-each-ref', '--format=%(refname)'], cwd=cwd).splitlines()
+        full_expected = self.git(['rev-parse', '--symbolic-full-name'] + expected_refs, cwd=cwd).splitlines()
+        self.assertEqual(sorted(set(full_expected)), sorted(set(actual_refs)))
+
+    def assertRevCount(self, expected_count, args=None, cwd=None):
+        if args is None:
+            args = ['HEAD']
+        if cwd is None:
+            cwd = self.gitdir
+        revs = self.git(['rev-list'] + args, cwd=cwd)
+        actual_count = len(revs.splitlines())
+        self.assertEqual(expected_count, actual_count, msg='Object count `%d` is not the expected `%d`' % (actual_count, expected_count))
+
+    def git(self, cmd, cwd=None):
+        if isinstance(cmd, str):
+            cmd = 'git ' + cmd
+        else:
+            cmd = ['git'] + cmd
+        if cwd is None:
+            cwd = self.gitdir
+        return bb.process.run(cmd, cwd=cwd)[0]
+
+    def add_empty_file(self, path, cwd=None, msg=None):
+        if msg is None:
+            msg = path
+        if cwd is None:
+            cwd = self.srcdir
+        open(os.path.join(cwd, path), 'w').close()
+        self.git(['add', path], cwd)
+        self.git(['commit', '-m', msg, path], cwd)
+
+    def fetch(self, uri=None):
+        if uri is None:
+            uris = self.d.getVar('SRC_URI', True).split()
+            uri = uris[0]
+            d = self.d
+        else:
+            d = self.d.createCopy()
+            d.setVar('SRC_URI', uri)
+            uri = d.expand(uri)
+            uris = [uri]
+
+        fetcher = bb.fetch2.Fetch(uris, d)
+        fetcher.download()
+        ud = fetcher.ud[uri]
+        return fetcher, ud
+
+    def fetch_and_unpack(self, uri=None):
+        fetcher, ud = self.fetch(uri)
+        fetcher.unpack(self.d.getVar('WORKDIR'))
+        assert os.path.exists(self.d.getVar('S'))
+        return fetcher, ud
+
+    def fetch_shallow(self, uri=None, disabled=False, keepclone=False):
+        """Fetch a uri, generating a shallow tarball, then unpack using it"""
+        fetcher, ud = self.fetch_and_unpack(uri)
+        assert os.path.exists(ud.clonedir), 'Git clone in DLDIR (%s) does not exist for uri %s' % (ud.clonedir, uri)
+
+        # Confirm that the unpacked repo is unshallow
+        if not disabled:
+            assert os.path.exists(os.path.join(self.dldir, ud.mirrortarballs[0]))
+
+        # fetch and unpack, from the shallow tarball
+        bb.utils.remove(self.gitdir, recurse=True)
+        bb.utils.remove(ud.clonedir, recurse=True)
+
+        # confirm that the unpacked repo is used when no git clone or git
+        # mirror tarball is available
+        fetcher, ud = self.fetch_and_unpack(uri)
+        if not disabled:
+            assert os.path.exists(os.path.join(self.gitdir, '.git', 'shallow')), 'Unpacked git repository at %s is not shallow' % self.gitdir
+        else:
+            assert not os.path.exists(os.path.join(self.gitdir, '.git', 'shallow')), 'Unpacked git repository at %s is shallow' % self.gitdir
+        return fetcher, ud
+
+    def test_shallow_disabled(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+        self.assertRevCount(2, cwd=self.srcdir)
+
+        self.d.setVar('BB_GIT_SHALLOW', '0')
+        self.fetch_shallow(disabled=True)
+        self.assertRevCount(2)
+
+    def test_shallow_nobranch(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+        self.assertRevCount(2, cwd=self.srcdir)
+
+        srcrev = self.git('rev-parse HEAD', cwd=self.srcdir).strip()
+        self.d.setVar('SRCREV', srcrev)
+        uri = self.d.getVar('SRC_URI', True).split()[0]
+        uri = '%s;nobranch=1;bare=1' % uri
+
+        self.fetch_shallow(uri)
+        self.assertRevCount(1)
+
+        # shallow refs are used to ensure the srcrev sticks around when we
+        # have no other branches referencing it
+        self.assertRefs(['refs/shallow/default'])
+
+    def test_shallow_default_depth_1(self):
+        # Create initial git repo
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+        self.assertRevCount(2, cwd=self.srcdir)
+
+        self.fetch_shallow()
+        self.assertRevCount(1)
+
+    def test_shallow_depth_0_disables(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+        self.assertRevCount(2, cwd=self.srcdir)
+
+        self.d.setVar('BB_GIT_SHALLOW_DEPTH', '0')
+        self.fetch_shallow(disabled=True)
+        self.assertRevCount(2)
+
+    def test_shallow_depth_default_override(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+        self.assertRevCount(2, cwd=self.srcdir)
+
+        self.d.setVar('BB_GIT_SHALLOW_DEPTH', '2')
+        self.d.setVar('BB_GIT_SHALLOW_DEPTH_default', '1')
+        self.fetch_shallow()
+        self.assertRevCount(1)
+
+    def test_shallow_depth_default_override_disable(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+        self.add_empty_file('c')
+        self.assertRevCount(3, cwd=self.srcdir)
+
+        self.d.setVar('BB_GIT_SHALLOW_DEPTH', '0')
+        self.d.setVar('BB_GIT_SHALLOW_DEPTH_default', '2')
+        self.fetch_shallow()
+        self.assertRevCount(2)
+
+    def test_current_shallow_out_of_date_clone(self):
+        # Create initial git repo
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+        self.add_empty_file('c')
+        self.assertRevCount(3, cwd=self.srcdir)
+
+        # Clone and generate mirror tarball
+        fetcher, ud = self.fetch()
+
+        # Ensure we have a current mirror tarball, but an out of date clone
+        self.git('update-ref refs/heads/master refs/heads/master~1', cwd=ud.clonedir)
+        self.assertRevCount(2, cwd=ud.clonedir)
+
+        # Fetch and unpack, from the current tarball, not the out of date clone
+        bb.utils.remove(self.gitdir, recurse=True)
+        fetcher, ud = self.fetch()
+        fetcher.unpack(self.d.getVar('WORKDIR'))
+        self.assertRevCount(1)
+
+    def test_shallow_single_branch_no_merge(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+        self.assertRevCount(2, cwd=self.srcdir)
+
+        self.fetch_shallow()
+        self.assertRevCount(1)
+        assert os.path.exists(os.path.join(self.gitdir, 'a'))
+        assert os.path.exists(os.path.join(self.gitdir, 'b'))
+
+    def test_shallow_no_dangling(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+        self.assertRevCount(2, cwd=self.srcdir)
+
+        self.fetch_shallow()
+        self.assertRevCount(1)
+        assert not self.git('fsck --dangling')
+
+    def test_shallow_srcrev_branch_truncation(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+        b_commit = self.git('rev-parse HEAD', cwd=self.srcdir).rstrip()
+        self.add_empty_file('c')
+        self.assertRevCount(3, cwd=self.srcdir)
+
+        self.d.setVar('SRCREV', b_commit)
+        self.fetch_shallow()
+
+        # The 'c' commit was removed entirely, and 'a' was removed from history
+        self.assertRevCount(1, ['--all'])
+        self.assertEqual(self.git('rev-parse HEAD').strip(), b_commit)
+        assert os.path.exists(os.path.join(self.gitdir, 'a'))
+        assert os.path.exists(os.path.join(self.gitdir, 'b'))
+        assert not os.path.exists(os.path.join(self.gitdir, 'c'))
+
+    def test_shallow_ref_pruning(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+        self.git('branch a_branch', cwd=self.srcdir)
+        self.assertRefs(['master', 'a_branch'], cwd=self.srcdir)
+        self.assertRevCount(2, cwd=self.srcdir)
+
+        self.fetch_shallow()
+
+        self.assertRefs(['master', 'origin/master'])
+        self.assertRevCount(1)
+
+    def test_shallow_submodules(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+
+        smdir = os.path.join(self.tempdir, 'gitsubmodule')
+        bb.utils.mkdirhier(smdir)
+        self.git('init', cwd=smdir)
+        self.add_empty_file('asub', cwd=smdir)
+
+        self.git('submodule init', cwd=self.srcdir)
+        self.git('submodule add file://%s' % smdir, cwd=self.srcdir)
+        self.git('submodule update', cwd=self.srcdir)
+        self.git('commit -m submodule -a', cwd=self.srcdir)
+
+        uri = 'gitsm://%s;protocol=file;subdir=${S}' % self.srcdir
+        fetcher, ud = self.fetch_shallow(uri)
+
+        self.assertRevCount(1)
+        assert './.git/modules/' in bb.process.run('tar -tzf %s' % os.path.join(self.dldir, ud.mirrortarballs[0]))[0]
+        assert os.listdir(os.path.join(self.gitdir, 'gitsubmodule'))
+
+    if any(os.path.exists(os.path.join(p, 'git-annex')) for p in os.environ.get('PATH').split(':')):
+        def test_shallow_annex(self):
+            self.add_empty_file('a')
+            self.add_empty_file('b')
+            self.git('annex init', cwd=self.srcdir)
+            open(os.path.join(self.srcdir, 'c'), 'w').close()
+            self.git('annex add c', cwd=self.srcdir)
+            self.git('commit -m annex-c -a', cwd=self.srcdir)
+            bb.process.run('chmod u+w -R %s' % os.path.join(self.srcdir, '.git', 'annex'))
+
+            uri = 'gitannex://%s;protocol=file;subdir=${S}' % self.srcdir
+            fetcher, ud = self.fetch_shallow(uri)
+
+            self.assertRevCount(1)
+            assert './.git/annex/' in bb.process.run('tar -tzf %s' % os.path.join(self.dldir, ud.mirrortarballs[0]))[0]
+            assert os.path.exists(os.path.join(self.gitdir, 'c'))
+
+    def test_shallow_multi_one_uri(self):
+        # Create initial git repo
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+        self.git('checkout -b a_branch', cwd=self.srcdir)
+        self.add_empty_file('c')
+        self.add_empty_file('d')
+        self.git('checkout master', cwd=self.srcdir)
+        self.git('tag v0.0 a_branch', cwd=self.srcdir)
+        self.add_empty_file('e')
+        self.git('merge --no-ff --no-edit a_branch', cwd=self.srcdir)
+        self.add_empty_file('f')
+        self.assertRevCount(7, cwd=self.srcdir)
+
+        uri = self.d.getVar('SRC_URI', True).split()[0]
+        uri = '%s;branch=master,a_branch;name=master,a_branch' % uri
+
+        self.d.setVar('BB_GIT_SHALLOW_DEPTH', '0')
+        self.d.setVar('BB_GIT_SHALLOW_REVS', 'v0.0')
+        self.d.setVar('SRCREV_master', '${AUTOREV}')
+        self.d.setVar('SRCREV_a_branch', '${AUTOREV}')
+
+        self.fetch_shallow(uri)
+
+        self.assertRevCount(5)
+        self.assertRefs(['master', 'origin/master', 'origin/a_branch'])
+
+    def test_shallow_multi_one_uri_depths(self):
+        # Create initial git repo
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+        self.git('checkout -b a_branch', cwd=self.srcdir)
+        self.add_empty_file('c')
+        self.add_empty_file('d')
+        self.git('checkout master', cwd=self.srcdir)
+        self.add_empty_file('e')
+        self.git('merge --no-ff --no-edit a_branch', cwd=self.srcdir)
+        self.add_empty_file('f')
+        self.assertRevCount(7, cwd=self.srcdir)
+
+        uri = self.d.getVar('SRC_URI', True).split()[0]
+        uri = '%s;branch=master,a_branch;name=master,a_branch' % uri
+
+        self.d.setVar('BB_GIT_SHALLOW_DEPTH', '0')
+        self.d.setVar('BB_GIT_SHALLOW_DEPTH_master', '3')
+        self.d.setVar('BB_GIT_SHALLOW_DEPTH_a_branch', '1')
+        self.d.setVar('SRCREV_master', '${AUTOREV}')
+        self.d.setVar('SRCREV_a_branch', '${AUTOREV}')
+
+        self.fetch_shallow(uri)
+
+        self.assertRevCount(4, ['--all'])
+        self.assertRefs(['master', 'origin/master', 'origin/a_branch'])
+
+    def test_shallow_clone_preferred_over_shallow(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+
+        # Fetch once to generate the shallow tarball
+        fetcher, ud = self.fetch()
+        assert os.path.exists(os.path.join(self.dldir, ud.mirrortarballs[0]))
+
+        # Fetch and unpack with both the clonedir and shallow tarball available
+        bb.utils.remove(self.gitdir, recurse=True)
+        fetcher, ud = self.fetch_and_unpack()
+
+        # The unpacked tree should *not* be shallow
+        self.assertRevCount(2)
+        assert not os.path.exists(os.path.join(self.gitdir, '.git', 'shallow'))
+
+    def test_shallow_mirrors(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+
+        # Fetch once to generate the shallow tarball
+        fetcher, ud = self.fetch()
+        mirrortarball = ud.mirrortarballs[0]
+        assert os.path.exists(os.path.join(self.dldir, mirrortarball))
+
+        # Set up the mirror
+        mirrordir = os.path.join(self.tempdir, 'mirror')
+        bb.utils.mkdirhier(mirrordir)
+        self.d.setVar('PREMIRRORS', 'git://.*/.* file://%s/\n' % mirrordir)
+
+        os.rename(os.path.join(self.dldir, mirrortarball),
+                  os.path.join(mirrordir, mirrortarball))
+
+        # Fetch from the mirror
+        bb.utils.remove(self.dldir, recurse=True)
+        bb.utils.remove(self.gitdir, recurse=True)
+        self.fetch_and_unpack()
+        self.assertRevCount(1)
+
+    def test_shallow_invalid_depth(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+
+        self.d.setVar('BB_GIT_SHALLOW_DEPTH', '-12')
+        with self.assertRaises(bb.fetch2.FetchError):
+            self.fetch()
+
+    def test_shallow_invalid_depth_default(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+
+        self.d.setVar('BB_GIT_SHALLOW_DEPTH_default', '-12')
+        with self.assertRaises(bb.fetch2.FetchError):
+            self.fetch()
+
+    def test_shallow_extra_refs(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+        self.git('branch a_branch', cwd=self.srcdir)
+        self.assertRefs(['master', 'a_branch'], cwd=self.srcdir)
+        self.assertRevCount(2, cwd=self.srcdir)
+
+        self.d.setVar('BB_GIT_SHALLOW_EXTRA_REFS', 'refs/heads/a_branch')
+        self.fetch_shallow()
+
+        self.assertRefs(['master', 'origin/master', 'origin/a_branch'])
+        self.assertRevCount(1)
+
+    def test_shallow_extra_refs_wildcard(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+        self.git('branch a_branch', cwd=self.srcdir)
+        self.git('tag v1.0', cwd=self.srcdir)
+        self.assertRefs(['master', 'a_branch', 'v1.0'], cwd=self.srcdir)
+        self.assertRevCount(2, cwd=self.srcdir)
+
+        self.d.setVar('BB_GIT_SHALLOW_EXTRA_REFS', 'refs/tags/*')
+        self.fetch_shallow()
+
+        self.assertRefs(['master', 'origin/master', 'v1.0'])
+        self.assertRevCount(1)
+
+    def test_shallow_missing_extra_refs(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+
+        self.d.setVar('BB_GIT_SHALLOW_EXTRA_REFS', 'refs/heads/foo')
+        with self.assertRaises(bb.fetch2.FetchError):
+            self.fetch()
+
+    def test_shallow_missing_extra_refs_wildcard(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+
+        self.d.setVar('BB_GIT_SHALLOW_EXTRA_REFS', 'refs/tags/*')
+        self.fetch()
+
+    def test_shallow_remove_revs(self):
+        # Create initial git repo
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+        self.git('checkout -b a_branch', cwd=self.srcdir)
+        self.add_empty_file('c')
+        self.add_empty_file('d')
+        self.git('checkout master', cwd=self.srcdir)
+        self.git('tag v0.0 a_branch', cwd=self.srcdir)
+        self.add_empty_file('e')
+        self.git('merge --no-ff --no-edit a_branch', cwd=self.srcdir)
+        self.git('branch -d a_branch', cwd=self.srcdir)
+        self.add_empty_file('f')
+        self.assertRevCount(7, cwd=self.srcdir)
+
+        self.d.setVar('BB_GIT_SHALLOW_DEPTH', '0')
+        self.d.setVar('BB_GIT_SHALLOW_REVS', 'v0.0')
+
+        self.fetch_shallow()
+
+        self.assertRevCount(5)
+
+    def test_shallow_invalid_revs(self):
+        self.add_empty_file('a')
+        self.add_empty_file('b')
+
+        self.d.setVar('BB_GIT_SHALLOW_DEPTH', '0')
+        self.d.setVar('BB_GIT_SHALLOW_REVS', 'v0.0')
+
+        with self.assertRaises(bb.fetch2.FetchError):
+            self.fetch()
+
+    if os.environ.get("BB_SKIP_NETTESTS") == "yes":
+        print("Unset BB_SKIP_NETTESTS to run network tests")
+    else:
+        def test_bitbake(self):
+            self.git('remote add --mirror=fetch origin git://github.com/openembedded/bitbake', cwd=self.srcdir)
+            self.git('config core.bare true', cwd=self.srcdir)
+            self.git('fetch', cwd=self.srcdir)
+
+            self.d.setVar('BB_GIT_SHALLOW_DEPTH', '0')
+            # Note that the 1.10.0 tag is annotated, so this also tests
+            # reference of an annotated vs unannotated tag
+            self.d.setVar('BB_GIT_SHALLOW_REVS', '1.10.0')
+
+            self.fetch_shallow()
+
+            # Confirm that the history of 1.10.0 was removed
+            orig_revs = len(self.git('rev-list master', cwd=self.srcdir).splitlines())
+            revs = len(self.git('rev-list master').splitlines())
+            self.assertNotEqual(orig_revs, revs)
+            self.assertRefs(['master', 'origin/master'])
+            self.assertRevCount(orig_revs - 1758)

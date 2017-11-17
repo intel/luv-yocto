@@ -87,7 +87,7 @@ class Gnome(XTerminal):
                return
 
 class Mate(XTerminal):
-    command = 'mate-terminal -t "{title}" -x {command}'
+    command = 'mate-terminal --disable-factory -t "{title}" -x {command}'
     priority = 2
 
 class Xfce(XTerminal):
@@ -238,12 +238,36 @@ def spawn(name, sh_cmd, title=None, env=None, d=None):
     except KeyError:
         raise UnsupportedTerminal(name)
 
-    pipe = terminal(sh_cmd, title, env, d)
-    output = pipe.communicate()[0]
-    if output:
-        output = output.decode("utf-8")
-    if pipe.returncode != 0:
-        raise ExecutionError(sh_cmd, pipe.returncode, output)
+    # We need to know when the command completes but some terminals (at least
+    # gnome and tmux) gives us no way to do this. We therefore write the pid
+    # to a file using a "phonehome" wrapper script, then monitor the pid
+    # until it exits.
+    import tempfile
+    import time
+    pidfile = tempfile.NamedTemporaryFile(delete = False).name
+    try:
+        sh_cmd = "oe-gnome-terminal-phonehome " + pidfile + " " + sh_cmd
+        pipe = terminal(sh_cmd, title, env, d)
+        output = pipe.communicate()[0]
+        if output:
+            output = output.decode("utf-8")
+        if pipe.returncode != 0:
+            raise ExecutionError(sh_cmd, pipe.returncode, output)
+
+        while os.stat(pidfile).st_size <= 0:
+            time.sleep(0.01)
+            continue
+        with open(pidfile, "r") as f:
+            pid = int(f.readline())
+    finally:
+        os.unlink(pidfile)
+
+    while True:
+        try:
+            os.kill(pid, 0)
+            time.sleep(0.1)
+        except OSError:
+           return
 
 def check_tmux_pane_size(tmux):
     import subprocess as sub
@@ -289,6 +313,8 @@ def check_terminal_version(terminalName):
         if ver.startswith('Konsole'):
             vernum = ver.split(' ')[-1]
         if ver.startswith('GNOME Terminal'):
+            vernum = ver.split(' ')[-1]
+        if ver.startswith('MATE Terminal'):
             vernum = ver.split(' ')[-1]
         if ver.startswith('tmux'):
             vernum = ver.split()[-1]

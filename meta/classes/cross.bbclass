@@ -28,10 +28,10 @@ MULTIMACH_TARGET_SYS = "${BUILD_ARCH}${BUILD_VENDOR}-${BUILD_OS}"
 export PKG_CONFIG_DIR = "${exec_prefix}/lib/pkgconfig"
 export PKG_CONFIG_SYSROOT_DIR = ""
 
-TARGET_CPPFLAGS = "${BUILD_CPPFLAGS}"
-TARGET_CFLAGS = "${BUILD_CFLAGS}"
-TARGET_CXXFLAGS = "${BUILD_CXXFLAGS}"
-TARGET_LDFLAGS = "${BUILD_LDFLAGS}"
+TARGET_CPPFLAGS = ""
+TARGET_CFLAGS = ""
+TARGET_CXXFLAGS = ""
+TARGET_LDFLAGS = ""
 
 CPPFLAGS = "${BUILD_CPPFLAGS}"
 CFLAGS = "${BUILD_CFLAGS}"
@@ -50,7 +50,7 @@ SSTATE_SCAN_CMD ?= "${SSTATE_SCAN_CMD_NATIVE}"
 # Path mangling needed by the cross packaging
 # Note that we use := here to ensure that libdir and includedir are
 # target paths.
-target_base_prefix := "${base_prefix}"
+target_base_prefix := "${root_prefix}"
 target_prefix := "${prefix}"
 target_exec_prefix := "${exec_prefix}"
 target_base_libdir = "${target_base_prefix}/${baselib}"
