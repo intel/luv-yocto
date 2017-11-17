@@ -8,6 +8,7 @@ IMAGE_INSTALL = "\
     util-linux-mount util-linux-umount kmod sed tar net-tools \
     shadow util-linux procps efivarfs-test pstore-test \
     plymouth plymouth-set-default-theme kernel-efi-warnings linux-firmware-luv kexec \
+    acpixtract iasl \
     "
 
 X86_ADDITIONS = "chipsec python-codecs python-subprocess vmcore-dmesg bits \
