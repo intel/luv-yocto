@@ -1,11 +1,4 @@
-LICENSE = "MIT"
-LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=4d92cd373abda3937c2bc47fbc49d690"
-
-DEPENDS_append_x86 = " bits"
-DEPENDS_append_x86-64 = " bits"
-
-INITRD_IMAGE_LIVE = "core-image-efi-initramfs"
-IMGDEPLOYDIR = "${DEPLOY_DIR_IMAGE}"
+require luv-image.inc
 
 # bootimg.bbclass will set PCBIOS="1" if efi is not found in the MACHINE_FEATURES. For
 # netboot we don't include 'efi' as a machine feature; this would imply the creation
@@ -14,27 +7,7 @@ IMGDEPLOYDIR = "${DEPLOY_DIR_IMAGE}"
 PCBIOS_remove = "1"
 PCBIOS_append = "0"
 
-# Tell plymouth to ignore serial consoles and limit the amount of systemD logs.
-CMDLINE_USERSPACE = "systemd.log_target=null plymouth.ignore-serial-consoles"
-
-# Kernel commandline for luv net boot
-CMDLINE = "${CMDLINE_USERSPACE} debug crashkernel=512M,high log_buf_len=1M efi=debug luv.netboot"
-
-COMMON_CMDLINE_x86 = " console=ttyS0,115200 console=ttyPCH0,115200"
-
-# A splash screen is never seen on ARM. Hence, having the splash parameter only for x86
-# Nomodeset will not allow kernel to load video drivers, helps retaining splash screen.
-# Make sure kdump runs before kexec after a crash and not vice-versa
-COMMON_CMDLINE_x86 += "splash nomodeset crash_kexec_post_notifiers"
-
-# Unlike the += operand, _append's do not insert a space between the current value
-# and the appended string. Thus, we add them.
-CMDLINE_append_aarch64 = " acpi=on"
-CMDLINE_append_x86 = "${COMMON_CMDLINE_x86}"
-CMDLINE_append_x86-64 = "${COMMON_CMDLINE_x86}"
-
-LUVCFG_netconsole = "LUV_NETCONSOLE=none"
-LUVCFG_storage_url = "LUV_STORAGE_URL=none"
+CMDLINE = "${CMDLINE_BASE} luv.netboot"
 
 GRUB_EFI_LOADER_IMAGE_x86-64 = "grub-efi-bootx64.efi"
 GRUB_EFI_LOADER_IMAGE_x86 = "grub-efi-bootia32.efi"
@@ -44,25 +17,9 @@ DEST_EFI_LOADER_IMAGE_x86-64 = "bootx64.efi"
 DEST_EFI_LOADER_IMAGE_x86 = "bootia32.efi"
 DEST_EFI_LOADER_IMAGE_aarch64 = "bootaa64.efi"
 
-HDDDIR = "${S}/hddimg"
-
 inherit luv-efi
 inherit image-live
 inherit deploy
-
-# Fool image-live into depend in xorriso instead of mkisofs to remove
-# a dependency on syslinux, which does not build for aarch64.
-python() {
-    import re
-    target = d.getVar('TARGET_ARCH', True)
-    if re.match('aarch64', target):
-        d.setVar('EFI_USEXORRISO', '1')
-}
-
-# reuse the same splash screen as in the disk live image
-FILESEXTRAPATHS_append := "${THISDIR}/luv-live-image:"
-SPLASH_IMAGE = "blue-luv.jpg"
-SRC_URI = "file://blue-luv.jpg"
 
 do_mkimage[depends] += "dosfstools-native:do_populate_sysroot \
                         mtools-native:do_populate_sysroot \
@@ -102,16 +59,9 @@ do_deploy() {
 	fi
 }
 
-do_image_ext4() {
-        :
-}
-
-do_image_ext4[noexec] = "1"
-
 addtask do_mkimage before do_build
 addtask do_deploy before do_build after do_mkimage
 addtask image_ext4 before do_bootimg before do_build
 
 do_mkimage[depends] += "${INITRD_IMAGE_LIVE}:do_build"
 do_deploy[depends] += "${_RDEPENDS}:do_deploy"
-
