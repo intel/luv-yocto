@@ -3,15 +3,15 @@ From: Megha Dey <megha.dey@linux.intel.com>
 Date: Mon, 13 Feb 2017 18:27:05 -0800
 Subject: [PATCH] Enable tty1 console only when splash is present
 
-When the splash parameter is passed on the kernel command line,
-we want the splash screen to be displasyed even after boot has
+When the splash parameter is passed to the kernel command line,
+we want the splash screen to be displayed even after boot has
 completed. By default, once boot is complete, tty1 is enabled
 and we reach the login screen. Conversely, when there is no splash,
-user wants to boot in text only mode, we want to disable the
+and user wants to boot in text only mode, we want to disable the
 getty@tty1.service file which will not allow plymouth to shift
 from tty0(splash screen) to tty1(login screen) after boot. Hence,
-this service file is conditionally executed only if a particular
-directory is found.
+this service file is conditionally executed only if a "splash"
+is found on the command line.
 
 Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
 ---
@@ -26,7 +26,7 @@ index 46164ab..9962a10 100644
  # that serial gettys are covered by serial-getty@.service, not this
  # unit.
  ConditionPathExists=/dev/tty0
-+ConditionPathIsDirectory=/tmp/splash
++ConditionKernelCommandLine=!splash
  
  [Service]
  # the VT is cleared by TTYVTDisallocate
