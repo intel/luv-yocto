@@ -6,8 +6,7 @@ LIC_FILES_CHKSUM = "file://${STAGING_KERNEL_DIR}/COPYING;md5=d7810fab7487fb0aad3
 KBRANCH="stable"
 
 # Picking up matts branch
-SRC_URI = "file://bash-to-sh.patch \
-          file://luv-parser-efivarfs \
+SRC_URI = "file://luv-parser-efivarfs \
           file://efivarfs"
 
 #we need some of the stuff below
@@ -15,7 +14,7 @@ DEPENDS_class-native += "qemu-native"
 SRCREV="${AUTOREV}"
 inherit autotools luv-test
 
-RDEPENDS_${PN} += "e2fsprogs"
+RDEPENDS_${PN} += "e2fsprogs bash"
 
 do_fetch[noexec] = "1"
 do_unpack[depends] += "virtual/kernel:do_shared_workdir"
