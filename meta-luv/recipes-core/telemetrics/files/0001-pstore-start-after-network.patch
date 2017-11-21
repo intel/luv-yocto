@@ -20,8 +20,8 @@ index 41e4643..fe71262 100644
  Description=Telemetrics Pstore Probe
  Requires=telemd.socket
 -After=telemd.socket
-+Wants=networking.service
-+After=telemd.socket networking.service
++Wants=systemd-networkd-wait-online.service
++After=telemd.socket systemd-networkd-wait-online.service
 
  [Service]
  ExecStart=@bindir@/pstoreprobe

@@ -21,7 +21,7 @@ index 17cb1bc..6250b0f 100644
  Description=Telemetrics Daemon
  ConditionPathExists=!/etc/telemetrics/opt-out
 +Before=luv-test-manager.service
-+After=networking.service
++After=systemd-networkd-wait-online.service
 
  [Service]
 -ExecStart=@bindir@/telemd
