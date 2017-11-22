@@ -124,8 +124,8 @@ KCONFIG_MODE = 'alldefconfig'
 KBUILD_DEFCONFIG = "defconfig"
 KBUILD_DEFCONFIG_x86 = "i386_defconfig"
 KBUILD_DEFCONFIG_x86-64 = "x86_64_defconfig"
-LINUX_VERSION ?= "4.14"
-LINUX_VERSION_EXTENSION ?= "-efitest"
+LINUX_VERSION = "4.14"
+LINUX_VERSION_EXTENSION = "-efitest"
 
 # Override SRCREV to point to a different commit in a bbappend file to
 # build a different release of the Linux kernel.
@@ -143,8 +143,8 @@ do_install_append() {
     if [ "${TARGET_ARCH}" = "x86_64" ]; then
          # There are 2 copies of the NVDIMM modules which are built. This is a
          # temporary fix to make sure the correct set of modules are used.
-         rm -rf ${D}/lib/modules/${LINUX_VERSION}.0-yocto-standard/kernel/drivers/nvdimm/
-         rm -rf ${D}/lib/modules/${LINUX_VERSION}.0-yocto-standard/kernel/drivers/dax/
-         rm -rf ${D}/lib/modules/${LINUX_VERSION}.0-yocto-standard/kernel/drivers/acpi/
+         rm -rf ${D}/lib/modules/${LINUX_VERSION}.0${LINUX_VERSION_EXTENSION}/kernel/drivers/nvdimm/
+         rm -rf ${D}/lib/modules/${LINUX_VERSION}.0${LINUX_VERSION_EXTENSION}/kernel/drivers/dax/
+         rm -rf ${D}/lib/modules/${LINUX_VERSION}.0${LINUX_VERSION_EXTENSION}/kernel/drivers/acpi/
     fi
 }
