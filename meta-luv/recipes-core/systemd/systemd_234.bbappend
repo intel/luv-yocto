@@ -4,6 +4,7 @@ PACKAGECONFIG_append = "networkd"
 
 SRC_URI += "file://50-oe-core.network \
             file://0001-tty1-only-when-splash-enabled.patch \
+            file://0001-setup-network-only-if-luv.telemetrics-is-present.patch \
            "
 
 do_install_append() {
