@@ -13,7 +13,7 @@ python __anonymous(){
         d.appendVar("GRUB_BUILDIN", ' memdisk -m ${GRUB_MEMDISK}')
 }
 
-SRC_URI += "file://0001-pe32.h-add-header-structures-for-TE-and-DOS-executab.patch \
+COMMON_GRUB_x86 += "file://0001-pe32.h-add-header-structures-for-TE-and-DOS-executab.patch \
            file://0002-shim-add-needed-data-structures.patch \
            file://0003-efi-chainloader-implement-an-UEFI-Exit-service-for-s.patch \
            file://0004-efi-chainloader-port-shim-to-grub.patch \
@@ -26,7 +26,15 @@ SRC_URI += "file://0001-pe32.h-add-header-structures-for-TE-and-DOS-executab.pat
            file://0011-grub-core-loader-extend-loader-options.patch \
            file://0012-grub-core-loader-add-support-for-memdisks.patch \
            file://0013-grub-core-loader-pass-current-disk-device-to-loaded-.patch \
-           file://0014-grub-util-set-prefix-to-EFI-BOOT-when-booting-f.patch \
+          "
+
+# Add grub-efi patches for x86/x86-64/arm64
+SRC_URI_append_x86 = "${COMMON_GRUB_x86} \
+                     "
+SRC_URI_append_x86-64 = "${COMMON_GRUB_x86} \
+                        "
+ 
+SRC_URI += "file://0014-grub-util-set-prefix-to-EFI-BOOT-when-booting-f.patch \
           "
 
 GRUB_BUILDIN = "boot linux ext2 fat serial part_msdos part_gpt \

@@ -16,17 +16,7 @@ def get_bits_depends(d):
                  return ""
 _BITSDEPENDS = "${@get_bits_depends(d)}"
 
-# The x86 build is depends on grub-efi and AArch64 build depends on grub_git
-def get_grub_depends(d):
-         import re
-         deps = d.getVar('TARGET_PREFIX', True)
-         if re.search("(x86_64|i.86).*",deps):
-                 return "${MLPREFIX}grub-efi"
-         if re.search("aarch64",deps):
-                 return "${MLPREFIX}grub"
-
-_RDEPENDS = "${@get_grub_depends(d)}"
-do_bootimg[depends] += "${_RDEPENDS}:do_deploy \
+do_bootimg[depends] += "${MLPREFIX}grub-efi:do_deploy \
                         sbsigntool-native:do_populate_sysroot"
 
 GRUB_EFI_LOADER_IMAGE_x86-64 = "grub-efi-bootx64.efi"

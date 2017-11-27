@@ -64,4 +64,4 @@ addtask do_deploy before do_build after do_mkimage
 addtask image_ext4 before do_bootimg before do_build
 
 do_mkimage[depends] += "${INITRD_IMAGE_LIVE}:do_build"
-do_deploy[depends] += "${_RDEPENDS}:do_deploy"
+do_deploy[depends] += "${MLPREFIX}grub-efi:do_deploy"
