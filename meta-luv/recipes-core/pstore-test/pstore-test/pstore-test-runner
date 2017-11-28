@@ -15,5 +15,5 @@ else
        else
               ./pstore_post_reboot_tests
        fi
-       rm REBOOT_DIR/prev_uuid
+       rm -f REBOOT_DIR/prev_uuid
 fi
