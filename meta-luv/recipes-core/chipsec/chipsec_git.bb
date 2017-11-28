@@ -15,8 +15,8 @@ SRC_URI = "git://github.com/chipsec/chipsec.git \
     file://0001-Revert-fix-issue-with-building-driver-on-32bit-syste.patch \
     "
 
-SRCREV="284cf0bed6b89eebb99d8625287bbdb0ca079515"
-PV="1.3.3"
+SRCREV="b0f400a27c296f40b54e6aff1723bd6ab3f654a6"
+PV="1.3.5"
 
 DEPENDS = "virtual/kernel python-core nasm-native python-setuptools-native virtual/${TARGET_PREFIX}gcc-initial"
 RDEPENDS_${PN} = "python python-shell python-stringold python-xml \
