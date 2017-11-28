@@ -1,0 +1,108 @@
+From b84de8808b34a162cc803bb0e84faa080923edc5 Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Tue, 21 Nov 2017 17:30:59 -0800
+Subject: [PATCH] x86/mttr: Update only valid variable-range MTRRs
+
+Both the Intel 64 and IA-32 Architectures Software Developer's Manual Vol.
+3 in section 11.11 and the AMD Architecture Programmer's Manual Vol. 2 in
+section 7.7.5 state that in a multi-processor system Memory-Type
+Range Registers (MTRRs) must provide a type of memory caching for all the
+physical memory in the system that is consistent across all the processors.
+
+For the specific case of the variable-range MTRRs, this implies that their
+values should be the same across all processors.
+
+Variable-range MTRRs utilize a pair of registers, MTRRphysMask_MSR and
+MTRRphysBase_MSR, to describe the base, range and type of cache used for a
+memory region. Also, a Valid bit is included in MTRRphysMask_MSR to enable
+or disable a variable-range MTRR pair.
+
+Hence, the condition of consistency across processors described above
+applies to variable-range MTRRs that are enabled. Disabled variable-range
+MTTR pairs can be inconsistent as long as they remain disabled.
+
+Thus, when a variable-range MTRR pair is disabled, it is not necessary to
+update MTRRphysBase_MSR as it will not be used. MTRRphysMask_MSR must be
+updated in all cases as it contains the Valid bit that enables or disables
+the pair.
+
+Also, we want to warn about inconsistent MTRRs settings from BIOS. BIOS
+might have configured only variable-range MTRR pairs that are enabled.
+Thus, report updates to inconsistent pairs only when the pair remains valid
+after the update or the update resulted in a change of the enabled state
+(i.e., the pair transitioned from enabled to disabled, or viceversa).
+
+Cc: Ruiyu Ni <ruiyu.ni@intel.com>
+Reported-by: Bin Song <binx.song@intel.com>
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ arch/x86/kernel/cpu/mtrr/generic.c | 45 ++++++++++++++++++++++++++++++--------
+ 1 file changed, 36 insertions(+), 9 deletions(-)
+
+diff --git a/arch/x86/kernel/cpu/mtrr/generic.c b/arch/x86/kernel/cpu/mtrr/generic.c
+index fdc5521..581f839 100644
+--- a/arch/x86/kernel/cpu/mtrr/generic.c
++++ b/arch/x86/kernel/cpu/mtrr/generic.c
+@@ -659,23 +659,50 @@ static bool set_mtrr_var_ranges(unsigned int index, struct mtrr_var_range *vr)
+ 	unsigned int lo, hi;
+ 	bool changed = false;
+ 
+-	rdmsr(MTRRphysBase_MSR(index), lo, hi);
+-	if ((vr->base_lo & 0xfffff0ffUL) != (lo & 0xfffff0ffUL)
+-	    || (vr->base_hi & (size_and_mask >> (32 - PAGE_SHIFT))) !=
++	/*
++	 * An MTRRphysBase/MTRRphysMask pair is only enabled if the Valid bit
++	 * (bit 11) in MTRRphysMask_MSR is set. Otherwise its contents are not
++	 * used.
++	 *
++	 * Always write to the to the MTRRphysMask MSR in order to ensure that
++	 * both the Valid setting of MTRR pairs and the configuration of valid
++	 * ones are consistent across CPUs.
++	 */
++
++	rdmsr(MTRRphysMask_MSR(index), lo, hi);
++
++	/* Compare the non-reserved bits */
++	if ((vr->mask_lo & 0xfffff800UL) != (lo & 0xfffff800UL) ||
++	    (vr->mask_hi & (size_and_mask >> (32 - PAGE_SHIFT))) !=
+ 		(hi & (size_and_mask >> (32 - PAGE_SHIFT)))) {
++		mtrr_wrmsr(MTRRphysMask_MSR(index), vr->mask_lo, vr->mask_hi);
+ 
+-		mtrr_wrmsr(MTRRphysBase_MSR(index), vr->base_lo, vr->base_hi);
+-		changed = true;
++		/*
++		 * Report a change only in enabed MTRRs pairs; either in the
++		 * original or the requested settings. Disabled settings are
++		 * not relevant.
++		 */
++		if ((lo & _BITUL(11)) || (vr->mask_lo & _BITUL(11)))
++			changed = true;
+ 	}
+ 
+-	rdmsr(MTRRphysMask_MSR(index), lo, hi);
++	/*
++	 * If the requested mask in @vr has the Valid bit disabled, it is not
++	 * necessary to update the base address of the range. The register pair
++	 * will remain disabled.
++	 */
++	if (!(vr->mask_lo & _BITUL(11)))
++		return changed;
+ 
+-	if ((vr->mask_lo & 0xfffff800UL) != (lo & 0xfffff800UL)
+-	    || (vr->mask_hi & (size_and_mask >> (32 - PAGE_SHIFT))) !=
++	rdmsr(MTRRphysBase_MSR(index), lo, hi);
++
++	if ((vr->base_lo & 0xfffff0ffUL) != (lo & 0xfffff0ffUL) ||
++	    (vr->base_hi & (size_and_mask >> (32 - PAGE_SHIFT))) !=
+ 		(hi & (size_and_mask >> (32 - PAGE_SHIFT)))) {
+-		mtrr_wrmsr(MTRRphysMask_MSR(index), vr->mask_lo, vr->mask_hi);
++		mtrr_wrmsr(MTRRphysBase_MSR(index), vr->base_lo, vr->base_hi);
+ 		changed = true;
+ 	}
++
+ 	return changed;
+ }
+ 
+-- 
+2.7.4
+

@@ -79,6 +79,7 @@ SRC_URI += "file://0001-PCI-Vulcan-AHCI-PCI-bar-fix-for-Broadcom-Vulcan-earl.pat
             file://0008-x86-efi-Introduce-EFI_WARN_ON_ILLEGAL_ACCESSES.patch \
             file://0001-selftests-change-reboot-flag-location.patch \
             file://0001-pstore-test-remove-log-directory.patch \
+            file://0001-x86-mttr-Update-only-valid-variable-range-MTRRs.patch \
            "
 
 COMMON_CFG_x86 = " file://qemux86/modules.cfg \
