@@ -8,6 +8,7 @@ PV = "V17.11.00+git${SRCPV}"
 
 SRCREV = "0ec5075e19e14b6f7a81732ee4c7f1481e1ed523"
 SRC_URI = "git://kernel.ubuntu.com/hwe/fwts.git \
+           file://0001-acpi-madt-only-inspect-Local-APIC-x2APIC-SAPIC-table.patch \
            file://luv-parser-fwts \
           "
 
