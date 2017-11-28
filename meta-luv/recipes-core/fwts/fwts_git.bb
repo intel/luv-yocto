@@ -59,3 +59,4 @@ LUV_TEST_ARGS="-r stdout -q --uefitests --log-format='%owner;%field ' \
 FILES_${PN} += "${libdir}/fwts/lib*${SOLIBS}"
 FILES_${PN} += "/lib/modules/${KERNEL_VERSION}/extra/efi_runtime.ko"
 FILES_${PN}-dev += "${libdir}/fwts/lib*${SOLIBSDEV} ${libdir}/fwts/lib*.la"
+FILES_${PN} += "/usr/share/bash-completion"
