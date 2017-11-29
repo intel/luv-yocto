@@ -60,6 +60,7 @@ SRC_URI = "gitsm://github.com/biosbits/bits.git;protocol=http  \
            file://PYTHON-Fix-gcc7-warnings-when-calling-PyMem_MALLOC-macros.patch \
            file://libffi-fix-switch-fallthrough-cases-with-GCC7.patch \
            file://PYTHON-Fix-switch-fallthrough-cases-with-GCC7.patch \
+           file://BITS-toplevel.cfg-Disable-Bits-when-user-chose-not-to-run.patch \
           "
 
 S = "${WORKDIR}/git"
