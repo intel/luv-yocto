@@ -191,6 +191,7 @@ python build_efi_cfg() {
 
     cfgfile.write(' luv_netconsole=${LUV_NETCONSOLE}')
     cfgfile.write(' luv_storage=${LUV_STORAGE_URL}')
+    cfgfile.write(' luv_tests=${LUV_TESTS}')
 
     cfgfile.write('\n')
 
@@ -243,6 +244,10 @@ python build_luv_cfg() {
 
     comment= "This is the parameter for url of the server/website"
     name = 'LUVCFG_storage_url'
+    luvcfg.write(insert_var(name, comment, d))
+
+    comment = 'These are the selected test suites for execution. Edit if needed'
+    name = 'LUVCFG_tests'
     luvcfg.write(insert_var(name, comment, d))
 
     # pad with spaces only if luv-netboot is present, so to make EFI binary

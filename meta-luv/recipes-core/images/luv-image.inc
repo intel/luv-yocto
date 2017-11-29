@@ -30,6 +30,9 @@ CMDLINE_append_x86-64 = "${COMMON_CMDLINE_x86}"
 
 LUVCFG_netconsole = "LUV_NETCONSOLE=none"
 LUVCFG_storage_url = "LUV_STORAGE_URL=none"
+LUVCFG_tests = "LUV_TESTS='efivarfs-test fwts kernel-efi-warnings pstore-tests"
+LUVCFG_tests_append_x86-64 = " bits chipsec ndctl'"
+LUVCFG_tests_append_aarch64 = "'"
 
 # Path to splash screen image
 FILESEXTRAPATHS_append := "${THISDIR}/luv-live-image:"

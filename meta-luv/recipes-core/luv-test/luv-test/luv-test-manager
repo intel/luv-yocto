@@ -251,6 +251,12 @@ for r in $runner_list; do
         continue
     fi
 
+    # Don't run the testsuite(s) if it is disabled by the user.
+    grep -q $r /proc/cmdline
+    if [ $? -eq 1 ]; then
+        continue
+    fi
+
     #We display each test suite running for equal amount of time
     plymouth_hide "Running tests..."
 
