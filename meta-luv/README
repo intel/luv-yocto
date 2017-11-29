@@ -65,6 +65,7 @@ Table of Contents
    VI. Obtaining debug information
   VII. Other LUV boot parameters
  VIII. Submitting results to a remote location
+   IX. Add parameters to disable/enable the testsuites independently
 
 
 I. Adding meta-luv and meta-oe layers to your build
@@ -334,3 +335,16 @@ modify_luv_netboot_efi.py
 
 For the usage of the script please follow the instructions at
 https://github.com/01org/luv-yocto/wiki page.
+
+Add parameters to disable/enable the testsuites independently
+-------------------------------------------------------------
+While the boot parameter "noluv" disables all the testsuites, LUV does
+not provide any parameter that explicitly enables/disables a specific testsuite.
+To provide such flexibility of enabling or disabling any specific testsuite(s),
+we need a parameter that lets user choose to run or to skip just by editing the
+luv.cfg file.
+
+Add a parameter in luv.cfg called "LUV_TESTS" that stores a set of strings,
+each string representing the individual testsuites. All the testsuites are
+enabled by default and disable a testsuite by removing the string that
+represents the testsuite when needed.
