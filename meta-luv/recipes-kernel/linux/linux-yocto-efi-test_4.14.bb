@@ -110,6 +110,7 @@ SRC_URI_append_aarch64 = " file://qemuarm64/network.cfg \
 SRC_URI_append = "file://pstore.cfg \
                   file://pstore-test.cfg \
                   file://efi.cfg \
+                  file://cpus.cfg \
                  "
 
 # Override KCONFIG_MODE to '--alldefconfig' from the default '--allnoconfig'
