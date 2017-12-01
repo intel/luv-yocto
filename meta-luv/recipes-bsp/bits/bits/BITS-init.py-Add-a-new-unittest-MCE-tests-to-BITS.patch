@@ -1,0 +1,162 @@
+From da64e46cb6eae2c46755974ecdac3fd37ed4bf1c Mon Sep 17 00:00:00 2001
+From: Gayatri Kammela <gayatri.kammela@intel.com>
+Date: Thu, 30 Nov 2017 20:07:04 -0800
+Subject: [PATCH] BITS/init.py: Add a new unittest "MCE tests" to BITS
+
+Machine check errors are reported by the hardware via internal registers
+called Model Specific Registers (MSRs). "rdmsr" is used to read these
+registers to determine if machine check errors (MCEs) are found.
+
+This test aims to find any MCEs in the preboot environment.
+
+Cc: Tony Luck <tony.luck@intel.com>
+Cc: Ricardo Neri <ricardo.neri@intel.com>
+Signed-off-by: Gayatri Kammela <gayatri.kammela@intel.com>
+---
+ python/init.py    |   5 +++
+ python/testmce.py | 117 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 122 insertions(+)
+ create mode 100644 python/testmce.py
+
+diff --git a/python/init.py b/python/init.py
+index 73df14e6c6ea..803d2f292662 100644
+--- a/python/init.py
++++ b/python/init.py
+@@ -185,6 +185,11 @@ def init():
+     with init_annotation("testsmrr"):
+         testsmrr.register_tests()
+
++    with import_annotation("testmce"):
++        import testmce
++    with init_annotation("testmce"):
++        testmce.register_tests()
++
+     with import_annotation("smilatency"):
+         import smilatency
+     with init_annotation("smilatency"):
+diff --git a/python/testmce.py b/python/testmce.py
+new file mode 100644
+index 000000000000..563b61ef09be
+--- /dev/null
++++ b/python/testmce.py
+@@ -0,0 +1,117 @@
++# Copyright (c) 2017, Intel Corporation
++# All rights reserved.
++#
++# Redistribution and use in source and binary forms, with or without
++# modification, are permitted provided that the following conditions are met:
++#
++#     * Redistributions of source code must retain the above copyright notice,
++#       this list of conditions and the following disclaimer.
++#     * Redistributions in binary form must reproduce the above copyright notice,
++#       this list of conditions and the following disclaimer in the documentation
++#       and/or other materials provided with the distribution.
++#     * Neither the name of Intel Corporation nor the names of its contributors
++#       may be used to endorse or promote products derived from this software
++#       without specific prior written permission.
++#
++# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
++# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
++# ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
++# ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++
++""" Machine Check Errors. """
++
++import bits
++import bits.cdata
++import testsuite
++from cpudetect import cpulib
++from ctypes import c_ulong as ul
++import struct
++
++cpulist = sorted(bits.cpus())
++
++""" Global_CAP, Bank_STATUS, Bank_ADDR and  Bank_MISC registers """
++MSR_IA32_MCG_CAP = 0x00000179
++MSR_IA32_MC0_STATUS = 0x00000401
++MSR_IA32_MC0_ADDR = 0x00000402
++MSR_IA32_MC0_MISC = 0x00000403
++
++def register_tests():
++    testsuite.add_test("MCE (Machine Check Error) tests", test_mce);
++
++class IA32_MCi_bits(bits.cdata.Struct):
++    _fields_ = [
++        ('low', ul, 32),
++        ('high', ul, 32),
++    ]
++
++class IA32_MCi(bits.cdata.Union):
++    _anonymous_ = ('bits',)
++    _fields_ = [
++        ('u64', ul),
++        ('bits', IA32_MCi_bits),
++    ]
++
++def ia32_rdmsr(msr):
++    for cpu in cpulist:
++            ia32_mci_value = IA32_MCi(bits.rdmsr(cpu, msr))
++            value = (ia32_mci_value.low) | (ia32_mci_value.high << 32);
++            if value is None:
++                print "CPU 0x%x MSR 0x%x: GPF" % (cpu, msr)
++            else:
++                print "CPU 0x%x MSR 0x%x: 0x%x" % (cpu, msr, value)
++    return value
++
++def test_mce():
++    """Test the existence of machine check errors"""
++
++    """
++    Global capabilities (MCG_CAP) register identifies the capabilities of the
++    machine-check architecture of the processor.
++    """
++    mcg_cap = ia32_rdmsr(MSR_IA32_MCG_CAP)
++
++    """
++    The lower 8 bits specify the number of hardware-unit error-reporting banks
++    present in a particular processor.
++    """
++    nbanks = mcg_cap & 0xff
++    print("Detected %d banks using MCG_CAP = 0x%x" % (nbanks, mcg_cap))
++
++    for j in range(nbanks):
++
++        """
++        Check if the VAL bit(63) in status register is set and if it is set,
++        then a machine check error was found
++        """
++        status_reg = ia32_rdmsr(MSR_IA32_MC0_STATUS + 4*(j))
++        status = status_reg & (1 << 63)
++        testsuite.test('Valid bit in Status register should be 0', status == 0)
++        if(status == 0):
++            continue
++
++        print("Machine Check Error Found!\n")
++        print("Machine check bank %d STATUS = 0x%x" % (j, status_reg))
++
++        """
++        check if the MISCV(MCi_MISC register valid (59)bit) is set
++        """
++        status = status_reg & (1 << 59)
++        if (status):
++            misc_reg = ia32_rdmsr(MSR_IA32_MC0_MISC + 4*(j))
++            print("Machine check bank %d MISC = 0x%x" % (j, misc_reg))
++
++        """
++        check if the ADDRV(MCi_ADDR register valid (58)bit) is set
++        """
++        status = status_reg & (1 << 58)
++        if (status):
++            addr_reg = ia32_rdmsr(MSR_IA32_MC0_ADDR + 4*(j))
++            print("Machine Check bank %d ADDR = 0x%x" % (j, addr_reg))
++
++    return 0
+--
+2.7.4
+

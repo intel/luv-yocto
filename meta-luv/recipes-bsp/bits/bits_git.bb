@@ -61,6 +61,7 @@ SRC_URI = "gitsm://github.com/biosbits/bits.git;protocol=http  \
            file://libffi-fix-switch-fallthrough-cases-with-GCC7.patch \
            file://PYTHON-Fix-switch-fallthrough-cases-with-GCC7.patch \
            file://BITS-toplevel.cfg-Disable-Bits-when-user-chose-not-to-run.patch \
+           file://BITS-init.py-Add-a-new-unittest-MCE-tests-to-BITS.patch \
           "
 
 S = "${WORKDIR}/git"
