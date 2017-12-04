@@ -21,6 +21,9 @@ python __anonymous () {
     elif re.match('i.86', target):
         grubtarget = 'i386'
         grubimage = "grub-efi-bootia32.efi"
+    elif re.match('aarch64', target):
+         grubtarget = 'arm64'
+         grubimage = "grub-efi-bootaa64.efi"
     else:
         raise bb.parse.SkipPackage("grub-efi is incompatible with target %s" % target)
     d.setVar("GRUB_TARGET", grubtarget)
