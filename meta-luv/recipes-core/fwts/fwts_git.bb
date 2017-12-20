@@ -4,11 +4,10 @@ HOMEPAGE = "https://wiki.ubuntu.com/Kernel/Reference/fwts"
 LICENSE = "GPLv2+"
 LIC_FILES_CHKSUM = "file://src/main.c;beginline=1;endline=16;md5=31da590f3e9f3bd34dcdb9e4db568519"
 
-PV = "V17.11.00+git${SRCPV}"
+PV = "V17.12.00+git${SRCPV}"
 
-SRCREV = "0ec5075e19e14b6f7a81732ee4c7f1481e1ed523"
+SRCREV = "df2784c6fbff02288c736f85354b22f46dc193f4"
 SRC_URI = "git://kernel.ubuntu.com/hwe/fwts.git \
-           file://0001-acpi-madt-only-inspect-Local-APIC-x2APIC-SAPIC-table.patch \
            file://luv-parser-fwts \
           "
 
