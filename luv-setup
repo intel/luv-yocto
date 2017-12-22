@@ -1,0 +1,10 @@
+#!/bin/bash
+#
+# Copyright (C) 2017 Intel Corporation
+#
+# This is an extremely simple wrapper around oe-init-build-env that uses
+# the meta-luv configuration files.
+
+export TEMPLATECONF="meta-luv/conf"
+
+. ./oe-init-build-env
