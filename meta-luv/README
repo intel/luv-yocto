@@ -68,29 +68,20 @@ Table of Contents
    IX. Add parameters to disable/enable the testsuites independently
 
 
-I. Adding meta-luv and meta-oe layers to your build
-=================================================
+I. Setting LUV build system
+===========================
 
 LUV uses additional layers to build correctly. The meta-luv layer
 provides the LUV-specific software component needed to run tests
 and compile results. The meta-oe layer provides a collection of
 auxiliary packages needed when building a live image.
 
-In order to use these layers, you need to make the build system aware
-of them.
-
-Assuming the meta-luv layer exists at the top-level of your
-yocto build tree, you can add it to the build system by adding the
-location of the meta-luv layer to bblayers.conf, along with any
-other layers needed. e.g.:
-
-  BBLAYERS ?= " \
-    /path/to/yocto/meta \
-    /path/to/yocto/meta-yocto \
-    /path/to/yocto/meta-yocto-bsp \
-    /path/to/yocto/meta-luv \
-    /path/to/yocto/meta-oe \
-    "
+A script "luv-setup" is provided in the root directory of the source code.
+After cloning the repo. one needs to do:
+. luv-setup
+to setup the default DISTRO out of the box, along with adding luv-specific
+layers to BBLAYERS. By default, MACHINE is set to qemux86-64 and can be
+changed if one wishes to build for any other type of system.
 
 II. Using GIT with a proxy
 ==========================
@@ -110,13 +101,8 @@ III. Building LUV
 LUV can boot from either a local network or a disk. The process to build
 is slightly different for each case.
 
-If you intend to build an image to boot from a physical disk, then it is
-necessary to specify the luv distribution in local.conf.
-e.g.:
-
-  DISTRO = "luv"
-
-Afterwards, you can simply do:
+By default, we build from a physical disk (DISTRO = "luv" in local.conf).
+One simply needs to do:
 
   bitbake luv-live-image
 
