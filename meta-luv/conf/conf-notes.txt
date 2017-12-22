@@ -1,0 +1,12 @@
+
+### Shell environment set up for builds. ###
+
+You can now run 'bitbake <target>'
+
+Common targets are:
+	luv-live-image (DISTRO : luv)
+	luv-netboot-image (DISTRO : luv-netboot)
+
+You can change the machine in local.conf by overriding the MACHINE variable.
+
+You can also run generated qemu images with a command like 'runqemu qemux86'
