@@ -68,6 +68,14 @@ function html_create_testinfo_ctrl_link(id, text)
         return html;
 }
 
+function html_sanitize_text(text)
+{
+        gsub(/</, "\\&lt", text);
+        gsub(/>/, "\\&gt", text);
+        gsub(/\n/, "<br>\n", text);
+        return text;
+}
+
 /^1.2/ {
 	testsuite=$2
 	continue_parsing=$3
@@ -121,6 +129,7 @@ function html_create_testinfo_ctrl_link(id, text)
 			printf ("    [-] %s\n", testsuite);
 			fflush("");
 			# begin HTML code for this test suite
+			testsuite = html_sanitize_text(testsuite);
 			ts_content =  html_create_testinfo_ctrl_link(testsuite,
 								     testsuite);
 			ts_content =  ts_content html_create_div("content_" testsuite,
@@ -173,9 +182,11 @@ function html_create_testinfo_ctrl_link(id, text)
 		# generate the HTML code to have all the test log info and its
 		# status.
 
+		unittest = html_sanitize_text(unittest);
+		info = html_sanitize_text(info);
+
 		href = html_create_testinfo_ctrl_link(unittest,\
 						      unittest "... " unittest_status);
-		gsub(/\n/, "<br>\n", info);
 		content = html_create_div("content_" unittest, "testcase_info", info, 1);
 		div = html_create_div("test_" unittest, "testcase", href content, 1);
 		print div >> HTML;
