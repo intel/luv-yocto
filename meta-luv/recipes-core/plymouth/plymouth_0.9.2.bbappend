@@ -5,6 +5,7 @@ RDEPENDS_${PN} = "ttf-dejavu-common ttf-dejavu-sans ttf-dejavu-sans-mono"
 SRC_URI+= "file://0001-plymouth-Add-the-retain-splash-option.patch \
 	   file://0001-plymouth-Change-the-plymouth-defaults.patch \
 	   file://0001-plymouth-modify-the-script-theme.patch \
+           file://0001-plymouth-Prevent-overwriting-of-messages.patch \
 	   ${SPLASH_IMAGES}"
 
 SPLASH_IMAGES = "file://luv-splash.png;outsuffix=default"
