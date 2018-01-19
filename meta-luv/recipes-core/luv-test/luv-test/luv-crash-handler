@@ -11,13 +11,7 @@
 # are obtained from a disk partition identified by its UUID. Behavior changes
 # according to the runlevel.
 
-plymouth_write() {
-    /bin/plymouth display-message --text="$1"
-}
-
-plymouth_hide() {
-    /bin/plymouth hide-message --text="$1"
-}
+. luv-message
 
 CURRENT_CMDLINE=`cat /proc/cmdline | sed -e 's/\<luv.pstore-test\>//g'`
 if grep -q luv.pstore-test /proc/cmdline; then
@@ -67,9 +61,7 @@ else
     submit a bug report on https://github.com/01org/luv-yocto/issues. In either
     case, please submit the contents of ${LUV_DEBUG_FILE}."
 
-    plymouth_write "Recovery Boot. Saving debug info..."
-    sleep 1
-    plymouth_hide "Recovery Boot. Saving debug info..."
+    plymouth_write "Recovery Boot. Saving debug info..." 2
 
     mkdir -p ${LUV_STORAGE}
     if [ $? -eq 0 ]; then

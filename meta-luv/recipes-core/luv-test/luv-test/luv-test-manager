@@ -3,6 +3,8 @@
 # Copyright 2014 Intel Corporation; author Matt Fleming
 #
 
+. luv-message
+
 # ### Messages strings
 # warn the user when no partition is found
 alert_missing_partition="STOP! No partition found to store the results..please report to luv@lists.01.org"
@@ -38,14 +40,6 @@ if [ $? -eq 0 ]; then
     set -x
     set -v
 fi
-
-plymouth_write() {
-    /bin/plymouth display-message --text="$1"
-}
-
-plymouth_hide() {
-    /bin/plymouth hide-message --text="$1"
-}
 
 html_start()
 {

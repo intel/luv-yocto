@@ -35,6 +35,7 @@ SRC_URI += "file://luv-test-manager file://luv-test-parser \
             file://luv-dmesg-acpi-tables-dump \
             file://luv-reboot-poweroff.service \
             file://luv-reboot-poweroff \
+            file://luv-message \
           "
 
 RDEPENDS_${PN}+= "kernel-modules curl iputils iproute2 bash init-ifupdown dhcp-client gzip"
@@ -86,6 +87,9 @@ do_install_append() {
        # Install luv-dmesg-acpi-tables-dump in bin directory
        install -d ${D}${bindir}
        install -m 0755 ${WORKDIR}/luv-dmesg-acpi-tables-dump ${D}${bindir}
+
+       # Install script to show messages on plymouth screen
+       install -m 0755 ${WORKDIR}/luv-message ${D}${bindir}
 }
 
 FILES_${PN} += "${datadir}/luv/html/luv-scripts \
@@ -100,4 +104,5 @@ FILES_${PN} += "${datadir}/luv/html/luv-scripts \
 		${systemd_unitdir}/system/luv-reboot-poweroff.service \
 		${sbindir}/luv-reboot-poweroff \
 		${sysconfdir}/luv/parsers/test-manager \
-		${bindir}/submit_results"
+		${bindir}/submit_results \
+		${sbindir}/luv-message"
