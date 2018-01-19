@@ -1,0 +1,31 @@
+From e828fb6d958b2c463f208ad30ab39a1b18be14d2 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Thu, 18 Jan 2018 23:50:17 -0800
+Subject: [PATCH] plymouth: prevent overwriting of messages
+
+Certain messages displayed on plymouth screen get overwritten as their
+y-coordinate (determined by message_sprite_y) remains the same. For
+every such message, update the y-co-ordinate to change its position on
+the screen.
+
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
+---
+ themes/script/script.script | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/themes/script/script.script b/themes/script/script.script
+index b1e0ab9..8dd9009 100644
+--- a/themes/script/script.script
++++ b/themes/script/script.script
+@@ -183,6 +183,8 @@ fun display_message_callback (text)
+     {
+	message_sprites[message_sprite_count].SetPosition(Window.GetWidth()  / 2 - my_image.GetWidth()  / 2, message_sprite_y, 10000);
+	message_sprite_count++;
++       if (count)
++            message_sprite_y -= 15;
+     }
+   }
+ }
+--
+1.9.1
+
