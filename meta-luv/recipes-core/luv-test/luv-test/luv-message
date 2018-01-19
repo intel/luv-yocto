@@ -1,0 +1,17 @@
+#!/bin/bash
+#
+# Copyright 2018 Intel Corporation; author Megha Dey
+#
+
+plymouth_write() {
+    /bin/plymouth display-message --text="$1"
+
+    if [ $# == 2 ]; then
+         sleep $2
+         plymouth_hide "$1"
+    fi
+}
+
+plymouth_hide() {
+    /bin/plymouth hide-message --text="$1"
+}

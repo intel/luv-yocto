@@ -6,9 +6,7 @@
 # zip folder and then upload to a given webserver.
 #####################################################################
 
-plymouth_write() {
-    /bin/plymouth display-message --text="${1}"
-}
+. luv-message
 
 # check if the url is valid
 get_luv_url()
