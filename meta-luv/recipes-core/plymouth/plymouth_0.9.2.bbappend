@@ -13,11 +13,11 @@ def get_target_arch(d):
  import re
  target = d.getVar('TARGET_ARCH', True)
  if target == "x86_64":
-    return '6'
+    return '7'
  elif re.match('i.86', target):
-    return '5'
+    return '6'
  elif re.match('aarch64', target):
-    return '3'
+    return '4'
  else:
     raise bb.parse.SkipPackage("TARGET_ARCH %s not supported!" % target)
 
