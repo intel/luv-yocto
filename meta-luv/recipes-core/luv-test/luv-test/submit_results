@@ -22,6 +22,7 @@ get_luv_url()
             valid_exp='(https?|ftp|file)://[-A-Za-z0-9\+&@#/%?=~_|!:,.;]*[-A-Za-z0-9\+&@#/%=~_|]'
             if ! [[ ${storage_url} =~ $valid_exp ]] ; then
                 luv_msg_write "$alert_url_missing"
+                return 1
             else
                 return 0
             fi
