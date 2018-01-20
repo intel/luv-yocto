@@ -141,7 +141,7 @@ display_luv_version()
 {
     luv_version=$(cut -d\\ -f1 /etc/issue)
 
-    cat <<EOF | tee /dev/kmsg
+    cat <<EOF
     Welcome to ${luv_version}
 
     Running tests...
@@ -156,8 +156,8 @@ start_reports()
     html_start ${LUV_HTML_REPORT}
 
     # Begin the results files by stating the version of luv
-    cat <<EOF | html_inline ${LUV_HTML_REPORT} | tee -a /dev/kmsg \
-        ${LUV_SAVE_RESULTS_DIR}/luv.results /tmp/luv.results
+    cat <<EOF | html_inline ${LUV_HTML_REPORT} | tee -a \
+          ${LUV_SAVE_RESULTS_DIR}/luv.results /tmp/luv.results
     $luv_version
 
     Date and time of the system : $tstamp
@@ -209,23 +209,18 @@ luv_msg_write "Running tests..."
 LUV_TESTS_DIR=/etc/luv/tests/
 LUV_PARSER_DIR=/etc/luv/parsers/
 
-# all the messages from dmesg buffer comes with timestamp and since the
-# user space messages are being directed to dmesg via /dev/kmsg, most of
-# the messages miss the timestamp. In order to provide timestamp for each,
-# parse each user space message line by line via /dev/kmsg
-
 parse_line()
 {
     while read line ; do
     case $line in
         *+* )
-        echo ' ' $line
+        echo "[    `cut -d " " -f 1 /proc/uptime`0000]  $line"
         ;;
         * )
-        echo $line
+        echo "[    `cut -d " " -f 1 /proc/uptime`0000] $line"
         ;;
     esac
-    done | tee /dev/kmsg
+    done
 }
 
 runner_list=`ls -A ${LUV_TESTS_DIR}`
@@ -284,15 +279,15 @@ done
 cat ${LUV_SAVE_RESULTS_DIR}/luv.results | awk '/\[\+/  { units += 1 }
     /\[\-/ { suites += 1 }
     /pass/ { passes += 1 }
-    /fail/ { fails += $3 }
+    /fail/ { fails += $5 }
     /skip/ { skips += 1 }
-    /warn/ { warns += $3 }
+    /warn/ { warns += $5 }
     END {
 	printf("\nRan %d testsuites and %d unittests, %d passes, %d fails, %d skipped, %d warnings.\n",
 		suites, units, passes, fails, skips, warns) > "/tmp/testsuites"
     }'
 
-cat /tmp/testsuites | html_inline ${LUV_HTML_REPORT} | tee -a /dev/kmsg /tmp/luv.results \
+cat /tmp/testsuites | html_inline ${LUV_HTML_REPORT} | tee -a /tmp/luv.results \
          ${LUV_SAVE_RESULTS_DIR}/luv.results
 
 result=$(cat /tmp/testsuites)
