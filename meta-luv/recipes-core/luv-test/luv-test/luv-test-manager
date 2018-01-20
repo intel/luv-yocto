@@ -65,7 +65,6 @@ html_inline()
         print "<div class=\"inline\">" >> HTML
     }
     {
-        print $0
         print $0 "<br>">> HTML
     }
     END {
@@ -156,8 +155,8 @@ start_reports()
     html_start ${LUV_HTML_REPORT}
 
     # Begin the results files by stating the version of luv
-    cat <<EOF | html_inline ${LUV_HTML_REPORT} | tee -a \
-          ${LUV_SAVE_RESULTS_DIR}/luv.results /tmp/luv.results
+    cat <<EOF | tee -a ${LUV_SAVE_RESULTS_DIR}/luv.results \
+          /tmp/luv.results html_inline ${LUV_HTML_REPORT}
     $luv_version
 
     Date and time of the system : $tstamp

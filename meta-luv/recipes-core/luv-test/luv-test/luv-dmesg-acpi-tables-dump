@@ -20,7 +20,7 @@ gen_dmesg_acpi_dumps() {
     mkdir -p ${LUV_SAVE_RESULTS_DIR}/dumps
     if [ $? -eq 0 ] ; then
         cd ${LUV_SAVE_RESULTS_DIR}/dumps
-        fwts -d
+        fwts -d &> /dev/null
     else
         echo "Failed to create dumps directory"
     fi
@@ -42,7 +42,7 @@ list_dsms() {
 		mkdir -p temp
 		if [ $? -eq 0 ] ; then
 			cd temp
-			acpixtract -a ../acpidump.log
+			acpixtract -a ../acpidump.log &> /dev/null
 			dsdt_dat_file=`ls | grep "dsdt.dat"`
 			if [ -z "${dsdt_dat_file}" ] ; then
 				echo "Unable to find DSDT.dat file, aborting listing dsm's!"
@@ -52,12 +52,12 @@ list_dsms() {
 			if [ -z "${ssdt_dat_files}" ] ; then
 				echo "Didn't find any SSDT .dat files"
 			else
-				iasl -d ${ssdt_dat_files}
+				iasl -d ${ssdt_dat_files} &> /dev/null
 				ssdt_dsl_files=`ls | grep ".dsl"`
-				iasl -so ${ssdt_dsl_files}
+				iasl -so ${ssdt_dsl_files} &> /dev/null
 			fi
-			iasl -d dsdt.dat
-			iasl -so dsdt.dsl
+			iasl -d dsdt.dat &> /dev/null
+			iasl -so dsdt.dsl &> /dev/null
 			off_h_files=`ls | grep "offset.h"`
 			if [ -z "${off_h_files}" ] ; then
 				echo "Unable to find any offset.h files, aborting listing dsm's!"
