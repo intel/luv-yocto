@@ -322,14 +322,14 @@ class Tinfoil:
         self.server_connection = None
         self.recipes_parsed = False
         self.quiet = 0
+        self.oldhandlers = self.logger.handlers[:]
         if setup_logging:
             # This is the *client-side* logger, nothing to do with
             # logging messages from the server
-            oldhandlers = self.logger.handlers[:]
             bb.msg.logger_create('BitBake', output)
             self.localhandlers = []
             for handler in self.logger.handlers:
-                if handler not in oldhandlers:
+                if handler not in self.oldhandlers:
                     self.localhandlers.append(handler)
 
     def __enter__(self):
@@ -604,13 +604,16 @@ class Tinfoil:
         recipecache = self.cooker.recipecaches[mc]
         prov = self.find_best_provider(pn)
         fn = prov[3]
-        actual_pn = recipecache.pkg_fn[fn]
-        recipe = TinfoilRecipeInfo(recipecache,
-                                    self.config_data,
-                                    pn=actual_pn,
-                                    fn=fn,
-                                    fns=recipecache.pkg_pn[actual_pn])
-        return recipe
+        if fn:
+            actual_pn = recipecache.pkg_fn[fn]
+            recipe = TinfoilRecipeInfo(recipecache,
+                                        self.config_data,
+                                        pn=actual_pn,
+                                        fn=fn,
+                                        fns=recipecache.pkg_pn[actual_pn])
+            return recipe
+        else:
+            return None
 
     def parse_recipe(self, pn):
         """
@@ -834,6 +837,12 @@ class Tinfoil:
             bb.event.ui_queue = []
             self.server_connection.terminate()
             self.server_connection = None
+
+        # Restore logging handlers to how it looked when we started
+        if self.oldhandlers:
+            for handler in self.logger.handlers:
+                if handler not in self.oldhandlers:
+                    self.logger.handlers.remove(handler)
 
     def _reconvert_type(self, obj, origtypename):
         """

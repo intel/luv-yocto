@@ -8,9 +8,13 @@ DEPENDS = "kmod intltool-native gperf-native acl readline libcap libcgroup util-
 
 SECTION = "base/shell"
 
-inherit useradd pkgconfig autotools perlnative update-rc.d update-alternatives qemu systemd ptest gettext bash-completion manpages
+inherit useradd pkgconfig autotools perlnative update-rc.d update-alternatives qemu systemd ptest gettext bash-completion manpages distro_features_check
 
-SRC_URI += " \
+# As this recipe builds udev, respect systemd being in DISTRO_FEATURES so
+# that we don't build both udev and systemd in world builds.
+REQUIRED_DISTRO_FEATURES = "systemd"
+
+SRC_URI = "git://github.com/systemd/systemd.git;protocol=git \
            file://touchscreen.rules \
            file://00-create-volatile.conf \
            file://init \
@@ -27,6 +31,23 @@ SRC_URI += " \
            file://0017-remove-duplicate-include-uchar.h.patch \
            file://0018-check-for-uchar.h-in-configure.patch \
            file://0019-socket-util-don-t-fail-if-libc-doesn-t-support-IDN.patch \
+           file://0020-rules-watch-metadata-changes-in-ide-devices.patch \
+           file://0001-add-fallback-parse_printf_format-implementation.patch \
+           file://0002-src-basic-missing.h-check-for-missing-strndupa.patch \
+           file://0003-don-t-fail-if-GLOB_BRACE-and-GLOB_ALTDIRFUNC-is-not-.patch \
+           file://0004-src-basic-missing.h-check-for-missing-__compar_fn_t-.patch \
+           file://0006-Include-netinet-if_ether.h.patch \
+           file://0007-check-for-missing-canonicalize_file_name.patch \
+           file://0008-Do-not-enable-nss-tests.patch \
+           file://0009-test-hexdecoct.c-Include-missing.h-form-strndupa.patch \
+           file://0010-test-sizeof.c-Disable-tests-for-missing-typedefs-in-.patch \
+           file://0011-don-t-use-glibc-specific-qsort_r.patch \
+           file://0012-don-t-pass-AT_SYMLINK_NOFOLLOW-flag-to-faccessat.patch \
+           file://0013-comparison_fn_t-is-glibc-specific-use-raw-signature-.patch \
+           file://0001-Define-_PATH_WTMPX-and-_PATH_UTMPX-if-not-defined.patch \
+           file://0001-Use-uintmax_t-for-handling-rlim_t.patch \
+           file://0001-core-evaluate-presets-after-generators-have-run-6526.patch \
+           file://0001-main-skip-many-initialization-steps-when-running-in-.patch \
            "
 SRC_URI_append_qemuall = " file://0001-core-device.c-Change-the-default-device-timeout-to-2.patch"
 
@@ -36,97 +57,117 @@ PAM_PLUGINS = " \
     pam-plugin-keyinit \
 "
 
-PACKAGECONFIG ??= "xz \
-                   ${@bb.utils.filter('DISTRO_FEATURES', 'efi pam selinux ldconfig usrmerge', d)} \
-                   ${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'xkbcommon', '', d)} \
-                   ${@bb.utils.contains('DISTRO_FEATURES', 'wifi', 'rfkill', '', d)} \
-                   binfmt \
-                   randomseed \
-                   machined \
-                   backlight \
-                   vconsole \
-                   quotacheck \
-                   hostnamed \
-                   ${@bb.utils.contains('TCLIBC', 'glibc', 'myhostname sysusers', '', d)} \
-                   hibernate \
-                   timedated \
-                   timesyncd \
-                   localed \
-                   ima \
-                   smack \
-                   logind \
-                   firstboot \
-                   utmp \
-                   polkit \
-                   resolved \
-                   networkd \
+PACKAGECONFIG ??= " \
+    ${@bb.utils.filter('DISTRO_FEATURES', 'efi ldconfig pam selinux usrmerge', d)} \
+    ${@bb.utils.contains('DISTRO_FEATURES', 'wifi', 'rfkill', '', d)} \
+    ${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'xkbcommon', '', d)} \
+    backlight \
+    binfmt \
+    firstboot \
+    hibernate \
+    hostnamed \
+    ima \
+    localed \
+    logind \
+    machined \
+    myhostname \
+    networkd \
+    nss \
+    polkit \
+    quotacheck \
+    randomseed \
+    resolved \
+    smack \
+    sysusers \
+    timedated \
+    timesyncd \
+    utmp \
+    vconsole \
+    xz \
 "
-PACKAGECONFIG_remove_libc-musl = "selinux"
-PACKAGECONFIG_remove_libc-musl = "smack"
+
+PACKAGECONFIG_remove_libc-musl = " \
+    localed \
+    myhostname \
+    nss \
+    resolved \
+    selinux \
+    smack \
+    sysusers \
+    utmp \
+"
 
 # Use the upstream systemd serial-getty@.service and rely on
 # systemd-getty-generator instead of using the OE-core specific
 # systemd-serialgetty.bb - not enabled by default.
 PACKAGECONFIG[serial-getty-generator] = ""
 
-PACKAGECONFIG[journal-upload] = "--enable-libcurl,--disable-libcurl,curl"
+PACKAGECONFIG[audit] = "--enable-audit,--disable-audit,audit"
+PACKAGECONFIG[backlight] = "--enable-backlight,--disable-backlight"
+PACKAGECONFIG[binfmt] = "--enable-binfmt,--disable-binfmt"
+PACKAGECONFIG[bzip2] = "--enable-bzip2,--disable-bzip2,bzip2"
+PACKAGECONFIG[coredump] = "--enable-coredump,--disable-coredump"
+PACKAGECONFIG[cryptsetup] = "--enable-libcryptsetup,--disable-libcryptsetup,cryptsetup"
+PACKAGECONFIG[dbus] = "--enable-dbus,--disable-dbus,dbus"
+PACKAGECONFIG[efi] = "--enable-efi,--disable-efi"
+PACKAGECONFIG[elfutils] = "--enable-elfutils,--disable-elfutils,elfutils"
+PACKAGECONFIG[firstboot] = "--enable-firstboot,--disable-firstboot"
 # Sign the journal for anti-tampering
 PACKAGECONFIG[gcrypt] = "--enable-gcrypt,--disable-gcrypt,libgcrypt"
-PACKAGECONFIG[cryptsetup] = "--enable-libcryptsetup,--disable-libcryptsetup,cryptsetup"
-PACKAGECONFIG[microhttpd] = "--enable-microhttpd,--disable-microhttpd,libmicrohttpd"
-PACKAGECONFIG[elfutils] = "--enable-elfutils,--disable-elfutils,elfutils"
-PACKAGECONFIG[resolved] = "--enable-resolved,--disable-resolved"
-PACKAGECONFIG[networkd] = "--enable-networkd,--disable-networkd"
-PACKAGECONFIG[machined] = "--enable-machined,--disable-machined"
-PACKAGECONFIG[backlight] = "--enable-backlight,--disable-backlight"
-PACKAGECONFIG[vconsole] = "--enable-vconsole,--disable-vconsole,,${PN}-vconsole-setup"
-PACKAGECONFIG[quotacheck] = "--enable-quotacheck,--disable-quotacheck"
-PACKAGECONFIG[hostnamed] = "--enable-hostnamed,--disable-hostnamed"
-PACKAGECONFIG[myhostname] = "--enable-myhostname,--disable-myhostname"
-PACKAGECONFIG[rfkill] = "--enable-rfkill,--disable-rfkill"
 PACKAGECONFIG[hibernate] = "--enable-hibernate,--disable-hibernate"
-PACKAGECONFIG[timedated] = "--enable-timedated,--disable-timedated"
-PACKAGECONFIG[timesyncd] = "--enable-timesyncd,--disable-timesyncd"
-PACKAGECONFIG[localed] = "--enable-localed,--disable-localed"
-PACKAGECONFIG[efi] = "--enable-efi,--disable-efi"
+PACKAGECONFIG[hostnamed] = "--enable-hostnamed,--disable-hostnamed"
 PACKAGECONFIG[ima] = "--enable-ima,--disable-ima"
-PACKAGECONFIG[smack] = "--enable-smack,--disable-smack"
-# libseccomp is found in meta-security
-PACKAGECONFIG[seccomp] = "--enable-seccomp,--disable-seccomp,libseccomp"
-PACKAGECONFIG[logind] = "--enable-logind,--disable-logind"
-PACKAGECONFIG[sysusers] = "--enable-sysusers,--disable-sysusers"
-PACKAGECONFIG[firstboot] = "--enable-firstboot,--disable-firstboot"
-PACKAGECONFIG[randomseed] = "--enable-randomseed,--disable-randomseed"
-PACKAGECONFIG[binfmt] = "--enable-binfmt,--disable-binfmt"
-PACKAGECONFIG[utmp] = "--enable-utmp,--disable-utmp"
-PACKAGECONFIG[polkit] = "--enable-polkit,--disable-polkit"
 # importd requires curl/xz/zlib/bzip2/gcrypt
 PACKAGECONFIG[importd] = "--enable-importd,--disable-importd"
-PACKAGECONFIG[libidn] = "--enable-libidn,--disable-libidn,libidn"
-PACKAGECONFIG[audit] = "--enable-audit,--disable-audit,audit"
-PACKAGECONFIG[manpages] = "--enable-manpages,--disable-manpages,libxslt-native xmlto-native docbook-xml-dtd4-native docbook-xsl-stylesheets-native"
-PACKAGECONFIG[pam] = "--enable-pam,--disable-pam,libpam,${PAM_PLUGINS}"
-# Verify keymaps on locale change
-PACKAGECONFIG[xkbcommon] = "--enable-xkbcommon,--disable-xkbcommon,libxkbcommon"
 # Update NAT firewall rules
 PACKAGECONFIG[iptc] = "--enable-libiptc,--disable-libiptc,iptables"
-PACKAGECONFIG[ldconfig] = "--enable-ldconfig,--disable-ldconfig,,"
-PACKAGECONFIG[selinux] = "--enable-selinux,--disable-selinux,libselinux,initscripts-sushell"
-PACKAGECONFIG[valgrind] = "ac_cv_header_valgrind_memcheck_h=yes ac_cv_header_valgrind_valgrind_h=yes ,ac_cv_header_valgrind_memcheck_h=no ac_cv_header_valgrind_valgrind_h=no ,valgrind"
-PACKAGECONFIG[qrencode] = "--enable-qrencode,--disable-qrencode,qrencode"
-PACKAGECONFIG[dbus] = "--enable-dbus,--disable-dbus,dbus"
-PACKAGECONFIG[coredump] = "--enable-coredump,--disable-coredump"
-PACKAGECONFIG[bzip2] = "--enable-bzip2,--disable-bzip2,bzip2"
+PACKAGECONFIG[journal-upload] = "--enable-libcurl,--disable-libcurl,curl"
+PACKAGECONFIG[ldconfig] = "--enable-ldconfig,--disable-ldconfig"
+PACKAGECONFIG[libidn] = "--enable-libidn,--disable-libidn,libidn"
+PACKAGECONFIG[localed] = "--enable-localed,--disable-localed"
+PACKAGECONFIG[logind] = "--enable-logind,--disable-logind"
 PACKAGECONFIG[lz4] = "--enable-lz4,--disable-lz4,lz4"
+PACKAGECONFIG[machined] = "--enable-machined,--disable-machined"
+PACKAGECONFIG[manpages] = "--enable-manpages,--disable-manpages,libxslt-native xmlto-native docbook-xml-dtd4-native docbook-xsl-stylesheets-native"
+PACKAGECONFIG[microhttpd] = "--enable-microhttpd,--disable-microhttpd,libmicrohttpd"
+PACKAGECONFIG[myhostname] = "--enable-myhostname,--disable-myhostname"
+PACKAGECONFIG[networkd] = "--enable-networkd,--disable-networkd"
+PACKAGECONFIG[nss] = "--enable-nss-systemd,--disable-nss-systemd"
+PACKAGECONFIG[pam] = "--enable-pam,--disable-pam,libpam,${PAM_PLUGINS}"
+PACKAGECONFIG[polkit] = "--enable-polkit,--disable-polkit"
+PACKAGECONFIG[qrencode] = "--enable-qrencode,--disable-qrencode,qrencode"
+PACKAGECONFIG[quotacheck] = "--enable-quotacheck,--disable-quotacheck"
+PACKAGECONFIG[randomseed] = "--enable-randomseed,--disable-randomseed"
+PACKAGECONFIG[resolved] = "--enable-resolved,--disable-resolved"
+PACKAGECONFIG[rfkill] = "--enable-rfkill,--disable-rfkill"
+# libseccomp is found in meta-security
+PACKAGECONFIG[seccomp] = "--enable-seccomp,--disable-seccomp,libseccomp"
+PACKAGECONFIG[selinux] = "--enable-selinux,--disable-selinux,libselinux,initscripts-sushell"
+PACKAGECONFIG[smack] = "--enable-smack,--disable-smack"
+PACKAGECONFIG[sysusers] = "--enable-sysusers,--disable-sysusers"
+PACKAGECONFIG[timedated] = "--enable-timedated,--disable-timedated"
+PACKAGECONFIG[timesyncd] = "--enable-timesyncd,--disable-timesyncd"
+PACKAGECONFIG[usrmerge] = "--disable-split-usr,--enable-split-usr"
+PACKAGECONFIG[utmp] = "--enable-utmp,--disable-utmp"
+PACKAGECONFIG[valgrind] = "ac_cv_header_valgrind_memcheck_h=yes ac_cv_header_valgrind_valgrind_h=yes,ac_cv_header_valgrind_memcheck_h=no ac_cv_header_valgrind_valgrind_h=no,valgrind"
+PACKAGECONFIG[vconsole] = "--enable-vconsole,--disable-vconsole,,${PN}-vconsole-setup"
+# Verify keymaps on locale change
+PACKAGECONFIG[xkbcommon] = "--enable-xkbcommon,--disable-xkbcommon,libxkbcommon"
 PACKAGECONFIG[xz] = "--enable-xz,--disable-xz,xz"
 PACKAGECONFIG[zlib] = "--enable-zlib,--disable-zlib,zlib"
-PACKAGECONFIG[usrmerge] = "--disable-split-usr, --enable-split-usr"
 
-CACHED_CONFIGUREVARS += "ac_cv_path_KILL=${base_bindir}/kill"
-CACHED_CONFIGUREVARS += "ac_cv_path_KMOD=${base_bindir}/kmod"
-CACHED_CONFIGUREVARS += "ac_cv_path_QUOTACHECK=${sbindir}/quotacheck"
-CACHED_CONFIGUREVARS += "ac_cv_path_QUOTAON=${sbindir}/quotaon"
-CACHED_CONFIGUREVARS += "ac_cv_path_SULOGIN=${base_sbindir}/sulogin"
+# Hardcode target binary paths to avoid AC_PROG_PATH in the systemd
+# configure script detecting and setting paths from sysroot or host.
+CACHED_CONFIGUREVARS_class-target = " \
+    ac_cv_path_KEXEC=${sbindir}/kexec \
+    ac_cv_path_KILL=${base_bindir}/kill \
+    ac_cv_path_KMOD=${base_bindir}/kmod \
+    ac_cv_path_MOUNT_PATH=${base_bindir}/mount \
+    ac_cv_path_QUOTACHECK=${sbindir}/quotacheck \
+    ac_cv_path_QUOTAON=${sbindir}/quotaon \
+    ac_cv_path_SULOGIN=${base_sbindir}/sulogin \
+    ac_cv_path_UMOUNT_PATH=${base_bindir}/umount \
+"
 
 # Helper variables to clarify locations.  This mirrors the logic in systemd's
 # build system.
@@ -134,32 +175,17 @@ rootprefix ?= "${root_prefix}"
 rootlibdir ?= "${base_libdir}"
 rootlibexecdir = "${rootprefix}/lib"
 
-CACHED_CONFIGUREVARS_class-target = "\
-                         ac_cv_path_MOUNT_PATH=${base_bindir}/mount \
-                         ac_cv_path_UMOUNT_PATH=${base_bindir}/umount \
-                         ac_cv_path_KMOD=${base_bindir}/kmod \
-                         ac_cv_path_KILL=${base_bindir}/kill \
-                         ac_cv_path_SULOGIN=${base_sbindir}/sulogin \
-                         ac_cv_path_KEXEC=${sbindir}/kexec \
-                         ac_cv_path_QUOTACHECK=${sbindir}/quotacheck \
-                         ac_cv_path_QUOTAON=${sbindir}/quotaon \
-			 "
+EXTRA_OECONF = " \
+    --without-python \
+    --with-roothomedir=${ROOT_HOME} \
+    --with-rootlibdir=${rootlibdir} \
+    --with-rootprefix=${rootprefix} \
+    --with-sysvrcnd-path=${sysconfdir} \
+    --with-firmware-path=${nonarch_base_libdir}/firmware \
+"
 
-EXTRA_OECONF = " --with-rootprefix=${rootprefix} \
-                 --with-rootlibdir=${rootlibdir} \
-                 --with-roothomedir=${ROOT_HOME} \
-                 --without-python \
-                 --with-sysvrcnd-path=${sysconfdir} \
-                 --with-firmware-path=${nonarch_base_libdir}/firmware \
-               "
 # per the systemd README, define VALGRIND=1 to run under valgrind
 CFLAGS .= "${@bb.utils.contains('PACKAGECONFIG', 'valgrind', ' -DVALGRIND=1', '', d)}"
-
-# disable problematic GCC 5.2 optimizations [YOCTO #8291]
-FULL_OPTIMIZATION_append_arm = " -fno-schedule-insns -fno-schedule-insns2"
-
-# Avoid login failure on qemumips64 when pam is enabled
-FULL_OPTIMIZATION_append_mips64 = " -fno-tree-switch-conversion -fno-tree-tail-merge"
 
 COMPILER_NM ?= "${HOST_PREFIX}gcc-nm"
 COMPILER_AR ?= "${HOST_PREFIX}gcc-ar"
@@ -194,7 +220,6 @@ do_install() {
 	# Create machine-id
 	# 20:12 < mezcalero> koen: you have three options: a) run systemd-machine-id-setup at install time, b) have / read-only and an empty file there (for stateless) and c) boot with / writable
 	touch ${D}${sysconfdir}/machine-id
-
 
 	install -d ${D}${sysconfdir}/udev/rules.d/
 	install -d ${D}${sysconfdir}/tmpfiles.d
@@ -251,39 +276,39 @@ do_install() {
 	fi
 	install -Dm 0755 ${S}/src/systemctl/systemd-sysv-install.SKELETON ${D}${systemd_unitdir}/systemd-sysv-install
 
-       # If polkit is setup fixup permissions and ownership
-       if [ "${@bb.utils.contains('PACKAGECONFIG', 'polkit', 'polkit', '', d)}" = "polkit" ] ; then
-           if [ -d ${D}${datadir}/polkit-1/rules.d ] ; then
-               chmod 700 ${D}${datadir}/polkit-1/rules.d
-               chown polkitd:root ${D}${datadir}/polkit-1/rules.d
-           fi
-       fi
+	# If polkit is setup fixup permissions and ownership
+	if ${@bb.utils.contains('PACKAGECONFIG', 'polkit', 'true', 'false', d)}; then
+		if [ -d ${D}${datadir}/polkit-1/rules.d ]; then
+			chmod 700 ${D}${datadir}/polkit-1/rules.d
+			chown polkitd:root ${D}${datadir}/polkit-1/rules.d
+		fi
+	fi
 }
 
 do_install_ptest () {
-       # install data files needed for tests
-       install -d ${D}${PTEST_PATH}/tests/test
-       cp -rfL ${S}/test/* ${D}${PTEST_PATH}/tests/test
-       # python is disabled for systemd, thus removing these python testing scripts
-       rm ${D}${PTEST_PATH}/tests/test/*.py
-       sed -i 's/"tree"/"ls"/' ${D}${PTEST_PATH}/tests/test/udev-test.pl
+	# install data files needed for tests
+	install -d ${D}${PTEST_PATH}/tests/test
+	cp -rfL ${S}/test/* ${D}${PTEST_PATH}/tests/test
+	# python is disabled for systemd, thus removing these python testing scripts
+	rm ${D}${PTEST_PATH}/tests/test/*.py
+	sed -i 's/"tree"/"ls"/' ${D}${PTEST_PATH}/tests/test/udev-test.pl
 
-       install -d ${D}${PTEST_PATH}/tests/catalog
-       install ${S}/catalog/* ${D}${PTEST_PATH}/tests/catalog/
+	install -d ${D}${PTEST_PATH}/tests/catalog
+	install ${S}/catalog/* ${D}${PTEST_PATH}/tests/catalog/
 
-       install -D ${S}/build-aux/test-driver ${D}${PTEST_PATH}/tests/build-aux/test-driver
+	install -D ${S}/build-aux/test-driver ${D}${PTEST_PATH}/tests/build-aux/test-driver
 
-       install -d ${D}${PTEST_PATH}/tests/rules
-       install ${B}/rules/* ${D}${PTEST_PATH}/tests/rules/
+	install -d ${D}${PTEST_PATH}/tests/rules
+	install ${B}/rules/* ${D}${PTEST_PATH}/tests/rules/
 
-       # This directory needs to be there for udev-test.pl to work.
-       install -d ${D}${libdir}/udev/rules.d
+	# This directory needs to be there for udev-test.pl to work.
+	install -d ${D}${libdir}/udev/rules.d
 
-       # install actual test binaries
-       install -m 0755 ${B}/test-* ${D}${PTEST_PATH}/tests/
-       install -m 0755 ${B}/.libs/test-* ${D}${PTEST_PATH}/tests/
+	# install actual test binaries
+	install -m 0755 ${B}/test-* ${D}${PTEST_PATH}/tests/
+	install -m 0755 ${B}/.libs/test-* ${D}${PTEST_PATH}/tests/
 
-       install ${B}/Makefile ${D}${PTEST_PATH}/tests/
+	install ${B}/Makefile ${D}${PTEST_PATH}/tests/
 }
 
 python populate_packages_prepend (){
@@ -608,15 +633,4 @@ pkg_postinst_udev-hwdb () {
 
 pkg_prerm_udev-hwdb () {
 	rm -f $D${sysconfdir}/udev/hwdb.bin
-}
-
-# As this recipe builds udev, respect systemd being in DISTRO_FEATURES so
-# that we don't build both udev and systemd in world builds.
-python () {
-    if not bb.utils.contains ('DISTRO_FEATURES', 'systemd', True, False, d):
-        raise bb.parse.SkipPackage("'systemd' not in DISTRO_FEATURES")
-
-    import re
-    if re.match('.*musl*', d.getVar('TARGET_OS')) != None:
-        raise bb.parse.SkipPackage("Not _yet_ supported on musl based targets")
 }

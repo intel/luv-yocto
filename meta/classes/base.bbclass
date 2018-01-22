@@ -170,15 +170,9 @@ python base_do_unpack() {
         bb.fatal(str(e))
 }
 
-def pkgarch_mapping(d):
-    # Compatibility mappings of TUNE_PKGARCH (opt in)
-    if d.getVar("PKGARCHCOMPAT_ARMV7A"):
-        if d.getVar("TUNE_PKGARCH") == "armv7a-vfp-neon":
-            d.setVar("TUNE_PKGARCH", "armv7a")
-
 def get_layers_branch_rev(d):
     layers = (d.getVar("BBLAYERS") or "").split()
-    layers_branch_rev = ["%-17s = \"%s:%s\"" % (os.path.basename(i), \
+    layers_branch_rev = ["%-20s = \"%s:%s\"" % (os.path.basename(i), \
         base_get_metadata_git_branch(i, None).strip(), \
         base_get_metadata_git_revision(i, None)) \
             for i in layers]
@@ -206,7 +200,7 @@ def buildcfg_vars(d):
     for var in statusvars:
         value = d.getVar(var)
         if value is not None:
-            yield '%-17s = "%s"' % (var, value)
+            yield '%-20s = "%s"' % (var, value)
 
 def buildcfg_neededvars(d):
     needed_vars = oe.data.typed_value("BUILDCFG_NEEDEDVARS", d)
@@ -225,12 +219,11 @@ python base_eventhandler() {
     import bb.runqueue
 
     if isinstance(e, bb.event.ConfigParsed):
-        if not e.data.getVar("NATIVELSBSTRING", False):
-            e.data.setVar("NATIVELSBSTRING", lsb_distro_identifier(e.data))
-        e.data.setVar('BB_VERSION', bb.__version__)
-        pkgarch_mapping(e.data)
-        oe.utils.features_backfill("DISTRO_FEATURES", e.data)
-        oe.utils.features_backfill("MACHINE_FEATURES", e.data)
+        if not d.getVar("NATIVELSBSTRING", False):
+            d.setVar("NATIVELSBSTRING", lsb_distro_identifier(d))
+        d.setVar('BB_VERSION', bb.__version__)
+        oe.utils.features_backfill("DISTRO_FEATURES", d)
+        oe.utils.features_backfill("MACHINE_FEATURES", d)
         # Works with the line in layer.conf which changes PATH to point here
         setup_hosttools_dir(d.getVar('HOSTTOOLS_DIR'), 'HOSTTOOLS', d)
         setup_hosttools_dir(d.getVar('HOSTTOOLS_DIR'), 'HOSTTOOLS_NONFATAL', d, fatal=False)
@@ -246,7 +239,7 @@ python base_eventhandler() {
         e.mcdata[''].setVar("SIGGEN_EXCLUDE_SAFE_RECIPE_DEPS", deps)
 
     if isinstance(e, bb.event.BuildStarted):
-        localdata = bb.data.createCopy(e.data)
+        localdata = bb.data.createCopy(d)
         statuslines = []
         for func in oe.data.typed_value('BUILDCFG_FUNCS', localdata):
             g = globals()
@@ -257,7 +250,7 @@ python base_eventhandler() {
                 if flines:
                     statuslines.extend(flines)
 
-        statusheader = e.data.getVar('BUILDCFG_HEADER')
+        statusheader = d.getVar('BUILDCFG_HEADER')
         if statusheader:
             bb.plain('\n%s\n%s\n' % (statusheader, '\n'.join(statuslines)))
 
@@ -265,23 +258,23 @@ python base_eventhandler() {
     # target ones and we'd see dulpicate key names overwriting each other
     # for various PREFERRED_PROVIDERS
     if isinstance(e, bb.event.RecipePreFinalise):
-        if e.data.getVar("TARGET_PREFIX") == e.data.getVar("SDK_PREFIX"):
-            e.data.delVar("PREFERRED_PROVIDER_virtual/${TARGET_PREFIX}binutils")
-            e.data.delVar("PREFERRED_PROVIDER_virtual/${TARGET_PREFIX}gcc-initial")
-            e.data.delVar("PREFERRED_PROVIDER_virtual/${TARGET_PREFIX}gcc")
-            e.data.delVar("PREFERRED_PROVIDER_virtual/${TARGET_PREFIX}g++")
-            e.data.delVar("PREFERRED_PROVIDER_virtual/${TARGET_PREFIX}compilerlibs")
+        if d.getVar("TARGET_PREFIX") == d.getVar("SDK_PREFIX"):
+            d.delVar("PREFERRED_PROVIDER_virtual/${TARGET_PREFIX}binutils")
+            d.delVar("PREFERRED_PROVIDER_virtual/${TARGET_PREFIX}gcc-initial")
+            d.delVar("PREFERRED_PROVIDER_virtual/${TARGET_PREFIX}gcc")
+            d.delVar("PREFERRED_PROVIDER_virtual/${TARGET_PREFIX}g++")
+            d.delVar("PREFERRED_PROVIDER_virtual/${TARGET_PREFIX}compilerlibs")
 
     if isinstance(e, bb.runqueue.sceneQueueComplete):
-        completions = e.data.expand("${STAGING_DIR}/sstatecompletions")
+        completions = d.expand("${STAGING_DIR}/sstatecompletions")
         if os.path.exists(completions):
             cmds = set()
             with open(completions, "r") as f:
                 cmds = set(f)
-            e.data.setVar("completion_function", "\n".join(cmds))
-            e.data.setVarFlag("completion_function", "func", "1")
+            d.setVar("completion_function", "\n".join(cmds))
+            d.setVarFlag("completion_function", "func", "1")
             bb.debug(1, "Executing SceneQueue Completion commands: %s" % "\n".join(cmds))
-            bb.build.exec_func("completion_function", e.data)
+            bb.build.exec_func("completion_function", d)
             os.remove(completions)
 
     if isinstance(e, bb.event.RecipeParsed):
@@ -624,7 +617,7 @@ python () {
             d.appendVarFlag('do_unpack', 'depends', ' lzip-native:do_populate_sysroot')
 
         # *.xz should DEPEND on xz-native for unpacking
-        elif path.endswith('.xz'):
+        elif path.endswith('.xz') or path.endswith('.txz'):
             d.appendVarFlag('do_unpack', 'depends', ' xz-native:do_populate_sysroot')
 
         # .zip should DEPEND on unzip-native for unpacking
@@ -633,6 +626,10 @@ python () {
 
         # file is needed by rpm2cpio.sh
         elif path.endswith('.rpm'):
+            d.appendVarFlag('do_unpack', 'depends', ' xz-native:do_populate_sysroot')
+
+        # *.deb should DEPEND on xz-native for unpacking
+        elif path.endswith('.deb'):
             d.appendVarFlag('do_unpack', 'depends', ' xz-native:do_populate_sysroot')
 
     if needsrcrev:

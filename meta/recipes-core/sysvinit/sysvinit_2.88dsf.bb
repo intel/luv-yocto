@@ -28,8 +28,10 @@ SRC_URI[sha256sum] = "60bbc8c1e1792056e23761d22960b30bb13eccc2cabff8c7310a01f4d5
 S = "${WORKDIR}/sysvinit-${PV}"
 B = "${S}/src"
 
-inherit update-alternatives
+inherit update-alternatives distro_features_check
 DEPENDS_append = " update-rc.d-native base-passwd"
+
+REQUIRED_DISTRO_FEATURES = "sysvinit"
 
 ALTERNATIVE_${PN} = "init mountpoint halt reboot runlevel shutdown poweroff last lastb mesg utmpdump wall"
 
@@ -68,7 +70,7 @@ FILES_${PN} += "${base_sbindir}/* ${base_bindir}/*"
 FILES_sysvinit-pidof = "${base_bindir}/pidof.sysvinit ${base_sbindir}/killall5"
 FILES_sysvinit-sulogin = "${base_sbindir}/sulogin.sysvinit"
 
-RDEPENDS_${PN} += "sysvinit-pidof initscripts-functions"
+RDEPENDS_${PN} += "sysvinit-pidof initd-functions"
 
 CFLAGS_prepend = "-D_GNU_SOURCE "
 export LCRYPT = "-lcrypt"
@@ -104,9 +106,4 @@ do_install () {
 
 	chown root.shutdown ${D}${base_sbindir}/halt ${D}${base_sbindir}/shutdown
 	chmod o-x,u+s ${D}${base_sbindir}/halt ${D}${base_sbindir}/shutdown
-}
-
-python () {
-    if not bb.utils.contains('DISTRO_FEATURES', 'sysvinit', True, False, d):
-        raise bb.parse.SkipPackage("'sysvinit' not in DISTRO_FEATURES")
 }

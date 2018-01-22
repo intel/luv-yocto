@@ -12,7 +12,6 @@ SECTION = "libs"
 SUMMARY = "Berkeley Database v5"
 HOMEPAGE = "http://www.oracle.com/technetwork/database/database-technologies/berkeleydb/overview/index.html"
 LICENSE = "Sleepycat"
-VIRTUAL_NAME ?= "virtual/db"
 RCONFLICTS_${PN} = "db3"
 
 PR = "r1"
@@ -23,6 +22,7 @@ SRC_URI += "file://arm-thumb-mutex_db5.patch \
             file://fix-parallel-build.patch \
             file://0001-atomic-Rename-local-__atomic_compare_exchange-to-avo.patch \
             file://0001-configure-Add-explicit-tag-options-to-libtool-invoca.patch \
+            file://sequence-type.patch \
            "
 # We are not interested in official latest 6.x versions;
 # let's track what debian is using.
@@ -34,16 +34,7 @@ SRC_URI[sha256sum] = "e0a992d740709892e81f9d93f06daf305cf73fb81b545afe7247804317
 
 LIC_FILES_CHKSUM = "file://LICENSE;md5=ed1158e31437f4f87cdd4ab2b8613955"
 
-inherit autotools multilib_header
-
-# Put virtual/db in any appropriate provider of a
-# relational database, use it as a dependency in
-# place of a specific db and use:
-#
-# PREFERRED_PROVIDER_virtual/db
-#
-# to select the correct db in the build (distro) .conf
-PROVIDES += "${VIRTUAL_NAME}"
+inherit autotools
 
 # The executables go in a separate package - typically there
 # is no need to install these unless doing real database
@@ -111,8 +102,6 @@ do_install_append() {
 	mv ${D}/${includedir}/db_cxx.h ${D}/${includedir}/db51/.
 	ln -s db51/db.h ${D}/${includedir}/db.h
 	ln -s db51/db_cxx.h ${D}/${includedir}/db_cxx.h
-
-        oe_multilib_header db51/db.h
 
 	# The docs end up in /usr/docs - not right.
 	if test -d "${D}/${prefix}/docs"

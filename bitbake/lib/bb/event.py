@@ -173,6 +173,10 @@ def print_ui_queue():
             for event in ui_queue[:]:
                 if isinstance(event, logging.LogRecord):
                     logger.handle(event)
+        if msgerrs:
+            logger.removeHandler(stderr)
+        else:
+            logger.removeHandler(stdout)
 
 def fire_ui_handlers(event, d):
     global _thread_lock
@@ -445,12 +449,6 @@ class BuildBase(Event):
     def setName(self, name):
         self._name = name
 
-    def getCfg(self):
-        return self.data
-
-    def setCfg(self, cfg):
-        self.data = cfg
-
     def getFailures(self):
         """
         Return the number of failed packages
@@ -459,9 +457,6 @@ class BuildBase(Event):
 
     pkgs = property(getPkgs, setPkgs, None, "pkgs property")
     name = property(getName, setName, None, "name property")
-    cfg = property(getCfg, setCfg, None, "cfg property")
-
-
 
 class BuildInit(BuildBase):
     """buildFile or buildTargets was invoked"""

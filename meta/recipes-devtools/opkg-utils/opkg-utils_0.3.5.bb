@@ -11,6 +11,8 @@ SRC_URI = "http://git.yoctoproject.org/cgit/cgit.cgi/${BPN}/snapshot/${BPN}-${PV
            file://0001-Switch-all-scripts-to-use-Python-3.x.patch \
 "
 SRC_URI_append_class-native = " file://tar_ignore_error.patch"
+UPSTREAM_CHECK_URI = "http://git.yoctoproject.org/cgit/cgit.cgi/opkg-utils/refs/"
+
 
 SRC_URI[md5sum] = "a19e09c79bf1152aac62e8a120d679ff"
 SRC_URI[sha256sum] = "7f4b08912e26a3f4f6f423f3b4e7157a73b1f3a7483fc59b216d1a80b50b0c38"
@@ -18,7 +20,7 @@ SRC_URI[sha256sum] = "7f4b08912e26a3f4f6f423f3b4e7157a73b1f3a7483fc59b216d1a80b5
 TARGET_CC_ARCH += "${LDFLAGS}"
 
 # For native builds we use the host Python
-PYTHONRDEPS = "python3 python3-shell python3-io python3-math python3-crypt python3-logging python3-fcntl python3-subprocess python3-pickle python3-compression python3-textutils python3-stringold"
+PYTHONRDEPS = "python3 python3-shell python3-io python3-math python3-crypt python3-logging python3-fcntl python3-pickle python3-compression python3-stringold"
 PYTHONRDEPS_class-native = ""
 
 PACKAGECONFIG = "python update-alternatives"

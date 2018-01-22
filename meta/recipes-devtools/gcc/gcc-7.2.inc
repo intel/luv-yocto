@@ -10,8 +10,8 @@ BINV = "7.2.0"
 
 FILESEXTRAPATHS =. "${FILE_DIRNAME}/gcc-7.2:${FILE_DIRNAME}/gcc-7.2/backport:"
 
-DEPENDS =+ "mpfr gmp libmpc zlib"
-NATIVEDEPS = "mpfr-native gmp-native libmpc-native zlib-native"
+DEPENDS =+ "mpfr gmp libmpc zlib flex-native"
+NATIVEDEPS = "mpfr-native gmp-native libmpc-native zlib-native flex-native"
 
 LICENSE = "GPL-3.0-with-GCC-exception & GPLv3"
 
@@ -78,6 +78,8 @@ SRC_URI = "\
            ${BACKPORTS} \
 "
 BACKPORTS = "\
+           file://0051-ARM-PR-82445-suppress-32-bit-aligned-ldrd-strd-peeph.patch \
+           file://0001-PR-rtl-optimization-81803.patch \
 "
 SRC_URI[md5sum] = "ff370482573133a7fcdd96cd2f552292"
 SRC_URI[sha256sum] = "1cf7adf8ff4b5aa49041c8734bbcf1ad18cc4c94d0029aae0f4e48841088479a"

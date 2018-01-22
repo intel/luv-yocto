@@ -107,19 +107,30 @@ do_kernel_metadata() {
 				cmp "${WORKDIR}/defconfig" "${S}/arch/${ARCH}/configs/${KBUILD_DEFCONFIG}"
 				if [ $? -ne 0 ]; then
 					bbwarn "defconfig detected in WORKDIR. ${KBUILD_DEFCONFIG} skipped"
+				else
+					cp -f ${S}/arch/${ARCH}/configs/${KBUILD_DEFCONFIG} ${WORKDIR}/defconfig
 				fi
 			else
 				cp -f ${S}/arch/${ARCH}/configs/${KBUILD_DEFCONFIG} ${WORKDIR}/defconfig
-				sccs="${WORKDIR}/defconfig"
 			fi
+			sccs="${WORKDIR}/defconfig"
 		else
 			bbfatal "A KBUILD_DEFCONFIG '${KBUILD_DEFCONFIG}' was specified, but not present in the source tree"
 		fi
 	fi
 
-	sccs="$sccs ${@" ".join(find_sccs(d))}"
+	sccs_from_src_uri="${@" ".join(find_sccs(d))}"
 	patches="${@" ".join(find_patches(d))}"
 	feat_dirs="${@" ".join(find_kernel_feature_dirs(d))}"
+
+	# a quick check to make sure we don't have duplicate defconfigs
+	# If there's a defconfig in the SRC_URI, did we also have one from
+	# the KBUILD_DEFCONFIG processing above ?
+	if [ -n "$sccs" ]; then
+	    # we did have a defconfig from above. remove any that might be in the src_uri
+	    sccs_from_src_uri=$(echo $sccs_from_src_uri | sed 's/defconfig//g')
+	fi
+	sccs="$sccs $sccs_from_src_uri"
 
 	# check for feature directories/repos/branches that were part of the
 	# SRC_URI. If they were supplied, we convert them into include directives
@@ -146,7 +157,7 @@ do_kernel_metadata() {
 	if [ -z "$bsp_definition" ]; then
 		echo "$sccs" | grep -q defconfig
 		if [ $? -ne 0 ]; then
-			bberror "Could not locate BSP definition for ${KMACHINE}/${LINUX_KERNEL_TYPE} and no defconfig was provided"
+			bbfatal_log "Could not locate BSP definition for ${KMACHINE}/${LINUX_KERNEL_TYPE} and no defconfig was provided"
 		fi
 	fi
 	meta_dir=$(kgit --meta)

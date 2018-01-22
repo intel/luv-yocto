@@ -166,6 +166,10 @@ python inject_rm_work() {
     deps = set(bb.build.preceedtask('do_build', True, d))
     deps.difference_update(('do_build', 'do_rm_work_all'))
 
+    # deps can be empty if do_build doesn't exist, e.g. *-inital recipes
+    if not deps:
+        deps = ["do_populate_sysroot", "do_populate_lic"]
+
     if pn in excludes:
         d.delVarFlag('rm_work_rootfs', 'cleandirs')
         d.delVarFlag('rm_work_populatesdk', 'cleandirs')

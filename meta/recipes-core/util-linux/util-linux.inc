@@ -31,7 +31,7 @@ PACKAGES =+ "util-linux-agetty util-linux-fdisk util-linux-cfdisk util-linux-sfd
              util-linux-swaponoff util-linux-losetup util-linux-umount \
              util-linux-mount util-linux-readprofile util-linux-uuidd \
              util-linux-uuidgen util-linux-lscpu util-linux-fsck.cramfs util-linux-fsck \
-             util-linux-blkid util-linux-mkfs util-linux-mcookie util-linux-reset \
+             util-linux-blkid util-linux-mkfs util-linux-mcookie util-linux-rfkill \
              util-linux-lsblk util-linux-mkfs.cramfs util-linux-fstrim \
              util-linux-partx util-linux-hwclock util-linux-mountpoint \
              util-linux-findfs util-linux-getopt util-linux-sulogin util-linux-prlimit \
@@ -44,7 +44,7 @@ PACKAGES_DYNAMIC = "^util-linux-lib.*"
 SHARED_EXTRA_OECONF = "--disable-use-tty-group \
                        --disable-makeinstall-chown \
                        --enable-kill --enable-last --enable-mesg --enable-partx \
-                       --enable-raw --enable-reset --disable-login \
+                       --enable-raw --enable-rfkill --disable-login \
                        --disable-vipw --disable-newgrp --disable-chfn-chsh \
                        --enable-write --enable-mount \
                        --enable-libuuid --enable-libblkid --enable-fsck \
@@ -86,7 +86,7 @@ FILES_util-linux-umount = "${base_bindir}/umount.${BPN}"
 FILES_util-linux-readprofile = "${sbindir}/readprofile.${BPN}"
 FILES_util-linux-uuidgen = "${bindir}/uuidgen"
 FILES_util-linux-uuidd = "${sbindir}/uuidd"
-FILES_util-linux-reset = "${base_bindir}/reset*"
+FILES_util-linux-rfkill = "${base_bindir}/rfkill*"
 FILES_util-linux-partx = "${sbindir}/partx"
 FILES_util-linux-hwclock = "${base_sbindir}/hwclock.${BPN}"
 FILES_util-linux-findfs = "${sbindir}/findfs"
@@ -118,9 +118,6 @@ FILES_util-linux-switch-root = "${base_sbindir}/switch_root.${BPN}"
 FILES_util-linux-blkid = "${base_sbindir}/blkid*"
 RCONFLICTS_util-linux-blkid = "e2fsprogs-blkid"
 RREPLACES_util-linux-blkid = "e2fsprogs-blkid"
-
-# reset calls 'tput'
-RDEPENDS_util-linux-reset += "ncurses"
 
 RDEPENDS_util-linux-runuser += "libpam"
 RDEPENDS_util-linux-su += "libpam"
@@ -160,7 +157,7 @@ do_install () {
 
         sbinprogs="agetty ctrlaltdel cfdisk vipw vigr"
         sbinprogs_a="pivot_root hwclock mkswap mkfs.minix fsck.minix losetup swapon swapoff fdisk fsck blkid blockdev fstrim sulogin switch_root nologin"
-        binprogs_a="dmesg getopt kill more umount mount login reset su mountpoint"
+        binprogs_a="dmesg getopt kill more umount mount login rfkill su mountpoint"
 
         if [ "${base_sbindir}" != "${sbindir}" ]; then
         	mkdir -p ${D}${base_sbindir}
@@ -198,9 +195,8 @@ do_install () {
 	fi
 }
 
-# reset and nologin causes a conflict with ncurses-native and shadow-native
+# nologin causes a conflict with shadow-native
 do_install_append_class-native () {
-	rm -f ${D}${base_bindir}/reset
 	rm -f ${D}${base_sbindir}/nologin
 }
 
@@ -220,14 +216,14 @@ ALTERNATIVE_LINK_NAME[switch_root] = "${base_sbindir}/switch_root"
 ALTERNATIVE_LINK_NAME[eject] = "${bindir}/eject"
 ALTERNATIVE_LINK_NAME[nologin] = "${base_sbindir}/nologin"
 
-ALTERNATIVE_${PN}-doc = "mountpoint.1 last.1 lastb.1 mesg.1 wall.1 nologin.8 sulogin.8 utmpdump.1 reset.1 kill.1 libblkid.3 blkid.8 findfs.8 fsck.8 uuid.3 eject.1 logger.1"
+ALTERNATIVE_${PN}-doc = "mountpoint.1 last.1 lastb.1 mesg.1 wall.1 nologin.8 sulogin.8 utmpdump.1 rfkill.8 kill.1 libblkid.3 blkid.8 findfs.8 fsck.8 uuid.3 eject.1 logger.1"
 
 ALTERNATIVE_LINK_NAME[last.1] = "${mandir}/man1/last.1"
 ALTERNATIVE_LINK_NAME[lastb.1] = "${mandir}/man1/lastb.1"
 ALTERNATIVE_LINK_NAME[mesg.1] = "${mandir}/man1/mesg.1"
 ALTERNATIVE_LINK_NAME[mountpoint.1] = "${mandir}/man1/mountpoint.1"
 ALTERNATIVE_LINK_NAME[nologin.8] = "${mandir}/man8/nologin.8"
-ALTERNATIVE_LINK_NAME[reset.1] = "${mandir}/man1/reset.1"
+ALTERNATIVE_LINK_NAME[rfkill.8] = "${mandir}/man8/rfkill.8"
 ALTERNATIVE_LINK_NAME[sulogin.8] = "${mandir}/man8/sulogin.8"
 ALTERNATIVE_LINK_NAME[utmpdump.1] = "${mandir}/man1/utmpdump.1"
 ALTERNATIVE_LINK_NAME[wall.1] = "${mandir}/man1/wall.1"
@@ -272,9 +268,9 @@ ALTERNATIVE_LINK_NAME[fsck] = "${base_sbindir}/fsck"
 ALTERNATIVE_util-linux-blkid = "blkid"
 ALTERNATIVE_LINK_NAME[blkid] = "${base_sbindir}/blkid"
 
-ALTERNATIVE_util-linux-reset = "reset"
-ALTERNATIVE_LINK_NAME[reset] = "${bindir}/reset"
-ALTERNATIVE_TARGET[reset] = "${base_bindir}/reset"
+ALTERNATIVE_util-linux-rfkill = "rfkill"
+ALTERNATIVE_LINK_NAME[rfkill] = "${sbindir}/rfkill"
+ALTERNATIVE_TARGET[rfkill] = "${base_bindir}/rfkill"
 
 ALTERNATIVE_util-linux-getopt = "getopt"
 ALTERNATIVE_LINK_NAME[getopt] = "${base_bindir}/getopt"
@@ -304,7 +300,7 @@ python populate_packages_prepend() {
 }
 
 RDEPENDS_${PN}-bash-completion += "util-linux-lsblk"
-RDEPENDS_${PN}-ptest = "bash grep coreutils"
+RDEPENDS_${PN}-ptest = "bash grep coreutils which util-linux-blkid util-linux-fsck btrfs-tools"
 
 do_compile_ptest() {
     oe_runmake buildtest-TESTS
@@ -312,23 +308,30 @@ do_compile_ptest() {
 
 do_install_ptest() {
     mkdir -p ${D}${PTEST_PATH}/tests/ts
-    find . -maxdepth 1 -type f -perm -111 -exec cp {} ${D}${PTEST_PATH} \;
-    cp ${S}/tests/functions.sh ${D}${PTEST_PATH}/tests/
-    cp ${S}/tests/commands.sh ${D}${PTEST_PATH}/tests/
-    cp ${S}/tests/run.sh ${D}${PTEST_PATH}/tests/
-    cp -pR ${S}/tests/expected ${D}${PTEST_PATH}/tests/expected
+    find . -name 'test*' -maxdepth 1 -type f -perm -111 -exec cp {} ${D}${PTEST_PATH} \;
+    find ./.libs -name 'sample*' -maxdepth 1 -type f -perm -111 -exec cp {} ${D}${PTEST_PATH} \;
+    find ./.libs -name 'test*' -maxdepth 1 -type f -perm -111 -exec cp {} ${D}${PTEST_PATH} \;
 
-    list="bitops build-sys cal col colrm column dmesg fsck hexdump hwclock ipcs isosize login look md5 misc more namei paths schedutils script swapon"
-    # The following tests are not installed  yet:
-    # blkid scsi_debug module dependent
-    # cramfs gcc dependent
-    # eject gcc dependent
-    # fdisk scsi_debug module and gcc dependent
-    # lscpu gcc dependant
-    # libmount uuidgen dependent
-    # mount gcc dependant
-    # partx blkid dependant
-    for d in $list; do
-        cp -pR ${S}/tests/ts/$d ${D}${PTEST_PATH}/tests/ts/
-    done
+    cp ${S}/tests/*.sh ${D}${PTEST_PATH}/tests/
+    cp -pR ${S}/tests/expected ${D}${PTEST_PATH}/tests/expected
+    cp -pR ${S}/tests/ts ${D}${PTEST_PATH}/tests/
+    cp ${WORKDIR}/build/config.h ${D}${PTEST_PATH}
+
+    # The original paths of executables to be tested point to a local folder containing
+    # the executables. We want to test the installed executables, not the local copies.
+    # So strip the paths, the executables will be located via "which"
+    sed  -i \
+         -e '/^TS_CMD/ s|$top_builddir/||g' \
+         -e '/^TS_HELPER/ s|$top_builddir|${PTEST_PATH}|g' \
+         ${D}${PTEST_PATH}/tests/commands.sh
+
+    # Change 'if [ ! -x "$1" ]' to 'if [ ! -x "`which $1 2>/dev/null`"]'
+    sed -i -e \
+        '/^\tif[[:space:]]\[[[:space:]]![[:space:]]-x[[:space:]]"$1"/s|$1|`which $1 2>/dev/null`|g' \
+         ${D}${PTEST_PATH}/tests/functions.sh
+
+    # "kill -L" behaves differently than "/bin/kill -L" so we need an additional fix
+    sed -i -e \
+         '/^TS_CMD_KILL/ s|kill|/bin/kill|g' \
+         ${D}${PTEST_PATH}/tests/commands.sh
 }

@@ -9,7 +9,7 @@ import time
 from .ssh import OESSHTarget
 from oeqa.utils.qemurunner import QemuRunner
 
-supported_fstypes = ['ext3', 'ext4', 'cpio.gz', 'wic', 'elf']
+supported_fstypes = ['ext3', 'ext4', 'cpio.gz', 'wic']
 
 class OEQemuTarget(OESSHTarget):
     def __init__(self, logger, ip, server_ip, timeout=300, user='root',
@@ -31,7 +31,7 @@ class OEQemuTarget(OESSHTarget):
                                  deploy_dir_image=dir_image, display=display,
                                  logfile=bootlog, boottime=boottime,
                                  use_kvm=kvm, dump_dir=dump_dir,
-                                 dump_host_cmds=dump_host_cmds)
+                                 dump_host_cmds=dump_host_cmds, logger=logger)
 
     def start(self, params=None, extra_bootparams=None):
         if self.runner.start(params, extra_bootparams=extra_bootparams):

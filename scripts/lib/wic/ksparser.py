@@ -144,6 +144,7 @@ class KickStart():
         part.add_argument('--no-table', action='store_true')
         part.add_argument('--ondisk', '--ondrive', dest='disk', default='sda')
         part.add_argument("--overhead-factor", type=overheadtype)
+        part.add_argument('--part-name')
         part.add_argument('--part-type')
         part.add_argument('--rootfs-dir')
 
@@ -160,6 +161,7 @@ class KickStart():
         part.add_argument('--system-id', type=systemidtype)
         part.add_argument('--use-uuid', action='store_true')
         part.add_argument('--uuid')
+        part.add_argument('--fsuuid')
 
         bootloader = subparsers.add_parser('bootloader')
         bootloader.add_argument('--append')
@@ -194,6 +196,11 @@ class KickStart():
                         raise KickStartError('%s:%d: %s' % \
                                              (confpath, lineno, err))
                     if line.startswith('part'):
+                        # SquashFS does not support UUID
+                        if parsed.fstype == 'squashfs' and parsed.use_uuid:
+                            err = "%s:%d: SquashFS does not support UUID" \
+                                  % (confpath, lineno)
+                            raise KickStartError(err)
                         # using ArgumentParser one cannot easily tell if option
                         # was passed as argument, if said option has a default
                         # value; --overhead-factor/--extra-space cannot be used

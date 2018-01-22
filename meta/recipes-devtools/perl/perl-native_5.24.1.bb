@@ -1,8 +1,7 @@
 require perl.inc
 
 # We need gnugrep (for -I)
-DEPENDS = "virtual/db-native grep-native"
-DEPENDS += "gdbm-native zlib-native"
+DEPENDS = "db-native grep-native gdbm-native zlib-native"
 
 EXTRA_OEMAKE = "-e MAKEFLAGS="
 
@@ -32,6 +31,7 @@ do_configure () {
 		-Dcc="${CC}" \
 		-Dcflags="${CFLAGS}" \
 		-Dldflags="${LDFLAGS}" \
+		-Dlddlflags="${LDFLAGS} -shared" \
 		-Dcf_by="Open Embedded" \
 		-Dprefix=${prefix} \
 		-Dvendorprefix=${prefix} \

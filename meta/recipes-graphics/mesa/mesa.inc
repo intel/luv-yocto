@@ -18,7 +18,7 @@ DEPENDS = "expat makedepend-native flex-native bison-native libxml2-native zlib 
 EXTRANATIVEPATH += "chrpath-native"
 PROVIDES = "virtual/libgl virtual/libgles1 virtual/libgles2 virtual/egl virtual/mesa"
 
-inherit autotools pkgconfig gettext distro_features_check
+inherit autotools pkgconfig python3native gettext distro_features_check
 
 ANY_OF_DISTRO_FEATURES = "opengl vulkan"
 
@@ -45,7 +45,7 @@ X11_DEPS = "xf86driproto glproto virtual/libx11 libxext libxxf86vm libxdamage li
 # "x11" requires "opengl"
 PACKAGECONFIG[x11] = "--enable-glx-tls,--disable-glx,${X11_DEPS}"
 PACKAGECONFIG[xvmc] = "--enable-xvmc,--disable-xvmc,libxvmc"
-PACKAGECONFIG[wayland] = ",,wayland-native wayland libdrm"
+PACKAGECONFIG[wayland] = ",,wayland-native wayland libdrm wayland-protocols"
 
 DRIDRIVERS = "swrast"
 DRIDRIVERS_append_x86 = ",radeon,r200,nouveau,i965,i915"
@@ -59,7 +59,7 @@ PACKAGECONFIG[dri3] = "--enable-dri3, --disable-dri3, dri3proto presentproto lib
 VULKAN_DRIVERS = ""
 VULKAN_DRIVERS_append_x86 = ",intel"
 VULKAN_DRIVERS_append_x86-64 = ",intel"
-PACKAGECONFIG[vulkan] = "--with-vulkan-drivers=${VULKAN_DRIVERS}, --without-vulkan-drivers"
+PACKAGECONFIG[vulkan] = "--with-vulkan-drivers=${VULKAN_DRIVERS}, --without-vulkan-drivers, python3-mako-native"
 
 PACKAGECONFIG[opengl] = "--enable-opengl, --disable-opengl"
 

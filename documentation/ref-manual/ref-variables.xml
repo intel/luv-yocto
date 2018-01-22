@@ -22,7 +22,7 @@
        <link linkend='var-D'>D</link>
        <link linkend='var-EFI_PROVIDER'>E</link>
        <link linkend='var-FEATURE_PACKAGES'>F</link>
-       <link linkend='var-GDB'>G</link>
+       <link linkend='var-GCCPIE'>G</link>
        <link linkend='var-HOMEPAGE'>H</link>
        <link linkend='var-ICECC_DISABLED'>I</link>
 <!--               <link linkend='var-glossary-j'>J</link> -->
@@ -977,6 +977,32 @@
             </glossdef>
         </glossentry>
 
+        <glossentry id='var-BB_SERVER_TIMEOUT'><glossterm>BB_SERVER_TIMEOUT</glossterm>
+            <info>
+                BB_SERVER_TIMEOUT [doc] = "Specifies the time (in seconds) after which to unload the BitBake server due to inactivity."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Specifies the time (in seconds) after which to unload the
+                    BitBake server due to inactivity.
+                    Set <filename>BB_SERVER_TIMEOUT</filename> to determine how
+                    long the BitBake server stays resident between invocations.
+                </para>
+
+                <para>
+                    For example, the following statement in your
+                    <filename>local.conf</filename> file instructs the server
+                    to be unloaded after 20 seconds of inactivity:
+                    <literallayout class='monospaced'>
+     BB_SERVER_TIMEOUT = "20"
+                    </literallayout>
+                    If you want the server to never be unloaded, set
+                    <filename>BB_SERVER_TIMEOUT</filename> to "-1".
+                </para>
+            </glossdef>
+        </glossentry>
+
         <glossentry id='var-BBCLASSEXTEND'><glossterm>BBCLASSEXTEND</glossterm>
             <info>
                 BBCLASSEXTEND[doc] = "Allows you to extend a recipe so that it builds variants of the software. Common variants for recipes are 'native', 'cross', 'nativesdk' and multilibs."
@@ -1112,6 +1138,53 @@
                 <para role="glossdeffirst">
 <!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
                     List of recipe files used by BitBake to build software.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-BBFILES_DYNAMIC'><glossterm>BBFILES_DYNAMIC</glossterm>
+            <info>
+                BBFILES_DYNAMIC[doc] = "Activates content when identified layers are present."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Activates content when identified layers are present.
+                    You identify the layers by the collections that the layers
+                    define.
+                </para>
+
+                <para>
+                    Use the <filename>BBFILES_DYNAMIC</filename> variable to
+                    avoid <filename>.bbappend</filename> files whose
+                    corresponding <filename>.bb</filename> file is in a layer
+                    that attempts to modify other layers through
+                    <filename>.bbappend</filename> but does not want to
+                    introduce a hard dependency on those other layers.
+                </para>
+
+                <para>
+                    Use the following form for
+                    <filename>BBFILES_DYNAMIC</filename>:
+                    <literallayout class='monospaced'>
+     <replaceable>collection_name</replaceable>:<replaceable>filename_pattern</replaceable>
+                    </literallayout>
+                    The following example identifies two collection names and
+                    two filename patterns:
+                    <literallayout class='monospaced'>
+     BBFILES_DYNAMIC += " \
+         clang-layer:${LAYERDIR}/bbappends/meta-clang/*/*/*.bbappend \
+         core:${LAYERDIR}/bbappends/openembedded-core/meta/*/*/*.bbappend \
+     "
+                    </literallayout>
+                    This next example shows an error message that occurs
+                    because invalid entries are found, which cause parsing to
+                    abort:
+                    <literallayout class='monospaced'>
+     ERROR: BBFILES_DYNAMIC entries must be of the form &lt;collection name&gt;:&lt;filename pattern&gt;, not:
+         /work/my-layer/bbappends/meta-security-isafw/*/*/*.bbappend
+         /work/my-layer/bbappends/openembedded-core/meta/*/*/*.bbappend
+                    </literallayout>
                 </para>
             </glossdef>
         </glossentry>
@@ -5003,6 +5076,30 @@
     </glossdiv>
 
     <glossdiv id='var-glossary-g'><title>G</title>
+
+        <glossentry id='var-GCCPIE'><glossterm>GCCPIE</glossterm>
+            <info>
+                GCCPIE[doc] = "Enables Position Independent Executables (PIE) within the GNU C Compiler (GCC)."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Enables Position Independent Executables (PIE) within the
+                    GNU C Compiler (GCC).
+                    Enabling PIE in the GCC makes Return Oriented Programming
+                    (ROP) attacks much more difficult to
+                    execute.
+                </para>
+
+                <para>
+                    By default the <filename>security_flags.inc</filename>
+                    file enables PIE by setting the variable as follows:
+                    <literallayout class='monospaced'>
+     GCCPIE ?= "--enable-default-pie"
+                    </literallayout>
+                </para>
+            </glossdef>
+        </glossentry>
 
         <glossentry id='var-GDB'><glossterm>GDB</glossterm>
             <info>

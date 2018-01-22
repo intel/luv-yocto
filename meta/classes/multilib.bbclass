@@ -76,7 +76,6 @@ python multilib_virtclass_handler () {
     newtune = e.data.getVar("DEFAULTTUNE_" + "virtclass-multilib-" + variant, False)
     if newtune:
         e.data.setVar("DEFAULTTUNE", newtune)
-        e.data.setVar('DEFAULTTUNE_ML_%s' % variant, newtune)
 }
 
 addhandler multilib_virtclass_handler
@@ -100,8 +99,8 @@ python __anonymous () {
         d.setVar("LINGUAS_INSTALL", "")
         # FIXME, we need to map this to something, not delete it!
         d.setVar("PACKAGE_INSTALL_ATTEMPTONLY", "")
-
-    if bb.data.inherits_class('image', d):
+        bb.build.deltask('do_populate_sdk', d)
+        bb.build.deltask('do_populate_sdk_ext', d)
         return
 
     clsextend.map_depends_variable("DEPENDS")
@@ -115,7 +114,6 @@ python __anonymous () {
 
     clsextend.map_packagevars()
     clsextend.map_regexp_variable("PACKAGES_DYNAMIC")
-    clsextend.map_variable("PACKAGE_INSTALL")
     clsextend.map_variable("INITSCRIPT_PACKAGES")
     clsextend.map_variable("USERADD_PACKAGES")
     clsextend.map_variable("SYSTEMD_PACKAGES")

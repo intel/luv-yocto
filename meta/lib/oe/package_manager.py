@@ -120,7 +120,7 @@ class OpkgIndexer(Indexer):
     def write_index(self):
         arch_vars = ["ALL_MULTILIB_PACKAGE_ARCHS",
                      "SDK_PACKAGE_ARCHS",
-                     "MULTILIB_ARCHS"]
+                     ]
 
         opkg_index_cmd = bb.utils.which(os.getenv('PATH'), "opkg-make-index")
         if self.d.getVar('PACKAGE_FEED_SIGN') == '1':
@@ -460,7 +460,6 @@ class RpmPM(PackageManager):
                  target_rootfs,
                  target_vendor,
                  task_name='target',
-                 providename=None,
                  arch_var=None,
                  os_var=None):
         super(RpmPM, self).__init__(d)
@@ -692,7 +691,7 @@ class RpmPM(PackageManager):
         return packages
 
     def update(self):
-        self._invoke_dnf(["makecache"])
+        self._invoke_dnf(["makecache", "--refresh"])
 
     def _invoke_dnf(self, dnf_args, fatal = True, print_output = True ):
         os.environ['RPM_ETCCONFIGDIR'] = self.target_rootfs
@@ -706,6 +705,7 @@ class RpmPM(PackageManager):
                              "--setopt=logdir=%s" % (self.d.getVar('T'))
                             ]
         cmd = [dnf_cmd] + standard_dnf_args + dnf_args
+        bb.note('Running %s' % ' '.join(cmd))
         try:
             output = subprocess.check_output(cmd,stderr=subprocess.STDOUT).decode("utf-8")
             if print_output:

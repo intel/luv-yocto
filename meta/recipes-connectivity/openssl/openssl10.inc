@@ -135,6 +135,12 @@ do_configure () {
 	linux-powerpc64)
 		target=linux-ppc64
 		;;
+	linux-riscv64)
+		target=linux-generic64
+		;;
+	linux-riscv32)
+		target=linux-generic32
+		;;
 	linux-supersparc)
 		target=linux-sparcv8
 		;;
@@ -255,6 +261,12 @@ do_install_ptest () {
 	for d in ssltest_old v3ext x509aux; do
 		rm -rf ${D}${libdir}/${BPN}/ptest/test/$d
 	done
+
+	# Remove build host references
+	sed -i \
+       -e 's,--sysroot=${STAGING_DIR_TARGET},,g' \
+       -e 's|${DEBUG_PREFIX_MAP}||g' \
+       ${D}${PTEST_PATH}/Makefile ${D}${PTEST_PATH}/Configure
 }
 
 do_install_append_class-native() {

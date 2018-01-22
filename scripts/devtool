@@ -113,6 +113,7 @@ def read_workspace():
     externalsrc_re = re.compile(r'^EXTERNALSRC(_pn-([^ =]+))? *= *"([^"]*)"$')
     for fn in glob.glob(os.path.join(config.workspace_path, 'appends', '*.bbappend')):
         with open(fn, 'r') as f:
+            pnvalues = {}
             for line in f:
                 res = externalsrc_re.match(line.rstrip())
                 if res:
@@ -125,10 +126,16 @@ def read_workspace():
                                                         bbfile))
                     if recipefile:
                         recipefile = recipefile[0]
-                    workspace[pn] = {'srctree': res.group(3),
-                                     'bbappend': fn,
-                                     'recipefile': recipefile}
-                    logger.debug('Found recipe %s' % workspace[pn])
+                    pnvalues['srctree'] = res.group(3)
+                    pnvalues['bbappend'] = fn
+                    pnvalues['recipefile'] = recipefile
+                elif line.startswith('# srctreebase: '):
+                    pnvalues['srctreebase'] = line.split(':', 1)[1].strip()
+            if pnvalues:
+                if not pnvalues.get('srctreebase', None):
+                    pnvalues['srctreebase'] = pnvalues['srctree']
+                logger.debug('Found recipe %s' % pnvalues)
+                workspace[pn] = pnvalues
 
 def create_workspace(args, config, basepath, workspace):
     if args.layerpath:
@@ -182,7 +189,11 @@ def _enable_workspace_layer(workspacedir, config, basepath):
     if not os.path.exists(bblayers_conf):
         logger.error('Unable to find bblayers.conf')
         return
-    _, added = bb.utils.edit_bblayers_conf(bblayers_conf, workspacedir, config.workspace_path)
+    if os.path.abspath(workspacedir) != os.path.abspath(config.workspace_path):
+        removedir = config.workspace_path
+    else:
+        removedir = None
+    _, added = bb.utils.edit_bblayers_conf(bblayers_conf, workspacedir, removedir)
     if added:
         logger.info('Enabling workspace layer in bblayers.conf')
     if config.workspace_path != workspacedir:

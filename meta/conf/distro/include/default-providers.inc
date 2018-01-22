@@ -1,8 +1,6 @@
 #
 # Default virtual providers
 #
-PREFERRED_PROVIDER_virtual/db ?= "db"
-PREFERRED_PROVIDER_virtual/db-native ?= "db-native"
 PREFERRED_PROVIDER_virtual/xserver ?= "xserver-xorg"
 PREFERRED_PROVIDER_virtual/xserver-xf86 ?= "xserver-xorg"
 PREFERRED_PROVIDER_virtual/egl ?= "mesa"
@@ -56,3 +54,4 @@ PREFERRED_PROVIDER_nativesdk-openssl ?= "nativesdk-openssl"
 PREFERRED_PROVIDER_pkgconfig ?= "pkgconfig"
 PREFERRED_PROVIDER_nativesdk-pkgconfig ?= "nativesdk-pkgconfig"
 PREFERRED_PROVIDER_pkgconfig-native ?= "pkgconfig-native"
+PREFERRED_RPROVIDER_initd-functions ?= "initscripts"

@@ -145,13 +145,17 @@ IMAGE_TYPE_wic = "image_types_wic"
 inherit ${IMAGE_TYPE_wic}
 
 python () {
+    def extraimage_getdepends(task):
+        deps = ""
+        for dep in (d.getVar('EXTRA_IMAGEDEPENDS') or "").split():
+            deps += " %s:%s" % (dep, task)
+        return deps
+
+    d.appendVarFlag('do_image', 'depends', extraimage_getdepends('do_populate_lic'))
+    d.appendVarFlag('do_image_complete', 'depends', extraimage_getdepends('do_populate_sysroot'))
+
     deps = " " + imagetypes_getdepends(d)
     d.appendVarFlag('do_rootfs', 'depends', deps)
-
-    deps = ""
-    for dep in (d.getVar('EXTRA_IMAGEDEPENDS') or "").split():
-        deps += " %s:do_populate_sysroot" % dep
-    d.appendVarFlag('do_image_complete', 'depends', deps)
 
     #process IMAGE_FEATURES, we must do this before runtime_mapping_rename
     #Check for replaces image features
@@ -437,9 +441,14 @@ python () {
         # This means the task's hash can be stable rather than having hardcoded
         # date/time values. It will get expanded at execution time.
         # Similarly TMPDIR since otherwise we see QA stamp comparision problems
+        # Expand PV else it can trigger get_srcrev which can fail due to these variables being unset
+        localdata.setVar('PV', d.getVar('PV'))
         localdata.delVar('DATETIME')
         localdata.delVar('DATE')
         localdata.delVar('TMPDIR')
+        vardepsexclude = (d.getVarFlag('IMAGE_CMD_' + realt, 'vardepsexclude', True) or '').split()
+        for dep in vardepsexclude:
+            localdata.delVar(dep)
 
         image_cmd = localdata.getVar("IMAGE_CMD")
         vardeps.add('IMAGE_CMD_' + realt)
@@ -503,7 +512,7 @@ python () {
         d.prependVarFlag(task, 'postfuncs', ' create_symlinks')
         d.appendVarFlag(task, 'subimages', ' ' + ' '.join(subimages))
         d.appendVarFlag(task, 'vardeps', ' ' + ' '.join(vardeps))
-        d.appendVarFlag(task, 'vardepsexclude', 'DATETIME DATE')
+        d.appendVarFlag(task, 'vardepsexclude', 'DATETIME DATE ' + ' '.join(vardepsexclude))
 
         bb.debug(2, "Adding task %s before %s, after %s" % (task, 'do_image_complete', after))
         bb.build.addtask(task, 'do_image_complete', after, d)
@@ -527,21 +536,29 @@ def get_rootfs_size(d):
     output = subprocess.check_output(['du', '-ks',
                                       d.getVar('IMAGE_ROOTFS')])
     size_kb = int(output.split()[0])
-    base_size = size_kb * overhead_factor
-    base_size = max(base_size, rootfs_req_size) + rootfs_extra_space
 
+    base_size = size_kb * overhead_factor
+    bb.debug(1, '%f = %d * %f' % (base_size, size_kb, overhead_factor))
+    base_size2 = max(base_size, rootfs_req_size) + rootfs_extra_space
+    bb.debug(1, '%f = max(%f, %d)[%f] + %d' % (base_size2, base_size, rootfs_req_size, max(base_size, rootfs_req_size), overhead_factor))
+
+    base_size = base_size2
     if base_size != int(base_size):
         base_size = int(base_size + 1)
     else:
         base_size = int(base_size)
+    bb.debug(1, '%f = int(%f)' % (base_size, base_size2))
 
+    base_size_saved = base_size
     base_size += rootfs_alignment - 1
     base_size -= base_size % rootfs_alignment
+    bb.debug(1, '%d = aligned(%d)' % (base_size, base_size_saved))
 
     # Do not check image size of the debugfs image. This is not supposed
     # to be deployed, etc. so it doesn't make sense to limit the size
     # of the debug.
     if (d.getVar('IMAGE_BUILDING_DEBUGFS') or "") == "true":
+        bb.debug(1, 'returning debugfs size %d' % (base_size))
         return base_size
 
     # Check the rootfs size against IMAGE_ROOTFS_MAXSIZE (if set)
@@ -559,6 +576,8 @@ def get_rootfs_size(d):
                 (base_size, initramfs_maxsize_int))
             bb.error("You can set INITRAMFS_MAXSIZE a larger value. Usually, it should")
             bb.fatal("be less than 1/2 of ram size, or you may fail to boot it.\n")
+
+    bb.debug(1, 'returning %d' % (base_size))
     return base_size
 
 python set_image_size () {

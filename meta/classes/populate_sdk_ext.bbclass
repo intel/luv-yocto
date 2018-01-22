@@ -162,18 +162,16 @@ def create_filtered_tasklist(d, sdkbasepath, tasklistfile, conf_initpath):
         except FileNotFoundError:
             pass
         os.rename(sdkbasepath, temp_sdkbasepath)
+        cmdprefix = '. %s .; ' % conf_initpath
+        logfile = d.getVar('WORKDIR') + '/tasklist_bb_log.txt'
         try:
-            cmdprefix = '. %s .; ' % conf_initpath
-            logfile = d.getVar('WORKDIR') + '/tasklist_bb_log.txt'
-            try:
-                oe.copy_buildsystem.check_sstate_task_list(d, get_sdk_install_targets(d), tasklistfile, cmdprefix=cmdprefix, cwd=temp_sdkbasepath, logfile=logfile)
-            except bb.process.ExecutionError as e:
-                msg = 'Failed to generate filtered task list for extensible SDK:\n%s' %  e.stdout.rstrip()
-                if 'attempted to execute unexpectedly and should have been setscened' in e.stdout:
-                    msg += '\n----------\n\nNOTE: "attempted to execute unexpectedly and should have been setscened" errors indicate this may be caused by missing sstate artifacts that were likely produced in earlier builds, but have been subsequently deleted for some reason.\n'
-                bb.fatal(msg)
-        finally:
-            os.rename(temp_sdkbasepath, sdkbasepath)
+            oe.copy_buildsystem.check_sstate_task_list(d, get_sdk_install_targets(d), tasklistfile, cmdprefix=cmdprefix, cwd=temp_sdkbasepath, logfile=logfile)
+        except bb.process.ExecutionError as e:
+            msg = 'Failed to generate filtered task list for extensible SDK:\n%s' %  e.stdout.rstrip()
+            if 'attempted to execute unexpectedly and should have been setscened' in e.stdout:
+                msg += '\n----------\n\nNOTE: "attempted to execute unexpectedly and should have been setscened" errors indicate this may be caused by missing sstate artifacts that were likely produced in earlier builds, but have been subsequently deleted for some reason.\n'
+            bb.fatal(msg)
+        os.rename(temp_sdkbasepath, sdkbasepath)
         # Clean out residue of running bitbake, which check_sstate_task_list()
         # will effectively do
         clean_esdk_builddir(d, sdkbasepath)
@@ -276,11 +274,12 @@ python copy_buildsystem () {
 
     # Copy uninative tarball
     # For now this is where uninative.bbclass expects the tarball
-    uninative_file = d.expand('${SDK_DEPLOY}/${BUILD_ARCH}-nativesdk-libc.tar.bz2')
-    uninative_checksum = bb.utils.sha256_file(uninative_file)
-    uninative_outdir = '%s/downloads/uninative/%s' % (baseoutpath, uninative_checksum)
-    bb.utils.mkdirhier(uninative_outdir)
-    shutil.copy(uninative_file, uninative_outdir)
+    if bb.data.inherits_class('uninative', d):
+        uninative_file = d.expand('${UNINATIVE_DLDIR}/' + d.getVarFlag("UNINATIVE_CHECKSUM", d.getVar("BUILD_ARCH")) + '/${UNINATIVE_TARBALL}')
+        uninative_checksum = bb.utils.sha256_file(uninative_file)
+        uninative_outdir = '%s/downloads/uninative/%s' % (baseoutpath, uninative_checksum)
+        bb.utils.mkdirhier(uninative_outdir)
+        shutil.copy(uninative_file, uninative_outdir)
 
     env_whitelist = (d.getVar('BB_ENV_EXTRAWHITE') or '').split()
     env_whitelist_values = {}
@@ -534,7 +533,7 @@ def get_sdk_required_utilities(buildtools_fn, d):
 
 install_tools() {
 	install -d ${SDK_OUTPUT}/${SDKPATHNATIVE}${bindir_nativesdk}
-	scripts="devtool recipetool oe-find-native-sysroot runqemu*"
+	scripts="devtool recipetool oe-find-native-sysroot runqemu* wic"
 	for script in $scripts; do
 		for scriptfn in `find ${SDK_OUTPUT}/${SDKPATH}/${scriptrelpath} -maxdepth 1 -executable -name "$script"`; do
 			lnr ${scriptfn} ${SDK_OUTPUT}/${SDKPATHNATIVE}${bindir_nativesdk}/`basename $scriptfn`
@@ -695,7 +694,7 @@ def get_sdk_ext_rdepends(d):
 do_populate_sdk_ext[dirs] = "${@d.getVarFlag('do_populate_sdk', 'dirs', False)}"
 
 do_populate_sdk_ext[depends] = "${@d.getVarFlag('do_populate_sdk', 'depends', False)} \
-                                buildtools-tarball:do_populate_sdk uninative-tarball:do_populate_sdk \
+                                buildtools-tarball:do_populate_sdk \
                                 ${@'meta-world-pkgdata:do_collect_packagedata' if d.getVar('SDK_INCLUDE_PKGDATA') == '1' else ''} \
                                 ${@'meta-extsdk-toolchain:do_locked_sigs' if d.getVar('SDK_INCLUDE_TOOLCHAIN') == '1' else ''}"
 
