@@ -508,6 +508,11 @@ class BaseConfig(object):
 
         if os.access(dev_kvm, os.W_OK|os.R_OK):
             self.qemu_opt_script += ' -enable-kvm'
+            if self.get('MACHINE') == "qemux86":
+                # Workaround for broken APIC window on pre 4.15 host kernels which causes boot hangs
+                # See YOCTO #12301
+                # On 64 bit we use x2apic
+                self.kernel_cmdline_script += " clocksource=kvm-clock hpet=disable noapic nolapic"
         else:
             logger.error("You have no read or write permission on /dev/kvm.")
             logger.error("Please change the ownership of this file as described at:")
@@ -726,6 +731,10 @@ class BaseConfig(object):
         cf.read(self.qemuboot)
         for k, v in cf.items('config_bsp'):
             k_upper = k.upper()
+            if v.startswith("../"):
+                v = os.path.abspath(os.path.dirname(self.qemuboot) + "/" + v)
+            elif v == ".":
+                v = os.path.dirname(self.qemuboot)
             self.set(k_upper, v)
 
     def validate_paths(self):
@@ -908,6 +917,9 @@ class BaseConfig(object):
         lockdir = "/tmp/qemu-tap-locks"
 
         if not (self.qemuifup and self.qemuifdown and ip):
+            logger.error("runqemu-ifup: %s" % self.qemuifup)
+            logger.error("runqemu-ifdown: %s" % self.qemuifdown)
+            logger.error("ip: %s" % ip)
             raise OEPathError("runqemu-ifup, runqemu-ifdown or ip not found")
 
         if not os.path.exists(lockdir):
@@ -923,7 +935,7 @@ class BaseConfig(object):
         logger.debug('Running %s...' % cmd)
         ip_link = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.read().decode('utf-8')
         # Matches line like: 6: tap0: <foo>
-        possibles = re.findall('^[1-9]+: +(tap[0-9]+): <.*', ip_link, re.M)
+        possibles = re.findall('^[0-9]+: +(tap[0-9]+): <.*', ip_link, re.M)
         tap = ""
         for p in possibles:
             lockfile = os.path.join(lockdir, p)
@@ -1018,7 +1030,7 @@ class BaseConfig(object):
                                        % (self.rootfs, rootfs_format)
                     elif drive_type.startswith("/dev/hd"):
                         logger.info('Using ide drive')
-                        vm_drive = "%s,format=%s" % (self.rootfs, rootfs_format)
+                        vm_drive = "-drive file=%s,format=%s" % (self.rootfs, rootfs_format)
                     else:
                         # virtio might have been selected explicitly (just use it), or
                         # is used as fallback (then warn about that).

@@ -156,10 +156,12 @@ class RecipeHandler(object):
                         RecipeHandler.recipebinmap[prog] = pn
 
     @staticmethod
-    def checkfiles(path, speclist, recursive=False):
+    def checkfiles(path, speclist, recursive=False, excludedirs=None):
         results = []
         if recursive:
-            for root, _, files in os.walk(path):
+            for root, dirs, files in os.walk(path, topdown=True):
+                if excludedirs:
+                    dirs[:] = [d for d in dirs if d not in excludedirs]
                 for fn in files:
                     for spec in speclist:
                         if fnmatch.fnmatch(fn, spec):
@@ -475,7 +477,6 @@ def create_recipe(args):
         if tag:
             # Keep a copy of tag and append nobranch=1 then remove tag from URL.
             # Bitbake fetcher unable to fetch when {AUTOREV} and tag is set at the same time.
-            # We will re-introduce tag argument after bitbake fetcher process is complete.
             storeTagName = params['tag']
             params['nobranch'] = '1'
             del params['tag']
@@ -547,13 +548,11 @@ def create_recipe(args):
 
         # Since we might have a value in srcbranch, we need to
         # recontruct the srcuri to include 'branch' in params.
+        scheme, network, path, user, passwd, params = bb.fetch2.decodeurl(srcuri)
         if srcbranch:
-            scheme, network, path, user, passwd, params = bb.fetch2.decodeurl(srcuri)
             params['branch'] = srcbranch
-            srcuri = bb.fetch2.encodeurl((scheme, network, path, user, passwd, params))
 
         if storeTagName and scheme in ['git', 'gitsm']:
-            # Re-introduced tag variable from storeTagName
             # Check srcrev using tag and check validity of the tag
             cmd = ('git rev-parse --verify %s' % (storeTagName))
             try:
@@ -563,6 +562,9 @@ def create_recipe(args):
                 logger.error(str(err))
                 logger.error("Possibly wrong tag name is provided")
                 sys.exit(1)
+            # Drop tag from srcuri as it will have conflicts with SRCREV during recipe parse.
+            del params['tag']
+        srcuri = bb.fetch2.encodeurl((scheme, network, path, user, passwd, params))
 
         if os.path.exists(os.path.join(srctree, '.gitmodules')) and srcuri.startswith('git://'):
             srcuri = 'gitsm://' + srcuri[6:]
@@ -613,9 +615,9 @@ def create_recipe(args):
 
     if args.src_subdir:
         srcsubdir = os.path.join(srcsubdir, args.src_subdir)
-        srctree_use = os.path.join(srctree, args.src_subdir)
+        srctree_use = os.path.abspath(os.path.join(srctree, args.src_subdir))
     else:
-        srctree_use = srctree
+        srctree_use = os.path.abspath(srctree)
 
     if args.outfile and os.path.isdir(args.outfile):
         outfile = None

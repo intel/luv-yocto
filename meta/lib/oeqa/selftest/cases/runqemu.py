@@ -3,7 +3,6 @@
 #
 
 import re
-import logging
 
 from oeqa.selftest.case import OESelftestTestCase
 from oeqa.utils.commands import bitbake, runqemu, get_bb_var
@@ -14,6 +13,8 @@ class RunqemuTests(OESelftestTestCase):
 
     image_is_ready = False
     deploy_dir_image = ''
+    # We only want to print runqemu stdout/stderr if there is a test case failure
+    buffer = True
 
     def setUpLocal(self):
         super(RunqemuTests, self).setUpLocal()
@@ -21,10 +22,6 @@ class RunqemuTests(OESelftestTestCase):
         self.machine =  'qemux86-64'
         self.fstypes = "ext4 iso hddimg wic.vmdk wic.qcow2 wic.vdi"
         self.cmd_common = "runqemu nographic"
-
-        # Avoid emit the same record multiple times.
-        mainlogger = logging.getLogger("BitBake.Main")
-        mainlogger.propagate = False
 
         self.write_config(
 """
