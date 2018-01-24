@@ -6,6 +6,8 @@ Before=plymouth-quit.service
 [Service]
 Type=oneshot
 ExecStart=@SBINDIR@/luv-test-manager
+StandardOutput=tty
+TTYPath=LUV_TTY_CONSOLE
 
 [Install]
 WantedBy=multi-user.target

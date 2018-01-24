@@ -40,6 +40,20 @@ SRC_URI += "file://luv-test-manager file://luv-test-parser \
 
 RDEPENDS_${PN}+= "kernel-modules curl iputils iproute2 bash init-ifupdown dhcp-client gzip"
 
+def get_target_arch(d):
+ import re
+ target = d.getVar('TARGET_ARCH', True)
+ if target == "x86_64":
+    return '/dev/ttyS0'
+ elif re.match('i.86', target):
+    return '/dev/ttyS0'
+ elif re.match('aarch64', target):
+    return '/dev/ttyAMA0'
+ else:
+    raise bb.parse.SkipPackage("TARGET_ARCH %s not supported!" % target)
+
+tty_console = "${@get_target_arch(d)}"
+
 do_install_append() {
        install -d ${D}${sbindir}/
        install -d ${D}${sysconfdir}/init.d/
@@ -74,12 +88,15 @@ do_install_append() {
 
        install -m 0644 ${WORKDIR}/luv-test-manager.service ${D}${systemd_unitdir}/system
        sed -i -e 's,@SBINDIR@,${sbindir},g' ${D}${systemd_unitdir}/system/luv-test-manager.service
+       sed -i -e 's,LUV_TTY_CONSOLE,${tty_console},g' ${D}${systemd_unitdir}/system/luv-test-manager.service
 
        install -m 0644 ${WORKDIR}/luv-netconsole.service ${D}${systemd_unitdir}/system
        sed -i -e 's,@SBINDIR@,${sbindir},g' ${D}${systemd_unitdir}/system/luv-netconsole.service
+       sed -i -e 's,LUV_TTY_CONSOLE,${tty_console},g' ${D}${systemd_unitdir}/system/luv-netconsole.service
 
        install -m 0644 ${WORKDIR}/luv-crash-handler.service ${D}${systemd_unitdir}/system
        sed -i -e 's,@SBINDIR@,${sbindir},g' ${D}${systemd_unitdir}/system/luv-crash-handler.service
+       sed -i -e 's,LUV_TTY_CONSOLE,${tty_console},g' ${D}${systemd_unitdir}/system/luv-crash-handler.service
 
        install -m 0644 ${WORKDIR}/luv-reboot-poweroff.service ${D}${systemd_unitdir}/system
        sed -i -e 's,@SBINDIR@,${sbindir},g' ${D}${systemd_unitdir}/system/luv-reboot-poweroff.service
