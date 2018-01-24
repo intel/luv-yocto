@@ -28,7 +28,7 @@ grep -q luv.crash /proc/cmdline
 if [ $? -eq 1 ]; then
     # Not all disks may be ready to mount at this moment.
     # Thus, we need to wait for them.
-    plymouth_write "Preparing crash handler..."
+    luv_msg_write "Preparing crash handler..."
 
     LUV_BOOT_PARTITION=/mnt/boot/
     LUV_BOOT_PARTITION_UUID=423C-C2C8
@@ -43,7 +43,7 @@ if [ $? -eq 1 ]; then
             umount ${LUV_BOOT_PARTITION}
         fi
     fi
-    plymouth_hide "Preparing crash handler..."
+    luv_msg_hide "Preparing crash handler..."
 else
 # If we have the luv.crash kernel parameter, we just recovered from a crash.
 # We need to dump the /proc/vmcore file.
@@ -61,7 +61,7 @@ else
     submit a bug report on https://github.com/01org/luv-yocto/issues. In either
     case, please submit the contents of ${LUV_DEBUG_FILE}."
 
-    plymouth_write "Recovery Boot. Saving debug info..." 2
+    luv_msg_write "Recovery Boot. Saving debug info..." 2
 
     mkdir -p ${LUV_STORAGE}
     if [ $? -eq 0 ]; then
@@ -78,10 +78,10 @@ else
     fi
 
     if [ -f ${LUV_DEBUG_DIR}${LUV_DEBUG_FILE} ]; then
-        plymouth_write "Recovery boot. Debug info saved on your non-volatile media.
+        luv_msg_write "Recovery boot. Debug info saved on your non-volatile media.
                        You may safely remove it."
     else
-        plymouth_write "Recovery boot. Could not save debug info."
+        luv_msg_write "Recovery boot. Could not save debug info."
     fi
 
     mountpoint -q ${LUV_STORAGE}

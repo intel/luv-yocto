@@ -3,7 +3,7 @@
 # Copyright 2018 Intel Corporation; author Megha Dey
 #
 
-plymouth_write() {
+luv_msg_write() {
     /bin/plymouth display-message --text="$1"
 
     if [ $# == 2 ]; then
@@ -18,6 +18,6 @@ plymouth_write() {
     fi
 }
 
-plymouth_hide() {
+luv_msg_hide() {
     /bin/plymouth hide-message --text="$1"
 }

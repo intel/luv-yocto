@@ -16,10 +16,10 @@ LUV_DEBUG_NETCONSOLE=/mnt/luv-debug-netconsole
 LUV_STORAGE_UUID=05D6-1523
 
 # Display the error messages on the psplash screen if netconsole is not configured
-plymouth_netconsole() {
+luv_msg_netconsole() {
     for i in {10..1}; do
-    plymouth_write "Netconsole not configured...Resuming execution in $i seconds" 1
-    plymouth_write "For more details check luv.netconsole in debug folder" 1
+    luv_msg_write "Netconsole not configured...Resuming execution in $i seconds" 1
+    luv_msg_write "For more details check luv.netconsole in debug folder" 1
     done
 }
 
@@ -97,7 +97,7 @@ gen_debug_file() {
 
 gen_error_message() {
     gen_debug_file
-    plymouth_netconsole
+    luv_msg_netconsole
 }
 
 # Display error message
