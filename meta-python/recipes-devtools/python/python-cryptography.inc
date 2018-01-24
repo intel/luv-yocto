@@ -6,17 +6,17 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=d5ede125ed08d4fd14ec44d334bdb388"
 DEPENDS += " \
     ${PYTHON_PN}-cffi \
     ${PYTHON_PN}-cffi-native \
-    ${PYTHON_PN}-pyasn1 \
+    ${PYTHON_PN}-asn1crypto \
     ${PYTHON_PN}-six \
 "
 
-SRC_URI[md5sum] = "24cbdab3fda22be31dd3aef2808f5d2f"
-SRC_URI[sha256sum] = "d04bb2425086c3fe86f7bc48915290b13e798497839fbb18ab7f6dffcf98cc3a"
+SRC_URI[md5sum] = "9f39d4d8f2b05f295fa0ff52475ec4f2"
+SRC_URI[sha256sum] = "e4d967371c5b6b2e67855066471d844c5d52d210c36c28d49a8507b96e2c5291"
 
 RDEPENDS_${PN} += " \
     ${PYTHON_PN}-cffi \
     ${PYTHON_PN}-idna \
-    ${PYTHON_PN}-pyasn1 \
+    ${PYTHON_PN}-asn1crypto \
     ${PYTHON_PN}-pycparser \
     ${PYTHON_PN}-setuptools \
     ${PYTHON_PN}-six \
@@ -26,7 +26,7 @@ RDEPENDS_${PN}_class-target += " \
     ${PYTHON_PN}-cffi \
     ${PYTHON_PN}-idna \
     ${PYTHON_PN}-numbers \
-    ${PYTHON_PN}-pyasn1 \
+    ${PYTHON_PN}-asn1crypto \
     ${PYTHON_PN}-pycparser \
     ${PYTHON_PN}-subprocess \
     ${PYTHON_PN}-setuptools \

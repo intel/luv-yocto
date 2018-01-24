@@ -27,9 +27,7 @@ SRC_URI = "git://github.com/open-iscsi/open-iscsi \
 S = "${WORKDIR}/git"
 B = "${WORKDIR}/build"
 
-inherit update-rc.d systemd autotools distro_features_check
-# open-isns depends on systemd
-REQUIRED_DISTRO_FEATURES = "systemd"
+inherit update-rc.d systemd autotools
 
 EXTRA_OECONF = " \
     --target=${TARGET_SYS} \
@@ -59,7 +57,9 @@ do_configure () {
 
 do_compile () {
     # Make sure we DO NOT regenerate prom_lex.c.
-    mv ${S}/utils/fwparam_ibft/prom_lex.l ${S}/utils/fwparam_ibft/prom_lex.l.unused
+    if [ -f ${S}/utils/fwparam_ibft/prom_lex.l ]; then
+        mv ${S}/utils/fwparam_ibft/prom_lex.l ${S}/utils/fwparam_ibft/prom_lex.l.unused
+    fi
     oe_runmake -C ${S} ${EXTRA_OEMAKE} user
 }
 
