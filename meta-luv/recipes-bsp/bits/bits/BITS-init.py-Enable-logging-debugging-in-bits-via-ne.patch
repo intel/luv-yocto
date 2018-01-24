@@ -1,4 +1,4 @@
-From e47a624416c82a294a9db8edc13c0fe36dee57c1 Mon Sep 17 00:00:00 2001
+From ea79f75f91526fab7ab09ea078bb51666b1dd1ae Mon Sep 17 00:00:00 2001
 From: Gayatri Kammela <gayatri.kammela@intel.com>
 Date: Mon, 26 Jun 2017 19:18:34 -0700
 Subject: [PATCH] Bits-init.py: Enable logging/debugging in bits via network
@@ -14,12 +14,12 @@ serial cable available.
 Signed-off-by: Gayatri Kammela <gayatri.kammela@intel.com>
 ---
  python/init.py               |   1 +
- python/luv_netconsole_log.py | 122 +++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 123 insertions(+)
+ python/luv_netconsole_log.py | 130 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 131 insertions(+)
  create mode 100644 python/luv_netconsole_log.py
 
 diff --git a/python/init.py b/python/init.py
-index b2a97b2ed80b..3ca197d6bbbf 100644
+index aee686078792..803d2f292662 100644
 --- a/python/init.py
 +++ b/python/init.py
 @@ -28,6 +28,7 @@
@@ -32,10 +32,10 @@ index b2a97b2ed80b..3ca197d6bbbf 100644
  start = _bits._time()
 diff --git a/python/luv_netconsole_log.py b/python/luv_netconsole_log.py
 new file mode 100644
-index 000000000000..2595dbfd5774
+index 000000000000..01b31e3e536a
 --- /dev/null
 +++ b/python/luv_netconsole_log.py
-@@ -0,0 +1,122 @@
+@@ -0,0 +1,130 @@
 +"""
 +Copyright(c) 2017 Intel Corporation; author Gayatri Kammela
 +
@@ -69,7 +69,8 @@ index 000000000000..2595dbfd5774
 +
 +    if re.search('LUV_NETCONSOLE=none', s):
 +        """ check if luv_netconsole is disabled """
-+        return
++        p = None
++        return p
 +
 +    for i in line:
 +        """ search for the LUV_NETCONSOLE in luv.cfg to retrieve the values """
@@ -80,16 +81,13 @@ index 000000000000..2595dbfd5774
 +    return p
 +
 +def check_net_params(p):
-+    """ check if the retrieved parameters are valid """
-+    if not p:
-+        raise ValueError("Configure Netconsole to use this feature!")
-+
 +    ipaddress = p.split(',',1)[0]
 +    """ check if the ip address is valid using inet_aton() """
 +    try:
 +        socket.inet_aton(ipaddress)
 +    except socket.error:
 +        raise ValueError("Invalid ipaddress!")
++        return None
 +
 +    port_num = p.split(',',1)[1]
 +    """ check if the given port is an integer and if it is valid/unreserved """
@@ -98,31 +96,39 @@ index 000000000000..2595dbfd5774
 +            port = int(p.split(',',1)[1])
 +        except ValueError:
 +            raise ValueError("Invalid port number!")
++            return None
 +    else:
-+        raise ValueError("Port number should be intergers, not characters!")
++        raise ValueError("Port number should be integers, not characters!")
++        return None
 +
 +    return ipaddress, port
 +
-+def establish_connection(ipaddress, port):
-+    """ check if the remote is able to connect to the host using ipaddress """
++def check_connection(ipaddress, port):
++    """ check if host is connected to ethernet """
++    try:
++        sock.settimeout(3)
++        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
++        sock.connect(('127.0.0.1', port))
++    except:
++        raise ValueError("Host ipaddress is not reachable!")
++        sock.close()
++        return None
++
++    """ check if the remote is connected to ethernet """
 +    try:
 +        check_remote = socket.gethostbyname( ipaddress )
-+        """ connect to the remote server using the ipaddress and port given """
-+    except socket.error:
-+        raise ValueError("Host ipaddress is not reachable!")
-+
-+    """
-+    In case of network issues i.e., even though netconsole is configured but no
-+    remote machine is listening or any network related issues, for BITS to
-+    resume its execution of tests, set a timeout for 5 secs.
-+    """
-+    sock.settimeout(5)
-+    try:
++        sock.settimeout(3)
 +        sock.connect((check_remote, port))
 +    except (socket.error, EFIException):
-+        raise ValueError("Netconsole should be configured with TCP socket on the remote "
-+                        "side! usage: netcat -l <port>")
++        raise ValueError("Remote ipaddress is not reachable!")
++        print ("Netconsole should be configured with TCP socket on the remote "
++               "side! usage: netcat -l <port>")
++        sock.close()
++        return None
 +
++    return check_remote, port, sock
++
++def send_connection(check_remote, port, sock):
 +    try:
 +        """ Send a note to the remote machine that netconsole has started """
 +        sock.send("Starting BITS ...\n")
@@ -143,21 +149,23 @@ index 000000000000..2595dbfd5774
 +    """ enable the netconsole in bits """
 +    try:
 +        p = get_netconsole_params()
++        if not p:
++            return
 +        ipaddress, port = check_net_params(p)
-+        establish_connection(ipaddress, port)
++        if not (ipaddress or port):
++            return
++        check_remote, port, sock = check_connection(ipaddress, port)
++        if not (check_remote or sock):
++            return
++        send_connection(check_remote, port, sock)
 +    except (ValueError, socket.error):
 +        print ("Netconsole could not be configured")
 +
 +buffer_stdout = sys.stdout
-+""" 
-+    Create a socket to send out the stdout to TCP server. If the socket is not
-+    created successfully then skip the entire module.
-+"""
 +try:
-+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 +    enable_netconsole()
 +except (socket.error, EFIException):
-+    print("Failed to create a socket")
++    print("Failed to configure Netconsole")
 -- 
 2.7.4
 
