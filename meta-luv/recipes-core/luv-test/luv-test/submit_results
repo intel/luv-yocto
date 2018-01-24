@@ -21,8 +21,7 @@ get_luv_url()
             storage_url=$(cat /proc/cmdline | sed -e 's/^.*luv_storage=//' -e 's/ .*$//')
             valid_exp='(https?|ftp|file)://[-A-Za-z0-9\+&@#/%?=~_|!:,.;]*[-A-Za-z0-9\+&@#/%=~_|]'
             if ! [[ ${storage_url} =~ $valid_exp ]] ; then
-                echo $alert_url_missing
-                plymouth_write "$alert_url_missing"
+                luv_msg_write "$alert_url_missing"
             else
                 return 0
             fi

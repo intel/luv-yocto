@@ -92,7 +92,7 @@ html_finish()
 if [ -z ${LUVNETBOOT} ]; then
     ls /dev/disk/by-uuid | grep -q ${LUV_STORAGE_UUID}
     if [ $? -eq 1 ] ; then
-        plymouth_write "$alert_missing_partition"
+        luv_msg_write "$alert_missing_partition"
         halt
     fi
 
@@ -104,7 +104,7 @@ if [ -z ${LUVNETBOOT} ]; then
             # check if there is enough space on disk
             m=$(df | grep ${LUV_STORAGE} | awk '{print $4}')
             if [ $m -le ${LUV_STORAGE_MIN_AVAIL} ] ; then
-                plymouth_write "$alert_disk_is_full"
+                luv_msg_write "$alert_disk_is_full"
                 halt
             fi
         fi
@@ -196,7 +196,7 @@ if [ ! -z ${LUVDEBUG} ]; then
     exec &> >(tee -a ${LUV_SAVE_RESULTS_DIR}luv-debug.log)
 fi
 
-plymouth_write "Running tests..."
+luv_msg_write "Running tests..."
 
 #
 # Every test must create a runner script and place it in $LUV_TESTS_DIR.
@@ -252,17 +252,17 @@ for r in $runner_list; do
     fi
 
     #We display each test suite running for equal amount of time
-    plymouth_hide "Running tests..."
+    luv_msg_hide "Running tests..."
 
     [ -f "$runner" ] || continue
 
     arr[tests]=$r
     if [ $tests -ge 1 ]; then
-        plymouth_hide "Running ${arr[$((tests-1))]} ..."
+        luv_msg_hide "Running ${arr[$((tests-1))]} ..."
     fi
 
     tests=$((tests+1))
-    plymouth_write "Running $r ..."
+    luv_msg_write "Running $r ..."
 
     parser="${LUV_PARSER_DIR}/$r"
     [ -e ${parser} ] || {
@@ -275,7 +275,7 @@ for r in $runner_list; do
               parse_line | \
               tee -a /tmp/luv.results ${LUV_SAVE_RESULTS_DIR}/luv.results
     sync
-    plymouth_hide "Running ${arr[-1]} ..."
+    luv_msg_hide "Running ${arr[-1]} ..."
 
     # Update the first_boot file with test_suites that have completed.
     echo $r >> ${LUV_STORAGE}/first_boot
@@ -296,7 +296,7 @@ cat /tmp/testsuites | html_inline ${LUV_HTML_REPORT} | tee -a /dev/kmsg /tmp/luv
          ${LUV_SAVE_RESULTS_DIR}/luv.results
 
 result=$(cat /tmp/testsuites)
-plymouth_write "$result"
+luv_msg_write "$result"
 sleep 2
 
 html_finish ${LUV_HTML_REPORT}
@@ -322,9 +322,9 @@ submit_results ${LUV_SAVE_RESULTS_DIR}
 mountpoint -q ${LUV_STORAGE}
 if [ $? -eq 0 ]; then
     umount ${LUV_STORAGE}
-    plymouth_write "Results were saved in your boot media. You may now turn off the system and remove it."
+    luv_msg_write "Results were saved in your boot media. You may now turn off the system and remove it."
 else
-    plymouth_write "Results were not saved in storage media."
+    luv_msg_write "Results were not saved in storage media."
 fi
 
 grep -q luv.halt /proc/cmdline
