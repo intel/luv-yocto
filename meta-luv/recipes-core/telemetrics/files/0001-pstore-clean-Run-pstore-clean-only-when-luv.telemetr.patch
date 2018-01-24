@@ -1,0 +1,33 @@
+From d44e31757fde2744b1f936176435f2d2522e6189 Mon Sep 17 00:00:00 2001
+From: Sai Praneeth <sai.praneeth.prakhya@intel.com>
+Date: Tue, 23 Jan 2018 16:33:19 -0800
+Subject: [PATCH] pstore-clean: Run pstore-clean *only* when luv.telemetrics is
+ enabled and in kexec kernel
+
+pstore-clean service copies crash contents out of pstore directory and
+cleans up the directory; so as to free up the space. LUV writes crash
+log to efi variables in normal kernel (if it crashes) and collects crash
+report *only* in kexec kernel and sends it to telemetrics server only
+when luv.telemetrics is enabled. Hence, add these conditions to
+pstore-clean service file.
+
+Signed-off-by: Sai Praneeth Prakhya <sai.praneeth.prakhya@intel.com>
+---
+ src/data/pstore-clean.service.in | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/data/pstore-clean.service.in b/src/data/pstore-clean.service.in
+index 34647dbec070..9b9d9b59b223 100644
+--- a/src/data/pstore-clean.service.in
++++ b/src/data/pstore-clean.service.in
+@@ -1,5 +1,7 @@
+ [Unit]
+ Description=Telemetrics Pstore Clean Service
++ConditionKernelCommandLine=luv.telemetrics
++ConditionKernelCommandLine=luv.crash
+
+ [Service]
+ ExecStart=@bindir@/pstoreclean
+--
+2.1.4
+

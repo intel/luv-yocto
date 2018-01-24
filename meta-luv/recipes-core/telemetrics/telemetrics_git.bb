@@ -20,6 +20,7 @@ SRC_URI = "git://github.com/clearlinux/telemetrics-client \
            file://0001-Add-Kernel-panic-to-the-list.patch \
            file://0001-pstore-start-after-network.patch \
            file://config.site \
+           file://0001-pstore-clean-Run-pstore-clean-only-when-luv.telemetr.patch \
           "
 
 SRCREV="3d24527096bc14ca8b425f66daed4547b9ee93da"
