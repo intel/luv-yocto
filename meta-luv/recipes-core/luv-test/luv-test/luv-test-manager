@@ -36,7 +36,7 @@ fi
 grep -q luv\.debug /proc/cmdline
 if [ $? -eq 0 ]; then
     echo "Enable LUV debug mode..."
-    LUVDEBUG="1"
+    export LUVDEBUG="1"
     set -x
     set -v
 fi
@@ -125,9 +125,9 @@ create_luv_dirs()
     tstamp=$(date +"%Y-%m-%d--%H-%M-%S")
     n=$(ls ${LUV_STORAGE}/ | grep $tstamp | wc -l)
     if [ $n -ge 1 ]; then
-        LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}/luv-results-$tstamp-$n/
+        export LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}/luv-results-$tstamp-$n/
     else
-        LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}/luv-results-$tstamp/
+        export LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}/luv-results-$tstamp/
     fi
 
     mkdir -p ${LUV_SAVE_RESULTS_DIR}raw/
@@ -185,7 +185,7 @@ if [ ! -e ${LUV_STORAGE}/first_boot  ]; then
 
     echo LUV_SAVE_RESULTS_DIR=$LUV_SAVE_RESULTS_DIR > ${LUV_STORAGE}/first_boot
 else
-    LUV_SAVE_RESULTS_DIR=`grep LUV_SAVE_RESULTS_DIR ${LUV_STORAGE}/first_boot | cut -d "=" -f2`
+    export LUV_SAVE_RESULTS_DIR=`grep LUV_SAVE_RESULTS_DIR ${LUV_STORAGE}/first_boot | cut -d "=" -f2`
     LUV_SAVE_RAW_DIR=${LUV_SAVE_RESULTS_DIR}raw/
     LUV_SAVE_PARSED_DIR=${LUV_SAVE_RESULTS_DIR}parsed
     export LUV_HTML_REPORT=${LUV_SAVE_RESULTS_DIR}/luv.html

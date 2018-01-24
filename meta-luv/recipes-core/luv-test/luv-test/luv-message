@@ -10,6 +10,12 @@ plymouth_write() {
          sleep $2
          plymouth_hide "$1"
     fi
+
+    echo "$1" >&2
+
+    if [ ! -z ${LUVDEBUG} ]; then
+        echo LUV_MESSAGE-$1>> ${LUV_SAVE_RESULTS_DIR}luv-debug.log
+    fi
 }
 
 plymouth_hide() {
