@@ -31,10 +31,6 @@ do_bootimg[noexec] = "1"
 
 do_populate_image() {
 	install -d ${HDDDIR}${EFIDIR}
-	if [ "${TARGET_ARCH}" = "aarch64" ]; then
-		echo "${DEST_EFI_LOADER_IMAGE}" > ${HDDDIR}${EFIDIR}/startup.nsh
-		install -m 0644 ${DEPLOY_DIR_IMAGE}/${GRUB_EFI_LOADER_IMAGE} ${HDDDIR}${EFIDIR}/${DEST_EFI_LOADER_IMAGE}
-	fi
 	install -m 0644 ${GRUBCFG} ${HDDDIR}${EFIDIR}
 	install -m 0644 ${LUV_CFG} ${HDDDIR}
 	build_hddimg
