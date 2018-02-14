@@ -27,3 +27,8 @@ div.testcase, div.inline {
 .skipped, .warning {
 	color: orange;
 }
+
+.legend {
+	font-size: small;
+	margin: 50px;
+}
