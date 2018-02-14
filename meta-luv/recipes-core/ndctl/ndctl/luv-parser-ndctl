@@ -24,7 +24,7 @@ function test_info(test_name, results) {
         }
 
 /\ERROR/ {
-        results = "0 0 0 0 1";
+        results = "0 0 0 0 0 1";
         print test_info($1, results);
         info = ""
 
@@ -32,7 +32,7 @@ function test_info(test_name, results) {
 	}
 
 /\SKIP/ {
-        results =  "0 0 0 1 0";
+        results =  "0 0 0 0 1 0";
         print test_info($1, results);
         info = ""
 
@@ -40,7 +40,7 @@ function test_info(test_name, results) {
         }
 
 /\FAIL/ {
-        results = "0 1 0 0 0";
+        results = "0 1 0 0 0 0";
         print test_info($1, results);
         info = ""
 
@@ -48,7 +48,7 @@ function test_info(test_name, results) {
         }
 
 /\PASS/ {
-        results = "1 0 0 0 0";
+        results = "1 0 0 0 0 0";
         print test_info($1, results);
         info = ""
 

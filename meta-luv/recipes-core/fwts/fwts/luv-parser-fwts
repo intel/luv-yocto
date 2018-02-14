@@ -37,7 +37,7 @@ awk '!/^summary/ && !/^fwts/ {
 	"date +%H:%M:%S:%N" | getline current_time;
 	close ("date +%H:%M:%S:%N")
 
-	printf ("1.1 %s fwts %s RESULT %d %d %d %d %d\n",
+	printf ("1.1 %s fwts %s RESULT %d %d 0 %d %d %d\n",
 		current_time, $1, $3, $5, $9, $11, $7);
 	fflush("");
 }'
