@@ -6,6 +6,8 @@
 # - cut out blank lines
 # - strip the summary at the end, it's duplicate info
 # - only include info about test passes/fails, etc
+# - on failed test cases, determine the level of severity. Passed test
+#   have severity of 0.
 # - print in luv-test-manager format
 
 awk '!/^summary/ && !/^fwts/ {
@@ -14,10 +16,11 @@ awk '!/^summary/ && !/^fwts/ {
 		# START tag we begin parsing a new test case
 		if (!parsing_test) {
 			parsing_test = 1;
+			severity = 0;
 			test = $1
 		        "date +%H:%M:%S:%N" | getline current_time;
 		        close ("date +%H:%M:%S:%N")
-			printf ("1.1 %s fwts %s START\n", current_time, test);
+			printf ("1.1s %s fwts %s START\n", current_time, test);
 			fflush("");
 		}
 	}
@@ -25,19 +28,40 @@ awk '!/^summary/ && !/^fwts/ {
 	# FWTS uses blank lines to delimit the end of test case
 	if (!NF) {
 		if (parsing_test) {
-			printf ("1.1 %s fwts %s END\n", current_time, test);
+			printf ("1.1s %s fwts %s END\n", current_time, test);
 			parsing_test = 0;
 			fflush("");
 		}
 	} else
-		printf ("1.1 %s fwts %s INFO %s\n", current_time, $1, substr($0, index($0, $2)));
+		printf ("1.1s %s fwts %s INFO %s\n", current_time, $1, substr($0, index($0, $2)));
+}
+
+/FAL FAILED/ {
+	# The level of severity of this test case will be highest of
+	# any of the unit tests.
+	switch ($4) {
+	case "[LOW]":
+		if (severity < 1)
+			severity = 1
+		break;
+	case "[MEDIUM]":
+		if (severity < 2)
+			severity = 2
+		break;
+	case "[HIGH]":
+		if (severity < 3)
+			severity = 3
+		break;
+	default:
+		severity = -1;
+	}
 }
 
 !/^summary/ && !/^fwts/ && /\;SUM.*passed/ {
 	"date +%H:%M:%S:%N" | getline current_time;
 	close ("date +%H:%M:%S:%N")
 
-	printf ("1.1 %s fwts %s RESULT %d %d %d %d %d\n",
-		current_time, $1, $3, $5, $9, $11, $7);
+	printf ("1.1s %s fwts %s RESULT %d %d %d %d %d\n",
+		current_time, $1, $3, $5, severity, $9, $11, $7);
 	fflush("");
 }'
