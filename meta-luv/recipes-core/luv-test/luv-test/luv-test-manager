@@ -56,6 +56,9 @@ html_start()
     echo "</script>" >> $html
     echo "</head>" >> $html
     echo "<body>" >> $html
+
+    cp /usr/share/luv/html/icon_fail.png ${LUV_SAVE_PARSED_DIR}
+    cp /usr/share/luv/html/icon_failunk.png ${LUV_SAVE_PARSED_DIR}
 }
 
 html_inline()

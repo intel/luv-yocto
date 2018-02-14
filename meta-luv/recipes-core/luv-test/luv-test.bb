@@ -28,6 +28,8 @@ SRC_URI += "file://luv-test-manager file://luv-test-parser \
             file://luv-netconsole-params \
             file://luv-scripts \
             file://luv-css-styles \
+            file://icon_fail.png \
+            file://icon_failunk.png \
             file://submit_results \
             file://luv-test-manager.service \
             file://luv-crash-handler.service \
@@ -83,6 +85,8 @@ do_install_append() {
        install -d ${D}${datadir}/luv/html
        install -m 0644 ${WORKDIR}/luv-scripts ${D}${datadir}/luv/html
        install -m 0644 ${WORKDIR}/luv-css-styles ${D}${datadir}/luv/html
+       install -m 0644 ${WORKDIR}/icon_fail.png ${D}${datadir}/luv/html
+       install -m 0644 ${WORKDIR}/icon_failunk.png ${D}${datadir}/luv/html
 
        install -d ${D}${systemd_unitdir}/system
 
@@ -111,6 +115,8 @@ do_install_append() {
 
 FILES_${PN} += "${datadir}/luv/html/luv-scripts \
 		${datadir}/luv/html/luv-css-styles \
+		${datadir}/luv/html/icon_fail.png \
+		${datadir}/luv/html/icon_failunk.png \
 		${systemd_unitdir}/system/luv-test-manager.service \
 		${sbindir}/luv-test-manager \
 		${systemd_unitdir}/system/luv-crash-handler.service \
