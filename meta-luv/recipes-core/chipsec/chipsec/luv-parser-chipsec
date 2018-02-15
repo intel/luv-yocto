@@ -18,7 +18,7 @@ awk ' /\[\*\] running module/ {
 		prev_test = testname;
 	} else {
 		printf("1.1 %s chipsec %s RESULT %d %d 0 %d %d\r\n",
-		       current_time, testname, passes, fails, skips, warns);
+		       current_time, prev_test, passes, fails, skips, warns);
 		printf ("1.1 %s chipsec %s END\n", current_time, prev_test);
 		fflush("");
 	}
