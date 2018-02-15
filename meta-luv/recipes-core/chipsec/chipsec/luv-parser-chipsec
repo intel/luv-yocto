@@ -32,32 +32,36 @@ function get_severity(testname)
 		parsing_tests = 1;
 		prev_test = testname;
 	} else {
-		printf("1.1 %s chipsec %s RESULT %d %d 0 %d %d\r\n",
-		       current_time, prev_test, passes, fails, skips, warns);
-		printf ("1.1 %s chipsec %s END\n", current_time, prev_test);
+		printf("1.1s %s chipsec %s RESULT %d %d %d 0 %d %d\r\n",
+		       current_time, prev_test, passes, fails, severity, skips, warns);
+		printf ("1.1s %s chipsec %s END\n", current_time, prev_test);
 		fflush("");
 	}
 	testname = $4;
-	printf ("1.1 %s chipsec %s START\n", current_time, testname);
+	printf ("1.1s %s chipsec %s START\n", current_time, testname);
 	passes = 0;
 	fails  = 0;
 	skips  = 0;
 	warns  = 0;
+	severity = get_severity(testname);
 }
 
 /\*\*\*  SUMMARY  \*\*\*/ {
         "date +%H:%M:%S:%N" | getline current_time;
         close ("date +%H:%M:%S:%N");
+
+	severity = get_severity(testname);
+
 	# emit results for the last test case
-	printf("1.1 %s chipsec %s RESULT %d %d 0 %d %d\r\n",
-		current_time, testname, passes, fails, skips, warns);
-	printf ("1.1 %s chipsec %s END\n", current_time, testname);
+	printf("1.1s %s chipsec %s RESULT %d %d %d 0 %d %d\r\n",
+		current_time, testname, passes, fails, severity, skips, warns);
+	printf ("1.1s %s chipsec %s END\n", current_time, testname);
         exit 0;
 }
 
 {
 	if (parsing_tests) {
-		printf ("1.1 %s chipsec %s INFO %s \n", current_time, testname, $0);
+		printf ("1.1s %s chipsec %s INFO %s \n", current_time, testname, $0);
 	}
 }
 
