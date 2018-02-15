@@ -76,6 +76,18 @@ function html_sanitize_text(text)
         return text;
 }
 
+function get_severity_txt(severity) {
+	text = ""
+
+	if (severity < 0 || severity > 3)
+		return "?";
+
+	for (i = 0; i < severity; i++)
+		text = text "!";
+
+	return text
+}
+
 /^1.2/ {
 	testsuite=$2
 	continue_parsing=$3
@@ -161,8 +173,12 @@ function html_sanitize_text(text)
 		# skipped/aborted.
 		#
 		# Passes indicate everything is fine.
-		if (fails > 0)
+		severity_str = ""
+
+		if (fails > 0 ) {
 			unittest_status = sprintf("%d failures!", fails);
+			severity_str = get_severity_txt(severity)
+		}
 		else if ((aborts > 0 || skips > 0) && !passes)
 			unittest_status = "skipped";
 		else if (warns > 0)
@@ -170,7 +186,8 @@ function html_sanitize_text(text)
 		else
 			unittest_status = "passed";
 
-		printf("      [+] %s... %s\n", severity_str, unittest, unittest_status);
+		printf("      [+] %s%s... %s\n", severity_str, unittest,
+		       unittest_status);
 		fflush("");
 	} else if (tag == "INFO") {
 		info = info tstamp substr($0, index($0, tag) + length(tag)) "\n";
