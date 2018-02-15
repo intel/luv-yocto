@@ -5,7 +5,22 @@
 
 sed 's/\x1B\[[0-9][0-9]*m//g' |
 
-awk ' /\[\*\] running module/ {
+awk -v TESTS_JSON="/usr/share/luv/chipsec.json" '
+
+function get_severity(testname)
+{
+
+	cmd = sprintf("jq -r '\''.[\"%s\"].severity'\'' %s", testname, TESTS_JSON);
+	cmd | getline severity;
+	close(cmd);
+
+	if (severity == "null")
+		return -1
+
+	return severity;
+}
+
+/\[\*\] running module/ {
 	"date +%H:%M:%S:%N" | getline current_time;
 	close ("date +%H:%M:%S:%N");
 	prev_test = testname;

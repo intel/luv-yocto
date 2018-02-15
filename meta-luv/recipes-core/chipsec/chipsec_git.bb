@@ -8,7 +8,9 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=8c16666ae6c159876a0ba63099614381"
 
 SRC_URI = "git://github.com/chipsec/chipsec.git \
     file://0001-drivers-linux-Do-not-host-system-s-kernel-source-dir.patch \
-    file://chipsec file://luv-parser-chipsec \
+    file://chipsec \
+    file://luv-parser-chipsec \
+    file://chipsec.json \
     file://0001-chipsec-building-for-32-bit-systems.patch \
     file://0001-chipsec-do-not-ship-manual.patch \
     file://0001-setup.py-give-CPU-architecture-to-the-driver-s-Makef.patch \
@@ -21,7 +23,7 @@ PV="1.3.5"
 DEPENDS = "virtual/kernel python nasm-native python-setuptools-native"
 RDEPENDS_${PN} = "python python-shell python-stringold python-xml \
     python-ctypes python-fcntl python-json python-mmap \
-    python-resource"
+    python-resource jq"
 
 COMPATIBLE_HOST='(i.86|x86_64).*'
 
@@ -74,7 +76,9 @@ do_patch_append() {
 
 do_install_append() {
     install -d ${D}${bindir}
+    install -d ${D}${datadir}/luv
     install -m 0755 ${WORKDIR}/chipsec ${D}${bindir}
+    install -m 0755 ${WORKDIR}/chipsec.json ${D}${datadir}/luv
 
     #
     # FIXME: for some reason chipsec ends up installed in a repeated
@@ -98,3 +102,4 @@ do_install_append() {
 LUV_TEST_LOG_PARSER="luv-parser-chipsec"
 
 FILES_${PN}-dbg +="${libdir}/${PYTHON_DIR}/site-packages/${PN}/helper/linux/.debug"
+FILES_${PN} += "${datadir}/luv/chipsec.json"

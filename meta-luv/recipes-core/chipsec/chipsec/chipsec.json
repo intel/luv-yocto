@@ -1,0 +1,74 @@
+{
+"chipsec.modules.common.ia32cfg":
+{
+	"severity": 3
+},
+"chipsec.modules.common.smm":
+{
+	"severity": 3
+},
+"chipsec.modules.common.spi_access":
+{
+	"severity": 3
+},
+"chipsec.modules.common.smrr":
+{
+	"severity": 3
+},
+"chipsec.modules.common.spi_lock":
+{
+	"severity": 3
+},
+"chipsec.modules.common.bios_smi":
+{
+	"severity": 3
+},
+"chipsec.modules.common.rtclock":
+{
+	"severity": 3
+},
+"chipsec.modules.common.bios_ts":
+{
+	"severity": 3
+},
+"chipsec.modules.common.spi_desc":{
+	"severity": 3
+},
+
+"chipsec.modules.common.spi_fdopss":
+{
+	"severity": 3
+},
+"chipsec.modules.common.bios_kbrd_buffer":
+{
+	"severity": 3
+},
+"chipsec.modules.common.bios_wp":
+{
+	"severity": 3
+},
+"chipsec.modules.common.secureboot.variables":
+{
+	"severity": 3
+},
+"chipsec.modules.common.uefi.s3bootscript":
+{
+	"severity": 3
+},
+"chipsec.modules.common.uefi.access_uefispec":
+{
+	"severity": 3
+},
+"chipsec.modules.memconfig":
+{
+	"severity": 3
+},
+"chipsec.modules.remap":
+{
+	"severity": 3
+},
+"chipsec.modules.smm_dma":
+{
+	"severity": 3
+}
+}
