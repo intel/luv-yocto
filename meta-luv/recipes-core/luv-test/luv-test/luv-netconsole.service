@@ -8,8 +8,7 @@ Before=klogscanner.service
 [Service]
 Type=oneshot
 ExecStart=@SBINDIR@/luv-netconsole
-StandardOutput=tty
-TTYPath=LUV_TTY_CONSOLE
+StandardOutput=journal+console
 
 [Install]
 WantedBy=multi-user.target
