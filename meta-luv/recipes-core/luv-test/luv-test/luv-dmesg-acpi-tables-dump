@@ -17,9 +17,13 @@ LUV_SAVE_RESULTS_DIR=$1
 # Create a directory named "dumps" in luv results folder and run
 # "fwts -d" command to dump dmesg, cpuinfo and ACPI tables
 gen_dmesg_acpi_dumps() {
-    mkdir -p ${LUV_SAVE_RESULTS_DIR}/dumps
+    if [ ! -d "${LUV_SAVE_RESULTS_DIR}" ]; then
+        return 1
+    fi
+
+    mkdir -p ${LUV_SAVE_RESULTS_DIR}dumps/
     if [ $? -eq 0 ] ; then
-        cd ${LUV_SAVE_RESULTS_DIR}/dumps
+        cd ${LUV_SAVE_RESULTS_DIR}dumps/
         fwts -d &> /dev/null
     else
         echo "Failed to create dumps directory"
@@ -37,7 +41,11 @@ gen_dmesg_acpi_dumps() {
 # iasl -d <file> :	Disassemble binary ACPI tables (*.dat to *.dsl)
 # iasl -so <file>:	Create namespace AML offset table in C (*.offset.h)
 list_dsms() {
-	cd ${LUV_SAVE_RESULTS_DIR}/dumps
+        if [ ! -d "${LUV_SAVE_RESULTS_DIR}dumps/" ]; then
+            return 1
+        fi
+
+	cd ${LUV_SAVE_RESULTS_DIR}dumps/
 	if [ $? -eq 0 ] ; then
 		mkdir -p temp
 		if [ $? -eq 0 ] ; then
