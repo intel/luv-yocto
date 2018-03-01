@@ -8,10 +8,8 @@
 
 <para>
     This chapter provides procedures related to getting set up to use the
-    Yocto Project.
-    For a more front-to-end process that takes you from minimally preparing
-    a build host through building an image, see the
-    <ulink url='&YOCTO_DOCS_QS_URL;'>Yocto Project Quick Start</ulink>.
+    Yocto Project, working with Yocto Project source files, and building
+    an image.
 </para>
 
 <section id='setting-up-the-development-host-to-use-the-yocto-project'>
@@ -262,13 +260,13 @@
                 <listitem><para>
                     For concepts and introductory information about Git as it
                     is used in the Yocto Project, see the
-                    "<ulink url='&YOCTO_DOCS_REF_URL;#git'>Git</ulink>"
-                    section in the Yocto Project Reference Manual.
+                    "<ulink url='&YOCTO_DOCS_GS_URL;#git'>Git</ulink>"
+                    section in the Getting Started With Yocto Project Manual.
                     </para></listitem>
                 <listitem><para>
                     For concepts on Yocto Project source repositories, see the
-                    "<ulink url='&YOCTO_DOCS_REF_URL;#yocto-project-repositories'>Yocto Project Source Repositories</ulink>"
-                    section in the Yocto Project Reference Manual."
+                    "<ulink url='&YOCTO_DOCS_GS_URL;#yocto-project-repositories'>Yocto Project Source Repositories</ulink>"
+                    section in the Getting Started With Yocto Project Manual."
                     </para></listitem>
             </itemizedlist>
         </note>
@@ -278,9 +276,20 @@
         <title>Accessing Source Repositories</title>
 
         <para>
-            Yocto Project maintains upstream Git
-            <ulink url='&YOCTO_DOCS_REF_URL;#source-repositories'>Source Repositories</ulink>
-            that you can examine and access using a browser-based UI:
+            Working from a copy of the upstream Yocto Project
+            <ulink url='&YOCTO_DOCS_GS_URL;#source-repositories'>Source Repositories</ulink>
+            is the preferred method for obtaining and using a Yocto Project
+            release.
+            You can view the Yocto Project Source Repositories at
+            <ulink url='&YOCTO_GIT_URL;/cgit.cgi'></ulink>.
+            In particular, you can find the
+            <filename>poky</filename> repository at
+            <ulink url='http://git.yoctoproject.org/cgit/cgit.cgi/poky/'></ulink>.
+        </para>
+
+        <para>
+            Use the following procedure to locate the latest upstream copy of
+            the <filename>poky</filename> Git repository:
             <orderedlist>
                 <listitem><para>
                     <emphasis>Access Repositories:</emphasis>
@@ -290,24 +299,21 @@
                     repositories.
                     </para></listitem>
                 <listitem><para>
-                    <emphasis>Select a Repository:</emphasis>
-                    Click on any repository in which you are interested (e.g.
+                    <emphasis>Select the Repository:</emphasis>
+                    Click on the repository in which you are interested (i.e.
                     <filename>poky</filename>).
                     </para></listitem>
                 <listitem><para>
                     <emphasis>Find the URL Used to Clone the Repository:</emphasis>
                     At the bottom of the page, note the URL used to
-                    <ulink url='&YOCTO_DOCS_REF_URL;#git-commands-clone'>clone</ulink>
+                    <ulink url='&YOCTO_DOCS_GS_URL;#git-commands-clone'>clone</ulink>
                     that repository (e.g.
                     <filename>&YOCTO_GIT_URL;/poky</filename>).
-                    </para></listitem>
-                <listitem><para>
-                    <emphasis>Examine Change History of the Repository:</emphasis>
-                    At the top of the page, click on any branch in which you
-                    might be interested (e.g.
-                    <filename>&DISTRO_NAME_NO_CAP;</filename>).
-                    You can then view the commit log or tree view for that
-                    development branch.
+                    <note>
+                        For information on cloning a repository, see the
+                        "<link linkend='cloning-the-poky-repository'>Cloning the <filename>poky</filename> Repository</link>"
+                        section.
+                    </note>
                     </para></listitem>
             </orderedlist>
         </para>
@@ -319,12 +325,12 @@
         <para>
             Yocto Project maintains an Index of Releases area that contains
             related files that contribute to the Yocto Project.
-            Rather than Git repositories, these files represent snapshot
-            tarballs.
+            Rather than Git repositories, these files are tarballs that
+            represent snapshots in time of a given component.
             <note><title>Tip</title>
                 The recommended method for accessing Yocto Project
-                components is to use Git to clone a repository and work from
-                within that local repository.
+                components is to use Git to clone the upstream repository and
+                work from within that locally cloned repository.
                 The procedure in this section exists should you desire a
                 tarball snapshot of any given component.
             </note>
@@ -342,8 +348,8 @@
                         full array of released Poky tarballs.
                         The <filename>poky</filename> directory in the
                         Index of Releases was historically used for very
-                        early releases and exists for retroactive
-                        completeness only.
+                        early releases and exists now only for retroactive
+                        completeness.
                     </note>
                     </para></listitem>
                 <listitem><para>
@@ -361,7 +367,7 @@
                     </para></listitem>
                 <listitem><para>
                     <emphasis>Download the Tarball:</emphasis>
-                    Click a tarball to download and save a snapshot of a
+                    Click the tarball to download and save a snapshot of the
                     given component.
                     </para></listitem>
             </orderedlist>
@@ -398,13 +404,50 @@
                     </para></listitem>
                 <listitem><para>
                     <emphasis>Select the Type of Files:</emphasis>
-                    Click the type of files you want (i.e "Build System",
+                    Click the type of files you want such as "Build System",
                     "Tools", or "Board Support Packages (BSPs)".
                     </para></listitem>
                 <listitem><para>
                     <emphasis>Locate and Download the Tarball:</emphasis>
                     From the list of releases, locate the appropriate
                     download link and download the files.
+                    </para></listitem>
+            </orderedlist>
+        </para>
+    </section>
+
+    <section id='accessing-nightly-builds'>
+        <title>Accessing Nightly Builds</title>
+
+        <para>
+            Yocto Project maintains an area for nightly builds that contains
+            tarball releases at <ulink url='&YOCTO_AB_NIGHTLY_URL;'/>.
+            These builds include Yocto Project releases, SDK installation
+            scripts, and experimental builds.
+        </para>
+
+        <para>
+            Should you ever want to access a nightly build of a particular
+            Yocto Project component, use the following procedure:
+            <orderedlist>
+                <listitem><para>
+                    <emphasis>Access the Nightly Builds:</emphasis>
+                    Open a browser and go to
+                    <ulink url='&YOCTO_AB_NIGHTLY_URL;'/> to access the
+                    Nightly Builds.
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Select a Build:</emphasis>
+                    Click on any build by date in which you are interested.
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Find the Tarball:</emphasis>
+                    Drill down to find the associated tarball.
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Download the Tarball:</emphasis>
+                    Click the tarball to download and save a snapshot of the
+                    given component.
                     </para></listitem>
             </orderedlist>
         </para>
@@ -423,7 +466,7 @@
 
         <para>
             You create your Source Directory by using
-            <ulink url='&YOCTO_DOCS_REF_URL;#git'>Git</ulink> to clone a local
+            <ulink url='&YOCTO_DOCS_GS_URL;#git'>Git</ulink> to clone a local
             copy of the upstream <filename>poky</filename> repository.
             <note><title>Tip</title>
                 The preferred method of getting the Yocto Project Source
@@ -656,13 +699,16 @@
     </section>
 </section>
 
-<section id='performing-a-simple-build'>
-    <title>Performing a Simple Build</title>
+<section id='dev-building-an-image'>
+    <title>Building an Image</title>
 
     <para>
+        In the development environment, you need to build an image whenever
+        you change hardware support, add or change system libraries, or add
+        or change services that have dependencies.
         Several methods exist that allow you to build an image within the
         Yocto Project.
-        This procedure shows how to build an image using BitBake from a
+        This section shows you how to build an image using BitBake from a
         Linux host.
         <note><title>Notes</title>
             <itemizedlist>
@@ -670,7 +716,7 @@
                     For information on how to build an image using
                     <ulink url='&YOCTO_DOCS_REF_URL;#toaster-term'>Toaster</ulink>,
                     see the
-                    <ulink url='&YOCTO_DOCS_TOAST_URL;'>Yocto Project Toaster Manual</ulink>.
+                    <ulink url='&YOCTO_DOCS_TOAST_URL;'>Toaster Manual</ulink>.
                     </para></listitem>
                 <listitem><para>
                     For information on how to use
@@ -678,6 +724,12 @@
                     "<ulink url='&YOCTO_DOCS_SDK_URL;#using-devtool-in-your-sdk-workflow'>Using <filename>devtool</filename> in Your SDK Workflow</ulink>"
                     section in the Yocto Project Application Development and
                     the Extensible Software Development Kit (eSDK) manual.
+                    </para></listitem>
+                <listitem><para>
+                    For a practical example on how to build an image using the
+                    OpenEmbedded build system, see the
+                    "<ulink url='&YOCTO_DOCS_QS_URL;#qs-building-images'>Building Images</ulink>"
+                    section of the Yocto Project Quick Start.
                     </para></listitem>
             </itemizedlist>
         </note>
@@ -689,11 +741,8 @@
         <ulink url='&YOCTO_DOCS_REF_URL;#build-directory'>Build Directory</ulink>
         under <filename>tmp/deploy/images</filename>.
         For detailed information on the build process using BitBake, see the
-        "<ulink url='&YOCTO_DOCS_REF_URL;#images-dev-environment'>Images</ulink>"
-        section in the Yocto Project Reference Manual.
-        You can also reference the
-        "<ulink url='&YOCTO_DOCS_QS_URL;#qs-building-images'>Building Images</ulink>"
-        section in the Yocto Project Quick Start.
+        "<ulink url='&YOCTO_DOCS_CM_URL;#images-dev-environment'>Images</ulink>"
+        section in the Yocto Project Concepts Manual.
     </para>
 
     <para>
@@ -712,14 +761,30 @@
                 <emphasis>Initialize the Build Environment:</emphasis>
                 Initialize the build environment by sourcing the build
                 environment script (i.e.
-                <ulink url='&YOCTO_DOCS_REF_URL;#structure-core-script'><filename>&OE_INIT_FILE;</filename></ulink>).
+                <ulink url='&YOCTO_DOCS_REF_URL;#structure-core-script'><filename>&OE_INIT_FILE;</filename></ulink>):
+                <literallayout class='monospaced'>
+     $ source &OE_INIT_FILE; [<replaceable>build_dir</replaceable>]
+                </literallayout></para>
+
+                <para>When you use the initialization script, the
+                OpenEmbedded build system uses <filename>build</filename> as
+                the default Build Directory in your current work directory.
+                You can use a <replaceable>build_dir</replaceable> argument
+                with the script to specify a different build directory.
+                <note><title>Tip</title>
+                    A common practice is to use a different Build Directory for
+                    different targets.
+                    For example, <filename>~/build/x86</filename> for a
+                    <filename>qemux86</filename> target, and
+                    <filename>~/build/arm</filename> for a
+                    <filename>qemuarm</filename> target.
+                </note>
                 </para></listitem>
             <listitem><para>
                 <emphasis>Make Sure Your <filename>local.conf</filename>
                 File is Correct:</emphasis>
                 Ensure the <filename>conf/local.conf</filename> configuration
-                file, which is found in the
-                <ulink url='&YOCTO_DOCS_REF_URL;#build-directory'>Build Directory</ulink>,
+                file, which is found in the Build Directory,
                 is set up how you want it.
                 This file defines many aspects of the build environment
                 including the target machine architecture through the
@@ -727,24 +792,213 @@
                 the packaging format used during the build
                 (<ulink url='&YOCTO_DOCS_REF_URL;#var-PACKAGE_CLASSES'><filename>PACKAGE_CLASSES</filename></ulink>),
                 and a centralized tarball download directory through the
-                <filename><ulink url='&YOCTO_DOCS_REF_URL;#var-DL_DIR'>DL_DIR</ulink></filename> variable.
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-DL_DIR'><filename>DL_DIR</filename></ulink> variable.
                 </para></listitem>
             <listitem><para>
                 <emphasis>Build the Image:</emphasis>
-                Build the image using the <filename>bitbake</filename> command.
-                For example, the following command builds the
+                Build the image using the <filename>bitbake</filename> command:
+                <literallayout class='monospaced'>
+     $ bitbake <replaceable>target</replaceable>
+                </literallayout>
+                <note>
+                    For information on BitBake, see the
+                    <ulink url='&YOCTO_DOCS_BB_URL;'>BitBake User Manual</ulink>.
+                </note>
+                The <replaceable>target</replaceable> is the name of the
+                recipe you want to build.
+                Common targets are the images in
+                <filename>meta/recipes-core/images</filename>,
+                <filename>meta/recipes-sato/images</filename>, etc. all found
+                in the
+                <ulink url='&YOCTO_DOCS_REF_URL;#source-directory'>Source Directory</ulink>.
+                Or, the target can be the name of a recipe for a specific
+                piece of software such as BusyBox.
+                For more details about the images the OpenEmbedded build
+                system supports, see the
+                "<ulink url='&YOCTO_DOCS_REF_URL;#ref-images'>Images</ulink>"
+                chapter in the Yocto Project Reference Manual.</para>
+
+                <para>As an example, the following command builds the
                 <filename>core-image-minimal</filename> image:
                 <literallayout class='monospaced'>
      $ bitbake core-image-minimal
                 </literallayout>
-                For information on BitBake, see the
-                <ulink url='&YOCTO_DOCS_BB_URL;'>BitBake User Manual</ulink>.
+                Once an image has been built, it often needs to be installed.
+                The images and kernels built by the OpenEmbedded build system
+                are placed in the Build Directory in
+                <filename class="directory">tmp/deploy/images</filename>.
+                For information on how to run pre-built images such as
+                <filename>qemux86</filename> and <filename>qemuarm</filename>,
+                see the
+                <ulink url='&YOCTO_DOCS_SDK_URL;'>Yocto Project Application Development and the Extensible Software Development Kit (eSDK)</ulink>
+                manual.
+                For information about how to install these images, see the
+                documentation for your particular board or machine.
                 </para></listitem>
         </orderedlist>
     </para>
 </section>
 
--->
+<section id='speeding-up-the-build'>
+    <title>Speeding Up the Build</title>
+
+    <para>
+        Build time can be an issue.
+        By default, the build system uses simple controls to try and maximize
+        build efficiency.
+        In general, the default settings for all the following variables
+        result in the most efficient build times when dealing with single
+        socket systems (i.e. a single CPU).
+        If you have multiple CPUs, you might try increasing the default
+        values to gain more speed.
+        See the descriptions in the glossary for each variable for more
+        information:
+        <itemizedlist>
+            <listitem><para>
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-BB_NUMBER_THREADS'><filename>BB_NUMBER_THREADS</filename>:</ulink>
+                The maximum number of threads BitBake simultaneously executes.
+                </para></listitem>
+            <listitem><para>
+                <ulink url='&YOCTO_DOCS_BB_URL;#var-BB_NUMBER_PARSE_THREADS'><filename>BB_NUMBER_PARSE_THREADS</filename>:</ulink>
+                The number of threads BitBake uses during parsing.
+                </para></listitem>
+            <listitem><para>
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-PARALLEL_MAKE'><filename>PARALLEL_MAKE</filename>:</ulink>
+                Extra options passed to the <filename>make</filename> command
+                during the
+                <ulink url='&YOCTO_DOCS_REF_URL;#ref-tasks-compile'><filename>do_compile</filename></ulink>
+                task in order to specify parallel compilation on the
+                local build host.
+                </para></listitem>
+            <listitem><para>
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-PARALLEL_MAKEINST'><filename>PARALLEL_MAKEINST</filename>:</ulink>
+                Extra options passed to the <filename>make</filename> command
+                during the
+                <ulink url='&YOCTO_DOCS_REF_URL;#ref-tasks-install'><filename>do_install</filename></ulink>
+                task in order to specify parallel installation on the
+                local build host.
+                </para></listitem>
+        </itemizedlist>
+        As mentioned, these variables all scale to the number of processor
+        cores available on the build system.
+        For single socket systems, this auto-scaling ensures that the build
+        system fundamentally takes advantage of potential parallel operations
+        during the build based on the build machine's capabilities.
+    </para>
+
+    <para>
+        Following are additional factors that can affect build speed:
+        <itemizedlist>
+            <listitem><para>
+                File system type:
+                The file system type that the build is being performed on can
+                also influence performance.
+                Using <filename>ext4</filename> is recommended as compared
+                to <filename>ext2</filename> and <filename>ext3</filename>
+                due to <filename>ext4</filename> improved features
+                such as extents.
+                </para></listitem>
+            <listitem><para>
+                Disabling the updating of access time using
+                <filename>noatime</filename>:
+                The <filename>noatime</filename> mount option prevents the
+                build system from updating file and directory access times.
+                </para></listitem>
+            <listitem><para>
+                Setting a longer commit:
+                Using the "commit=" mount option increases the interval
+                in seconds between disk cache writes.
+                Changing this interval from the five second default to
+                something longer increases the risk of data loss but decreases
+                the need to write to the disk, thus increasing the build
+                performance.
+                </para></listitem>
+            <listitem><para>
+                Choosing the packaging backend:
+                Of the available packaging backends, IPK is the fastest.
+                Additionally, selecting a singular packaging backend also
+                helps.
+                </para></listitem>
+            <listitem><para>
+                Using <filename>tmpfs</filename> for
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-TMPDIR'><filename>TMPDIR</filename></ulink>
+                as a temporary file system:
+                While this can help speed up the build, the benefits are
+                limited due to the compiler using
+                <filename>-pipe</filename>.
+                The build system goes to some lengths to avoid
+                <filename>sync()</filename> calls into the
+                file system on the principle that if there was a significant
+                failure, the
+                <ulink url='&YOCTO_DOCS_REF_URL;#build-directory'>Build Directory</ulink>
+                contents could easily be rebuilt.
+                </para></listitem>
+            <listitem><para>
+                Inheriting the
+                <ulink url='&YOCTO_DOCS_REF_URL;#ref-classes-rm-work'><filename>rm_work</filename></ulink>
+                class:
+                Inheriting this class has shown to speed up builds due to
+                significantly lower amounts of data stored in the data
+                cache as well as on disk.
+                Inheriting this class also makes cleanup of
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-TMPDIR'><filename>TMPDIR</filename></ulink>
+                faster, at the expense of being easily able to dive into the
+                source code.
+                File system maintainers have recommended that the fastest way
+                to clean up large numbers of files is to reformat partitions
+                rather than delete files due to the linear nature of
+                partitions.
+                This, of course, assumes you structure the disk partitions and
+                file systems in a way that this is practical.
+                </para></listitem>
+        </itemizedlist>
+        Aside from the previous list, you should keep some trade offs in
+        mind that can help you speed up the build:
+        <itemizedlist>
+            <listitem><para>
+                Remove items from
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-DISTRO_FEATURES'><filename>DISTRO_FEATURES</filename></ulink>
+                that you might not need.
+                </para></listitem>
+            <listitem><para>
+                Exclude debug symbols and other debug information:
+                If you do not need these symbols and other debug information,
+                disabling the <filename>*-dbg</filename> package generation
+                can speed up the build.
+                You can disable this generation by setting the
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-INHIBIT_PACKAGE_DEBUG_SPLIT'><filename>INHIBIT_PACKAGE_DEBUG_SPLIT</filename></ulink>
+                variable to "1".
+                </para></listitem>
+            <listitem><para>
+                Disable static library generation for recipes derived from
+                <filename>autoconf</filename> or <filename>libtool</filename>:
+                Following is an example showing how to disable static
+                libraries and still provide an override to handle exceptions:
+                <literallayout class='monospaced'>
+     STATICLIBCONF = "--disable-static"
+     STATICLIBCONF_sqlite3-native = ""
+     EXTRA_OECONF += "${STATICLIBCONF}"
+                </literallayout>
+                <note><title>Notes</title>
+                    <itemizedlist>
+                        <listitem><para>
+                            Some recipes need static libraries in order to work
+                            correctly (e.g. <filename>pseudo-native</filename>
+                            needs <filename>sqlite3-native</filename>).
+                            Overrides, as in the previous example, account for
+                            these kinds of exceptions.
+                            </para></listitem>
+                        <listitem><para>
+                            Some packages have packaging code that assumes the
+                            presence of the static libraries.
+                            If so, you might need to exclude them as well.
+                            </para></listitem>
+                    </itemizedlist>
+                </note>
+            </para></listitem>
+        </itemizedlist>
+    </para>
+</section>
 </chapter>
 <!--
 vim: expandtab tw=80 ts=4

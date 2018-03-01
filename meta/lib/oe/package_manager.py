@@ -461,7 +461,8 @@ class RpmPM(PackageManager):
                  target_vendor,
                  task_name='target',
                  arch_var=None,
-                 os_var=None):
+                 os_var=None,
+                 rpm_repo_workdir="oe-rootfs-repo"):
         super(RpmPM, self).__init__(d)
         self.target_rootfs = target_rootfs
         self.target_vendor = target_vendor
@@ -475,7 +476,7 @@ class RpmPM(PackageManager):
         else:
             self.primary_arch = self.d.getVar('MACHINE_ARCH')
 
-        self.rpm_repo_dir = oe.path.join(self.d.getVar('WORKDIR'), "oe-rootfs-repo")
+        self.rpm_repo_dir = oe.path.join(self.d.getVar('WORKDIR'), rpm_repo_workdir)
         bb.utils.mkdirhier(self.rpm_repo_dir)
         oe.path.symlink(self.d.getVar('DEPLOY_DIR_RPM'), oe.path.join(self.rpm_repo_dir, "rpm"), True)
 
@@ -603,6 +604,9 @@ class RpmPM(PackageManager):
             if line.startswith("Non-fatal POSTIN scriptlet failure in rpm package"):
                 failed_scriptlets_pkgnames[line.split()[-1]] = True
 
+        if len(failed_scriptlets_pkgnames) > 0:
+            bb.warn("Intentionally failing postinstall scriptlets of %s to defer them to first boot is deprecated. Please place them into pkg_postinst_ontarget_${PN} ()." %(list(failed_scriptlets_pkgnames.keys())))
+            bb.warn("If deferring to first boot wasn't the intent, then scriptlet failure may mean an issue in the recipe, or a regression elsewhere.")
         for pkg in failed_scriptlets_pkgnames.keys():
             self.save_rpmpostinst(pkg)
 

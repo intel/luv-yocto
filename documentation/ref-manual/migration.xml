@@ -293,7 +293,7 @@
                 For the remainder, you can now find them in the
                 <filename>meta-extras</filename> repository, which is in the
                 Yocto Project
-                <link linkend='source-repositories'>Source Repositories</link>.
+                <ulink url='&YOCTO_DOCS_GS_URL;#source-repositories'>Source Repositories</ulink>.
             </para>
         </section>
     </section>
@@ -1022,8 +1022,8 @@
                     </para></listitem>
             </itemizedlist>
             For more information on Build History, see the
-            "<link linkend='maintaining-build-output-quality'>Maintaining Build Output Quality</link>"
-            section.
+            "<ulink url='&YOCTO_DOCS_DEV_URL;#maintaining-build-output-quality'>Maintaining Build Output Quality</ulink>"
+            section in the Yocto Project Development Tasks Manual.
         </para>
     </section>
 
@@ -1748,8 +1748,8 @@
 
         <para>
             The minimum
-            <link linkend='git'>Git</link> version required
-            on the build host is now 1.7.8 because the
+            <ulink url='&YOCTO_DOCS_GS_URL;#git'>Git</ulink> version
+            required on the build host is now 1.7.8 because the
             <filename>--list</filename> option is now required by
             BitBake's Git fetcher.
             As always, if your host distribution does not provide a version of
@@ -2026,8 +2026,8 @@
                     You should manually remove old "build-id" files from your
                     existing build history repositories to avoid confusion.
                     For information on the build history feature, see the
-                    "<link linkend='maintaining-build-output-quality'>Maintaining Build Output Quality</link>"
-                    section.
+                    "<ulink url='&YOCTO_DOCS_DEV_URL;#maintaining-build-output-quality'>Maintaining Build Output Quality</ulink>"
+                    section in the Yocto Project Development Tasks Manual.
                     </para></listitem>
             </itemizedlist>
         </para>
@@ -4038,7 +4038,7 @@ $ runqemu qemux86-64 tmp/deploy/images/qemux86-64/core-image-minimal-qemux86-64.
                     <para>For an example, see the
                     <filename>pixbufcache</filename> class in
                     <filename>meta/classes/</filename> in the Yocto Project
-                    <link linkend='source-repositories'>Source Repositories</link>.
+                    <ulink url='&YOCTO_DOCS_GS_URL;#source-repositories'>Source Repositories</ulink>.
                     <note>
                         The <filename>SSTATEPOSTINSTFUNCS</filename> variable
                         itself is now deprecated in favor of the

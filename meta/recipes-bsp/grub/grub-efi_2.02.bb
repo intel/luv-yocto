@@ -25,7 +25,7 @@ python __anonymous () {
          grubtarget = 'arm64'
          grubimage = "grub-efi-bootaa64.efi"
     else:
-        raise bb.parse.SkipPackage("grub-efi is incompatible with target %s" % target)
+        raise bb.parse.SkipRecipe("grub-efi is incompatible with target %s" % target)
     d.setVar("GRUB_TARGET", grubtarget)
     d.setVar("GRUB_IMAGE", grubimage)
 }
@@ -57,7 +57,7 @@ do_install_class-target() {
 }
 
 GRUB_BUILDIN ?= "boot linux ext2 fat serial part_msdos part_gpt normal \
-                 efi_gop iso9660 search loadenv test"
+                 efi_gop iso9660 configfile search loadenv test"
 
 do_deploy() {
 	# Search for the grub.cfg on the local boot media by using the

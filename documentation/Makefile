@@ -84,6 +84,36 @@
 # for the 'denzil' branch.
 #
 
+ifeq ($(DOC),getting-started)
+XSLTOPTS = --xinclude
+ALLPREQ = html eclipse tarball
+TARFILES = getting-started-style.css getting-started.html figures/getting-started-title.png \
+           figures/git-workflow.png figures/source-repos.png figures/index-downloads.png \
+           figures/yp-download.png figures/YP-flow-diagram.png figures/key-dev-elements.png \
+           eclipse
+MANUALS = $(DOC)/$(DOC).html $(DOC)/eclipse
+FIGURES = figures
+STYLESHEET = $(DOC)/*.css
+
+endif
+
+ifeq ($(DOC),concepts-manual)
+XSLTOPTS = --xinclude
+ALLPREQ = html eclipse tarball
+TARFILES = concepts-manual-style.css concepts-manual.html figures/concepts-manual-title.png \
+           figures/cross-development-toolchains.png figures/yocto-environment-ref.png \
+           figures/user-configuration.png figures/layer-input.png figures/source-input.png \
+           figures/package-feeds.png figures/patching.png figures/source-fetching.png \
+           figures/configuration-compile-autoreconf.png figures/analysis-for-package-splitting.png \
+           figures/image-generation.png figures/sdk-generation.png figures/images.png \
+           figures/sdk.png \
+           eclipse
+MANUALS = $(DOC)/$(DOC).html $(DOC)/eclipse
+FIGURES = figures
+STYLESHEET = $(DOC)/*.css
+
+endif
+
 ifeq ($(DOC),bsp-guide)
 XSLTOPTS = --xinclude
 ALLPREQ = html eclipse tarball
@@ -128,8 +158,8 @@ TARFILES = dev-style.css dev-manual.html \
            figures/source-repos.png figures/yp-download.png \
            figures/wip.png
         else
-TARFILES = dev-style.css dev-manual.html \
-           figures/dev-title.png \
+TARFILES = dev-style.css dev-manual.html figures/buildhistory-web.png \
+           figures/dev-title.png figures/buildhistory.png \
            figures/recipe-workflow.png figures/bitbake-build-flow.png \
            eclipse
 	endif
@@ -196,7 +226,7 @@ TARFILES = mega-manual.html mega-style.css figures/yocto-environment.png \
 	figures/wip.png
         else
 TARFILES = mega-manual.html mega-style.css \
-        figures/building-an-image.png figures/YP-flow-diagram.png \
+        figures/YP-flow-diagram.png \
 	figures/using-a-pre-built-image.png \
 	figures/poky-title.png figures/buildhistory.png \
         figures/buildhistory-web.png \
@@ -240,7 +270,7 @@ TARFILES = mega-manual.html mega-style.css \
 	figures/source-fetching.png figures/patching.png \
         figures/configuration-compile-autoreconf.png \
 	figures/analysis-for-package-splitting.png \
-        figures/image-generation.png \
+        figures/image-generation.png figures/key-dev-elements.png\
 	figures/sdk-generation.png figures/recipe-workflow.png \
 	figures/build-workspace-directory.png figures/mega-title.png \
 	figures/toaster-title.png figures/hosted-service.png \
@@ -249,7 +279,8 @@ TARFILES = mega-manual.html mega-style.css \
 	figures/sdk-environment.png figures/sdk-installed-standard-sdk-directory.png \
 	figures/sdk-devtool-add-flow.png figures/sdk-installed-extensible-sdk-directory.png \
 	figures/sdk-devtool-modify-flow.png figures/sdk-eclipse-dev-flow.png \
-	figures/sdk-devtool-upgrade-flow.png figures/bitbake-build-flow.png figures/ypqs-title.png
+	figures/sdk-devtool-upgrade-flow.png figures/bitbake-build-flow.png figures/ypqs-title.png \
+	figures/getting-started-title.png figures/concepts-manual-title.png
 	endif
 
 MANUALS = $(DOC)/$(DOC).html
@@ -261,17 +292,9 @@ endif
 ifeq ($(DOC),ref-manual)
 XSLTOPTS = --xinclude
 ALLPREQ = html eclipse tarball
-TARFILES = ref-manual.html ref-style.css figures/poky-title.png figures/YP-flow-diagram.png \
-	figures/buildhistory.png figures/buildhistory-web.png eclipse \
-        figures/cross-development-toolchains.png figures/layer-input.png \
-	figures/package-feeds.png figures/source-input.png \
-	figures/user-configuration.png figures/yocto-environment-ref.png \
-	figures/images.png figures/sdk.png figures/source-fetching.png \
-	figures/patching.png figures/configuration-compile-autoreconf.png \
-	figures/analysis-for-package-splitting.png figures/image-generation.png \
-	figures/sdk-generation.png figures/building-an-image.png \
-	figures/build-workspace-directory.png figures/source-repos.png \
-	figures/index-downloads.png figures/yp-download.png figures/git-workflow.png
+TARFILES = ref-manual.html ref-style.css figures/poky-title.png \
+	figures/build-workspace-directory.png \
+	eclipse
 MANUALS = $(DOC)/$(DOC).html $(DOC)/eclipse
 FIGURES = figures
 STYLESHEET = $(DOC)/*.css
@@ -406,10 +429,12 @@ eclipse: eclipse-generate eclipse-resolve-links
 .PHONY : eclipse-generate eclipse-resolve-links
 
 eclipse-generate:
-ifeq ($(filter $(DOC), sdk-manual bsp-guide dev-manual kernel-dev profile-manual ref-manual yocto-project-qs),)
+ifeq ($(filter $(DOC), concepts-manual getting-started sdk-manual bsp-guide dev-manual kernel-dev profile-manual ref-manual yocto-project-qs),)
 	@echo " "
 	@echo "ERROR: You can only create eclipse documentation"
 	@echo "       of the following documentation parts:"
+	@echo "       - concepts-manual"
+	@echo "       - getting-started"
 	@echo "       - sdk-manual"
 	@echo "       - bsp-guide"
 	@echo "       - dev-manual"

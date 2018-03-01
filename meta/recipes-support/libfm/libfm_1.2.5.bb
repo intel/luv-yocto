@@ -12,7 +12,9 @@ SECTION = "x11/libs"
 DEPENDS = "glib-2.0 pango gtk+3 menu-cache intltool-native libexif libfm-extra gettext-native"
 
 SRC_URI = "${SOURCEFORGE_MIRROR}/pcmanfm/libfm-${PV}.tar.xz \
-           file://0001-Correctly-check-the-stamp-file-that-indicates-if-we-.patch"
+           file://0001-Correctly-check-the-stamp-file-that-indicates-if-we-.patch \
+           file://0001-Enclose-text-in-programlisting-into-CDATA.patch \
+           "
 
 SRC_URI[md5sum] = "a1ba9ae5e920f38b647dd511edd6c807"
 SRC_URI[sha256sum] = "c706bb1020cf5f2d6f5a9226f692ce1985947134dcf2bde64278bd0420779b5a"
@@ -24,7 +26,19 @@ EXTRA_OECONF = "--with-gtk=3"
 
 do_configure[dirs] =+ "${S}/m4"
 
+PACKAGES =+ "libfm-gtk"
 PACKAGES += "${PN}-mime"
+FILES_libfm-gtk = " \
+    ${libdir}/libfm-gtk*so.* \
+    ${libdir}/libfm/modules/gtk* \
+    ${bindir}/libfm-pref-apps \
+    ${bindir}/lxshortcut \
+    ${datadir}/applications/libfm-pref-apps.desktop \
+    ${datadir}/applications/lxshortcut.desktop \
+    ${datadir}/libfm/images/folder.png \
+    ${datadir}/libfm/images/unknown.png \
+    ${datadir}/libfm/ui/*.ui \
+"
 FILES_${PN}-mime = "${datadir}/mime/"
 
 do_install_append () {

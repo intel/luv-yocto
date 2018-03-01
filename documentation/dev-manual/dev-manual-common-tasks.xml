@@ -22,77 +22,11 @@
             multiple layers.
             Layers allow you to isolate different types of customizations from
             each other.
-            You might find it tempting to keep everything in one layer when
-            working on a single project.
-            However, the more modular your Metadata, the easier
-            it is to cope with future changes.
+            For introductory information on the Yocto Project Layer Model,
+            see the
+            "<ulink url='&YOCTO_DOCS_GS_URL;#the-yocto-project-layer-model'>The Yocto Project Layer Model</ulink>"
+            section in the Getting Started With Yocto Project Manual.
         </para>
-
-        <para>
-            To illustrate how layers are used to keep things modular, consider
-            machine customizations.
-            These types of customizations typically reside in a special layer,
-            rather than a general layer, called a Board Support Package (BSP)
-            Layer.
-            Furthermore, the machine customizations should be isolated from
-            recipes and Metadata that support a new GUI environment,
-            for example.
-            This situation gives you a couple of layers: one for the machine
-            configurations, and one for the GUI environment.
-            It is important to understand, however, that the BSP layer can
-            still make machine-specific additions to recipes within the GUI
-            environment layer without polluting the GUI layer itself
-            with those machine-specific changes.
-            You can accomplish this through a recipe that is a BitBake append
-            (<filename>.bbappend</filename>) file, which is described later
-            in this section.
-            <note>
-                For general information on BSP layer structure, see the
-                <ulink url='&YOCTO_DOCS_BSP_URL;#bsp'>Board Support Packages (BSP) - Developer's Guide</ulink>.
-            </note>
-        </para>
-
-        <para>
-        </para>
-
-        <section id='yocto-project-layers'>
-            <title>Layers</title>
-
-            <para>
-                The <ulink url='&YOCTO_DOCS_REF_URL;#source-directory'>Source Directory</ulink>
-                contains both general layers and BSP
-                layers right out of the box.
-                You can easily identify layers that ship with a
-                Yocto Project release in the Source Directory by their
-                folder names.
-                Folders that represent layers typically have names that begin with
-                the string <filename>meta-</filename>.
-                <note>
-                    It is not a requirement that a layer name begin with the
-                    prefix <filename>meta-</filename>, but it is a commonly
-                    accepted standard in the Yocto Project community.
-                </note>
-                For example, when you set up the Source Directory structure,
-                you will see several layers:
-                <filename>meta</filename>,
-                <filename>meta-skeleton</filename>,
-                <filename>meta-selftest</filename>,
-                <filename>meta-poky</filename>, and
-                <filename>meta-yocto-bsp</filename>.
-                Each of these folders represents a distinct layer.
-            </para>
-
-            <para>
-                As another example, if you set up a local copy of the
-                <filename>meta-intel</filename> Git repository
-                and then explore the folder of that general layer,
-                you will discover many Intel-specific BSP layers inside.
-                For more information on BSP layers, see the
-                "<ulink url='&YOCTO_DOCS_BSP_URL;#bsp-layers'>BSP Layers</ulink>"
-                section in the Yocto Project Board Support Package (BSP)
-                Developer's Guide.
-            </para>
-        </section>
 
         <section id='creating-your-own-layer'>
             <title>Creating Your Own Layer</title>
@@ -1507,8 +1441,8 @@
                 </itemizedlist>
                 <note>
                     For information on recipe syntax, see the
-                    "<ulink url='&YOCTO_DOCS_REF_URL;#recipe-syntax'>Recipe Syntax</ulink>"
-                    section in the Yocto Project Reference Manual.
+                    "<link linkend='recipe-syntax'>Recipe Syntax</link>"
+                    section.
                 </note>
             </para>
 
@@ -1798,8 +1732,8 @@
 
             <para>
                 You can find more information about the build process in
-                "<ulink url='&YOCTO_DOCS_REF_URL;#ref-development-environment'>The Yocto Project Development Environment</ulink>"
-                chapter of the Yocto Project Reference Manual.
+                "<ulink url='&YOCTO_DOCS_GS_URL;#overview-development-environment'>The Yocto Project Development Environment</ulink>"
+                chapter of the Getting Started With Yocto Project Manual.
             </para>
         </section>
 
@@ -1815,8 +1749,8 @@
                 Your recipe must have a <filename>SRC_URI</filename> variable
                 that points to where the source is located.
                 For a graphical representation of source locations, see the
-                "<ulink url='&YOCTO_DOCS_REF_URL;#sources-dev-environment'>Sources</ulink>"
-                section in the Yocto Project Reference Manual.
+                "<ulink url='&YOCTO_DOCS_CM_URL;#sources-dev-environment'>Sources</ulink>"
+                section in the Yocto Project Concepts Manual.
             </para>
 
             <para>
@@ -2128,8 +2062,8 @@
                         containing the current checksum.
                         For more explanation and examples of how to set the
                         <filename>LIC_FILES_CHKSUM</filename> variable, see the
-                        "<ulink url='&YOCTO_DOCS_REF_URL;#usingpoky-configuring-LIC_FILES_CHKSUM'>Tracking License Changes</ulink>"
-                        section in the Yocto Project Reference Manual.</para>
+                        "<ulink url='&YOCTO_DOCS_CM_URL;#usingpoky-configuring-LIC_FILES_CHKSUM'>Tracking License Changes</ulink>"
+                        section in the Yocto Project Concepts Manual.</para>
                         <para>To determine the correct checksum string, you
                         can list the appropriate files in the
                         <filename>LIC_FILES_CHKSUM</filename> variable with
@@ -2275,8 +2209,8 @@
                 automatically add a runtime dependency to "mypackage" on
                 "example").
                 See the
-                "<ulink url='&YOCTO_DOCS_REF_URL;#automatically-added-runtime-dependencies'>Automatically Added Runtime Dependencies</ulink>"
-                in the Yocto Project Reference Manual for further details.
+                "<ulink url='&YOCTO_DOCS_CM_URL;#automatically-added-runtime-dependencies'>Automatically Added Runtime Dependencies</ulink>"
+                in the Yocto Project Concepts Manual for further details.
             </para>
         </section>
 
@@ -3211,7 +3145,8 @@
                     The variable
                     <filename><ulink url='&YOCTO_DOCS_REF_URL;#var-LIC_FILES_CHKSUM'>LIC_FILES_CHKSUM</ulink></filename>
                     is used to track source license changes as described in the
-                    "<ulink url='&YOCTO_DOCS_REF_URL;#usingpoky-configuring-LIC_FILES_CHKSUM'>Tracking License Changes</ulink>" section.
+                    "<ulink url='&YOCTO_DOCS_CM_URL;#usingpoky-configuring-LIC_FILES_CHKSUM'>Tracking License Changes</ulink>"
+                    section in the Yocto Project Concepts Manual.
                     You can quickly create Autotool-based recipes in a manner similar to the previous example.
                 </para>
             </section>
@@ -3417,8 +3352,8 @@
                                 allows runtime dependencies between packages
                                 to be added automatically.
                                 See the
-                                "<ulink url='&YOCTO_DOCS_REF_URL;#automatically-added-runtime-dependencies'>Automatically Added Runtime Dependencies</ulink>"
-                                section in the Yocto Project Reference Manual
+                                "<ulink url='&YOCTO_DOCS_CM_URL;#automatically-added-runtime-dependencies'>Automatically Added Runtime Dependencies</ulink>"
+                                section in the Yocto Project Concepts Manual
                                 for more information.
                                 </para></listitem>
                         </itemizedlist>
@@ -3502,6 +3437,330 @@
                 <filename>=</filename> operators in assignments or ordering
                 recipe components in an erratic way, are widely seen as poor
                 style.
+            </para>
+        </section>
+
+        <section id='recipe-syntax'>
+            <title>Recipe Syntax</title>
+
+            <para>
+                Understanding recipe file syntax is important for writing
+                recipes.
+                The following list overviews the basic items that make up a
+                BitBake recipe file.
+                For more complete BitBake syntax descriptions, see the
+                "<ulink url='&YOCTO_DOCS_BB_URL;#bitbake-user-manual-metadata'>Syntax and Operators</ulink>"
+                chapter of the BitBake User Manual.
+                <itemizedlist>
+                    <listitem><para>
+                        <emphasis>Variable Assignments and Manipulations:</emphasis>
+                        Variable assignments allow a value to be assigned to a
+                        variable.
+                        The assignment can be static text or might include
+                        the contents of other variables.
+                        In addition to the assignment, appending and prepending
+                        operations are also supported.</para>
+
+                        <para>The following example shows some of the ways
+                        you can use variables in recipes:
+                        <literallayout class='monospaced'>
+     S = "${WORKDIR}/postfix-${PV}"
+     CFLAGS += "-DNO_ASM"
+     SRC_URI_append = " file://fixup.patch"
+                        </literallayout>
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Functions:</emphasis>
+                        Functions provide a series of actions to be performed.
+                        You usually use functions to override the default
+                        implementation of a task function or to complement
+                        a default function (i.e. append or prepend to an
+                        existing function).
+                        Standard functions use <filename>sh</filename> shell
+                        syntax, although access to OpenEmbedded variables and
+                        internal methods are also available.</para>
+
+                        <para>The following is an example function from the
+                        <filename>sed</filename> recipe:
+                        <literallayout class='monospaced'>
+     do_install () {
+         autotools_do_install
+         install -d ${D}${base_bindir}
+         mv ${D}${bindir}/sed ${D}${base_bindir}/sed
+         rmdir ${D}${bindir}/
+     }
+                        </literallayout>
+                        It is also possible to implement new functions that
+                        are called between existing tasks as long as the
+                        new functions are not replacing or complementing the
+                        default functions.
+                        You can implement functions in Python
+                        instead of shell.
+                        Both of these options are not seen in the majority of
+                        recipes.
+                        </para></listitem>
+                    <listitem><para><emphasis>Keywords:</emphasis>
+                        BitBake recipes use only a few keywords.
+                        You use keywords to include common
+                        functions (<filename>inherit</filename>), load parts
+                        of a recipe from other files
+                        (<filename>include</filename> and
+                        <filename>require</filename>) and export variables
+                        to the environment (<filename>export</filename>).
+                        </para>
+
+                        <para>The following example shows the use of some of
+                        these keywords:
+                        <literallayout class='monospaced'>
+     export POSTCONF = "${STAGING_BINDIR}/postconf"
+     inherit autoconf
+     require otherfile.inc
+                        </literallayout>
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Comments (#):</emphasis>
+                        Any lines that begin with the hash character
+                        (<filename>#</filename>) are treated as comment lines
+                        and are ignored:
+                        <literallayout class='monospaced'>
+     # This is a comment
+                        </literallayout>
+                        </para></listitem>
+                </itemizedlist>
+            </para>
+
+            <para>
+                This next list summarizes the most important and most commonly
+                used parts of the recipe syntax.
+                For more information on these parts of the syntax, you can
+                reference the
+                <ulink url='&YOCTO_DOCS_BB_URL;#bitbake-user-manual-metadata'>Syntax and Operators</ulink>
+                chapter in the BitBake User Manual.
+                <itemizedlist>
+                    <listitem><para>
+                        <emphasis>Line Continuation (\):</emphasis>
+                        Use the backward slash (<filename>\</filename>)
+                        character to split a statement over multiple lines.
+                        Place the slash character at the end of the line that
+                        is to be continued on the next line:
+                        <literallayout class='monospaced'>
+     VAR = "A really long \
+            line"
+                        </literallayout>
+                        <note>
+                            You cannot have any characters including spaces
+                            or tabs after the slash character.
+                        </note>
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Using Variables (${<replaceable>VARNAME</replaceable>}):</emphasis>
+                        Use the <filename>${<replaceable>VARNAME</replaceable>}</filename>
+                        syntax to access the contents of a variable:
+                        <literallayout class='monospaced'>
+     SRC_URI = "${SOURCEFORGE_MIRROR}/libpng/zlib-${PV}.tar.gz"
+                        </literallayout>
+                        <note>
+                            It is important to understand that the value of a
+                            variable expressed in this form does not get
+                            substituted automatically.
+                            The expansion of these expressions happens
+                            on-demand later (e.g. usually when a function that
+                            makes reference to the variable executes).
+                            This behavior ensures that the values are most
+                            appropriate for the context in which they are
+                            finally used.
+                            On the rare occasion that you do need the variable
+                            expression to be expanded immediately, you can use
+                            the <filename>:=</filename> operator instead of
+                            <filename>=</filename> when you make the
+                            assignment, but this is not generally needed.
+                        </note>
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Quote All Assignments ("<replaceable>value</replaceable>"):</emphasis>
+                        Use double quotes around values in all variable
+                        assignments (e.g.
+                        <filename>"<replaceable>value</replaceable>"</filename>).
+                        Following is an example:
+                        <literallayout class='monospaced'>
+     VAR1 = "${OTHERVAR}"
+     VAR2 = "The version is ${PV}"
+                        </literallayout>
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Conditional Assignment (?=):</emphasis>
+                        Conditional assignment is used to assign a
+                        value to a variable, but only when the variable is
+                        currently unset.
+                        Use the question mark followed by the equal sign
+                        (<filename>?=</filename>) to make a "soft" assignment
+                        used for conditional assignment.
+                        Typically, "soft" assignments are used in the
+                        <filename>local.conf</filename> file for variables
+                        that are allowed to come through from the external
+                        environment.
+                        </para>
+
+                        <para>Here is an example where
+                        <filename>VAR1</filename> is set to "New value" if
+                        it is currently empty.
+                        However, if <filename>VAR1</filename> has already been
+                        set, it remains unchanged:
+                        <literallayout class='monospaced'>
+     VAR1 ?= "New value"
+                        </literallayout>
+                        In this next example, <filename>VAR1</filename>
+                        is left with the value "Original value":
+                        <literallayout class='monospaced'>
+     VAR1 = "Original value"
+     VAR1 ?= "New value"
+                        </literallayout>
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Appending (+=):</emphasis>
+                        Use the plus character followed by the equals sign
+                        (<filename>+=</filename>) to append values to existing
+                        variables.
+                        <note>
+                            This operator adds a space between the existing
+                            content of the variable and the new content.
+                        </note></para>
+
+                        <para>Here is an example:
+                        <literallayout class='monospaced'>
+     SRC_URI += "file://fix-makefile.patch"
+                        </literallayout>
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Prepending (=+):</emphasis>
+                        Use the equals sign followed by the plus character
+                        (<filename>=+</filename>) to prepend values to existing
+                        variables.
+                        <note>
+                            This operator adds a space between the new content
+                            and the existing content of the variable.
+                        </note></para>
+
+                        <para>Here is an example:
+                        <literallayout class='monospaced'>
+     VAR =+ "Starts"
+                        </literallayout>
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Appending (_append):</emphasis>
+                        Use the <filename>_append</filename> operator to
+                        append values to existing variables.
+                        This operator does not add any additional space.
+                        Also, the operator is applied after all the
+                        <filename>+=</filename>, and
+                        <filename>=+</filename> operators have been applied and
+                        after all <filename>=</filename> assignments have
+                        occurred.
+                        </para>
+
+                        <para>The following example shows the space being
+                        explicitly added to the start to ensure the appended
+                        value is not merged with the existing value:
+                        <literallayout class='monospaced'>
+     SRC_URI_append = " file://fix-makefile.patch"
+                        </literallayout>
+                        You can also use the <filename>_append</filename>
+                        operator with overrides, which results in the actions
+                        only being performed for the specified target or
+                        machine:
+                        <literallayout class='monospaced'>
+     SRC_URI_append_sh4 = " file://fix-makefile.patch"
+                        </literallayout>
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Prepending (_prepend):</emphasis>
+                        Use the <filename>_prepend</filename> operator to
+                        prepend values to existing variables.
+                        This operator does not add any additional space.
+                        Also, the operator is applied after all the
+                        <filename>+=</filename>, and
+                        <filename>=+</filename> operators have been applied and
+                        after all <filename>=</filename> assignments have
+                        occurred.
+                        </para>
+
+                        <para>The following example shows the space being
+                        explicitly added to the end to ensure the prepended
+                        value is not merged with the existing value:
+                        <literallayout class='monospaced'>
+     CFLAGS_prepend = "-I${S}/myincludes "
+                        </literallayout>
+                        You can also use the <filename>_prepend</filename>
+                        operator with overrides, which results in the actions
+                        only being performed for the specified target or
+                        machine:
+                        <literallayout class='monospaced'>
+     CFLAGS_prepend_sh4 = "-I${S}/myincludes "
+                        </literallayout>
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Overrides:</emphasis>
+                        You can use overrides to set a value conditionally,
+                        typically based on how the recipe is being built.
+                        For example, to set the
+                        <ulink url='&YOCTO_DOCS_REF_URL;#var-KBRANCH'><filename>KBRANCH</filename></ulink>
+                        variable's value to "standard/base" for any target
+                        <ulink url='&YOCTO_DOCS_REF_URL;#var-MACHINE'><filename>MACHINE</filename></ulink>,
+                        except for qemuarm where it should be set to
+                        "standard/arm-versatile-926ejs", you would do the
+                        following:
+                        <literallayout class='monospaced'>
+     KBRANCH = "standard/base"
+     KBRANCH_qemuarm  = "standard/arm-versatile-926ejs"
+                        </literallayout>
+                        Overrides are also used to separate alternate values
+                        of a variable in other situations.
+                        For example, when setting variables such as
+                        <ulink url='&YOCTO_DOCS_REF_URL;#var-FILES'><filename>FILES</filename></ulink>
+                        and
+                        <ulink url='&YOCTO_DOCS_REF_URL;#var-RDEPENDS'><filename>RDEPENDS</filename></ulink>
+                        that are specific to individual packages produced by
+                        a recipe, you should always use an override that
+                        specifies the name of the package.
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Indentation:</emphasis>
+                        Use spaces for indentation rather than than tabs.
+                        For shell functions, both currently work.
+                        However, it is a policy decision of the Yocto Project
+                        to use tabs in shell functions.
+                        Realize that some layers have a policy to use spaces
+                        for all indentation.
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Using Python for Complex Operations:</emphasis>
+                        For more advanced processing, it is possible to use
+                        Python code during variable assignments (e.g.
+                        search and replacement on a variable).</para>
+
+                        <para>You indicate Python code using the
+                        <filename>${@<replaceable>python_code</replaceable>}</filename>
+                        syntax for the variable assignment:
+                        <literallayout class='monospaced'>
+     SRC_URI = "ftp://ftp.info-zip.org/pub/infozip/src/zip${@d.getVar('PV',1).replace('.', '')}.tgz
+                        </literallayout>
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Shell Function Syntax:</emphasis>
+                        Write shell functions as if you were writing a shell
+                        script when you describe a list of actions to take.
+                        You should ensure that your script works with a generic
+                        <filename>sh</filename> and that it does not require
+                        any <filename>bash</filename> or other shell-specific
+                        functionality.
+                        The same considerations apply to various system
+                        utilities (e.g. <filename>sed</filename>,
+                        <filename>grep</filename>, <filename>awk</filename>,
+                        and so forth) that you might wish to use.
+                        If in doubt, you should check with multiple
+                        implementations - including those from BusyBox.
+                        </para></listitem>
+                </itemizedlist>
             </para>
         </section>
     </section>
@@ -4531,6 +4790,38 @@
         </section>
     </section>
 
+    <section id='using-x32-psabi'>
+        <title>Using x32 psABI</title>
+
+        <para>
+            x32 processor-specific Application Binary Interface
+            (<ulink url='https://software.intel.com/en-us/node/628948'>x32 psABI</ulink>)
+            is a native 32-bit processor-specific ABI for
+            <trademark class='registered'>Intel</trademark> 64 (x86-64)
+            architectures.
+            <note>
+                For more information on x32 psABI, see the
+                "<ulink url='&YOCTO_DOCS_CM_URL;#x32'>x32 psABI</ulink>"
+                section in the Yocto Project Concepts Manual.
+            </note>
+            To use the x32 psABI, you need to edit your
+            <filename>conf/local.conf</filename> configuration file as
+            follows:
+            <literallayout class='monospaced'>
+     MACHINE = "qemux86-64"
+     DEFAULTTUNE = "x86-64-x32"
+     baselib = "${@d.getVar('BASE_LIB_tune-' + (d.getVar('DEFAULTTUNE', True) \
+        or 'INVALID'), True) or 'lib'}"
+            </literallayout>
+            Once you have set up your configuration file, use BitBake to
+            build an image that supports the x32 psABI.
+            Here is an example:
+            <literallayout class='monospaced'>
+     $ bitbake core-image-sato
+            </literallayout>
+        </para>
+    </section>
+
     <section id='enabling-gobject-introspection-support'>
         <title>Enabling GObject Introspection Support</title>
 
@@ -4846,16 +5137,17 @@
             customized images, and as such, was designed to be
             completely extensible through a plug-in interface.
             See the
-            "<ulink url='&YOCTO_DOCS_REF_URL;#wic-plug-ins-interface'>Wic Plug-Ins Interface</ulink>"
-            section in the Yocto Project Reference Manual for information
-            on these plug-ins.
+            "<link linkend='wic-using-the-wic-plug-ins-interface'>Using the Wic Plug-Ins Interface</link>"
+            section for information on these plug-ins.
         </para>
 
         <para>
             This section provides some background information on Wic,
             describes what you need to have in
             place to run the tool, provides instruction on how to use
-            the Wic utility, and provides several examples.
+            the Wic utility, provides information on using the Wic plug-ins
+            interface, and provides several examples that show how to use
+            Wic.
         </para>
 
         <section id='wic-background'>
@@ -5183,7 +5475,7 @@
                 can use an existing file provided by the Wic installation.
                 As shipped, kickstart files can be found in the
                 Yocto Project
-                <ulink url='&YOCTO_DOCS_REF_URL;#source-repositories'>Source Repositories</ulink>
+                <ulink url='&YOCTO_DOCS_GS_URL;#source-repositories'>Source Repositories</ulink>
                 in the following two locations:
                 <literallayout class='monospaced'>
      poky/meta-yocto-bsp/wic
@@ -5230,6 +5522,210 @@
 
      bootloader --ptable gpt --timeout=5 --append="rootfstype=ext4 console=ttyS0,115200 console=tty0"
                 </literallayout>
+            </para>
+        </section>
+
+        <section id='wic-using-the-wic-plug-ins-interface'>
+            <title>Using the Wic Plug-Ins Interface</title>
+
+            <para>
+                You can extend and specialize Wic functionality by using
+                Wic plug-ins.
+                This section explains the Wic plug-in interface.
+                <note>
+                    Wic plug-ins consist of "source" and "imager" plug-ins.
+                    Imager plug-ins are beyond the scope of this section.
+                </note>
+            </para>
+
+            <para>
+                Source plug-ins provide a mechanism to customize partition
+                content during the Wic image generation process.
+                You can use source plug-ins to map values that you specify
+                using <filename>--source</filename> commands in kickstart
+                files (i.e. <filename>*.wks</filename>) to a plug-in
+                implementation used to populate a given partition.
+                <note>
+                    If you use plug-ins that have build-time dependencies
+                    (e.g. native tools, bootloaders, and so forth)
+                    when building a Wic image, you need to specify those
+                    dependencies using the
+                    <ulink url='&YOCTO_DOCS_REF_URL;#var-WKS_FILE_DEPENDS'><filename>WKS_FILE_DEPENDS</filename></ulink>
+                    variable.
+                </note>
+            </para>
+
+            <para>
+                Source plug-ins are subclasses defined in plug-in files.
+                As shipped, the Yocto Project provides several plug-in
+                files.
+                You can see the source plug-in files that ship with the
+                Yocto Project
+                <ulink url='&YOCTO_GIT_URL;/cgit/cgit.cgi/poky/tree/scripts/lib/wic/plugins/source'>here</ulink>.
+                Each of these plug-in files contains source plug-ins that
+                are designed to populate a specific Wic image partition.
+            </para>
+
+            <para>
+                Source plug-ins are subclasses of the
+                <filename>SourcePlugin</filename> class, which is
+                defined in the
+                <filename>poky/scripts/lib/wic/pluginbase.py</filename>
+                file.
+                For example, the <filename>BootimgEFIPlugin</filename>
+                source plug-in found in the
+                <filename>bootimg-efi.py</filename> file is a subclass of
+                the <filename>SourcePlugin</filename> class, which is found
+                in the <filename>pluginbase.py</filename> file.
+            </para>
+
+            <para>
+                You can also implement source plug-ins in a layer outside
+                of the Source Repositories (external layer).
+                To do so, be sure that your plug-in files are located in
+                a directory whose path is
+                <filename>scripts/lib/wic/plugins/source/</filename>
+                within your external layer.
+                When the plug-in files are located there, the source
+                plug-ins they contain are made available to Wic.
+            </para>
+
+            <para>
+                When the Wic implementation needs to invoke a
+                partition-specific implementation, it looks for the plug-in
+                with the same name as the <filename>--source</filename>
+                parameter used in the kickstart file given to that
+                partition.
+                For example, if the partition is set up using the following
+                command in a kickstart file:
+                <literallayout class='monospaced'>
+     part /boot --source bootimg-pcbios --ondisk sda --label boot --active --align 1024
+                </literallayout>
+                The methods defined as class members of the matching
+                source plug-in (i.e. <filename>bootimg-pcbios</filename>)
+                in the <filename>bootimg-pcbios.py</filename> plug-in file
+                are used.
+            </para>
+
+            <para>
+                To be more concrete, here is the corresponding plug-in
+                definition from the <filename>bootimg-pcbios.py</filename>
+                file for the previous command along with an example
+                method called by the Wic implementation when it needs to
+                prepare a partition using an implementation-specific
+                function:
+                <literallayout class='monospaced'>
+     bootimg-pcbios.py
+                  .
+                  .
+                  .
+        class BootimgPcbiosPlugin(SourcePlugin):
+        """
+        Create MBR boot partition and install syslinux on it.
+        """
+
+        name = 'bootimg-pcbios'
+                  .
+                  .
+                  .
+        @classmethod
+        def do_prepare_partition(cls, part, source_params, creator, cr_workdir,
+                                 oe_builddir, bootimg_dir, kernel_dir,
+                                 rootfs_dir, native_sysroot):
+            """
+            Called to do the actual content population for a partition i.e. it
+            'prepares' the partition to be incorporated into the image.
+            In this case, prepare content for legacy bios boot partition.
+            """
+                  .
+                  .
+                  .
+                </literallayout>
+                If a subclass (plug-in) itself does not implement a
+                particular function, Wic locates and uses the default
+                version in the superclass.
+                It is for this reason that all source plug-ins are derived
+                from the <filename>SourcePlugin</filename> class.
+            </para>
+
+            <para>
+                The <filename>SourcePlugin</filename> class defined in
+                the <filename>pluginbase.py</filename> file defines
+                a set of methods that source plug-ins can implement or
+                override.
+                Any plug-ins (subclass of
+                <filename>SourcePlugin</filename>) that do not implement
+                a particular method inherit the implementation of the
+                method from the <filename>SourcePlugin</filename> class.
+                For more information, see the
+                <filename>SourcePlugin</filename> class in the
+                <filename>pluginbase.py</filename> file for details:
+            </para>
+
+            <para>
+                The following list describes the methods implemented in the
+                <filename>SourcePlugin</filename> class:
+                <itemizedlist>
+                    <listitem><para>
+                        <emphasis><filename>do_prepare_partition()</filename>:</emphasis>
+                        Called to populate a partition with actual content.
+                        In other words, the method prepares the final
+                        partition image that is incorporated into the
+                        disk image.
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis><filename>do_configure_partition()</filename>:</emphasis>
+                        Called before
+                        <filename>do_prepare_partition()</filename> to
+                        create custom configuration files for a partition
+                        (e.g. syslinux or grub configuration files).
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis><filename>do_install_disk()</filename>:</emphasis>
+                        Called after all partitions have been prepared and
+                        assembled into a disk image.
+                        This method provides a hook to allow finalization
+                        of a disk image (e.g. writing an MBR).
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis><filename>do_stage_partition()</filename>:</emphasis>
+                        Special content-staging hook called before
+                        <filename>do_prepare_partition()</filename>.
+                        This method is normally empty.</para>
+
+                        <para>Typically, a partition just uses the passed-in
+                        parameters (e.g. the unmodified value of
+                        <filename>bootimg_dir</filename>).
+                        However, in some cases, things might need to be
+                        more tailored.
+                        As an example, certain files might additionally
+                        need to be taken from
+                        <filename>bootimg_dir + /boot</filename>.
+                        This hook allows those files to be staged in a
+                        customized fashion.
+                        <note>
+                            <filename>get_bitbake_var()</filename>
+                            allows you to access non-standard variables
+                            that you might want to use for this
+                            behavior.
+                        </note>
+                        </para></listitem>
+                </itemizedlist>
+            </para>
+
+            <para>
+                You can extend the source plug-in mechanism.
+                To add more hooks, create more source plug-in methods
+                within <filename>SourcePlugin</filename> and the
+                corresponding derived subclasses.
+                The code that calls the plug-in methods uses the
+                <filename>plugin.get_source_plugin_methods()</filename>
+                function to find the method or methods needed by the call.
+                Retrieval of those methods is accomplished by filling up
+                a dict with keys that contain the method names of interest.
+                On success, these will be filled in with the actual
+                methods.
+                See the Wic implementation for examples and details.
             </para>
         </section>
 
@@ -6740,7 +7236,7 @@ Some notes from Cal:
             you much of a performance difference across the other systems
             as compared to using a more general tuning across all the builds
             (e.g. setting
-            <ulink url='var-DEFAULTTUNE'><filename>DEFAULTTUNE</filename></ulink>
+            <ulink url='&YOCTO_DOCS_REF_URL;#var-DEFAULTTUNE'><filename>DEFAULTTUNE</filename></ulink>
             specifically for each machine's build).
             Rather than "max out" each build's tunings, you can take steps that
             cause the OpenEmbedded build system to reuse software across the
@@ -7109,7 +7605,7 @@ Some notes from Cal:
 
                 <para>
                     Because the OpenEmbedded build system uses
-                    "<ulink url='&YOCTO_DOCS_REF_URL;#checksums'>signatures</ulink>",
+                    "<ulink url='&YOCTO_DOCS_CM_URL;#overview-checksums'>signatures</ulink>",
                     which are unique to a given build, the build system
                     knows when to rebuild packages.
                     All the inputs into a given task are represented by a
@@ -7194,8 +7690,8 @@ Some notes from Cal:
      BUILDHISTORY_COMMIT = "1"
                     </literallayout>
                     For information on build history, see the
-                    "<ulink url='&YOCTO_DOCS_REF_URL;#maintaining-build-output-quality'>Maintaining Build Output Quality</ulink>"
-                    section in the Yocto Project Reference Manual.
+                    "<link linkend='maintaining-build-output-quality'>Maintaining Build Output Quality</link>"
+                    section.
                 </para>
 
                 <note>
@@ -7213,8 +7709,8 @@ Some notes from Cal:
 
                     <para>
                         For more information on shared state, see the
-                        "<ulink url='&YOCTO_DOCS_REF_URL;#shared-state-cache'>Shared State Cache</ulink>"
-                        section in the Yocto Project Reference Manual.
+                        "<ulink url='&YOCTO_DOCS_CM_URL;#shared-state-cache'>Shared State Cache</ulink>"
+                        section in the Yocto Project Concepts Manual.
                     </para>
                 </note>
             </section>
@@ -7458,7 +7954,7 @@ Some notes from Cal:
                     <filename>connman.inc</filename> file in the
                     <filename>meta/recipes-connectivity/connman/</filename>
                     directory of the <filename>poky</filename>
-                    <ulink url='&YOCTO_DOCS_REF_URL;#yocto-project-repositories'>source repository</ulink>.
+                    <ulink url='&YOCTO_DOCS_GS_URL;#yocto-project-repositories'>source repository</ulink>.
                     You can also find examples in
                     <filename>meta/classes/kernel.bbclass</filename>.
                  </para>
@@ -8851,6 +9347,566 @@ Some notes from Cal:
         </section>
     </section>
 
+
+
+
+    <section id='maintaining-build-output-quality'>
+        <title>Maintaining Build Output Quality</title>
+
+        <para>
+            Many factors can influence the quality of a build.
+            For example, if you upgrade a recipe to use a new version of an
+            upstream software package or you experiment with some new
+            configuration options, subtle changes can occur that you might
+            not detect until later.
+            Consider the case where your recipe is using a newer version of
+            an upstream package.
+            In this case, a new version of a piece of software might
+            introduce an optional dependency on another library, which is
+            auto-detected.
+            If that library has already been built when the software is
+            building, the software will link to the built library and that
+            library will be pulled into your image along with the new
+            software even if you did not want the library.
+        </para>
+
+        <para>
+            The
+            <ulink url='&YOCTO_DOCS_REF_URL;#ref-classes-buildhistory'><filename>buildhistory</filename></ulink>
+            class exists to help you maintain the quality of your build
+            output.
+            You can use the class to highlight unexpected and possibly
+            unwanted changes in the build output.
+            When you enable build history, it records information about the
+            contents of each package and image and then commits that
+            information to a local Git repository where you can examine
+            the information.
+        </para>
+
+        <para>
+            The remainder of this section describes the following:
+            <itemizedlist>
+               <listitem><para>
+                   How you can enable and disable build history
+                   </para></listitem>
+               <listitem><para>
+                   How to understand what the build history contains
+                   </para></listitem>
+               <listitem><para>
+                   How to limit the information used for build history
+                   </para></listitem>
+               <listitem><para>
+                   How to examine the build history from both a
+                   command-line and web interface
+                   </para></listitem>
+           </itemizedlist>
+        </para>
+
+        <section id='enabling-and-disabling-build-history'>
+            <title>Enabling and Disabling Build History</title>
+
+            <para>
+                Build history is disabled by default.
+                To enable it, add the following <filename>INHERIT</filename>
+                statement and set the
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-BUILDHISTORY_COMMIT'><filename>BUILDHISTORY_COMMIT</filename></ulink>
+                variable to "1" at the end of your
+                <filename>conf/local.conf</filename> file found in the
+                <ulink url='&YOCTO_DOCS_REF_URL;#build-directory'>Build Directory</ulink>:
+                <literallayout class='monospaced'>
+     INHERIT += "buildhistory"
+     BUILDHISTORY_COMMIT = "1"
+                </literallayout>
+                Enabling build history as previously described causes the
+                OpenEmbedded build system to collect build output information
+                and commit it as a single commit to a local
+                <ulink url='&YOCTO_DOCS_GS_URL;#git'>Git</ulink>
+                repository.
+                <note>
+                    Enabling build history increases your build times slightly,
+                    particularly for images, and increases the amount of disk
+                    space used during the build.
+                </note>
+            </para>
+
+            <para>
+                You can disable build history by removing the previous
+                statements from your <filename>conf/local.conf</filename>
+                file.
+            </para>
+        </section>
+
+        <section id='understanding-what-the-build-history-contains'>
+            <title>Understanding What the Build History Contains</title>
+
+            <para>
+                Build history information is kept in
+                <filename>${</filename><ulink url='&YOCTO_DOCS_REF_URL;#var-TOPDIR'><filename>TOPDIR</filename></ulink><filename>}/buildhistory</filename>
+                in the Build Directory as defined by the
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-BUILDHISTORY_DIR'><filename>BUILDHISTORY_DIR</filename></ulink>
+                variable.
+                The following is an example abbreviated listing:
+                <imagedata fileref="figures/buildhistory.png" align="center" width="6in" depth="4in" />
+            </para>
+
+            <para>
+                At the top level, a <filename>metadata-revs</filename>
+                file exists that lists the revisions of the repositories for
+                the enabled layers when the build was produced.
+                The rest of the data splits into separate
+                <filename>packages</filename>, <filename>images</filename>
+                and <filename>sdk</filename> directories, the contents of
+                which are described as follows.
+            </para>
+
+            <section id='build-history-package-information'>
+                <title>Build History Package Information</title>
+
+                <para>
+                    The history for each package contains a text file that has
+                    name-value pairs with information about the package.
+                    For example,
+                    <filename>buildhistory/packages/i586-poky-linux/busybox/busybox/latest</filename>
+                    contains the following:
+                    <literallayout class='monospaced'>
+     PV = 1.22.1
+     PR = r32
+     RPROVIDES =
+     RDEPENDS = glibc (>= 2.20) update-alternatives-opkg
+     RRECOMMENDS = busybox-syslog busybox-udhcpc update-rc.d
+     PKGSIZE = 540168
+     FILES = /usr/bin/* /usr/sbin/* /usr/lib/busybox/* /usr/lib/lib*.so.* \
+        /etc /com /var /bin/* /sbin/* /lib/*.so.* /lib/udev/rules.d \
+        /usr/lib/udev/rules.d /usr/share/busybox /usr/lib/busybox/* \
+        /usr/share/pixmaps /usr/share/applications /usr/share/idl \
+        /usr/share/omf /usr/share/sounds /usr/lib/bonobo/servers
+     FILELIST = /bin/busybox /bin/busybox.nosuid /bin/busybox.suid /bin/sh \
+        /etc/busybox.links.nosuid /etc/busybox.links.suid
+                    </literallayout>
+                    Most of these name-value pairs correspond to variables
+                    used to produce the package.
+                    The exceptions are <filename>FILELIST</filename>, which
+                    is the actual list of files in the package, and
+                    <filename>PKGSIZE</filename>, which is the total size of
+                    files in the package in bytes.
+                </para>
+
+                <para>
+                    A file also exists that corresponds to the recipe from
+                    which the package came (e.g.
+                    <filename>buildhistory/packages/i586-poky-linux/busybox/latest</filename>):
+                    <literallayout class='monospaced'>
+     PV = 1.22.1
+     PR = r32
+     DEPENDS = initscripts kern-tools-native update-rc.d-native \
+        virtual/i586-poky-linux-compilerlibs virtual/i586-poky-linux-gcc \
+        virtual/libc virtual/update-alternatives
+     PACKAGES = busybox-ptest busybox-httpd busybox-udhcpd busybox-udhcpc \
+        busybox-syslog busybox-mdev busybox-hwclock busybox-dbg \
+        busybox-staticdev busybox-dev busybox-doc busybox-locale busybox
+                    </literallayout>
+                </para>
+
+                <para>
+                    Finally, for those recipes fetched from a version control
+                    system (e.g., Git), a file exists that lists source
+                    revisions that are specified in the recipe and lists
+                    the actual revisions used during the build.
+                    Listed and actual revisions might differ when
+                    <ulink url='&YOCTO_DOCS_REF_URL;#var-SRCREV'><filename>SRCREV</filename></ulink>
+                    is set to
+                    ${<ulink url='&YOCTO_DOCS_REF_URL;#var-AUTOREV'><filename>AUTOREV</filename></ulink>}.
+                    Here is an example assuming
+                    <filename>buildhistory/packages/qemux86-poky-linux/linux-yocto/latest_srcrev</filename>):
+                    <literallayout class='monospaced'>
+     # SRCREV_machine = "38cd560d5022ed2dbd1ab0dca9642e47c98a0aa1"
+     SRCREV_machine = "38cd560d5022ed2dbd1ab0dca9642e47c98a0aa1"
+     # SRCREV_meta = "a227f20eff056e511d504b2e490f3774ab260d6f"
+     SRCREV_meta = "a227f20eff056e511d504b2e490f3774ab260d6f"
+                    </literallayout>
+                    You can use the
+                    <filename>buildhistory-collect-srcrevs</filename>
+                    command with the <filename>-a</filename> option to
+                    collect the stored <filename>SRCREV</filename> values
+                    from build history and report them in a format suitable for
+                    use in global configuration (e.g.,
+                    <filename>local.conf</filename> or a distro include file)
+                    to override floating <filename>AUTOREV</filename> values
+                    to a fixed set of revisions.
+                    Here is some example output from this command:
+                    <literallayout class='monospaced'>
+     $ buildhistory-collect-srcrevs -a
+     # i586-poky-linux
+     SRCREV_pn-glibc = "b8079dd0d360648e4e8de48656c5c38972621072"
+     SRCREV_pn-glibc-initial = "b8079dd0d360648e4e8de48656c5c38972621072"
+     SRCREV_pn-opkg-utils = "53274f087565fd45d8452c5367997ba6a682a37a"
+     SRCREV_pn-kmod = "fd56638aed3fe147015bfa10ed4a5f7491303cb4"
+     # x86_64-linux
+     SRCREV_pn-gtk-doc-stub-native = "1dea266593edb766d6d898c79451ef193eb17cfa"
+     SRCREV_pn-dtc-native = "65cc4d2748a2c2e6f27f1cf39e07a5dbabd80ebf"
+     SRCREV_pn-update-rc.d-native = "eca680ddf28d024954895f59a241a622dd575c11"
+     SRCREV_glibc_pn-cross-localedef-native = "b8079dd0d360648e4e8de48656c5c38972621072"
+     SRCREV_localedef_pn-cross-localedef-native = "c833367348d39dad7ba018990bfdaffaec8e9ed3"
+     SRCREV_pn-prelink-native = "faa069deec99bf61418d0bab831c83d7c1b797ca"
+     SRCREV_pn-opkg-utils-native = "53274f087565fd45d8452c5367997ba6a682a37a"
+     SRCREV_pn-kern-tools-native = "23345b8846fe4bd167efdf1bd8a1224b2ba9a5ff"
+     SRCREV_pn-kmod-native = "fd56638aed3fe147015bfa10ed4a5f7491303cb4"
+     # qemux86-poky-linux
+     SRCREV_machine_pn-linux-yocto = "38cd560d5022ed2dbd1ab0dca9642e47c98a0aa1"
+     SRCREV_meta_pn-linux-yocto = "a227f20eff056e511d504b2e490f3774ab260d6f"
+     # all-poky-linux
+     SRCREV_pn-update-rc.d = "eca680ddf28d024954895f59a241a622dd575c11"
+                    </literallayout>
+                    <note>
+                        Here are some notes on using the
+                        <filename>buildhistory-collect-srcrevs</filename>
+                        command:
+                        <itemizedlist>
+                            <listitem><para>
+                                By default, only values where the
+                                <filename>SRCREV</filename> was not hardcoded
+                                (usually when <filename>AUTOREV</filename>
+                                is used) are reported.
+                                Use the <filename>-a</filename> option to
+                                see all <filename>SRCREV</filename> values.
+                                </para></listitem>
+                            <listitem><para>
+                                The output statements might not have any effect
+                                if overrides are applied elsewhere in the
+                                build system configuration.
+                                Use the <filename>-f</filename> option to add
+                                the <filename>forcevariable</filename> override
+                                to each output line if you need to work around
+                                this restriction.
+                                </para></listitem>
+                            <listitem><para>
+                                The script does apply special handling when
+                                building for multiple machines.
+                                However, the script does place a comment before
+                                each set of values that specifies which
+                                triplet to which they belong as previously
+                                shown (e.g.,
+                                <filename>i586-poky-linux</filename>).
+                                </para></listitem>
+                        </itemizedlist>
+                    </note>
+                </para>
+            </section>
+
+            <section id='build-history-image-information'>
+                <title>Build History Image Information</title>
+
+                <para>
+                    The files produced for each image are as follows:
+                    <itemizedlist>
+                        <listitem><para>
+                            <filename>image-files:</filename>
+                            A directory containing selected files from the root
+                            filesystem.
+                            The files are defined by
+                            <ulink url='&YOCTO_DOCS_REF_URL;#var-BUILDHISTORY_IMAGE_FILES'><filename>BUILDHISTORY_IMAGE_FILES</filename></ulink>.
+                            </para></listitem>
+                        <listitem><para>
+                            <filename>build-id.txt:</filename>
+                            Human-readable information about the build
+                            configuration and metadata source revisions.
+                            This file contains the full build header as printed
+                            by BitBake.
+                            </para></listitem>
+                        <listitem><para>
+                            <filename>*.dot:</filename>
+                            Dependency graphs for the image that are
+                            compatible with <filename>graphviz</filename>.
+                            </para></listitem>
+                        <listitem><para>
+                            <filename>files-in-image.txt:</filename>
+ 	                        A list of files in the image with permissions,
+                            owner, group, size, and symlink information.
+                            </para></listitem>
+                        <listitem><para>
+                            <filename>image-info.txt:</filename>
+                            A text file containing name-value pairs with
+                            information about the image.
+                            See the following listing example for more
+                            information.
+                            </para></listitem>
+                        <listitem><para>
+                            <filename>installed-package-names.txt:</filename>
+                            A list of installed packages by name only.
+                            </para></listitem>
+                        <listitem><para>
+                            <filename>installed-package-sizes.txt:</filename>
+                            A list of installed packages ordered by size.
+                            </para></listitem>
+                        <listitem><para>
+                            <filename>installed-packages.txt:</filename>
+                            A list of installed packages with full package
+                            filenames.
+                            </para></listitem>
+                    </itemizedlist>
+                    <note>
+                        Installed package information is able to be gathered
+                        and produced even if package management is disabled
+                        for the final image.
+                    </note>
+                </para>
+
+                <para>
+                    Here is an example of <filename>image-info.txt</filename>:
+                    <literallayout class='monospaced'>
+     DISTRO = poky
+     DISTRO_VERSION = 1.7
+     USER_CLASSES = buildstats image-mklibs image-prelink
+     IMAGE_CLASSES = image_types
+     IMAGE_FEATURES = debug-tweaks
+     IMAGE_LINGUAS =
+     IMAGE_INSTALL = packagegroup-core-boot run-postinsts
+     BAD_RECOMMENDATIONS =
+     NO_RECOMMENDATIONS =
+     PACKAGE_EXCLUDE =
+     ROOTFS_POSTPROCESS_COMMAND = write_package_manifest; license_create_manifest; \
+        write_image_manifest ; buildhistory_list_installed_image ; \
+        buildhistory_get_image_installed ; ssh_allow_empty_password;  \
+        postinst_enable_logging; rootfs_update_timestamp ; ssh_disable_dns_lookup ;
+     IMAGE_POSTPROCESS_COMMAND =   buildhistory_get_imageinfo ;
+     IMAGESIZE = 6900
+                    </literallayout>
+                    Other than <filename>IMAGESIZE</filename>, which is the
+                    total size of the files in the image in Kbytes, the
+                    name-value pairs are variables that may have influenced the
+                    content of the image.
+                    This information is often useful when you are trying to
+                    determine why a change in the package or file
+                    listings has occurred.
+                </para>
+            </section>
+
+            <section id='using-build-history-to-gather-image-information-only'>
+                <title>Using Build History to Gather Image Information Only</title>
+
+                <para>
+                    As you can see, build history produces image information,
+                    including dependency graphs, so you can see why something
+                    was pulled into the image.
+                    If you are just interested in this information and not
+                    interested in collecting specific package or SDK
+                    information, you can enable writing only image information
+                    without any history by adding the following to your
+                    <filename>conf/local.conf</filename> file found in the
+                    <ulink url='&YOCTO_DOCS_REF_URL;#build-directory'>Build Directory</ulink>:
+                    <literallayout class='monospaced'>
+     INHERIT += "buildhistory"
+     BUILDHISTORY_COMMIT = "0"
+     BUILDHISTORY_FEATURES = "image"
+                    </literallayout>
+                    Here, you set the
+                    <ulink url='&YOCTO_DOCS_REF_URL;#var-BUILDHISTORY_FEATURES'><filename>BUILDHISTORY_FEATURES</filename></ulink>
+                    variable to use the image feature only.
+                </para>
+            </section>
+
+            <section id='build-history-sdk-information'>
+                <title>Build History SDK Information</title>
+
+                <para>
+                    Build history collects similar information on the contents
+                    of SDKs
+                    (e.g. <filename>bitbake -c populate_sdk imagename</filename>)
+                    as compared to information it collects for images.
+                    Furthermore, this information differs depending on whether
+                    an extensible or standard SDK is being produced.
+                </para>
+
+                <para>
+                    The following list shows the files produced for SDKs:
+                    <itemizedlist>
+                        <listitem><para>
+                            <filename>files-in-sdk.txt:</filename>
+                            A list of files in the SDK with permissions,
+                            owner, group, size, and symlink information.
+                            This list includes both the host and target parts
+                            of the SDK.
+                            </para></listitem>
+                        <listitem><para>
+                            <filename>sdk-info.txt:</filename>
+                            A text file containing name-value pairs with
+                            information about the SDK.
+                            See the following listing example for more
+                            information.
+                            </para></listitem>
+                        <listitem><para>
+                            <filename>sstate-task-sizes.txt:</filename>
+                            A text file containing name-value pairs with
+                            information about task group sizes
+                            (e.g. <filename>do_populate_sysroot</filename>
+                            tasks have a total size).
+                            The <filename>sstate-task-sizes.txt</filename> file
+                            exists only when an extensible SDK is created.
+                            </para></listitem>
+                        <listitem><para>
+                            <filename>sstate-package-sizes.txt:</filename>
+                            A text file containing name-value pairs with
+                            information for the shared-state packages and
+                            sizes in the SDK.
+                            The <filename>sstate-package-sizes.txt</filename>
+                            file exists only when an extensible SDK is created.
+                            </para></listitem>
+                        <listitem><para>
+                            <filename>sdk-files:</filename>
+                            A folder that contains copies of the files
+                            mentioned in
+                            <filename>BUILDHISTORY_SDK_FILES</filename> if the
+                            files are present in the output.
+                            Additionally, the default value of
+                            <filename>BUILDHISTORY_SDK_FILES</filename> is
+                            specific to the extensible SDK although you can
+                            set it differently if you would like to pull in
+                            specific files from the standard SDK.</para>
+
+                            <para>The default files are
+                            <filename>conf/local.conf</filename>,
+                            <filename>conf/bblayers.conf</filename>,
+                            <filename>conf/auto.conf</filename>,
+                            <filename>conf/locked-sigs.inc</filename>, and
+                            <filename>conf/devtool.conf</filename>.
+                            Thus, for an extensible SDK, these files get
+                            copied into the <filename>sdk-files</filename>
+                            directory.
+                            </para></listitem>
+                        <listitem><para>
+                            The following information appears under
+                            each of the <filename>host</filename>
+                            and <filename>target</filename> directories
+                            for the portions of the SDK that run on the host
+                            and on the target, respectively:
+                            <note>
+                                The following files for the most part are empty
+                                when producing an extensible SDK because this
+                                type of SDK is not constructed from packages
+                                as is the standard SDK.
+                            </note>
+                            <itemizedlist>
+                                <listitem><para>
+                                    <filename>depends.dot:</filename>
+                                    Dependency graph for the SDK that is
+                                    compatible with
+                                    <filename>graphviz</filename>.
+                                    </para></listitem>
+                                <listitem><para>
+                                    <filename>installed-package-names.txt:</filename>
+                                    A list of installed packages by name only.
+                                    </para></listitem>
+                                <listitem><para>
+                                    <filename>installed-package-sizes.txt:</filename>
+                                    A list of installed packages ordered by size.
+                                    </para></listitem>
+                                <listitem><para>
+                                    <filename>installed-packages.txt:</filename>
+                                    A list of installed packages with full
+                                    package filenames.
+                                    </para></listitem>
+                                </itemizedlist>
+                            </para></listitem>
+                    </itemizedlist>
+                </para>
+
+                <para>
+                    Here is an example of <filename>sdk-info.txt</filename>:
+                    <literallayout class='monospaced'>
+     DISTRO = poky
+     DISTRO_VERSION = 1.3+snapshot-20130327
+     SDK_NAME = poky-glibc-i686-arm
+     SDK_VERSION = 1.3+snapshot
+     SDKMACHINE =
+     SDKIMAGE_FEATURES = dev-pkgs dbg-pkgs
+     BAD_RECOMMENDATIONS =
+     SDKSIZE = 352712
+                    </literallayout>
+                    Other than <filename>SDKSIZE</filename>, which is the
+                    total size of the files in the SDK in Kbytes, the
+                    name-value pairs are variables that might have influenced
+                    the content of the SDK.
+                    This information is often useful when you are trying to
+                    determine why a change in the package or file listings
+                    has occurred.
+                </para>
+            </section>
+
+            <section id='examining-build-history-information'>
+                <title>Examining Build History Information</title>
+
+                <para>
+                    You can examine build history output from the command
+                    line or from a web interface.
+                </para>
+
+                <para>
+                    To see any changes that have occurred (assuming you have
+                    <ulink url='&YOCTO_DOCS_REF_URL;#var-BUILDHISTORY_COMMIT'><filename>BUILDHISTORY_COMMIT</filename></ulink><filename>&nbsp;= "1"</filename>),
+                    you can simply use any Git command that allows you to
+                    view the history of a repository.
+                    Here is one method:
+                    <literallayout class='monospaced'>
+      $ git log -p
+                    </literallayout>
+                    You need to realize, however, that this method does show
+                    changes that are not significant (e.g. a package's size
+                    changing by a few bytes).
+                </para>
+
+                <para>
+                    A command-line tool called
+                    <filename>buildhistory-diff</filename> does exist, though,
+                    that queries the Git repository and prints just the
+                    differences that might be significant in human-readable
+                    form.
+                    Here is an example:
+                    <literallayout class='monospaced'>
+     $ ~/poky/poky/scripts/buildhistory-diff . HEAD^
+     Changes to images/qemux86_64/glibc/core-image-minimal (files-in-image.txt):
+        /etc/anotherpkg.conf was added
+        /sbin/anotherpkg was added
+        * (installed-package-names.txt):
+        *   anotherpkg was added
+     Changes to images/qemux86_64/glibc/core-image-minimal (installed-package-names.txt):
+        anotherpkg was added
+     packages/qemux86_64-poky-linux/v86d: PACKAGES: added "v86d-extras"
+        * PR changed from "r0" to "r1"
+        * PV changed from "0.1.10" to "0.1.12"
+     packages/qemux86_64-poky-linux/v86d/v86d: PKGSIZE changed from 110579 to 144381 (+30%)
+        * PR changed from "r0" to "r1"
+        * PV changed from "0.1.10" to "0.1.12"
+                    </literallayout>
+                    <note>
+                        The <filename>buildhistory-diff</filename> tool
+                        requires the <filename>GitPython</filename> package.
+                        Be sure to install it using Pip3 as follows:
+                        <literallayout class='monospaced'>
+   $ pip3 install GitPython --user
+                        </literallayout>
+                        Alternatively, you can install
+                        <filename>python3-git</filename> using the appropriate
+                        distribution package manager (e.g.
+                        <filename>apt-get</filename>, <filename>dnf</filename>,
+                        or <filename>zipper</filename>).
+                    </note>
+                </para>
+
+                <para>
+                    To see changes to the build history using a web interface,
+                    follow the instruction in the <filename>README</filename>
+                    file here.
+                    <ulink url='http://git.yoctoproject.org/cgit/cgit.cgi/buildhistory-web/'></ulink>.
+                </para>
+
+                <para>
+                    Here is a sample screenshot of the interface:
+                    <imagedata fileref="figures/buildhistory-web.png" align="center" scalefit="1" width="130%" contentdepth="130%" />
+                </para>
+            </section>
+        </section>
+    </section>
+
     <section id="performing-automated-runtime-testing">
         <title>Performing Automated Runtime Testing</title>
 
@@ -9756,368 +10812,917 @@ Some notes from Cal:
         </section>
     </section>
 
-    <section id="platdev-gdb-remotedebug">
-        <title>Debugging With the GNU Project Debugger (GDB) Remotely</title>
+    <section id='usingpoky-debugging-tools-and-techniques'>
+        <title>Debugging Tools and Techniques</title>
 
         <para>
-            GDB allows you to examine running programs, which in turn helps you to understand and fix problems.
-            It also allows you to perform post-mortem style analysis of program crashes.
-            GDB is available as a package within the Yocto Project and is
-            installed in SDK images by default.
-            See the "<ulink url='&YOCTO_DOCS_REF_URL;#ref-images'>Images</ulink>" chapter
-            in the Yocto Project Reference Manual for a description of these images.
-            You can find information on GDB at <ulink url="http://sourceware.org/gdb/"/>.
-        </para>
-
-        <tip>
-            For best results, install debug (<filename>-dbg</filename>) packages
-            for the applications you are going to debug.
-            Doing so makes extra debug symbols available that give you more
-            meaningful output.
-        </tip>
-
-        <para>
-            Sometimes, due to memory or disk space constraints, it is not possible
-            to use GDB directly on the remote target to debug applications.
-            These constraints arise because GDB needs to load the debugging information and the
-            binaries of the process being debugged.
-            Additionally, GDB needs to perform many computations to locate information such as function
-            names, variable names and values, stack traces and so forth - even before starting the
-            debugging process.
-            These extra computations place more load on the target system and can alter the
-            characteristics of the program being debugged.
+            The exact method for debugging build failures depends on the nature
+            of the problem and on the system's area from which the bug
+            originates.
+            Standard debugging practices such as comparison against the last
+            known working version with examination of the changes and the
+            re-application of steps to identify the one causing the problem are
+            valid for the Yocto Project just as they are for any other system.
+            Even though it is impossible to detail every possible potential
+            failure, this section provides some general tips to aid in
+            debugging given a variety of situations.
+            <note><title>Tip</title>
+                A useful feature for debugging is the error reporting tool.
+                Configuring the Yocto Project to use this tool causes the
+                OpenEmbedded build system to produce error reporting commands as
+                part of the console output.
+                You can enter the commands after the build completes to log
+                error information into a common database, that can help you
+                figure out what might be going wrong.
+                For information on how to enable and use this feature, see the
+                "<link linkend='using-the-error-reporting-tool'>Using the Error Reporting Tool</link>"
+                section.
+            </note>
         </para>
 
         <para>
-            To help get past the previously mentioned constraints, you can use
-            gdbserver, which runs on the remote target and does not load any
-            debugging information from the debugged process.
-            Instead, a GDB instance processes the debugging information that is run on a
-            remote computer - the host GDB.
-            The host GDB then sends control commands to gdbserver to make it stop or start the debugged
-            program, as well as read or write memory regions of that debugged program.
-            All the debugging information loaded and processed as well
-            as all the heavy debugging is done by the host GDB.
-            Offloading these processes gives the gdbserver running on the target a chance to remain
-            small and fast.
-        </para>
-
-        <para>
-            Because the host GDB is responsible for loading the debugging information and
-            for doing the necessary processing to make actual debugging happen,
-            you have to make sure the host can access the unstripped binaries complete
-            with their debugging information and also be sure the target is compiled with no optimizations.
-            The host GDB must also have local access to all the libraries used by the
-            debugged program.
-            Because gdbserver does not need any local debugging information, the binaries on
-            the remote target can remain stripped.
-            However, the binaries must also be compiled without optimization
-            so they match the host's binaries.
-        </para>
-
-        <para>
-            To remain consistent with GDB documentation and terminology, the binary being debugged
-            on the remote target machine is referred to as the "inferior" binary.
-            For documentation on GDB see the
-            <ulink url="http://sourceware.org/gdb/documentation/">GDB site</ulink>.
-        </para>
-
-        <para>
-            The following steps show you how to debug using the GNU project
-            debugger.
-            <orderedlist>
-                <listitem><para>
-                    <emphasis>Configure your build system to construct the
-                    companion debug filesystem:</emphasis></para>
-
-                    <para>In your <filename>local.conf</filename> file, set
-                    the following:
-                    <literallayout class='monospaced'>
-     IMAGE_GEN_DEBUGFS = "1"
-     IMAGE_FSTYPES_DEBUGFS = "tar.bz2"
-                    </literallayout>
-                    These options cause the OpenEmbedded build system
-                    to generate a special companion filesystem fragment,
-                    which contains the matching source and debug symbols to
-                    your deployable filesystem.
-                    The build system does this by looking at what is in the
-                    deployed filesystem, and pulling the corresponding
-                    <filename>-dbg</filename> packages.</para>
-
-                    <para>The companion debug filesystem is not a complete
-                    filesystem, but only contains the debug fragments.
-                    This filesystem must be combined with the full filesystem
-                    for debugging.
-                    Subsequent steps in this procedure show how to combine
-                    the partial filesystem with the full filesystem.
-                    </para></listitem>
-                <listitem><para>
-                    <emphasis>Configure the system to include gdbserver in
-                    the target filesystem:</emphasis></para>
-
-                    <para>Make the following addition in either your
-                    <filename>local.conf</filename> file or in an image
-                    recipe:
-                    <literallayout class='monospaced'>
-     IMAGE_INSTALL_append = “ gdbserver"
-                    </literallayout>
-                    The change makes sure the <filename>gdbserver</filename>
-                    package is included.
-                    </para></listitem>
-                <listitem><para>
-                    <emphasis>Build the environment:</emphasis></para>
-
-                    <para>Use the following command to construct the image and
-                    the companion Debug Filesystem:
-                    <literallayout class='monospaced'>
-     $ bitbake <replaceable>image</replaceable>
-                    </literallayout>
-                    Build the cross GDB component and make it available
-                    for debugging.
-                    Build the SDK that matches the image.
-                    Building the SDK is best for a production build
-                    that can be used later for debugging, especially
-                    during long term maintenance:
-                    <literallayout class='monospaced'>
-     $ bitbake -c populate_sdk <replaceable>image</replaceable>
-                    </literallayout></para>
-
-                    <para>Alternatively, you can build the minimal
-                    toolchain components that match the target.
-                    Doing so creates a smaller than typical SDK and only
-                    contains a minimal set of components with which to
-                    build simple test applications, as well as run the
-                    debugger:
-                    <literallayout class='monospaced'>
-     $ bitbake meta-toolchain
-                    </literallayout></para>
-
-                    <para>A final method is to build Gdb itself within
-                    the build system:
-                    <literallayout class='monospaced'>
-     $ bitbake gdb-cross-<replaceable>architecture</replaceable>
-                    </literallayout>
-                    Doing so produces a temporary copy of
-                    <filename>cross-gdb</filename> you can use for
-                    debugging during development.
-                    While this is the quickest approach, the two previous
-                    methods in this step are better when considering
-                    long-term maintenance strategies.
-                    <note>
-                        If you run
-                        <filename>bitbake gdb-cross</filename>, the
-                        OpenEmbedded build system suggests the actual
-                        image (e.g. <filename>gdb-cross-i586</filename>).
-                        The suggestion is usually the actual name you want
-                        to use.
-                    </note>
-                    </para></listitem>
-                <listitem><para>
-                    <emphasis>Set up the</emphasis>&nbsp;<filename>debugfs</filename></para>
-
-                    <para>Run the following commands to set up the
-                    <filename>debugfs</filename>:
-                    <literallayout class='monospaced'>
-     $ mkdir debugfs
-     $ cd debugfs
-     $ tar xvfj <replaceable>build-dir</replaceable>/tmp-glibc/deploy/images/<replaceable>machine</replaceable>/<replaceable>image</replaceable>.rootfs.tar.bz2
-     $ tar xvfj <replaceable>build-dir</replaceable>/tmp-glibc/deploy/images/<replaceable>machine</replaceable>/<replaceable>image</replaceable>-dbg.rootfs.tar.bz2
-                    </literallayout>
-                    </para></listitem>
-                <listitem><para>
-                    <emphasis>Set up GDB</emphasis></para>
-
-                    <para>Install the SDK (if you built one) and then
-                    source the correct environment file.
-                    Sourcing the environment file puts the SDK in your
-                    <filename>PATH</filename> environment variable.</para>
-
-                    <para>If you are using the build system, Gdb is
-                    located in
-                    <replaceable>build-dir</replaceable>/tmp/sysroots/<replaceable>host</replaceable>/usr/bin/<replaceable>architecture</replaceable>/<replaceable>architecture</replaceable>-gdb
-                    </para></listitem>
-                <listitem><para>
-                    <emphasis>Boot the target:</emphasis></para>
-
-                    <para>For information on how to run QEMU, see the
-                    <ulink url='http://wiki.qemu.org/Documentation/GettingStartedDevelopers'>QEMU Documentation</ulink>.
-                    <note>
-                        Be sure to verify that your host can access the
-                        target via TCP.
-                    </note>
-                    </para></listitem>
-                <listitem><para>
-                    <emphasis>Debug a program:</emphasis></para>
-
-                    <para>Debugging a program involves running gdbserver
-                    on the target and then running Gdb on the host.
-                    The example in this step debugs
-                    <filename>gzip</filename>:
-                    <literallayout class='monospaced'>
-     root@qemux86:~# gdbserver localhost:1234 /bin/gzip —help
-                    </literallayout>
-                    For additional gdbserver options, see the
-                    <ulink url='https://www.gnu.org/software/gdb/documentation/'>GDB Server Documentation</ulink>.
-                    </para>
-
-                    <para>After running gdbserver on the target, you need
-                    to run Gdb on the host and configure it and connect to
-                    the target.
-                    Use these commands:
-                    <literallayout class='monospaced'>
-     $ cd <replaceable>directory-holding-the-debugfs-directory</replaceable>
-     $ <replaceable>arch</replaceable>-gdb
-
-     (gdb) set sysroot debugfs
-     (gdb) set substitute-path /usr/src/debug debugfs/usr/src/debug
-     (gdb) target remote <replaceable>IP-of-target</replaceable>:1234
-                    </literallayout>
-                    At this point, everything should automatically load
-                    (i.e. matching binaries, symbols and headers).
-                    <note>
-                        The Gdb <filename>set</filename> commands in the
-                        previous example can be placed into the users
-                        <filename>~/.gdbinit</filename> file.
-                        Upon starting, Gdb automatically runs whatever
-                        commands are in that file.
-                    </note>
-                    </para></listitem>
-                <listitem><para>
-                    <emphasis>Deploying without a full image
-                    rebuild:</emphasis></para>
-
-                    <para>In many cases, during development you want a
-                    quick method to deploy a new binary to the target and
-                    debug it, without waiting for a full image build.
-                    </para>
-
-                    <para>One approach to solving this situation is to
-                    just build the component you want to debug.
-                    Once you have built the component, copy the
-                    executable directly to both the target and the
-                    host <filename>debugfs</filename>.</para>
-
-                    <para>If the binary is processed through the debug
-                    splitting in OpenEmbedded, you should also
-                    copy the debug items (i.e. <filename>.debug</filename>
-                    contents and corresponding
-                    <filename>/usr/src/debug</filename> files)
-                    from the work directory.
-                    Here is an example:
-                    <literallayout class='monospaced'>
-     $ bitbake bash
-     $ bitbake -c devshell bash
-     $ cd ..
-     $ scp packages-split/bash/bin/bash <replaceable>target</replaceable>:/bin/bash
-     $ cp -a packages-split/bash-dbg/* <replaceable>path</replaceable>/debugfs
-                    </literallayout>
-                    </para></listitem>
-            </orderedlist>
-        </para>
-    </section>
-
-    <section id='debugging-with-the-gnu-project-debugger-gdb-on-the-target'>
-        <title>Debugging with the GNU Project Debugger (GDB) on the Target</title>
-
-        <para>
-            The previous section addressed using GDB remotely for debugging
-            purposes, which is the most usual case due to the inherent
-            hardware limitations on many embedded devices.
-            However, debugging in the target hardware itself is also possible
-            with more powerful devices.
-            This section describes what you need to do in order to support
-            using GDB to debug on the target hardware.
-        </para>
-
-        <para>
-            To support this kind of debugging, you need do the following:
+            The following list shows the debugging topics in the remainder of
+            this section:
             <itemizedlist>
                 <listitem><para>
-                    Ensure that GDB is on the target.
-                    You can do this by adding "gdb" to
-                    <ulink url='&YOCTO_DOCS_REF_URL;#var-IMAGE_INSTALL'><filename>IMAGE_INSTALL</filename></ulink>:
-                    <literallayout class='monospaced'>
-     IMAGE_INSTALL_append = " gdb"
-                    </literallayout>
-                    Alternatively, you can add "tools-debug" to
-                    <ulink url='&YOCTO_DOCS_REF_URL;#var-IMAGE_FEATURES'><filename>IMAGE_FEATURES</filename></ulink>:
-                    <literallayout class='monospaced'>
-     IMAGE_FEATURES_append = " tools-debug"
-                    </literallayout>
+                    "<link linkend='dev-debugging-viewing-logs-from-failed-tasks'>Viewing Logs from Failed Tasks</link>"
+                    describes how to find and view logs from tasks that
+                    failed during the build process.
                     </para></listitem>
                 <listitem><para>
-                    Ensure that debug symbols are present.
-                    You can make sure these symbols are present by installing
-                    <filename>-dbg</filename>:
-                    <literallayout class='monospaced'>
-     IMAGE_INSTALL_append = " <replaceable>packagename</replaceable>-dbg"
-                    </literallayout>
-                    Alternatively, you can do the following to include all the
-                    debug symbols:
-                    <literallayout class='monospaced'>
-     IMAGE_FEATURES_append = " dbg-pkgs"
-                    </literallayout>
+                    "<link linkend='dev-debugging-viewing-variable-values'>Viewing Variable Values</link>"
+                    describes how to use the BitBake <filename>-e</filename>
+                    option to examine variable values after a recipe has been
+                    parsed.
+                    </para></listitem>
+                <listitem><para>
+                    "<link linkend='viewing-package-information-with-oe-pkgdata-util'>Viewing Package Information with <filename>oe-pkgdata-util</filename></link>"
+                    describes how to use the
+                    <filename>oe-pkgdata-util</filename> utility to query
+                    <ulink url='&YOCTO_DOCS_REF_URL;#var-PKGDATA_DIR'><filename>PKGDATA_DIR</filename></ulink>
+                    and display package-related information for built
+                    packages.
+                    </para></listitem>
+                <listitem><para>
+                    "<link linkend='dev-viewing-dependencies-between-recipes-and-tasks'>Viewing Dependencies Between Recipes and Tasks</link>"
+                    describes how to use the BitBake <filename>-g</filename>
+                    option to display recipe dependency information used
+                    during the build.
+                    </para></listitem>
+                <listitem><para>
+                    "<link linkend='dev-viewing-task-variable-dependencies'>Viewing Task Variable Dependencies</link>"
+                    describes how to use the
+                    <filename>bitbake-dumpsig</filename> command in
+                    conjunction with key subdirectories in the
+                    <ulink url='&YOCTO_DOCS_REF_URL;#build-directory'>Build Directory</ulink>
+                    to determine variable dependencies.
+                    </para></listitem>
+                <listitem><para>
+                    "<link linkend='dev-debugging-taskrunning'>Running Specific Tasks</link>"
+                    describes how to use several BitBake options (e.g.
+                    <filename>-c</filename>, <filename>-C</filename>, and
+                    <filename>-f</filename>) to run specific tasks in the
+                    build chain.
+                    It can be useful to run tasks "out-of-order" when trying
+                    isolate build issues.
+                    </para></listitem>
+                <listitem><para>
+                    "<link linkend='dev-debugging-bitbake'>General BitBake Problems</link>"
+                    describes how to use BitBake's <filename>-D</filename>
+                    debug output option to reveal more about what BitBake is
+                    doing during the build.
+                    </para></listitem>
+                <listitem><para>
+                    "<link linkend='dev-debugging-buildfile'>Building with No Dependencies</link>"
+                    describes how to use the BitBake <filename>-b</filename>
+                    option to build a recipe while ignoring dependencies.
+                    </para></listitem>
+                <listitem><para>
+                    "<link linkend='recipe-logging-mechanisms'>Recipe Logging Mechanisms</link>"
+                    describes how to use the many recipe logging functions
+                    to produce debugging output and report errors and warnings.
+                    </para></listitem>
+                <listitem><para>
+                    "<link linkend='debugging-parallel-make-races'>Debugging Parallel Make Races</link>"
+                    describes how to debug situations where the build consists
+                    of several parts that are run simultaneously and when the
+                    output or result of one part is not ready for use with a
+                    different part of the build that depends on that output.
+                    </para></listitem>
+                <listitem><para>
+                    "<link linkend='platdev-gdb-remotedebug'>Debugging With the GNU Project Debugger (GDB) Remotely</link>"
+                    describes how to use GDB to allow you to examine running
+                    programs, which can help you fix problems.
+                    </para></listitem>
+                <listitem><para>
+                    "<link linkend='debugging-with-the-gnu-project-debugger-gdb-on-the-target'>Debugging with the GNU Project Debugger (GDB) on the Target</link>"
+                    describes how to use GDB directly on target hardware for
+                    debugging.
+                    </para></listitem>
+                <listitem><para>
+                    "<link linkend='dev-other-debugging-others'>Other Debugging Tips</link>"
+                    describes miscellaneous debugging tips that can be useful.
                     </para></listitem>
             </itemizedlist>
-            <note>
-                To improve the debug information accuracy, you can reduce the
-                level of optimization used by the compiler.
-                For example, when adding the following line to your
-                <filename>local.conf</filename> file, you will reduce
-                optimization from
-                <ulink url='&YOCTO_DOCS_REF_URL;#var-FULL_OPTIMIZATION'><filename>FULL_OPTIMIZATION</filename></ulink>
-                of "-O2" to
-                <ulink url='&YOCTO_DOCS_REF_URL;#var-DEBUG_OPTIMIZATION'><filename>DEBUG_OPTIMIZATION</filename></ulink>
-                of "-O -fno-omit-frame-pointer":
-                <literallayout class='monospaced'>
-     DEBUG_BUILD = "1"
-                </literallayout>
-                Consider that this will reduce the application's performance
-                and is recommended only for debugging purposes.
-            </note>
         </para>
-    </section>
-
-    <section id='debugging-parallel-make-races'>
-        <title>Debugging Parallel Make Races</title>
 
         <para>
-            A parallel <filename>make</filename> race occurs when the build
-            consists of several parts that are run simultaneously and
-            a situation occurs when the output or result of one
-            part is not ready for use with a different part of the build that
-            depends on that output.
-            Parallel make races are annoying and can sometimes be difficult
-            to reproduce and fix.
-            However, some simple tips and tricks exist that can help
-            you debug and fix them.
-            This section presents a real-world example of an error encountered
-            on the Yocto Project autobuilder and the process used to fix it.
-            <note>
-                If you cannot properly fix a <filename>make</filename> race
-                condition, you can work around it by clearing either the
-                <ulink url='&YOCTO_DOCS_REF_URL;#var-PARALLEL_MAKE'><filename>PARALLEL_MAKE</filename></ulink>
-                or
-                <ulink url='&YOCTO_DOCS_REF_URL;#var-PARALLEL_MAKEINST'><filename>PARALLEL_MAKEINST</filename></ulink>
-                variables.
-            </note>
+            For debugging information within the popular
+            <trademark class='trade'>Eclipse</trademark> IDE, see the
+            "<ulink url='&YOCTO_DOCS_SDK_URL;#adt-eclipse'>Working within Eclipse</ulink>"
+            section in the Yocto Project Application Development and the
+            Extensible Software Development Kit (eSDK) manual.
         </para>
 
-        <section id='the-failure'>
-            <title>The Failure</title>
+        <section id='dev-debugging-viewing-logs-from-failed-tasks'>
+            <title>Viewing Logs from Failed Tasks</title>
 
             <para>
-                For this example, assume that you are building an image that
-                depends on the "neard" package.
-                And, during the build, BitBake runs into problems and
-                creates the following output.
-                <note>
-                    This example log file has longer lines artificially
-                    broken to make the listing easier to read.
-                </note>
-                If you examine the output or the log file, you see the
-                failure during <filename>make</filename>:
+                You can find the log for a task in the file
+                <filename>${</filename><ulink url='&YOCTO_DOCS_REF_URL;#var-WORKDIR'><filename>WORKDIR</filename></ulink><filename>}/temp/log.do_</filename><replaceable>taskname</replaceable>.
+                For example, the log for the
+                <ulink url='&YOCTO_DOCS_REF_URL;#ref-tasks-compile'><filename>do_compile</filename></ulink>
+                task of the QEMU minimal image for the x86 machine
+                (<filename>qemux86</filename>) might be in
+                <filename>tmp/work/qemux86-poky-linux/core-image-minimal/1.0-r0/temp/log.do_compile</filename>.
+                To see the commands
+                <ulink url='&YOCTO_DOCS_REF_URL;#bitbake-term'>BitBake</ulink>
+                ran to generate a log, look at the corresponding
+                <filename>run.do_</filename><replaceable>taskname</replaceable>
+                file in the same directory.
+            </para>
+
+            <para>
+                <filename>log.do_</filename><replaceable>taskname</replaceable>
+                and
+                <filename>run.do_</filename><replaceable>taskname</replaceable>
+                are actually symbolic links to
+                <filename>log.do_</filename><replaceable>taskname</replaceable><filename>.</filename><replaceable>pid</replaceable>
+                and
+                <filename>log.run_</filename><replaceable>taskname</replaceable><filename>.</filename><replaceable>pid</replaceable>,
+                where <replaceable>pid</replaceable> is the PID the task had
+                when it ran.
+                The symlinks always point to the files corresponding to the most
+                recent run.
+            </para>
+        </section>
+
+        <section id='dev-debugging-viewing-variable-values'>
+            <title>Viewing Variable Values</title>
+
+            <para>
+                BitBake's <filename>-e</filename> option is used to display
+                variable values after parsing.
+                The following command displays the variable values after the
+                configuration files (i.e. <filename>local.conf</filename>,
+                <filename>bblayers.conf</filename>,
+                <filename>bitbake.conf</filename> and so forth) have been
+                parsed:
                 <literallayout class='monospaced'>
+     $ bitbake -e
+                </literallayout>
+                The following command displays variable values after a specific
+                recipe has been parsed.
+                The variables include those from the configuration as well:
+                <literallayout class='monospaced'>
+     $ bitbake -e recipename
+                </literallayout>
+                <note><para>
+                    Each recipe has its own private set of variables
+                    (datastore).
+                    Internally, after parsing the configuration, a copy of the
+                    resulting datastore is made prior to parsing each recipe.
+                    This copying implies that variables set in one recipe will
+                    not be visible to other recipes.</para>
+
+                    <para>Likewise, each task within a recipe gets a private
+                    datastore based on the recipe datastore, which means that
+                    variables set within one task will not be visible to
+                    other tasks.</para>
+                </note>
+            </para>
+
+            <para>
+                In the output of <filename>bitbake -e</filename>, each
+                variable is preceded by a description of how the variable
+                got its value, including temporary values that were later
+                overriden.
+                This description also includes variable flags (varflags) set on
+                the variable.
+                The output can be very helpful during debugging.
+            </para>
+
+            <para>
+                Variables that are exported to the environment are preceded by
+                <filename>export</filename> in the output of
+                <filename>bitbake -e</filename>.
+                See the following example:
+                <literallayout class='monospaced'>
+     export CC="i586-poky-linux-gcc -m32 -march=i586 --sysroot=/home/ulf/poky/build/tmp/sysroots/qemux86"
+                </literallayout>
+            </para>
+
+            <para>
+                In addition to variable values, the output of the
+                <filename>bitbake -e</filename> and
+                <filename>bitbake -e</filename>&nbsp;<replaceable>recipe</replaceable>
+                commands includes the following information:
+                <itemizedlist>
+                    <listitem><para>
+                        The output starts with a tree listing all configuration
+                        files and classes included globally, recursively listing
+                        the files they include or inherit in turn.
+                        Much of the behavior of the OpenEmbedded build system
+                        (including the behavior of the
+                        <ulink url='&YOCTO_DOCS_REF_URL;#normal-recipe-build-tasks'>normal recipe build tasks</ulink>)
+                        is implemented in the
+                        <ulink url='&YOCTO_DOCS_REF_URL;#ref-classes-base'><filename>base</filename></ulink>
+                        class and the classes it inherits, rather than being
+                        built into BitBake itself.
+                        </para></listitem>
+                    <listitem><para>
+                        After the variable values, all functions appear in the
+                        output.
+                        For shell functions, variables referenced within the
+                        function body are expanded.
+                        If a function has been modified using overrides or
+                        using override-style operators like
+                        <filename>_append</filename> and
+                        <filename>_prepend</filename>, then the final assembled
+                        function body appears in the output.
+                        </para></listitem>
+                </itemizedlist>
+            </para>
+        </section>
+
+        <section id='viewing-package-information-with-oe-pkgdata-util'>
+            <title>Viewing Package Information with <filename>oe-pkgdata-util</filename></title>
+
+            <para>
+                You can use the <filename>oe-pkgdata-util</filename>
+                command-line utility to query
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-PKGDATA_DIR'><filename>PKGDATA_DIR</filename></ulink>
+                and display various package-related information.
+                When you use the utility, you must use it to view information
+                on packages that have already been built.
+            </para>
+
+            <para>
+                Following are a few of the available
+                <filename>oe-pkgdata-util</filename> subcommands.
+                <note>
+                    You can use the standard * and ? globbing wildcards as part
+                    of package names and paths.
+                </note>
+                <itemizedlist>
+                    <listitem><para>
+                        <filename>oe-pkgdata-util list-pkgs [</filename><replaceable>pattern</replaceable><filename>]</filename>:
+                        Lists all packages that have been built, optionally
+                        limiting the match to packages that match
+                        <replaceable>pattern</replaceable>.
+                        </para></listitem>
+                    <listitem><para>
+                        <filename>oe-pkgdata-util list-pkg-files&nbsp;</filename><replaceable>package</replaceable><filename>&nbsp;...</filename>:
+                        Lists the files and directories contained in the given
+                        packages.
+                        <note>
+                            <para>
+                            A different way to view the contents of a package is
+                            to look at the
+                            <filename>${</filename><ulink url='&YOCTO_DOCS_REF_URL;#var-WORKDIR'><filename>WORKDIR</filename></ulink><filename>}/packages-split</filename>
+                            directory of the recipe that generates the
+                            package.
+                            This directory is created by the
+                            <ulink url='&YOCTO_DOCS_REF_URL;#ref-tasks-package'><filename>do_package</filename></ulink>
+                            task and has one subdirectory for each package the
+                            recipe generates, which contains the files stored in
+                            that package.</para>
+                            <para>
+                            If you want to inspect the
+                            <filename>${WORKDIR}/packages-split</filename>
+                            directory, make sure that
+                            <ulink url='&YOCTO_DOCS_REF_URL;#ref-classes-rm-work'><filename>rm_work</filename></ulink>
+                            is not enabled when you build the recipe.
+                            </para>
+                            </note>
+                        </para></listitem>
+                    <listitem><para>
+                        <filename>oe-pkgdata-util find-path&nbsp;</filename><replaceable>path</replaceable><filename>&nbsp;...</filename>:
+                        Lists the names of the packages that contain the given
+                        paths.
+                        For example, the following tells us that
+                        <filename>/usr/share/man/man1/make.1</filename>
+                        is contained in the <filename>make-doc</filename>
+                        package:
+                        <literallayout class='monospaced'>
+     $ oe-pkgdata-util find-path /usr/share/man/man1/make.1
+     make-doc: /usr/share/man/man1/make.1
+                        </literallayout>
+                        </para></listitem>
+                    <listitem><para>
+                        <filename>oe-pkgdata-util lookup-recipe&nbsp;</filename><replaceable>package</replaceable><filename>&nbsp;...</filename>:
+                        Lists the name of the recipes that
+                        produce the given packages.
+                        </para></listitem>
+                </itemizedlist>
+            </para>
+
+            <para>
+                For more information on the <filename>oe-pkgdata-util</filename>
+                command, use the help facility:
+                <literallayout class='monospaced'>
+     $ oe-pkgdata-util &dash;&dash;help
+     $ oe-pkgdata-util <replaceable>subcommand</replaceable> --help
+                </literallayout>
+            </para>
+        </section>
+
+        <section id='dev-viewing-dependencies-between-recipes-and-tasks'>
+            <title>Viewing Dependencies Between Recipes and Tasks</title>
+
+            <para>
+                Sometimes it can be hard to see why BitBake wants to build other
+                recipes before the one you have specified.
+                Dependency information can help you understand why a recipe is
+                built.
+            </para>
+
+            <para>
+                To generate dependency information for a recipe, run the
+                following command:
+                <literallayout class='monospaced'>
+     $ bitbake -g <replaceable>recipename</replaceable>
+                </literallayout>
+                This command writes the following files in the current
+                directory:
+                <itemizedlist>
+                    <listitem><para>
+                        <filename>pn-buildlist</filename>: A list of
+                        recipes/targets involved in building
+                        <replaceable>recipename</replaceable>.
+                        "Involved" here means that at least one task from the
+                         recipe needs to run when building
+                        <replaceable>recipename</replaceable> from scratch.
+                        Targets that are in
+                        <ulink url='&YOCTO_DOCS_REF_URL;#var-ASSUME_PROVIDED'><filename>ASSUME_PROVIDED</filename></ulink>
+                        are not listed.
+                        </para></listitem>
+                    <listitem><para>
+                        <filename>task-depends.dot</filename>: A graph showing
+                        dependencies between tasks.
+                        </para></listitem>
+                </itemizedlist>
+            </para>
+
+            <para>
+                The graphs are in
+                <ulink url='https://en.wikipedia.org/wiki/DOT_%28graph_description_language%29'>DOT</ulink>
+                format and can be converted to images (e.g. using the
+                <filename>dot</filename> tool from
+                <ulink url='http://www.graphviz.org/'>Graphviz</ulink>).
+                <note><title>Notes</title>
+                    <itemizedlist>
+                        <listitem><para>
+                            DOT files use a plain text format.
+                            The graphs generated using the
+                            <filename>bitbake -g</filename> command are often so
+                            large as to be difficult to read without special
+                            pruning (e.g. with Bitbake's
+                            <filename>-I</filename> option) and processing.
+                            Despite the form and size of the graphs, the
+                            corresponding <filename>.dot</filename> files can
+                            still be possible to read and provide useful
+                            information.
+                            </para>
+
+                            <para>As an example, the
+                            <filename>task-depends.dot</filename> file contains
+                            lines such as the following:
+                            <literallayout class='monospaced'>
+     "libxslt.do_configure" -> "libxml2.do_populate_sysroot"
+                            </literallayout>
+                            The above example line reveals that the
+                            <ulink url='&YOCTO_DOCS_REF_URL;#ref-tasks-configure'><filename>do_configure</filename></ulink>
+                            task in <filename>libxslt</filename> depends on the
+                            <ulink url='&YOCTO_DOCS_REF_URL;#ref-tasks-populate_sysroot'><filename>do_populate_sysroot</filename></ulink>
+                            task in <filename>libxml2</filename>, which is a
+                            normal
+                            <ulink url='&YOCTO_DOCS_REF_URL;#var-DEPENDS'><filename>DEPENDS</filename></ulink>
+                            dependency between the two recipes.
+                            </para></listitem>
+                        <listitem><para>
+                            For an example of how <filename>.dot</filename>
+                            files can be processed, see the
+                            <filename>scripts/contrib/graph-tool</filename>
+                            Python script, which finds and displays paths
+                            between graph nodes.
+                            </para></listitem>
+                    </itemizedlist>
+                </note>
+            </para>
+
+            <para>
+                You can use a different method to view dependency information
+                by using the following command:
+                <literallayout class='monospaced'>
+     $ bitbake -g -u taskexp <replaceable>recipename</replaceable>
+                </literallayout>
+                This command displays a GUI window from which you can view
+                build-time and runtime dependencies for the recipes involved in
+                building <replaceable>recipename</replaceable>.
+            </para>
+        </section>
+
+        <section id='dev-viewing-task-variable-dependencies'>
+            <title>Viewing Task Variable Dependencies</title>
+
+            <para>
+                As mentioned in the
+                "<ulink url='&YOCTO_DOCS_BB_URL;#checksums'>Checksums (Signatures)</ulink>"
+                section of the BitBake User Manual, BitBake tries to
+                automatically determine what variables a task depends on so
+                that it can rerun the task if any values of the variables
+                change.
+                This determination is usually reliable.
+                However, if you do things like construct variable names at
+                runtime, then you might have to manually declare dependencies
+                on those variables using <filename>vardeps</filename> as
+                described in the
+                "<ulink url='&YOCTO_DOCS_BB_URL;#variable-flags'>Variable Flags</ulink>"
+                section of the BitBake User Manual.
+            </para>
+
+            <para>
+                If you are unsure whether a variable dependency is being
+                picked up automatically for a given task, you can list the
+                variable dependencies BitBake has determined by doing the
+                following:
+                <orderedlist>
+                    <listitem><para>
+                        Build the recipe containing the task:
+                        <literallayout class='monospaced'>
+     $ bitbake <replaceable>recipename</replaceable>
+                        </literallayout>
+                        </para></listitem>
+                    <listitem><para>
+                        Inside the
+                        <ulink url='&YOCTO_DOCS_REF_URL;#var-STAMPS_DIR'><filename>STAMPS_DIR</filename></ulink>
+                        directory, find the signature data
+                        (<filename>sigdata</filename>) file that corresponds
+                        to the task.
+                        The <filename>sigdata</filename> files contain a pickled
+                        Python database of all the metadata that went into
+                        creating the input checksum for the task.
+                        As an example, for the
+                        <ulink url='&YOCTO_DOCS_REF_URL;#ref-tasks-fetch'><filename>do_fetch</filename></ulink>
+                        task of the <filename>db</filename> recipe, the
+                        <filename>sigdata</filename> file might be found in the
+                        following location:
+                        <literallayout class='monospaced'>
+     ${BUILDDIR}/tmp/stamps/i586-poky-linux/db/6.0.30-r1.do_fetch.sigdata.7c048c18222b16ff0bcee2000ef648b1
+                        </literallayout>
+                        For tasks that are accelerated through the shared state
+                        (<ulink url='&YOCTO_DOCS_CM_URL;#shared-state-cache'>sstate</ulink>)
+                        cache, an additional <filename>siginfo</filename> file
+                        is written into
+                        <ulink url='&YOCTO_DOCS_REF_URL;#var-SSTATE_DIR'><filename>SSTATE_DIR</filename></ulink>
+                        along with the cached task output.
+                        The <filename>siginfo</filename> files contain exactly
+                        the same information as <filename>sigdata</filename>
+                        files.
+                        </para></listitem>
+                    <listitem><para>
+                        Run <filename>bitbake-dumpsig</filename> on the
+                        <filename>sigdata</filename> or
+                        <filename>siginfo</filename> file.
+                        Here is an example:
+                        <literallayout class='monospaced'>
+     $ bitbake-dumpsig ${BUILDDIR}/tmp/stamps/i586-poky-linux/db/6.0.30-r1.do_fetch.sigdata.7c048c18222b16ff0bcee2000ef648b1
+                        </literallayout>
+                        In the output of the above command, you will find a
+                        line like the following, which lists all the (inferred)
+                        variable dependencies for the task.
+                        This list also includes indirect dependencies from
+                        variables depending on other variables, recursively.
+                        <literallayout class='monospaced'>
+     Task dependencies: ['PV', 'SRCREV', 'SRC_URI', 'SRC_URI[md5sum]', 'SRC_URI[sha256sum]', 'base_do_fetch']
+                        </literallayout>
+                        <note>
+                            Functions (e.g. <filename>base_do_fetch</filename>)
+                            also count as variable dependencies.
+                            These functions in turn depend on the variables they
+                            reference.
+                        </note>
+                        The output of <filename>bitbake-dumpsig</filename> also
+                        includes the value each variable had, a list of
+                        dependencies for each variable, and
+                        <ulink url='&YOCTO_DOCS_BB_URL;#var-BB_HASHBASE_WHITELIST'><filename>BB_HASHBASE_WHITELIST</filename></ulink>
+                        information.
+                        </para></listitem>
+                </orderedlist>
+            </para>
+
+            <para>
+                There is also a <filename>bitbake-diffsigs</filename> command
+                for comparing two <filename>siginfo</filename> or
+                <filename>sigdata</filename> files.
+                This command can be helpful when trying to figure out what
+                changed between two versions of a task.
+                If you call <filename>bitbake-diffsigs</filename> with just one
+                file, the command behaves like
+                <filename>bitbake-dumpsig</filename>.
+            </para>
+
+            <para>
+                You can also use BitBake to dump out the signature construction
+                information without executing tasks by using either of the
+                following BitBake command-line options:
+                <literallayout class='monospaced'>
+     &dash;&dash;dump-signatures=<replaceable>SIGNATURE_HANDLER</replaceable>
+     -S <replaceable>SIGNATURE_HANDLER</replaceable>
+                </literallayout>
+                <note>
+                    Two common values for
+                    <replaceable>SIGNATURE_HANDLER</replaceable> are "none" and
+                    "printdiff", which dump only the signature or compare the
+                    dumped signature with the cached one, respectively.
+                </note>
+                Using BitBake with either of these options causes BitBake to
+                dump out <filename>sigdata</filename> files in the
+                <filename>stamps</filename> directory for every task it would
+                have executed instead of building the specified target package.
+            </para>
+        </section>
+
+        <section id='dev-debugging-taskrunning'>
+            <title>Running Specific Tasks</title>
+
+            <para>
+                Any given recipe consists of a set of tasks.
+                The standard BitBake behavior in most cases is:
+                <filename>do_fetch</filename>,
+                <filename>do_unpack</filename>,
+                <filename>do_patch</filename>,
+                <filename>do_configure</filename>,
+                <filename>do_compile</filename>,
+                <filename>do_install</filename>,
+                <filename>do_package</filename>,
+                <filename>do_package_write_*</filename>, and
+                <filename>do_build</filename>.
+                The default task is <filename>do_build</filename> and any tasks
+                on which it depends build first.
+                Some tasks, such as <filename>do_devshell</filename>, are not
+                part of the default build chain.
+                If you wish to run a task that is not part of the default build
+                chain, you can use the <filename>-c</filename> option in
+                BitBake.
+                Here is an example:
+                <literallayout class='monospaced'>
+     $ bitbake matchbox-desktop -c devshell
+                </literallayout>
+            </para>
+
+            <para>
+                The <filename>-c</filename> option respects task dependencies,
+                which means that all other tasks (including tasks from other
+                recipes) that the specified task depends on will be run before
+                the task.
+                Even when you manually specify a task to run with
+                <filename>-c</filename>, BitBake will only run the task if it
+                considers it "out of date".
+                See the
+                "<ulink url='&YOCTO_DOCS_CM_URL;#stamp-files-and-the-rerunning-of-tasks'>Stamp Files and the Rerunning of Tasks</ulink>"
+                section in the Yocto Project Concepts Manual for
+                how BitBake determines whether a task is "out of date".
+            </para>
+
+            <para>
+                If you want to force an up-to-date task to be rerun (e.g.
+                because you made manual modifications to the recipe's
+                <ulink linkend='&YOCTO_DOCS_REF_URL;#var-WORKDIR'><filename>WORKDIR</filename></ulink>
+                that you want to try out), then you can use the
+                <filename>-f</filename> option.
+                <note>
+                    The reason <filename>-f</filename> is never required when
+                    running the
+                    <ulink linkend='&YOCTO_DOCS_REF_URL;#ref-tasks-devshell'><filename>do_devshell</filename></ulink>
+                    task is because the
+                    <filename>[</filename><ulink url='&YOCTO_DOCS_BB_URL;#variable-flags'><filename>nostamp</filename></ulink><filename>]</filename>
+                    variable flag is already set for the task.
+                </note>
+                The following example shows one way you can use the
+                <filename>-f</filename> option:
+                <literallayout class='monospaced'>
+     $ bitbake matchbox-desktop
+               .
+               .
+     make some changes to the source code in the work directory
+               .
+               .
+     $ bitbake matchbox-desktop -c compile -f
+     $ bitbake matchbox-desktop
+                </literallayout>
+            </para>
+
+            <para>
+                This sequence first builds and then recompiles
+                <filename>matchbox-desktop</filename>.
+                The last command reruns all tasks (basically the packaging
+                tasks) after the compile.
+                BitBake recognizes that the <filename>do_compile</filename>
+                task was rerun and therefore understands that the other tasks
+                also need to be run again.
+            </para>
+
+            <para>
+                Another, shorter way to rerun a task and all
+                <ulink url='&YOCTO_DOCS_REF_URL;#normal-recipe-build-tasks'>normal recipe build tasks</ulink>
+                that depend on it is to use the <filename>-C</filename>
+                option.
+                <note>
+                    This option is upper-cased and is separate from the
+                    <filename>-c</filename> option, which is lower-cased.
+                </note>
+                Using this option invalidates the given task and then runs the
+                <ulink url='&YOCTO_DOCS_REF_URL;#ref-tasks-build'><filename>do_build</filename></ulink>
+                task, which is the default task if no task is given, and the
+                tasks on which it depends.
+                You could replace the final two commands in the previous example
+                with the following single command:
+                <literallayout class='monospaced'>
+     $ bitbake matchbox-desktop -C compile
+                </literallayout>
+                Internally, the <filename>-f</filename> and
+                <filename>-C</filename> options work by tainting (modifying) the
+                input checksum of the specified task.
+                This tainting indirectly causes the task and its
+                dependent tasks to be rerun through the normal task dependency
+                mechanisms.
+                <note>
+                    BitBake explicitly keeps track of which tasks have been
+                    tainted in this fashion, and will print warnings such as the
+                    following for builds involving such tasks:
+                    <literallayout class='monospaced'>
+     WARNING: /home/ulf/poky/meta/recipes-sato/matchbox-desktop/matchbox-desktop_2.1.bb.do_compile is tainted from a forced run
+                    </literallayout>
+                    The purpose of the warning is to let you know that the work
+                    directory and build output might not be in the clean state
+                    they would be in for a "normal" build, depending on what
+                    actions you took.
+                    To get rid of such warnings, you can remove the work
+                    directory and rebuild the recipe, as follows:
+                    <literallayout class='monospaced'>
+     $ bitbake matchbox-desktop -c clean
+     $ bitbake matchbox-desktop
+                    </literallayout>
+                </note>
+            </para>
+
+            <para>
+                You can view a list of tasks in a given package by running the
+                <filename>do_listtasks</filename> task as follows:
+                <literallayout class='monospaced'>
+     $ bitbake matchbox-desktop -c listtasks
+                </literallayout>
+                The results appear as output to the console and are also in the
+                file <filename>${WORKDIR}/temp/log.do_listtasks</filename>.
+            </para>
+        </section>
+
+        <section id='dev-debugging-bitbake'>
+            <title>General BitBake Problems</title>
+
+            <para>
+                You can see debug output from BitBake by using the
+                <filename>-D</filename> option.
+                The debug output gives more information about what BitBake
+                is doing and the reason behind it.
+                Each <filename>-D</filename> option you use increases the
+                logging level.
+                The most common usage is <filename>-DDD</filename>.
+            </para>
+
+            <para>
+                The output from
+                <filename>bitbake -DDD -v</filename> <replaceable>targetname</replaceable>
+                can reveal why BitBake chose a certain version of a package or
+                why BitBake picked a certain provider.
+                This command could also help you in a situation where you think
+                BitBake did something unexpected.
+            </para>
+        </section>
+
+        <section id='dev-debugging-buildfile'>
+            <title>Building with No Dependencies</title>
+
+            <para>
+                To build a specific recipe (<filename>.bb</filename> file),
+                you can use the following command form:
+                <literallayout class='monospaced'>
+     $ bitbake -b <replaceable>somepath</replaceable>/<replaceable>somerecipe</replaceable>.bb
+                </literallayout>
+                This command form does not check for dependencies.
+                Consequently, you should use it only when you know existing
+                dependencies have been met.
+                <note>
+                    You can also specify fragments of the filename.
+                    In this case, BitBake checks for a unique match.
+                </note>
+            </para>
+        </section>
+
+        <section id='recipe-logging-mechanisms'>
+            <title>Recipe Logging Mechanisms</title>
+
+            <para>
+                The Yocto Project provides several logging functions for
+                producing debugging output and reporting errors and warnings.
+                For Python functions, the following logging functions exist.
+                All of these functions log to
+                <filename>${T}/log.do_</filename><replaceable>task</replaceable>,
+                and can also log to standard output (stdout) with the right
+                settings:
+                <itemizedlist>
+                    <listitem><para>
+                        <filename>bb.plain(</filename><replaceable>msg</replaceable><filename>)</filename>:
+                        Writes <replaceable>msg</replaceable> as is to the
+                        log while also logging to stdout.
+                        </para></listitem>
+                    <listitem><para>
+                        <filename>bb.note(</filename><replaceable>msg</replaceable><filename>)</filename>:
+                        Writes "NOTE: <replaceable>msg</replaceable>" to the
+                        log.
+                        Also logs to stdout if BitBake is called with "-v".
+                        </para></listitem>
+                    <listitem><para>
+                        <filename>bb.debug(</filename><replaceable>level</replaceable><filename>,&nbsp;</filename><replaceable>msg</replaceable><filename>)</filename>:
+                        Writes "DEBUG: <replaceable>msg</replaceable>" to the
+                        log.
+                        Also logs to stdout if the log level is greater than or
+                        equal to <replaceable>level</replaceable>.
+                        See the
+                        "<ulink url='&YOCTO_DOCS_BB_URL;#usage-and-syntax'>-D</ulink>"
+                        option in the BitBake User Manual for more information.
+                        </para></listitem>
+                    <listitem><para>
+                        <filename>bb.warn(</filename><replaceable>msg</replaceable><filename>)</filename>:
+                        Writes "WARNING: <replaceable>msg</replaceable>" to the
+                        log while also logging to stdout.
+                        </para></listitem>
+                    <listitem><para>
+                        <filename>bb.error(</filename><replaceable>msg</replaceable><filename>)</filename>:
+                        Writes "ERROR: <replaceable>msg</replaceable>" to the
+                        log while also logging to standard out (stdout).
+                        <note>
+                            Calling this function does not cause the task to fail.
+                        </note>
+                        </para></listitem>
+                    <listitem><para>
+                        <filename>bb.fatal(</filename><replaceable>msg</replaceable><filename>)</filename>:
+                        This logging function is similar to
+                        <filename>bb.error(</filename><replaceable>msg</replaceable><filename>)</filename>
+                        but also causes the calling task to fail.
+                        <note>
+                            <filename>bb.fatal()</filename> raises an exception,
+                            which means you do not need to put a "return"
+                            statement after the function.
+                        </note>
+                        </para></listitem>
+                </itemizedlist>
+            </para>
+
+            <para>
+                The same logging functions are also available in shell
+                functions, under the names
+                <filename>bbplain</filename>, <filename>bbnote</filename>,
+                <filename>bbdebug</filename>, <filename>bbwarn</filename>,
+                <filename>bberror</filename>, and <filename>bbfatal</filename>.
+                The
+                <ulink url='&YOCTO_DOCS_REF_URL;#ref-classes-logging'><filename>logging</filename></ulink>
+                class implements these functions.
+                See that class in the
+                <filename>meta/classes</filename> folder of the
+                <ulink url='&YOCTO_DOCS_REF_URL;#source-directory'>Source Directory</ulink>
+                for information.
+            </para>
+
+            <section id='logging-with-python'>
+                <title>Logging With Python</title>
+
+                <para>
+                    When creating recipes using Python and inserting code that
+                    handles build logs, keep in mind the goal is to have
+                    informative logs while keeping the console as "silent" as
+                    possible.
+                    Also, if you want status messages in the log, use the
+                    "debug" loglevel.
+                </para>
+
+                <para>
+                    Following is an example written in Python.
+                    The code handles logging for a function that determines the
+                    number of tasks needed to be run.
+                    See the
+                    "<ulink url='&YOCTO_DOCS_REF_URL;#ref-tasks-listtasks'><filename>do_listtasks</filename></ulink>"
+                    section for additional information:
+                    <literallayout class='monospaced'>
+     python do_listtasks() {
+         bb.debug(2, "Starting to figure out the task list")
+         if noteworthy_condition:
+             bb.note("There are 47 tasks to run")
+         bb.debug(2, "Got to point xyz")
+         if warning_trigger:
+             bb.warn("Detected warning_trigger, this might be a problem later.")
+         if recoverable_error:
+             bb.error("Hit recoverable_error, you really need to fix this!")
+         if fatal_error:
+             bb.fatal("fatal_error detected, unable to print the task list")
+         bb.plain("The tasks present are abc")
+         bb.debug(2, "Finished figuring out the tasklist")
+     }
+                    </literallayout>
+                </para>
+            </section>
+
+            <section id='logging-with-bash'>
+                <title>Logging With Bash</title>
+
+                <para>
+                    When creating recipes using Bash and inserting code that
+                    handles build logs, you have the same goals - informative
+                    with minimal console output.
+                    The syntax you use for recipes written in Bash is similar
+                    to that of recipes written in Python described in the
+                    previous section.
+                </para>
+
+                <para>
+                    Following is an example written in Bash.
+                    The code logs the progress of the <filename>do_my_function</filename> function.
+                    <literallayout class='monospaced'>
+     do_my_function() {
+         bbdebug 2 "Running do_my_function"
+         if [ exceptional_condition ]; then
+             bbnote "Hit exceptional_condition"
+         fi
+         bbdebug 2  "Got to point xyz"
+         if [ warning_trigger ]; then
+             bbwarn "Detected warning_trigger, this might cause a problem later."
+         fi
+         if [ recoverable_error ]; then
+             bberror "Hit recoverable_error, correcting"
+         fi
+         if [ fatal_error ]; then
+             bbfatal "fatal_error detected"
+         fi
+         bbdebug 2 "Completed do_my_function"
+     }
+                    </literallayout>
+                </para>
+            </section>
+        </section>
+
+        <section id='debugging-parallel-make-races'>
+            <title>Debugging Parallel Make Races</title>
+
+            <para>
+                A parallel <filename>make</filename> race occurs when the build
+                consists of several parts that are run simultaneously and
+                a situation occurs when the output or result of one
+                part is not ready for use with a different part of the build
+                that depends on that output.
+                Parallel make races are annoying and can sometimes be difficult
+                to reproduce and fix.
+                However, some simple tips and tricks exist that can help
+                you debug and fix them.
+                This section presents a real-world example of an error
+                encountered on the Yocto Project autobuilder and the process
+                used to fix it.
+                <note>
+                    If you cannot properly fix a <filename>make</filename> race
+                    condition, you can work around it by clearing either the
+                    <ulink url='&YOCTO_DOCS_REF_URL;#var-PARALLEL_MAKE'><filename>PARALLEL_MAKE</filename></ulink>
+                    or
+                    <ulink url='&YOCTO_DOCS_REF_URL;#var-PARALLEL_MAKEINST'><filename>PARALLEL_MAKEINST</filename></ulink>
+                    variables.
+                </note>
+            </para>
+
+            <section id='the-failure'>
+                <title>The Failure</title>
+
+                <para>
+                    For this example, assume that you are building an image that
+                    depends on the "neard" package.
+                    And, during the build, BitBake runs into problems and
+                    creates the following output.
+                    <note>
+                        This example log file has longer lines artificially
+                        broken to make the listing easier to read.
+                    </note>
+                    If you examine the output or the log file, you see the
+                    failure during <filename>make</filename>:
+                    <literallayout class='monospaced'>
      | DEBUG: SITE files ['endian-little', 'bit-32', 'ix86-common', 'common-linux', 'common-glibc', 'i586-linux', 'common']
      | DEBUG: Executing shell function do_compile
      | NOTE: make -j 16
@@ -10182,61 +11787,62 @@ Some notes from Cal:
      | make[1]: *** Waiting for unfinished jobs....
      | make: *** [all] Error 2
      | ERROR: oe_runmake failed
-                </literallayout>
-            </para>
-        </section>
+                    </literallayout>
+                </para>
+            </section>
 
-        <section id='reproducing-the-error'>
-            <title>Reproducing the Error</title>
+            <section id='reproducing-the-error'>
+                <title>Reproducing the Error</title>
 
-            <para>
-                Because race conditions are intermittent, they do not
-                manifest themselves every time you do the build.
-                In fact, most times the build will complete without problems
-                even though the potential race condition exists.
-                Thus, once the error surfaces, you need a way to reproduce it.
-            </para>
+                <para>
+                    Because race conditions are intermittent, they do not
+                    manifest themselves every time you do the build.
+                    In fact, most times the build will complete without problems
+                    even though the potential race condition exists.
+                    Thus, once the error surfaces, you need a way to reproduce
+                    it.
+                </para>
 
-            <para>
-                In this example, compiling the "neard" package is causing the
-                problem.
-                So the first thing to do is build "neard" locally.
-                Before you start the build, set the
-                <ulink url='&YOCTO_DOCS_REF_URL;#var-PARALLEL_MAKE'><filename>PARALLEL_MAKE</filename></ulink>
-                variable in your <filename>local.conf</filename> file to
-                a high number (e.g. "-j 20").
-                Using a high value for <filename>PARALLEL_MAKE</filename>
-                increases the chances of the race condition showing up:
-                <literallayout class='monospaced'>
+                <para>
+                    In this example, compiling the "neard" package is causing
+                    the problem.
+                    So the first thing to do is build "neard" locally.
+                    Before you start the build, set the
+                    <ulink url='&YOCTO_DOCS_REF_URL;#var-PARALLEL_MAKE'><filename>PARALLEL_MAKE</filename></ulink>
+                    variable in your <filename>local.conf</filename> file to
+                    a high number (e.g. "-j 20").
+                    Using a high value for <filename>PARALLEL_MAKE</filename>
+                    increases the chances of the race condition showing up:
+                    <literallayout class='monospaced'>
      $ bitbake neard
-                </literallayout>
-            </para>
+                    </literallayout>
+                </para>
 
-            <para>
-                Once the local build for "neard" completes, start a
-                <filename>devshell</filename> build:
-                <literallayout class='monospaced'>
+                <para>
+                    Once the local build for "neard" completes, start a
+                    <filename>devshell</filename> build:
+                    <literallayout class='monospaced'>
      $ bitbake neard -c devshell
-                </literallayout>
-                For information on how to use a
-                <filename>devshell</filename>, see the
-                "<link linkend='platdev-appdev-devshell'>Using a Development Shell</link>"
-                section.
-            </para>
+                    </literallayout>
+                    For information on how to use a
+                    <filename>devshell</filename>, see the
+                    "<link linkend='platdev-appdev-devshell'>Using a Development Shell</link>"
+                    section.
+                </para>
 
-            <para>
-                In the <filename>devshell</filename>, do the following:
-                <literallayout class='monospaced'>
+                <para>
+                    In the <filename>devshell</filename>, do the following:
+                    <literallayout class='monospaced'>
      $ make clean
      $ make tools/snep-send.o
-                </literallayout>
-                The <filename>devshell</filename> commands cause the failure
-                to clearly be visible.
-                In this case, a missing dependency exists for the "neard"
-                Makefile target.
-                Here is some abbreviated, sample output with the
-                missing dependency clearly visible at the end:
-                <literallayout class='monospaced'>
+                    </literallayout>
+                    The <filename>devshell</filename> commands cause the failure
+                    to clearly be visible.
+                    In this case, a missing dependency exists for the "neard"
+                    Makefile target.
+                    Here is some abbreviated, sample output with the
+                    missing dependency clearly visible at the end:
+                    <literallayout class='monospaced'>
      i586-poky-linux-gcc  -m32 -march=i586 --sysroot=/home/scott-lenovo/......
         .
         .
@@ -10249,113 +11855,547 @@ Some notes from Cal:
      compilation terminated.
      make: *** [tools/snep-send.o] Error 1
      $
-                </literallayout>
-            </para>
-        </section>
+                    </literallayout>
+                </para>
+            </section>
 
-        <section id='creating-a-patch-for-the-fix'>
-            <title>Creating a Patch for the Fix</title>
+            <section id='creating-a-patch-for-the-fix'>
+                <title>Creating a Patch for the Fix</title>
 
-            <para>
-                Because there is a missing dependency for the Makefile
-                target, you need to patch the
-                <filename>Makefile.am</filename> file, which is generated
-                from <filename>Makefile.in</filename>.
-                You can use Quilt to create the patch:
-                <literallayout class='monospaced'>
+                <para>
+                    Because there is a missing dependency for the Makefile
+                    target, you need to patch the
+                    <filename>Makefile.am</filename> file, which is generated
+                    from <filename>Makefile.in</filename>.
+                    You can use Quilt to create the patch:
+                    <literallayout class='monospaced'>
      $ quilt new parallelmake.patch
      Patch patches/parallelmake.patch is now on top
      $ quilt add Makefile.am
      File Makefile.am added to patch patches/parallelmake.patch
-                </literallayout>
-                For more information on using Quilt, see the
-                "<link linkend='using-a-quilt-workflow'>Using Quilt in Your Workflow</link>"
-                section.
-            </para>
+                    </literallayout>
+                    For more information on using Quilt, see the
+                    "<link linkend='using-a-quilt-workflow'>Using Quilt in Your Workflow</link>"
+                    section.
+                </para>
 
-            <para>
-                At this point you need to make the edits to
-                <filename>Makefile.am</filename> to add the missing
-                dependency.
-                For our example, you have to add the following line
-                to the file:
-                <literallayout class='monospaced'>
+                <para>
+                    At this point you need to make the edits to
+                    <filename>Makefile.am</filename> to add the missing
+                    dependency.
+                    For our example, you have to add the following line
+                    to the file:
+                    <literallayout class='monospaced'>
      tools/snep-send.$(OBJEXT): include/near/dbus.h
-                </literallayout>
-            </para>
+                    </literallayout>
+                </para>
 
-            <para>
-                Once you have edited the file, use the
-                <filename>refresh</filename> command to create the patch:
-                <literallayout class='monospaced'>
+                <para>
+                    Once you have edited the file, use the
+                    <filename>refresh</filename> command to create the patch:
+                    <literallayout class='monospaced'>
      $ quilt refresh
      Refreshed patch patches/parallelmake.patch
-                </literallayout>
-                Once the patch file exists, you need to add it back to the
-                originating recipe folder.
-                Here is an example assuming a top-level
-                <ulink url='&YOCTO_DOCS_REF_URL;#source-directory'>Source Directory</ulink>
-                named <filename>poky</filename>:
-                <literallayout class='monospaced'>
+                    </literallayout>
+                    Once the patch file exists, you need to add it back to the
+                    originating recipe folder.
+                    Here is an example assuming a top-level
+                    <ulink url='&YOCTO_DOCS_REF_URL;#source-directory'>Source Directory</ulink>
+                    named <filename>poky</filename>:
+                    <literallayout class='monospaced'>
      $ cp patches/parallelmake.patch poky/meta/recipes-connectivity/neard/neard
-                </literallayout>
-                The final thing you need to do to implement the fix in the
-                build is to update the "neard" recipe (i.e.
-                <filename>neard-0.14.bb</filename>) so that the
-                <ulink url='&YOCTO_DOCS_REF_URL;#var-SRC_URI'><filename>SRC_URI</filename></ulink>
-                statement includes the patch file.
-                The recipe file is in the folder above the patch.
-                Here is what the edited <filename>SRC_URI</filename>
-                statement would look like:
-                <literallayout class='monospaced'>
+                    </literallayout>
+                    The final thing you need to do to implement the fix in the
+                    build is to update the "neard" recipe (i.e.
+                    <filename>neard-0.14.bb</filename>) so that the
+                    <ulink url='&YOCTO_DOCS_REF_URL;#var-SRC_URI'><filename>SRC_URI</filename></ulink>
+                    statement includes the patch file.
+                    The recipe file is in the folder above the patch.
+                    Here is what the edited <filename>SRC_URI</filename>
+                    statement would look like:
+                    <literallayout class='monospaced'>
      SRC_URI = "${KERNELORG_MIRROR}/linux/network/nfc/${BPN}-${PV}.tar.xz \
                 file://neard.in \
                 file://neard.service.in \
                 file://parallelmake.patch \
                "
-                </literallayout>
-            </para>
+                    </literallayout>
+                </para>
 
-            <para>
-                With the patch complete and moved to the correct folder and
-                the <filename>SRC_URI</filename> statement updated, you can
-                exit the <filename>devshell</filename>:
-                <literallayout class='monospaced'>
+                <para>
+                    With the patch complete and moved to the correct folder and
+                    the <filename>SRC_URI</filename> statement updated, you can
+                    exit the <filename>devshell</filename>:
+                    <literallayout class='monospaced'>
      $ exit
-                </literallayout>
-            </para>
-        </section>
+                    </literallayout>
+                </para>
+            </section>
 
-        <section id='testing-the-build'>
-            <title>Testing the Build</title>
+            <section id='testing-the-build'>
+                <title>Testing the Build</title>
 
-            <para>
-                With everything in place, you can get back to trying the
-                build again locally:
-                <literallayout class='monospaced'>
+                <para>
+                    With everything in place, you can get back to trying the
+                    build again locally:
+                    <literallayout class='monospaced'>
      $ bitbake neard
-                </literallayout>
-                This build should succeed.
-            </para>
+                    </literallayout>
+                    This build should succeed.
+                </para>
 
-            <para>
-                Now you can open up a <filename>devshell</filename> again
-                and repeat the clean and make operations as follows:
-                <literallayout class='monospaced'>
+                <para>
+                    Now you can open up a <filename>devshell</filename> again
+                    and repeat the clean and make operations as follows:
+                    <literallayout class='monospaced'>
      $ bitbake neard -c devshell
      $ make clean
      $ make tools/snep-send.o
-                </literallayout>
-                The build should work without issue.
+                    </literallayout>
+                    The build should work without issue.
+                </para>
+
+                <para>
+                    As with all solved problems, if they originated upstream,
+                    you need to submit the fix for the recipe in OE-Core and
+                    upstream so that the problem is taken care of at its
+                    source.
+                    See the
+                    "<link linkend='how-to-submit-a-change'>Submitting a Change to the Yocto Project</link>"
+                    section for more information.
+                </para>
+            </section>
+        </section>
+
+        <section id="platdev-gdb-remotedebug">
+            <title>Debugging With the GNU Project Debugger (GDB) Remotely</title>
+
+            <para>
+                GDB allows you to examine running programs, which in turn helps
+                you to understand and fix problems.
+                It also allows you to perform post-mortem style analysis of
+                program crashes.
+                GDB is available as a package within the Yocto Project and is
+                installed in SDK images by default.
+                See the
+                "<ulink url='&YOCTO_DOCS_REF_URL;#ref-images'>Images</ulink>"
+                chapter in the Yocto Project Reference Manual for a description of
+                these images.
+                You can find information on GDB at
+                <ulink url="http://sourceware.org/gdb/"/>.
+                <note><title>Tip</title>
+                    For best results, install debug (<filename>-dbg</filename>)
+                    packages for the applications you are going to debug.
+                    Doing so makes extra debug symbols available that give you
+                    more meaningful output.
+                </note>
             </para>
 
             <para>
-                As with all solved problems, if they originated upstream, you
-                need to submit the fix for the recipe in OE-Core and upstream
-                so that the problem is taken care of at its source.
-                See the
-                "<link linkend='how-to-submit-a-change'>Submitting a Change to the Yocto Project</link>"
-                section for more information.
+                Sometimes, due to memory or disk space constraints, it is not
+                possible to use GDB directly on the remote target to debug
+                applications.
+                These constraints arise because GDB needs to load the debugging
+                information and the binaries of the process being debugged.
+                Additionally, GDB needs to perform many computations to locate
+                information such as function names, variable names and values,
+                stack traces and so forth - even before starting the debugging
+                process.
+                These extra computations place more load on the target system
+                and can alter the characteristics of the program being debugged.
+            </para>
+
+            <para>
+                To help get past the previously mentioned constraints, you can
+                use gdbserver, which runs on the remote target and does not
+                load any debugging information from the debugged process.
+                Instead, a GDB instance processes the debugging information that
+                is run on a remote computer - the host GDB.
+                The host GDB then sends control commands to gdbserver to make
+                it stop or start the debugged program, as well as read or write
+                memory regions of that debugged program.
+                All the debugging information loaded and processed as well
+               as all the heavy debugging is done by the host GDB.
+                Offloading these processes gives the gdbserver running on the
+                target a chance to remain small and fast.
+            </para>
+
+            <para>
+                Because the host GDB is responsible for loading the debugging
+                information and for doing the necessary processing to make
+                actual debugging happen, you have to make sure the host can
+                access the unstripped binaries complete with their debugging
+                information and also be sure the target is compiled with no
+                optimizations.
+                The host GDB must also have local access to all the libraries
+                used by the debugged program.
+                Because gdbserver does not need any local debugging information,
+                the binaries on the remote target can remain stripped.
+                However, the binaries must also be compiled without optimization
+                so they match the host's binaries.
+            </para>
+
+            <para>
+                To remain consistent with GDB documentation and terminology,
+                the binary being debugged on the remote target machine is
+                referred to as the "inferior" binary.
+                For documentation on GDB see the
+                <ulink url="http://sourceware.org/gdb/documentation/">GDB site</ulink>.
+            </para>
+
+            <para>
+                The following steps show you how to debug using the GNU project
+                debugger.
+                <orderedlist>
+                    <listitem><para>
+                        <emphasis>Configure your build system to construct the
+                        companion debug filesystem:</emphasis></para>
+
+                        <para>In your <filename>local.conf</filename> file, set
+                        the following:
+                        <literallayout class='monospaced'>
+     IMAGE_GEN_DEBUGFS = "1"
+     IMAGE_FSTYPES_DEBUGFS = "tar.bz2"
+                        </literallayout>
+                        These options cause the OpenEmbedded build system
+                        to generate a special companion filesystem fragment,
+                        which contains the matching source and debug symbols to
+                        your deployable filesystem.
+                        The build system does this by looking at what is in the
+                        deployed filesystem, and pulling the corresponding
+                        <filename>-dbg</filename> packages.</para>
+
+                        <para>The companion debug filesystem is not a complete
+                        filesystem, but only contains the debug fragments.
+                        This filesystem must be combined with the full filesystem
+                        for debugging.
+                        Subsequent steps in this procedure show how to combine
+                        the partial filesystem with the full filesystem.
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Configure the system to include gdbserver in
+                        the target filesystem:</emphasis></para>
+
+                        <para>Make the following addition in either your
+                        <filename>local.conf</filename> file or in an image
+                        recipe:
+                        <literallayout class='monospaced'>
+     IMAGE_INSTALL_append = “ gdbserver"
+                        </literallayout>
+                        The change makes sure the <filename>gdbserver</filename>
+                        package is included.
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Build the environment:</emphasis></para>
+
+                        <para>Use the following command to construct the image
+                        and the companion Debug Filesystem:
+                        <literallayout class='monospaced'>
+     $ bitbake <replaceable>image</replaceable>
+                        </literallayout>
+                        Build the cross GDB component and make it available
+                        for debugging.
+                        Build the SDK that matches the image.
+                        Building the SDK is best for a production build
+                        that can be used later for debugging, especially
+                        during long term maintenance:
+                        <literallayout class='monospaced'>
+     $ bitbake -c populate_sdk <replaceable>image</replaceable>
+                        </literallayout></para>
+
+                        <para>Alternatively, you can build the minimal
+                        toolchain components that match the target.
+                        Doing so creates a smaller than typical SDK and only
+                        contains a minimal set of components with which to
+                        build simple test applications, as well as run the
+                        debugger:
+                        <literallayout class='monospaced'>
+     $ bitbake meta-toolchain
+                        </literallayout></para>
+
+                        <para>A final method is to build Gdb itself within
+                        the build system:
+                        <literallayout class='monospaced'>
+     $ bitbake gdb-cross-<replaceable>architecture</replaceable>
+                        </literallayout>
+                        Doing so produces a temporary copy of
+                        <filename>cross-gdb</filename> you can use for
+                        debugging during development.
+                        While this is the quickest approach, the two previous
+                        methods in this step are better when considering
+                        long-term maintenance strategies.
+                        <note>
+                            If you run
+                            <filename>bitbake gdb-cross</filename>, the
+                            OpenEmbedded build system suggests the actual
+                            image (e.g. <filename>gdb-cross-i586</filename>).
+                            The suggestion is usually the actual name you want
+                            to use.
+                        </note>
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Set up the</emphasis>&nbsp;<filename>debugfs</filename></para>
+
+                        <para>Run the following commands to set up the
+                        <filename>debugfs</filename>:
+                        <literallayout class='monospaced'>
+     $ mkdir debugfs
+     $ cd debugfs
+     $ tar xvfj <replaceable>build-dir</replaceable>/tmp-glibc/deploy/images/<replaceable>machine</replaceable>/<replaceable>image</replaceable>.rootfs.tar.bz2
+     $ tar xvfj <replaceable>build-dir</replaceable>/tmp-glibc/deploy/images/<replaceable>machine</replaceable>/<replaceable>image</replaceable>-dbg.rootfs.tar.bz2
+                        </literallayout>
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Set up GDB</emphasis></para>
+
+                        <para>Install the SDK (if you built one) and then
+                        source the correct environment file.
+                        Sourcing the environment file puts the SDK in your
+                        <filename>PATH</filename> environment variable.</para>
+
+                        <para>If you are using the build system, Gdb is
+                        located in
+                        <replaceable>build-dir</replaceable>/tmp/sysroots/<replaceable>host</replaceable>/usr/bin/<replaceable>architecture</replaceable>/<replaceable>architecture</replaceable>-gdb
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Boot the target:</emphasis></para>
+
+                        <para>For information on how to run QEMU, see the
+                        <ulink url='http://wiki.qemu.org/Documentation/GettingStartedDevelopers'>QEMU Documentation</ulink>.
+                        <note>
+                            Be sure to verify that your host can access the
+                            target via TCP.
+                        </note>
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Debug a program:</emphasis></para>
+
+                        <para>Debugging a program involves running gdbserver
+                        on the target and then running Gdb on the host.
+                        The example in this step debugs
+                        <filename>gzip</filename>:
+                        <literallayout class='monospaced'>
+     root@qemux86:~# gdbserver localhost:1234 /bin/gzip —help
+                        </literallayout>
+                        For additional gdbserver options, see the
+                        <ulink url='https://www.gnu.org/software/gdb/documentation/'>GDB Server Documentation</ulink>.
+                        </para>
+
+                        <para>After running gdbserver on the target, you need
+                        to run Gdb on the host and configure it and connect to
+                        the target.
+                        Use these commands:
+                        <literallayout class='monospaced'>
+     $ cd <replaceable>directory-holding-the-debugfs-directory</replaceable>
+     $ <replaceable>arch</replaceable>-gdb
+
+     (gdb) set sysroot debugfs
+     (gdb) set substitute-path /usr/src/debug debugfs/usr/src/debug
+     (gdb) target remote <replaceable>IP-of-target</replaceable>:1234
+                        </literallayout>
+                        At this point, everything should automatically load
+                        (i.e. matching binaries, symbols and headers).
+                        <note>
+                            The Gdb <filename>set</filename> commands in the
+                            previous example can be placed into the users
+                           <filename>~/.gdbinit</filename> file.
+                            Upon starting, Gdb automatically runs whatever
+                            commands are in that file.
+                        </note>
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Deploying without a full image
+                        rebuild:</emphasis></para>
+
+                        <para>In many cases, during development you want a
+                        quick method to deploy a new binary to the target and
+                        debug it, without waiting for a full image build.
+                        </para>
+
+                        <para>One approach to solving this situation is to
+                        just build the component you want to debug.
+                        Once you have built the component, copy the
+                        executable directly to both the target and the
+                        host <filename>debugfs</filename>.</para>
+
+                        <para>If the binary is processed through the debug
+                        splitting in OpenEmbedded, you should also
+                        copy the debug items (i.e. <filename>.debug</filename>
+                        contents and corresponding
+                        <filename>/usr/src/debug</filename> files)
+                        from the work directory.
+                        Here is an example:
+                        <literallayout class='monospaced'>
+     $ bitbake bash
+     $ bitbake -c devshell bash
+     $ cd ..
+     $ scp packages-split/bash/bin/bash <replaceable>target</replaceable>:/bin/bash
+     $ cp -a packages-split/bash-dbg/* <replaceable>path</replaceable>/debugfs
+                        </literallayout>
+                        </para></listitem>
+                </orderedlist>
+            </para>
+        </section>
+
+        <section id='debugging-with-the-gnu-project-debugger-gdb-on-the-target'>
+            <title>Debugging with the GNU Project Debugger (GDB) on the Target</title>
+
+            <para>
+                The previous section addressed using GDB remotely for debugging
+                purposes, which is the most usual case due to the inherent
+                hardware limitations on many embedded devices.
+                However, debugging in the target hardware itself is also
+                possible with more powerful devices.
+                This section describes what you need to do in order to support
+                using GDB to debug on the target hardware.
+            </para>
+
+            <para>
+                To support this kind of debugging, you need do the following:
+                <itemizedlist>
+                    <listitem><para>
+                        Ensure that GDB is on the target.
+                        You can do this by adding "gdb" to
+                        <ulink url='&YOCTO_DOCS_REF_URL;#var-IMAGE_INSTALL'><filename>IMAGE_INSTALL</filename></ulink>:
+                        <literallayout class='monospaced'>
+     IMAGE_INSTALL_append = " gdb"
+                        </literallayout>
+                        Alternatively, you can add "tools-debug" to
+                        <ulink url='&YOCTO_DOCS_REF_URL;#var-IMAGE_FEATURES'><filename>IMAGE_FEATURES</filename></ulink>:
+                        <literallayout class='monospaced'>
+     IMAGE_FEATURES_append = " tools-debug"
+                        </literallayout>
+                        </para></listitem>
+                    <listitem><para>
+                        Ensure that debug symbols are present.
+                        You can make sure these symbols are present by
+                        installing <filename>-dbg</filename>:
+                        <literallayout class='monospaced'>
+     IMAGE_INSTALL_append = " <replaceable>packagename</replaceable>-dbg"
+                        </literallayout>
+                        Alternatively, you can do the following to include all
+                        the debug symbols:
+                        <literallayout class='monospaced'>
+     IMAGE_FEATURES_append = " dbg-pkgs"
+                        </literallayout>
+                        </para></listitem>
+                </itemizedlist>
+                <note>
+                    To improve the debug information accuracy, you can reduce
+                    the level of optimization used by the compiler.
+                    For example, when adding the following line to your
+                    <filename>local.conf</filename> file, you will reduce
+                    optimization from
+                    <ulink url='&YOCTO_DOCS_REF_URL;#var-FULL_OPTIMIZATION'><filename>FULL_OPTIMIZATION</filename></ulink>
+                    of "-O2" to
+                    <ulink url='&YOCTO_DOCS_REF_URL;#var-DEBUG_OPTIMIZATION'><filename>DEBUG_OPTIMIZATION</filename></ulink>
+                    of "-O -fno-omit-frame-pointer":
+                    <literallayout class='monospaced'>
+     DEBUG_BUILD = "1"
+                    </literallayout>
+                    Consider that this will reduce the application's performance
+                    and is recommended only for debugging purposes.
+                </note>
+            </para>
+        </section>
+
+        <section id='dev-other-debugging-others'>
+            <title>Other Debugging Tips</title>
+
+            <para>
+                Here are some other tips that you might find useful:
+                <itemizedlist>
+                    <listitem><para>
+                        When adding new packages, it is worth watching for
+                        undesirable items making their way into compiler command
+                        lines.
+                        For example, you do not want references to local system
+                        files like
+                        <filename>/usr/lib/</filename> or
+                        <filename>/usr/include/</filename>.
+                        </para></listitem>
+                    <listitem><para>
+                        If you want to remove the <filename>psplash</filename>
+                        boot splashscreen,
+                        add <filename>psplash=false</filename> to  the kernel
+                        command line.
+                        Doing so prevents <filename>psplash</filename> from
+                        loading and thus allows you to see the console.
+                        It is also possible to switch out of the splashscreen by
+                        switching the virtual console (e.g. Fn+Left or Fn+Right
+                        on a Zaurus).
+                        </para></listitem>
+                    <listitem><para>
+                        Removing
+                        <ulink url='&YOCTO_DOCS_REF_URL;#var-TMPDIR'><filename>TMPDIR</filename></ulink>
+                        (usually <filename>tmp/</filename>, within the
+                        <ulink url='&YOCTO_DOCS_REF_URL;#build-directory'>Build Directory</ulink>)
+                        can often fix temporary build issues.
+                        Removing <filename>TMPDIR</filename> is usually a
+                        relatively cheap operation, because task output will be
+                        cached in
+                        <ulink url='&YOCTO_DOCS_REF_URL;#var-SSTATE_DIR'><filename>SSTATE_DIR</filename></ulink>
+                        (usually <filename>sstate-cache/</filename>, which is
+                        also in the Build Directory).
+                        <note>
+                            Removing <filename>TMPDIR</filename> might be a
+                            workaround rather than a fix.
+                            Consequently, trying to determine the underlying
+                            cause of an issue before removing the directory is
+                            a good idea.
+                        </note>
+                        </para></listitem>
+                    <listitem><para>
+                        Understanding how a feature is used in practice within
+                        existing recipes can be very helpful.
+                        It is recommended that you configure some method that
+                        allows you to quickly search through files.</para>
+
+                        <para>Using GNU Grep, you can use the following shell
+                        function to recursively search through common
+                        recipe-related files, skipping binary files,
+                        <filename>.git</filename> directories, and the
+                        Build Directory (assuming its name starts with
+                        "build"):
+                        <literallayout class='monospaced'>
+     g() {
+         grep -Ir \
+              --exclude-dir=.git \
+              --exclude-dir='build*' \
+              --include='*.bb*' \
+              --include='*.inc*' \
+              --include='*.conf*' \
+              --include='*.py*' \
+              "$@"
+     }
+                        </literallayout>
+                        Following are some usage examples:
+                        <literallayout class='monospaced'>
+     $ g FOO    # Search recursively for "FOO"
+     $ g -i foo # Search recursively for "foo", ignoring case
+     $ g -w FOO # Search recursively for "FOO" as a word, ignoring e.g. "FOOBAR"
+                        </literallayout>
+                        If figuring out how some feature works requires a lot of
+                        searching, it might indicate that the documentation
+                        should be extended or improved.
+                        In such cases, consider filing a documentation bug using
+                        the Yocto Project implementation of
+                        <ulink url='https://bugzilla.yoctoproject.org/'>Bugzilla</ulink>.
+                        For information on how to submit a bug against
+                        the Yocto Project, see the Yocto Project Bugzilla
+                        <ulink url='&YOCTO_WIKI_URL;/wiki/Bugzilla_Configuration_and_Bug_Tracking'>wiki page</ulink>
+                        and the
+                        "<link linkend='submitting-a-defect-against-the-yocto-project'>Submitting a Defect Against the Yocto Project</link>"
+                        section.
+                        <note>
+                            The manuals might not be the right place to document
+                            variables that are purely internal and have a
+                            limited scope (e.g. internal variables used to
+                            implement a single <filename>.bbclass</filename>
+                            file).
+                        </note>
+                        </para></listitem>
+                </itemizedlist>
             </para>
         </section>
     </section>

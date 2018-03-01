@@ -591,7 +591,8 @@
         ],
         "rdepends": [
             "core",
-            "stringold"
+            "stringold",
+            "netserver"
         ],
         "summary": "Python logging support"
     },
@@ -797,11 +798,13 @@
     },
     "numbers": {
         "cached": [
+            "${libdir}/python3.5/__pycache__/_pydecimal.*.pyc",
             "${libdir}/python3.5/__pycache__/decimal.*.pyc",
             "${libdir}/python3.5/__pycache__/fractions.*.pyc",
             "${libdir}/python3.5/__pycache__/numbers.*.pyc"
         ],
         "files": [
+            "${libdir}/python3.5/_pydecimal.py",
             "${libdir}/python3.5/decimal.py",
             "${libdir}/python3.5/fractions.py",
             "${libdir}/python3.5/lib-dynload/_decimal.*.so",

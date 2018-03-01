@@ -24,10 +24,10 @@ PREFERRED_PROVIDER_virtual/gettext ??= "gettext"
 
 GCCVERSION ?= "7.%"
 SDKGCCVERSION ?= "${GCCVERSION}"
-BINUVERSION ?= "2.29%"
+BINUVERSION ?= "2.30%"
 GDBVERSION ?= "8.0%"
 GLIBCVERSION ?= "2.26%"
-LINUXLIBCVERSION ?= "4.12%"
+LINUXLIBCVERSION ?= "4.15%"
 
 PREFERRED_VERSION_gcc ?= "${GCCVERSION}"
 PREFERRED_VERSION_gcc-cross-${TARGET_ARCH} ?= "${GCCVERSION}"
@@ -63,9 +63,6 @@ PREFERRED_VERSION_nativesdk-glibc          ?= "${GLIBCVERSION}"
 PREFERRED_VERSION_glibc-initial            ?= "${GLIBCVERSION}"
 PREFERRED_VERSION_nativesdk-glibc-initial  ?= "${GLIBCVERSION}"
 PREFERRED_VERSION_cross-localedef-native   ?= "${GLIBCVERSION}"
-# don't use version earlier than 1.4 for gzip-native, as it's necessary for
-# some packages using an archive format incompatible with earlier gzip
-PREFERRED_VERSION_gzip-native ?= "1.8"
 
 # Setup suitable toolchain flags
 require conf/distro/include/as-needed.inc

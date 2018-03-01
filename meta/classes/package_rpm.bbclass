@@ -382,6 +382,12 @@ python write_specfile () {
 
         # Gather special src/first package data
         if srcname == splitname:
+            archiving = d.getVarFlag('ARCHIVER_MODE', 'srpm') == '1' and \
+                        bb.data.inherits_class('archiver', d)
+            if archiving and srclicense != splitlicense:
+                bb.warn("The SRPM produced may not have the correct overall source license in the License tag. This is due to the LICENSE for the primary package and SRPM conflicting.")
+
+            srclicense     = splitlicense
             srcrdepends    = splitrdepends
             srcrrecommends = splitrrecommends
             srcrsuggests   = splitrsuggests
@@ -421,8 +427,7 @@ python write_specfile () {
             spec_preamble_bottom.append('Release: %s' % splitrelease)
         if srcepoch != splitepoch:
             spec_preamble_bottom.append('Epoch: %s' % splitepoch)
-        if srclicense != splitlicense:
-            spec_preamble_bottom.append('License: %s' % splitlicense)
+        spec_preamble_bottom.append('License: %s' % splitlicense)
         spec_preamble_bottom.append('Group: %s' % splitsection)
 
         if srccustomtagschunk != splitcustomtagschunk:
@@ -465,12 +470,12 @@ python write_specfile () {
 
         # Now process scriptlets
         if splitrpreinst:
-            spec_scriptlets_bottom.append('%%pre -n %s' % splitname)
+            spec_scriptlets_bottom.append('%%pre -n %s -p "/bin/sh -e"' % splitname)
             spec_scriptlets_bottom.append('# %s - preinst' % splitname)
             spec_scriptlets_bottom.append(splitrpreinst)
             spec_scriptlets_bottom.append('')
         if splitrpostinst:
-            spec_scriptlets_bottom.append('%%post -n %s' % splitname)
+            spec_scriptlets_bottom.append('%%post -n %s -p "/bin/sh -e"' % splitname)
             spec_scriptlets_bottom.append('# %s - postinst' % splitname)
             spec_scriptlets_bottom.append(splitrpostinst)
             spec_scriptlets_bottom.append('')
@@ -559,12 +564,12 @@ python write_specfile () {
     spec_preamble_top.append('')
 
     if srcrpreinst:
-        spec_scriptlets_top.append('%pre')
+        spec_scriptlets_top.append('%pre -p "/bin/sh -e"')
         spec_scriptlets_top.append('# %s - preinst' % srcname)
         spec_scriptlets_top.append(srcrpreinst)
         spec_scriptlets_top.append('')
     if srcrpostinst:
-        spec_scriptlets_top.append('%post')
+        spec_scriptlets_top.append('%post -p "/bin/sh -e"')
         spec_scriptlets_top.append('# %s - postinst' % srcname)
         spec_scriptlets_top.append(srcrpostinst)
         spec_scriptlets_top.append('')
@@ -646,9 +651,13 @@ python do_package_rpm () {
     rpmbuild = d.getVar('RPMBUILD')
     targetsys = d.getVar('TARGET_SYS')
     targetvendor = d.getVar('HOST_VENDOR')
+
     # Too many places in dnf stack assume that arch-independent packages are "noarch".
     # Let's not fight against this.
-    package_arch = (d.getVar('PACKAGE_ARCH') or "").replace("-", "_").replace("all", "noarch")
+    package_arch = (d.getVar('PACKAGE_ARCH') or "").replace("-", "_")
+    if package_arch == "all":
+        package_arch = "noarch"
+
     sdkpkgsuffix = (d.getVar('SDKPKGSUFFIX') or "nativesdk").replace("-", "_")
     d.setVar('PACKAGE_ARCH_EXTEND', package_arch)
     pkgwritedir = d.expand('${PKGWRITEDIRRPM}/${PACKAGE_ARCH_EXTEND}')
@@ -669,6 +678,7 @@ python do_package_rpm () {
     cmd = cmd + " --define '_binary_payload w6T.xzdio'"
     cmd = cmd + " --define '_source_payload w6T.xzdio'"
     cmd = cmd + " --define 'clamp_mtime_to_source_date_epoch 1'"
+    cmd = cmd + " --define '_buildhost reproducible'"
     if perfiledeps:
         cmd = cmd + " --define '__find_requires " + outdepends + "'"
         cmd = cmd + " --define '__find_provides " + outprovides + "'"
