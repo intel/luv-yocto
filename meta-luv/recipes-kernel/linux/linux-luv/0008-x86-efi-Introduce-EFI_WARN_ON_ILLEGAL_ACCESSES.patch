@@ -1,7 +1,7 @@
-From 232b1ba5eb058bd324e7c41e6241bf2a440e2578 Mon Sep 17 00:00:00 2001
+From 05c6c4f4bb66dfb94b25a0a8868be08e6b2b8dd0 Mon Sep 17 00:00:00 2001
 From: Sai Praneeth <sai.praneeth.prakhya@intel.com>
 Date: Fri, 19 May 2017 16:19:20 -0700
-Subject: [PATCH 8/8] x86/efi: Introduce EFI_WARN_ON_ILLEGAL_ACCESSES
+Subject: [PATCH 8/9] x86/efi: Introduce EFI_WARN_ON_ILLEGAL_ACCESSES
 
 There may exist buggy implementations of UEFI firmware that access efi
 memory regions like EFI_CONVENTIONAL_MEMORY, EFI_LOADER_CODE/DATA and
@@ -38,10 +38,10 @@ Cc: Ard Biesheuvel <ard.biesheuvel@linaro.org>
  2 files changed, 16 insertions(+)
 
 diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
-index 323cb065be5e..d733f0fa4a33 100644
+index d4fc98c50378..55302c579266 100644
 --- a/arch/x86/Kconfig
 +++ b/arch/x86/Kconfig
-@@ -1836,6 +1836,18 @@ config EFI_MIXED
+@@ -1904,6 +1904,18 @@ config EFI_MIXED
  
  	   If unsure, say N.
  
@@ -61,10 +61,10 @@ index 323cb065be5e..d733f0fa4a33 100644
  	def_bool y
  	prompt "Enable seccomp to safely compute untrusted bytecode"
 diff --git a/arch/x86/platform/efi/efi.c b/arch/x86/platform/efi/efi.c
-index 4c1ff40cdf8a..b6f048f2c525 100644
+index c19e736f7221..b272afd6b6d7 100644
 --- a/arch/x86/platform/efi/efi.c
 +++ b/arch/x86/platform/efi/efi.c
-@@ -767,9 +767,13 @@ static bool should_map_region(efi_memory_desc_t *md)
+@@ -768,9 +768,13 @@ static bool should_map_region(efi_memory_desc_t *md)
  	/*
  	 * Map boot services regions as a workaround for buggy
  	 * firmware that accesses them even when they shouldn't.

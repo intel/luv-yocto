@@ -1,7 +1,7 @@
-From 2c3cf2e456d31b4799f49b4756092123e53a0359 Mon Sep 17 00:00:00 2001
+From 59e605d068fdf1df5d9ea8a8575c32d26e5d7aad Mon Sep 17 00:00:00 2001
 From: Sai Praneeth <sai.praneeth.prakhya@intel.com>
 Date: Fri, 19 May 2017 16:16:01 -0700
-Subject: [PATCH 4/8] efi: Allow efi_mem_desc_lookup find illegally accessed
+Subject: [PATCH 4/9] efi: Allow efi_mem_desc_lookup find illegally accessed
  EFI regions
 
 CONFIG_EFI_WARN_ON_ILLEGAL_ACCESSES detects illegal accesses to EFI
@@ -25,10 +25,10 @@ Cc: Ard Biesheuvel <ard.biesheuvel@linaro.org>
  1 file changed, 6 insertions(+)
 
 diff --git a/drivers/firmware/efi/efi.c b/drivers/firmware/efi/efi.c
-index 3728665f93e0..4bacdf0fc6a1 100644
+index 358322052a70..2d0d4a1cceb8 100644
 --- a/drivers/firmware/efi/efi.c
 +++ b/drivers/firmware/efi/efi.c
-@@ -378,6 +378,12 @@ int __init_fixup efi_mem_desc_lookup(u64 phys_addr, efi_memory_desc_t *out_md)
+@@ -422,6 +422,12 @@ int __init_fixup efi_mem_desc_lookup(u64 phys_addr, efi_memory_desc_t *out_md)
  
  		if (!(md->attribute & EFI_MEMORY_RUNTIME) &&
  		    md->type != EFI_BOOT_SERVICES_DATA &&
