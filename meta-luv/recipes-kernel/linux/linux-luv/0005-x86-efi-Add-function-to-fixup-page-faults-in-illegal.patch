@@ -1,7 +1,7 @@
-From 2d138b9837859cfc1854cb06de5b289fe78936b9 Mon Sep 17 00:00:00 2001
+From 79d6b2ebdda4b69f493ef67d97af59385727dafc Mon Sep 17 00:00:00 2001
 From: Sai Praneeth <sai.praneeth.prakhya@intel.com>
 Date: Wed, 6 Sep 2017 11:39:51 -0700
-Subject: [PATCH 5/8] x86/efi: Add function to fixup page faults in illegal efi
+Subject: [PATCH 5/9] x86/efi: Add function to fixup page faults in illegal efi
  regions
 
 As per the UEFI specification, after the call to ExitBootServices(),
@@ -44,10 +44,10 @@ Cc: Ard Biesheuvel <ard.biesheuvel@linaro.org>
  2 files changed, 65 insertions(+)
 
 diff --git a/arch/x86/platform/efi/quirks.c b/arch/x86/platform/efi/quirks.c
-index 353fe4748ba8..a0149893c403 100644
+index 08ed0da663b8..d4c6577a63e3 100644
 --- a/arch/x86/platform/efi/quirks.c
 +++ b/arch/x86/platform/efi/quirks.c
-@@ -756,4 +756,64 @@ static int efi_install_memmap(phys_addr_t addr, unsigned int nr_map)
+@@ -767,4 +767,64 @@ static int efi_install_memmap(phys_addr_t addr, unsigned int nr_map)
  	return __efi_memmap_init(&data, efi.memmap.late);
  }
  
@@ -113,10 +113,10 @@ index 353fe4748ba8..a0149893c403 100644
 +
  #endif /* CONFIG_EFI_WARN_ON_ILLEGAL_ACCESSES */
 diff --git a/include/linux/efi.h b/include/linux/efi.h
-index 8bce0b7542c9..dfb015159960 100644
+index 23e9b29d2bfc..863dbfb1b211 100644
 --- a/include/linux/efi.h
 +++ b/include/linux/efi.h
-@@ -1040,8 +1040,13 @@ extern int efi_memattr_apply_permissions(struct mm_struct *mm,
+@@ -1069,8 +1069,13 @@ extern int efi_memattr_apply_permissions(struct mm_struct *mm,
   */
  #ifdef CONFIG_EFI_WARN_ON_ILLEGAL_ACCESSES
  #define __init_fixup

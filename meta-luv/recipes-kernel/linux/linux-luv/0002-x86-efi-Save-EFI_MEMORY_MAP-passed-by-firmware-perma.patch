@@ -1,7 +1,7 @@
-From d5945e9100b496eb05e5d0776bceccfdf5b274e4 Mon Sep 17 00:00:00 2001
+From d8b1747ec9cccc8b4a4076af6c0c89db81af80c2 Mon Sep 17 00:00:00 2001
 From: Sai Praneeth <sai.praneeth.prakhya@intel.com>
 Date: Wed, 6 Sep 2017 10:36:35 -0700
-Subject: [PATCH 2/8] x86/efi: Save EFI_MEMORY_MAP passed by firmware
+Subject: [PATCH 2/9] x86/efi: Save EFI_MEMORY_MAP passed by firmware
  permanently
 
 When CONFIG_EFI_WARN_ON_ILLEGAL_ACCESSES is enabled, in order to fixup
@@ -28,7 +28,7 @@ CC: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
  3 files changed, 56 insertions(+)
 
 diff --git a/arch/x86/include/asm/efi.h b/arch/x86/include/asm/efi.h
-index 8f5ccb7c5033..72f1f9cba101 100644
+index a981f44a11b6..6ccf0939c0b6 100644
 --- a/arch/x86/include/asm/efi.h
 +++ b/arch/x86/include/asm/efi.h
 @@ -164,6 +164,15 @@ extern void parse_efi_setup(u64 phys_addr, u32 data_len);
@@ -48,10 +48,10 @@ index 8f5ccb7c5033..72f1f9cba101 100644
  extern void efi_thunk_runtime_setup(void);
  extern efi_status_t efi_thunk_set_virtual_address_map(
 diff --git a/arch/x86/platform/efi/efi.c b/arch/x86/platform/efi/efi.c
-index 11b87227ad1a..4c1ff40cdf8a 100644
+index b4f80acbe85e..c19e736f7221 100644
 --- a/arch/x86/platform/efi/efi.c
 +++ b/arch/x86/platform/efi/efi.c
-@@ -945,6 +945,9 @@ static void __init __efi_enter_virtual_mode(void)
+@@ -944,6 +944,9 @@ static void __init __efi_enter_virtual_mode(void)
  
  	pa = __pa(new_memmap);
  
@@ -62,7 +62,7 @@ index 11b87227ad1a..4c1ff40cdf8a 100644
  	 * Unregister the early EFI memmap from efi_init() and install
  	 * the new EFI memory map that we are about to pass to the
 diff --git a/arch/x86/platform/efi/quirks.c b/arch/x86/platform/efi/quirks.c
-index 8a99a2e96537..213700558ae5 100644
+index 5b513ccffde4..103a569a244a 100644
 --- a/arch/x86/platform/efi/quirks.c
 +++ b/arch/x86/platform/efi/quirks.c
 @@ -78,6 +78,8 @@ struct quark_security_header {
@@ -74,7 +74,7 @@ index 8a99a2e96537..213700558ae5 100644
  
  /*
   * Some firmware implementations refuse to boot if there's insufficient
-@@ -641,3 +643,45 @@ int efi_capsule_setup_info(struct capsule_info *cap_info, void *kbuff,
+@@ -652,3 +654,45 @@ int efi_capsule_setup_info(struct capsule_info *cap_info, void *kbuff,
  }
  
  #endif
