@@ -1,7 +1,7 @@
-From 74d2ca4352f490f6850dc10a70a3e15d9fb43e94 Mon Sep 17 00:00:00 2001
+From d56abcecddb52955b14f9e64afe6ebfc2f0435c7 Mon Sep 17 00:00:00 2001
 From: Sai Praneeth <sai.praneeth.prakhya@intel.com>
 Date: Fri, 19 May 2017 16:09:33 -0700
-Subject: [PATCH 1/8] x86/efi: remove __init attribute from memory mapping
+Subject: [PATCH 1/9] x86/efi: remove __init attribute from memory mapping
  functions
 
 All these functions will be used by the page fault handler to fixup
@@ -35,10 +35,10 @@ CC: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
  6 files changed, 20 insertions(+), 11 deletions(-)
 
 diff --git a/arch/x86/include/asm/efi.h b/arch/x86/include/asm/efi.h
-index 796ff6c1aa53..8f5ccb7c5033 100644
+index cda9940bed7a..a981f44a11b6 100644
 --- a/arch/x86/include/asm/efi.h
 +++ b/arch/x86/include/asm/efi.h
-@@ -94,7 +94,7 @@ struct efi_scratch {
+@@ -93,7 +93,7 @@ struct efi_scratch {
  	preempt_enable();						\
  })
  
@@ -47,7 +47,7 @@ index 796ff6c1aa53..8f5ccb7c5033 100644
  					u32 type, u64 attribute);
  
  #ifdef CONFIG_KASAN
-@@ -117,13 +117,13 @@ extern int __init efi_memblock_x86_reserve_range(void);
+@@ -116,13 +116,13 @@ extern int __init efi_memblock_x86_reserve_range(void);
  extern pgd_t * __init efi_call_phys_prolog(void);
  extern void __init efi_call_phys_epilog(pgd_t *save_pgd);
  extern void __init efi_print_memmap(void);
@@ -65,10 +65,10 @@ index 796ff6c1aa53..8f5ccb7c5033 100644
  extern void __init efi_runtime_update_mappings(void);
  extern void __init efi_dump_pagetable(void);
 diff --git a/arch/x86/platform/efi/efi.c b/arch/x86/platform/efi/efi.c
-index f084d8718ac4..11b87227ad1a 100644
+index cf3861f5bbb0..b4f80acbe85e 100644
 --- a/arch/x86/platform/efi/efi.c
 +++ b/arch/x86/platform/efi/efi.c
-@@ -571,7 +571,7 @@ void __init runtime_code_page_mkexec(void)
+@@ -572,7 +572,7 @@ void __init runtime_code_page_mkexec(void)
  	}
  }
  
@@ -77,7 +77,7 @@ index f084d8718ac4..11b87227ad1a 100644
  {
  	unsigned long page_shift = 1UL << EFI_PAGE_SHIFT;
  	u64 npages;
-@@ -581,7 +581,7 @@ void __init efi_memory_uc(u64 addr, unsigned long size)
+@@ -582,7 +582,7 @@ void __init efi_memory_uc(u64 addr, unsigned long size)
  	set_memory_uc(addr, npages);
  }
  
@@ -87,10 +87,10 @@ index f084d8718ac4..11b87227ad1a 100644
  	u64 start_pfn, end_pfn, end;
  	unsigned long size;
 diff --git a/arch/x86/platform/efi/efi_32.c b/arch/x86/platform/efi/efi_32.c
-index 52f7faa1538f..574ffd16387a 100644
+index 324b93328b37..3650a980fba6 100644
 --- a/arch/x86/platform/efi/efi_32.c
 +++ b/arch/x86/platform/efi/efi_32.c
-@@ -57,7 +57,7 @@ int __init efi_setup_page_tables(unsigned long pa_memmap, unsigned num_pages)
+@@ -58,7 +58,7 @@ int __init efi_setup_page_tables(unsigned long pa_memmap, unsigned num_pages)
  	return 0;
  }
  
@@ -100,10 +100,10 @@ index 52f7faa1538f..574ffd16387a 100644
  	old_map_region(md);
  }
 diff --git a/arch/x86/platform/efi/efi_64.c b/arch/x86/platform/efi/efi_64.c
-index 9bf72f5bfedb..ee9846caf18d 100644
+index 3a24bc4c69e5..e94ac1a1d261 100644
 --- a/arch/x86/platform/efi/efi_64.c
 +++ b/arch/x86/platform/efi/efi_64.c
-@@ -396,7 +396,7 @@ int __init efi_setup_page_tables(unsigned long pa_memmap, unsigned num_pages)
+@@ -403,7 +403,7 @@ int __init efi_setup_page_tables(unsigned long pa_memmap, unsigned num_pages)
  	return 0;
  }
  
@@ -112,7 +112,7 @@ index 9bf72f5bfedb..ee9846caf18d 100644
  {
  	unsigned long flags = _PAGE_RW;
  	unsigned long pfn;
-@@ -411,7 +411,7 @@ static void __init __map_region(efi_memory_desc_t *md, u64 va)
+@@ -421,7 +421,7 @@ static void __init __map_region(efi_memory_desc_t *md, u64 va)
  			   md->phys_addr, va);
  }
  
@@ -121,7 +121,7 @@ index 9bf72f5bfedb..ee9846caf18d 100644
  {
  	unsigned long size = md->num_pages << PAGE_SHIFT;
  	u64 pa = md->phys_addr;
-@@ -473,7 +473,7 @@ void __init efi_map_region_fixed(efi_memory_desc_t *md)
+@@ -483,7 +483,7 @@ void __init efi_map_region_fixed(efi_memory_desc_t *md)
  	__map_region(md, md->virt_addr);
  }
  
@@ -131,10 +131,10 @@ index 9bf72f5bfedb..ee9846caf18d 100644
  {
  	unsigned long last_map_pfn;
 diff --git a/drivers/firmware/efi/efi.c b/drivers/firmware/efi/efi.c
-index 045d6d311bde..3728665f93e0 100644
+index a6511ffb4158..358322052a70 100644
 --- a/drivers/firmware/efi/efi.c
 +++ b/drivers/firmware/efi/efi.c
-@@ -358,7 +358,7 @@ subsys_initcall(efisubsys_init);
+@@ -402,7 +402,7 @@ subsys_initcall(efisubsys_init);
   * and if so, populate the supplied memory descriptor with the appropriate
   * data.
   */
@@ -144,10 +144,10 @@ index 045d6d311bde..3728665f93e0 100644
  	efi_memory_desc_t *md;
  
 diff --git a/include/linux/efi.h b/include/linux/efi.h
-index 8269bcb8ccf7..8bce0b7542c9 100644
+index cb66079ff76d..23e9b29d2bfc 100644
 --- a/include/linux/efi.h
 +++ b/include/linux/efi.h
-@@ -1036,6 +1036,15 @@ extern int efi_memattr_apply_permissions(struct mm_struct *mm,
+@@ -1065,6 +1065,15 @@ extern int efi_memattr_apply_permissions(struct mm_struct *mm,
  	for_each_efi_memory_desc_in_map(&efi.memmap, md)
  
  /*

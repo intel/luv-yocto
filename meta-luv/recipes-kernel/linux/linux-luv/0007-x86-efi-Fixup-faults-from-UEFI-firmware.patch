@@ -1,7 +1,7 @@
-From a69b77f4576c03cd29c724c3bf136f20b7781405 Mon Sep 17 00:00:00 2001
+From fcfd32e96efbc418a27e509a42483c86c96a5c9b Mon Sep 17 00:00:00 2001
 From: Sai Praneeth <sai.praneeth.prakhya@intel.com>
 Date: Fri, 19 May 2017 16:18:43 -0700
-Subject: [PATCH 7/8] x86/efi: Fixup faults from UEFI firmware
+Subject: [PATCH 7/9] x86/efi: Fixup faults from UEFI firmware
 
 Firmware may try to access illegal efi memory regions even after
 those regions were surrendered to kernel for its own consumption. Fix
@@ -20,10 +20,10 @@ Cc: Ard Biesheuvel <ard.biesheuvel@linaro.org>
  1 file changed, 11 insertions(+)
 
 diff --git a/arch/x86/mm/fault.c b/arch/x86/mm/fault.c
-index 2a1fa10c6a98..1ba461772d87 100644
+index 06fe3d51d385..7fa8585e2359 100644
 --- a/arch/x86/mm/fault.c
 +++ b/arch/x86/mm/fault.c
-@@ -15,6 +15,7 @@
+@@ -16,6 +16,7 @@
  #include <linux/prefetch.h>		/* prefetchw			*/
  #include <linux/context_tracking.h>	/* exception_enter(), ...	*/
  #include <linux/uaccess.h>		/* faulthandler_disabled()	*/
@@ -39,7 +39,7 @@ index 2a1fa10c6a98..1ba461772d87 100644
  
  #define CREATE_TRACE_POINTS
  #include <asm/trace/exceptions.h>
-@@ -843,6 +845,15 @@ no_context(struct pt_regs *regs, unsigned long error_code,
+@@ -822,6 +824,15 @@ no_context(struct pt_regs *regs, unsigned long error_code,
  		return;
  
  	/*
