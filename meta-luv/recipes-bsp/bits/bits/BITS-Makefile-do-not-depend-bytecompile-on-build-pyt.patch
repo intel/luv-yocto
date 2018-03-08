@@ -28,7 +28,7 @@ index d50804e..b77a28b 100644
  # (and thus our implementation of fstat) doesn't support mtime.
  define bytecompile
 -$(Q)'$(python-host-src)/python' -m compileall -d '' '$(1)'
-+$(Q)bitspython -m compileall -d '' '$(1)'
++$(Q)python -m compileall -d '' '$(1)'
  $(Q)find '$(1)' -name '*.pyc' -exec dd if=/dev/zero of={} bs=4 count=1 seek=1 conv=notrunc status=none \;
  endef
  
