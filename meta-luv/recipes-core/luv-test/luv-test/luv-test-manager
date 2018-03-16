@@ -124,16 +124,16 @@ create_luv_dirs()
     tstamp=$(date +"%Y-%m-%d--%H-%M-%S")
     n=$(ls ${LUV_STORAGE}/ | grep $tstamp | wc -l)
     if [ $n -ge 1 ]; then
-        export LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}/luv-results-$tstamp-$n/
+        export LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}/luv-results-$tstamp-$n
     else
-        export LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}/luv-results-$tstamp/
+        export LUV_SAVE_RESULTS_DIR=${LUV_STORAGE}/luv-results-$tstamp
     fi
 
-    mkdir -p ${LUV_SAVE_RESULTS_DIR}raw/
-    [ $? -eq 0 ] && LUV_SAVE_RAW_DIR=${LUV_SAVE_RESULTS_DIR}raw/
+    mkdir -p ${LUV_SAVE_RESULTS_DIR}/raw
+    [ $? -eq 0 ] && LUV_SAVE_RAW_DIR=${LUV_SAVE_RESULTS_DIR}/raw
 
-    mkdir -p ${LUV_SAVE_RESULTS_DIR}parsed/
-    [ $? -eq 0 ] && LUV_SAVE_PARSED_DIR=${LUV_SAVE_RESULTS_DIR}parsed
+    mkdir -p ${LUV_SAVE_RESULTS_DIR}/parsed
+    [ $? -eq 0 ] && LUV_SAVE_PARSED_DIR=${LUV_SAVE_RESULTS_DIR}/parsed
 }
 
 display_luv_version()
@@ -185,14 +185,14 @@ if [ ! -e ${LUV_STORAGE}/first_boot  ]; then
     echo LUV_SAVE_RESULTS_DIR=$LUV_SAVE_RESULTS_DIR > ${LUV_STORAGE}/first_boot
 else
     export LUV_SAVE_RESULTS_DIR=`grep LUV_SAVE_RESULTS_DIR ${LUV_STORAGE}/first_boot | cut -d "=" -f2`
-    LUV_SAVE_RAW_DIR=${LUV_SAVE_RESULTS_DIR}raw/
-    LUV_SAVE_PARSED_DIR=${LUV_SAVE_RESULTS_DIR}parsed
+    LUV_SAVE_RAW_DIR=${LUV_SAVE_RESULTS_DIR}/raw
+    LUV_SAVE_PARSED_DIR=${LUV_SAVE_RESULTS_DIR}/parsed
     export LUV_HTML_REPORT=${LUV_SAVE_RESULTS_DIR}/luv.html
 fi
 
 if [ ! -z ${LUVDEBUG} ]; then
     # once we know where our storage is, redirect output to a file there
-    exec &> >(tee -a ${LUV_SAVE_RESULTS_DIR}luv-debug.log)
+    exec &> >(tee -a ${LUV_SAVE_RESULTS_DIR}/luv-debug.log)
 fi
 
 luv_msg_write "Running tests..."
