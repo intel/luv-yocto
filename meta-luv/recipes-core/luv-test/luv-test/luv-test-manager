@@ -286,10 +286,10 @@ cat ${LUV_SAVE_RESULTS_DIR}/luv.results | awk '/\[\+/  { units += 1 }
 		suites, units, passes, fails, skips, warns) > "/tmp/testsuites"
     }'
 
-cat /tmp/testsuites | html_inline ${LUV_HTML_REPORT} | tee -a /tmp/luv.results \
-         ${LUV_SAVE_RESULTS_DIR}/luv.results
-
 result=$(cat /tmp/testsuites)
+echo -e '\n'$result | tee -a /tmp/luv.results ${LUV_SAVE_RESULTS_DIR}/luv.results | \
+        html_inline ${LUV_HTML_REPORT}
+
 luv_msg_write "$result"
 sleep 2
 
