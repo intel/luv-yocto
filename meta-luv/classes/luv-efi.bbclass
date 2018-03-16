@@ -182,6 +182,7 @@ python build_efi_cfg() {
     cfgfile.write(' luv_netconsole=${LUV_NETCONSOLE}')
     cfgfile.write(' luv_storage=${LUV_STORAGE_URL}')
     cfgfile.write(' luv_tests=${LUV_TESTS}')
+    cfgfile.write(' luv_reboot_tests=${LUV_REBOOT_TESTS}')
 
     cfgfile.write('\n')
 
@@ -238,6 +239,10 @@ python build_luv_cfg() {
 
     comment = 'These are the selected test suites for execution. Edit if needed'
     name = 'LUVCFG_tests'
+    luvcfg.write(insert_var(name, comment, d))
+
+    comment = 'Add test suites if needed, to run reboot tests in LUV'
+    name = 'LUVCFG_reboot_tests'
     luvcfg.write(insert_var(name, comment, d))
 
     # pad with spaces only if luv-netboot is present, so to make EFI binary
