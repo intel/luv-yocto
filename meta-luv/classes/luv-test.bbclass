@@ -9,24 +9,20 @@ LUV_TEST = "${PN}"
 LUV_TEST_LOG_PARSER = ""
 
 # The installation directory of test runner scripts and log parsers
-RUNNER_PATH = "${sysconfdir}/luv/tests"
-PARSER_PATH = "${sysconfdir}/luv/parsers"
+runnerdir = "${sysconfdir}/luv/tests"
+parserdir = "${sysconfdir}/luv/parsers"
 
 FILES_${PN} += "${RUNNER_PATH}/${PN} ${PARSER_PATH}/${PN}"
 
 do_install_append() {
-    runner_dir="${D}${RUNNER_PATH}"
-    install -d $runner_dir
-
-    log_dir="${D}${PARSER_PATH}"
-    install -d $log_dir
+    install -d ${D}${runnerdir}
+    install -d ${D}${parserdir}
 
     if [ ! -z ${LUV_TEST_LOG_PARSER} ]; then
-        parser="${PARSER_PATH}/${PN}"
-        install -m 755 ${WORKDIR}/${LUV_TEST_LOG_PARSER} ${D}${parser}
+        install -m 755 ${WORKDIR}/${LUV_TEST_LOG_PARSER} ${D}${parserdir}/${PN}
     fi
 
-    cat > ${runner_dir}/${PN} <<EOF
+    cat > ${D}${runnerdir}/${PN} <<EOF
 #!/bin/sh
 #
 # This is an automatically generated test runner script that is invoked
@@ -37,5 +33,5 @@ do_install_append() {
 
 ${LUV_TEST} ${LUV_TEST_ARGS}
 EOF
-    chmod +x ${runner_dir}/${PN}
+    chmod +x ${D}${runnerdir}/${PN}
 }
