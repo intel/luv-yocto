@@ -25,12 +25,12 @@ awk -v reboot_test=${REBOOT_TEST} '/ing/ {
     }
 
     /ok/ {
-       printf ("1.2 pstore-tests %d %s RESULT 1 0 0 0\n", reboot_test, test);
+       printf ("1.2 pstore-tests %d %s RESULT 1 0 0 0 0\n", reboot_test, test);
        fflush("");
     }
 
     /FAIL/ {
-       printf ("1.2 pstore-tests %d %s RESULT 0 1 0 0\n", reboot_test, test);
+       printf ("1.2 pstore-tests %d %s RESULT 0 1 0 0 0\n", reboot_test, test);
        fflush("");
     }
 
