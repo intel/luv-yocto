@@ -163,6 +163,8 @@ start_reports()
 
     System: $(cat /proc/cpuinfo | grep 'model name' | cut -d: -f2 | uniq) x $(nproc)
 
+    Machine ID: $(cat /sys/class/dmi/id/product_uuid)
+
     Test results summary:
 
 EOF
