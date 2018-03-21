@@ -1,0 +1,26 @@
+{
+"ACPI":
+	{
+	"severity": 3
+	},
+"EFI":
+	{
+	"severity": 3
+	},
+"SMRR":
+	{
+	"severity": 3
+	},
+"MCE":
+	{
+	"severity": 2
+	},
+"SMI":
+	{
+	"severity": 2
+	},
+"MP":
+	{
+	"severity": 2
+	}
+}
