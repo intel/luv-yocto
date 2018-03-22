@@ -37,14 +37,14 @@ awk '/\-\-\-\-/ {
     /\[PASS\]/ {
 	"date +%H:%M:%S:%N" | getline current_time;
 	close ("date +%H:%M:%S:%N")
-	printf ("1.1 %s efivarfs %s RESULT 1 0 0 0 \n", current_time, test);
+	printf ("1.1 %s efivarfs %s RESULT 1 0 0 0 0 \n", current_time, test);
 	fflush("");
     }
 
     /\[FAIL\]/ {
 	"date +%H:%M:%S:%N" | getline current_time;
 	close ("date +%H:%M:%S:%N")
-	printf ("1.1 %s efivarfs %s RESULT 0 1 0 0 \n", current_time, test);
+	printf ("1.1 %s efivarfs %s RESULT 0 1 0 0 0 \n", current_time, test);
 	fflush("");
     }
 
