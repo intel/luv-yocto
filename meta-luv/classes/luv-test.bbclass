@@ -3,10 +3,10 @@
 # This file will automatically generate and install a test runner
 # script for a package.
 
-LUV_TEST_ARGS = ""
-LUV_TEST = "${PN}"
+LUV_TEST_ARGS ?= ""
+LUV_TEST ?= "${PN}"
 
-LUV_TEST_LOG_PARSER = ""
+LUV_TEST_LOG_PARSER ?= ""
 
 # The installation directory of test runner scripts and log parsers
 runnerdir = "${sysconfdir}/luv/tests"
