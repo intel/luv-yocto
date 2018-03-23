@@ -1,0 +1,23 @@
+#
+# A collection of awk functions to parse results in a format that LUV can
+# understand.
+#
+# Copyright 2018 Intel Corporation; author Ricardo Neri
+#
+
+# Obtain the level of severity of a test case identified by @testname. The
+# severity is obtained by quering a JSON file whose full path is given by
+# @json. If @testname is not found in @json, return -1. Otherwise, the numeric
+# value of the severity.
+function get_severity(testname, json)
+{
+
+	cmd = sprintf("jq -r '\''.[\"%s\"].severity'\'' %s", testname, json);
+	cmd | getline severity;
+	close(cmd);
+
+	if (severity == "null")
+		return -1
+
+	return severity;
+}
