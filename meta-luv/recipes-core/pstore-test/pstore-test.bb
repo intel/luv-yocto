@@ -7,7 +7,8 @@ KBRANCH="stable"
 
 # Picking up matts branch
 SRC_URI = "file://pstore-test-runner \
-           file://luv-parser-pstore-test"
+           file://luv-parser-pstore-test \
+           file://pstore-test.json"
 
 #we need some of the stuff below
 DEPENDS_class-native += "qemu-native"
@@ -81,5 +82,6 @@ FILES_${PN} += "/usr/share/pstore-test/common_tests \
                "
 
 LUV_TEST_LOG_PARSER="luv-parser-pstore-test"
+LUV_TEST_JSON="pstore-test.json"
 LUV_TEST="pstore-test-runner"
 LUV_TEST_ARGS=""
