@@ -45,8 +45,10 @@ function html_create_div(elem_id, class, contents, closediv)
 # color. Users of this script are responsible of providing the definition
 # of the toggle function.
 
-function html_create_testinfo_ctrl_link(id, text)
+function html_create_testinfo_ctrl_link(id, text, severity)
 {
+        severity_icon = ""
+
         if (text ~ /pass/) {
                 status = "passed";
         } else if (text ~ /skip/) {
@@ -57,13 +59,31 @@ function html_create_testinfo_ctrl_link(id, text)
                 status = "warning";
         } else if (text ~ /fail/) {
                 status = "failed";
+
+                switch (severity) {
+                case 0:
+			# No severity is specified.
+			break;
+                case 1:
+                        severity_icon = severity_icon "<img src=\"parsed/icon_fail1.png\">"
+                        break;
+                case 2:
+                        severity_icon = severity_icon "<img src=\"parsed/icon_fail2.png\">"
+                        break;
+                case 3:
+                        severity_icon = severity_icon "<img src=\"parsed/icon_fail3.png\">"
+                        break;
+                default:
+                        severity_icon = severity_icon "<img src=\"parsed/icon_failunk.png\">"
+                }
         } else {
                 status = "";
         }
+
         link = "toggle('\''" id "'\'');return false;";
         html = "<a id=\"control_" id "\" href=\"#\" ";
         html = html "onClick=\"" link "\">[+]</a>";
-        html = html "<span class=\"" status "\">" text;
+        html = html "<span class=\"" status "\">" text severity_icon;
         html = html "</span>\n";
         return html;
 }
@@ -196,13 +216,14 @@ function get_severity_txt(severity) {
 	if (tag == "END") {
 		# We need to wait until we complete parsing the unit test to
 		# generate the HTML code to have all the test log info and its
-		# status.
+		# status and severity of failure.
 
 		unittest = html_sanitize_text(unittest);
 		info = html_sanitize_text(info);
 
 		href = html_create_testinfo_ctrl_link(unittest,\
-						      unittest "... " unittest_status);
+						      unittest "... " unittest_status,\
+						      severity);
 		content = html_create_div("content_" unittest, "testcase_info", info, 1);
 		div = html_create_div("test_" unittest, "testcase", href content, 1);
 		print div >> HTML;

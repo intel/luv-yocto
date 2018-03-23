@@ -81,6 +81,23 @@ html_inline()
 html_finish()
 {
     html=$1
+
+    # Add legends
+    cat <<EOF >> $html
+<div class="legend">
+LEGEND:<br>
+Severity of failures:
+Low:
+<img src="parsed/icon_fail1.png">&emsp;
+Medium:
+<img src="parsed/icon_fail2.png">&emsp;
+High:
+<img src="parsed/icon_fail3.png">&emsp;
+Unknown:
+<img src="parsed/icon_failunk.png">
+</div>
+EOF
+
     echo "</body>" >> $html
     echo "</html>" >> $html
 }
