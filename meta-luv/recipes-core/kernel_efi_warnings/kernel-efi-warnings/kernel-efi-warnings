@@ -18,11 +18,12 @@ test_dmesg()
     TESTN=${1}
     DESC=${2}
     PTTRN=${3}
+    SEVERITY=${4}
 
     # Optional parameters. If not neeed, should be passed as empty strings.
-    SUPPORT_PTTRN=${4} # Optional
-    [ ! -z "${5}" ] && LEAD_LINES=${5}  || LEAD_LINES=3
-    [ ! -z "${6}" ] && TRAIL_LINES=${6} || TRAIL_LINES=3
+    SUPPORT_PTTRN=${5} # Optional
+    [ ! -z "${5}" ] && LEAD_LINES=${6}  || LEAD_LINES=3
+    [ ! -z "${6}" ] && TRAIL_LINES=${7} || TRAIL_LINES=3
 
     echo "Test: ${TESTN}"
     echo "Description: ${DESC}"
@@ -37,7 +38,20 @@ test_dmesg()
     fi
     errs=`dmesg | grep -c "${PTTRN}"`
     if [ $errs -gt 0 ]; then
-        echo "FAIL: Found $errs instances of \"${PTTRN}\"."
+        case ${4} in
+        1)
+            SEV="LOW"
+            ;;
+        2)
+            SEV="MEDIUM"
+            ;;
+        3)
+            SEV="HIGH"
+            ;;
+        *)
+            SEV="UNKNOWN"
+        esac
+        echo "FAIL: [${SEV}] Found $errs instances of \"${PTTRN}\"."
         echo "Related kernel information"
         echo "----------------------------------------------------------"
         dmesg | grep -A ${TRAIL_LINES} -B ${LEAD_LINES} "${PTTRN}"
@@ -173,4 +187,4 @@ SUPPORT_PTTRN="mce: CPU supports [0-9]* MCE banks"
 DESC="Check if any machine check errors were logged."
 PTTRN="CPU [0-9]\+: Machine Check"
 
-test_dmesg "${TEST}" "${DESC}" "${PTTRN}" "${SUPPORT_PTTRN}" 0 6
+test_dmesg "${TEST}" "${DESC}" "${PTTRN}" 0 "${SUPPORT_PTTRN}" 0 6
