@@ -1,0 +1,34 @@
+{
+"test_create":
+	{
+	"severity": 2
+	},
+"test_create_empty":
+	{
+	"severity": 1
+	},
+"test_create_read":
+	{
+	"severity": 2
+	},
+"test_delete":
+	{
+	"severity": 2
+	},
+"test_zero_size_delete":
+	{
+	"severity": 2
+	},
+"test_open_unlink":
+	{
+	"severity": 2
+	},
+"test_valid_filenames":
+	{
+	"severity": 1
+	},
+"test_invalid_filenames":
+	{
+	"severity": 1
+	}
+}
