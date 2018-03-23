@@ -53,6 +53,7 @@ SRC_URI = "gitsm://github.com/biosbits/bits.git;protocol=http  \
            file://BITS-init.py-Enable-logging-debugging-in-bits-via-ne.patch \
            file://luv-test-bits \
            file://luv-parser-bits \
+           file://bits.json \
            file://0001-only-output-to-log.patch;apply=no \
            file://GRUB-util-include-sysmacros.h-header.patch \
            file://GRUB-fix-switch-fallthrough-cases-with-GCC7.patch \
@@ -92,6 +93,7 @@ LUV_NETBOOT_MODULES = "${@bb.utils.contains('DISTRO_FEATURES', 'luv-netboot', "m
 LUV_NETBOOT_ROOT = "${@bb.utils.contains('DISTRO_FEATURES', 'luv-netboot', "(memdisk)", "", d)}"
 
 LUV_TEST_LOG_PARSER = "luv-parser-bits"
+LUV_TEST_JSON = "bits.json"
 
 do_deploy() {
 
