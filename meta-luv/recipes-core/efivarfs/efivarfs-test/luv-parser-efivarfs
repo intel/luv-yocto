@@ -3,7 +3,10 @@
 # Parse the output of the Linux kernel efivarfs selftests and write to
 # stdout in a luv-test-manager compatible log.
 
-awk '/\-\-\-\-/ {
+awk -v TESTS_JSON="PARSERDIR/efivarfs.json" '
+@include "PARSERDIR/libparser"
+
+/\-\-\-\-/ {
         "date +%H:%M:%S:%N" | getline current_time;
         close ("date +%H:%M:%S:%N")
 	# The test header starts and end with the pattern of this block.  Thus, we
@@ -44,7 +47,9 @@ awk '/\-\-\-\-/ {
     /\[FAIL\]/ {
 	"date +%H:%M:%S:%N" | getline current_time;
 	close ("date +%H:%M:%S:%N")
-	printf ("1.1 %s efivarfs %s RESULT 0 1 0 0 0 0 \n", current_time, test);
+	severity = get_severity(test, TESTS_JSON)
+	printf ("1.1 %s efivarfs %s RESULT 0 1 %d 0 0 0 \n", current_time, test, \
+	        severity);
 	fflush("");
     }
 
