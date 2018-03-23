@@ -22,7 +22,9 @@ SYSTEMD_SERVICE_${PN} = "luv-test-manager.service \
 inherit systemd
 FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 
-SRC_URI += "file://luv-test-manager file://luv-test-parser \
+SRC_URI += "file://luv-test-manager \
+            file://luv-test-parser \
+            file://luv-test-parser-lib \
             file://luv-crash-handler \
             file://luv-netconsole \
             file://luv-netconsole-params \
@@ -67,6 +69,8 @@ do_install_append() {
 
        install -m 755 ${WORKDIR}/luv-test-parser \
                ${D}${sysconfdir}/luv/parsers/test-manager
+       install -m 0644 ${WORKDIR}/luv-test-parser-lib \
+               ${D}${sysconfdir}/luv/parsers/libparser
 
        install -m 755 ${WORKDIR}/luv-crash-handler ${D}${sbindir}/
 
