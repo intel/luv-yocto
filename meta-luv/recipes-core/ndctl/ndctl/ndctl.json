@@ -1,0 +1,22 @@
+{
+"test-libndctl":
+	{
+	"severity": 1
+	},
+"test-dsm-fail":
+	{
+	"severity": 1
+	},
+"test-dpa-alloc":
+	{
+	"severity": 1
+	},
+"test-parent-uuid":
+	{
+	"severity": 1
+	},
+"test-multi-pmem":
+	{
+	"severity": 1
+	}
+}

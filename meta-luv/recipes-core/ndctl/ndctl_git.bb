@@ -23,6 +23,8 @@ inherit module-base
 SRC_URI += "git://github.com/pmem/ndctl.git"
 SRC_URI += "file://luv-parser-ndctl"
 SRC_URI += "file://ndctl_runner"
+SRC_URI += "file://ndctl.json"
+
 SRCREV = "0a628fdf4fe58a283b16c1bbaa49bb28b1842bf9"
 
 S = "${WORKDIR}/git"
@@ -40,5 +42,6 @@ do_install_append() {
 
 FILES_${PN} += "/usr/share/bash-completion/completions/ndctl"
 LUV_TEST_LOG_PARSER="luv-parser-ndctl"
+LUV_TEST_JSON="ndctl.json"
 LUV_TEST="ndctl_runner"
 LUV_TEST_ARGS=""
