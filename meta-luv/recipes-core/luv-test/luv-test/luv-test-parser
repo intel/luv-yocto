@@ -142,8 +142,6 @@ function html_sanitize_text(text)
 	# Parse tags
 	#
 	if (tag == "START") {
-		printf("      [+] %s... ", unittest);
-		fflush("");
 		# initialize empty string for the info of this test
 		info = "";
 	}
@@ -171,7 +169,8 @@ function html_sanitize_text(text)
 			unittest_status = sprintf("%d warnings", warns);
 		else
 			unittest_status = "passed";
-		print unittest_status;
+
+		printf("      [+] %s... %s\n", severity_str, unittest, unittest_status);
 		fflush("");
 	} else if (tag == "INFO") {
 		info = info tstamp substr($0, index($0, tag) + length(tag)) "\n";
