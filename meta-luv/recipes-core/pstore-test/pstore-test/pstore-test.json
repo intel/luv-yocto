@@ -1,0 +1,42 @@
+{
+"Checking_pstore_backend_is_registered":
+	{
+	"severity":2
+	},
+"Checking_pstore_console_is_registered":
+	{
+	"severity":1
+	},
+"Checking_/dev/pmsg0_exists":
+	{
+	"severity":1
+	},
+"Writing_unique_string_to_/dev/pmsg0":
+	{
+	"severity":1
+	},
+"Checking_dmesg_files_exist_in_pstore_filesystem":
+	{
+	"severity":1
+	},
+"Checking_console_files_exist_in_pstore_filesystem":
+	{
+	"severity":1
+	},
+"Checking_pmsg_files_exist_in_pstore_filesystem":
+	{
+	"severity":1
+	},
+"Checking_dmesg_files_contain_oops_end_marker":
+	{
+	"severity":1
+	},
+"Checking_console_file_contains_oops_end_marker":
+	{
+	"severity":1
+	},
+"Checking_pmsg_file_properly_keeps_the_content_written_before_crash":
+	{
+	"severity":1
+	}
+}

@@ -7,7 +7,9 @@ if [ -e REBOOT_DIR/reboot_flag ]; then
     REBOOT_TEST=1
 fi
 
-awk -v reboot_test=${REBOOT_TEST} '/ing/ {
+awk -v reboot_test=${REBOOT_TEST} -v TESTS_JSON="PARSERDIR/pstore-test.json" '
+@include "PARSERDIR/libparser"
+/ing/ {
        prev_test = test;
         test=substr($0,1,index($0,"...")-2);
         if (test == "")
@@ -30,7 +32,9 @@ awk -v reboot_test=${REBOOT_TEST} '/ing/ {
     }
 
     /FAIL/ {
-       printf ("1.2 pstore-tests %d %s RESULT 0 1 0 0 0 0\n", reboot_test, test);
+       severity = get_severity(test, TESTS_JSON)
+       printf ("1.2 pstore-tests %d %s RESULT 0 1 %d 0 0 0\n", reboot_test, test, \
+               severity);
        fflush("");
     }
 
