@@ -5,7 +5,10 @@
 
 sed 's/\x1B\[[0-9][0-9]*m//g' |
 
-awk ' /\[\*\] running module/ {
+awk -v TESTS_JSON="PARSERDIR/chipsec.json" '
+@include "PARSERDIR/libparser"
+
+/\[\*\] running module/ {
 	"date +%H:%M:%S:%N" | getline current_time;
 	close ("date +%H:%M:%S:%N");
 	prev_test = testname;
@@ -17,8 +20,8 @@ awk ' /\[\*\] running module/ {
 		parsing_tests = 1;
 		prev_test = testname;
 	} else {
-		printf("1.1 %s chipsec %s RESULT %d %d 0 0 %d %d\r\n",
-		       current_time, prev_test, passes, fails, skips, warns);
+		printf("1.1 %s chipsec %s RESULT %d %d %d 0 %d %d\r\n",
+		       current_time, prev_test, passes, fails, severity, skips, warns);
 		printf ("1.1 %s chipsec %s END\n", current_time, prev_test);
 		fflush("");
 	}
@@ -28,14 +31,18 @@ awk ' /\[\*\] running module/ {
 	fails  = 0;
 	skips  = 0;
 	warns  = 0;
+	severity = get_severity(testname, TESTS_JSON);
 }
 
 /\*\*\*  SUMMARY  \*\*\*/ {
         "date +%H:%M:%S:%N" | getline current_time;
         close ("date +%H:%M:%S:%N");
+
+	severity = get_severity(testname, TESTS_JSON);
+
 	# emit results for the last test case
-	printf("1.1 %s chipsec %s RESULT %d %d 0 0 %d %d\r\n",
-		current_time, testname, passes, fails, skips, warns);
+	printf("1.1 %s chipsec %s RESULT %d %d %d 0 %d %d\r\n",
+		current_time, testname, passes, fails, severity, skips, warns);
 	printf ("1.1 %s chipsec %s END\n", current_time, testname);
         exit 0;
 }
