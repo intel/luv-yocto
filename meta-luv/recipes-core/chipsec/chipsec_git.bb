@@ -8,7 +8,9 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=8c16666ae6c159876a0ba63099614381"
 
 SRC_URI = "git://github.com/chipsec/chipsec.git \
     file://0001-drivers-linux-Do-not-host-system-s-kernel-source-dir.patch \
-    file://chipsec file://luv-parser-chipsec \
+    file://chipsec \
+    file://luv-parser-chipsec \
+    file://chipsec.json \
     file://0001-chipsec-building-for-32-bit-systems.patch \
     file://0001-chipsec-do-not-ship-manual.patch \
     file://0001-setup.py-give-CPU-architecture-to-the-driver-s-Makef.patch \
@@ -91,5 +93,6 @@ do_install_append() {
 }
 
 LUV_TEST_LOG_PARSER="luv-parser-chipsec"
+LUV_TEST_JSON="chipsec.json"
 
 FILES_${PN}-dbg +="${libdir}/${PYTHON_DIR}/site-packages/${PN}/helper/linux/.debug"
