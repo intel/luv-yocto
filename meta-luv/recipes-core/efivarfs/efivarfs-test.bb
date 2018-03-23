@@ -7,7 +7,8 @@ KBRANCH="stable"
 
 # Picking up matts branch
 SRC_URI = "file://luv-parser-efivarfs \
-          file://efivarfs"
+           file://efivarfs \
+           file://efivarfs.json"
 
 #we need some of the stuff below
 DEPENDS_class-native += "qemu-native"
@@ -71,4 +72,5 @@ do_install() {
 }
 
 LUV_TEST_LOG_PARSER="luv-parser-efivarfs"
+LUV_TEST_JSON="efivarfs.json"
 LUV_TEST="efivarfs"
