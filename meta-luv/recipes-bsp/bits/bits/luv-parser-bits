@@ -13,7 +13,7 @@ awk '/\=\=\=/ {
 		parsing_tests = 1;
 		prev_test = test;
 	} else {
-		printf "1.0 bits %s RESULT %d %d 0 %d 0\n", prev_test, passes,
+		printf "1.0 bits %s RESULT %d %d 0 0 %d 0\n", prev_test, passes,
 			fails, skips;
 		passes = 0; fails = 0; skips =0;
 		printf ("1.0 bits %s END\n", prev_test);
