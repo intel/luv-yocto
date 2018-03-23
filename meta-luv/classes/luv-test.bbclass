@@ -20,6 +20,7 @@ do_install_append() {
 
     if [ ! -z ${LUV_TEST_LOG_PARSER} ]; then
         install -m 755 ${WORKDIR}/${LUV_TEST_LOG_PARSER} ${D}${parserdir}/${PN}
+        sed -i -e 's@PARSERDIR@${parserdir}@g' ${D}${parserdir}/${PN}
     fi
 
     cat > ${D}${runnerdir}/${PN} <<EOF
