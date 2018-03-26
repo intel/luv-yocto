@@ -6,7 +6,20 @@
 LUV_TEST_ARGS ?= ""
 LUV_TEST ?= "${PN}"
 
+python __anonymous() {
+    json = d.getVar('LUV_TEST_JSON')
+    if (len(json) > 0):
+        d.appendVar("RDEPENDS_%s" % d.getVar('PN'), " jq")
+}
+
 LUV_TEST_LOG_PARSER ?= ""
+LUV_TEST_JSON ?= ""
+
+python __anonymous() {
+    json = d.getVar('LUV_TEST_JSON')
+    if (len(json) > 0):
+        d.appendVar("RDEPENDS_%s" % d.getVar('PN'), " jq")
+}
 
 # The installation directory of test runner scripts and log parsers
 runnerdir = "${sysconfdir}/luv/tests"
@@ -21,6 +34,10 @@ do_install_append() {
     if [ ! -z ${LUV_TEST_LOG_PARSER} ]; then
         install -m 755 ${WORKDIR}/${LUV_TEST_LOG_PARSER} ${D}${parserdir}/${PN}
         sed -i -e 's@PARSERDIR@${parserdir}@g' ${D}${parserdir}/${PN}
+    fi
+
+    if [ ! -z ${LUV_TEST_JSON} ]; then
+        install -m 644 ${WORKDIR}/${LUV_TEST_JSON} ${D}${parserdir}
     fi
 
     cat > ${D}${runnerdir}/${PN} <<EOF
