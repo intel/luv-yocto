@@ -7,13 +7,13 @@ if [ -e ${timeout_file} ] ; then
     REBOOT_TIMEOUT=`hexdump -e '"%08u\n"' ${timeout_file} | tail -n1`
 fi
 
-grep -q luv.reboot /proc/cmdline
+grep -q -w luv.reboot /proc/cmdline
 if [ $? -ne 1 ]; then
     sleep ${REBOOT_TIMEOUT}
     reboot
 fi
 
-grep -q luv.poweroff /proc/cmdline
+grep -q -w luv.poweroff /proc/cmdline
 if [ $? -ne 1 ]; then
     sleep ${REBOOT_TIMEOUT}
     poweroff
