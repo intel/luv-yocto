@@ -193,26 +193,29 @@ start_reports()
 EOF
 }
 
-# Create a file the first time LUV boots. Create the LUV result folder
-# with the current timestamp as suffix. Store this result folder name
-# into a variable; should there be a reboot because of any test-suite,
-# we want to have just one results folder and append the post reboot
-# results to it.
-if [ ! -e ${LUV_STORAGE}/first_boot  ]; then
-    touch ${LUV_STORAGE}/first_boot
+# Create the "first_boot" file, only if one of the reboot tests is passed as
+# kernel parameters. Create the LUV result folder with the current timestamp
+# as suffix. Store this result folder name into a variable; should there be a
+# reboot because of any test-suite, we want to have just one results folder and
+# append the post reboot results to it.
+if ! grep -q "luv_reboot_tests=none" /proc/cmdline; then
+    first_boot_file="${LUV_STORAGE}/first_boot"
+    if [ ! -e "$first_boot_file" ]; then
+        touch $first_boot_file
 
-    create_luv_dirs
+        create_luv_dirs
 
-    display_luv_version
+        display_luv_version
 
-    start_reports
+        start_reports
 
-    echo LUV_SAVE_RESULTS_DIR=$LUV_SAVE_RESULTS_DIR > ${LUV_STORAGE}/first_boot
-else
-    export LUV_SAVE_RESULTS_DIR=`grep LUV_SAVE_RESULTS_DIR ${LUV_STORAGE}/first_boot | cut -d "=" -f2`
-    LUV_SAVE_RAW_DIR=${LUV_SAVE_RESULTS_DIR}/raw
-    LUV_SAVE_PARSED_DIR=${LUV_SAVE_RESULTS_DIR}/parsed
-    export LUV_HTML_REPORT=${LUV_SAVE_RESULTS_DIR}/luv.html
+        echo LUV_SAVE_RESULTS_DIR=$LUV_SAVE_RESULTS_DIR > $first_boot_file
+    else
+        export LUV_SAVE_RESULTS_DIR=`grep LUV_SAVE_RESULTS_DIR $first_boot_file | cut -d "=" -f2`
+        LUV_SAVE_RAW_DIR=${LUV_SAVE_RESULTS_DIR}/raw
+        LUV_SAVE_PARSED_DIR=${LUV_SAVE_RESULTS_DIR}/parsed
+        export LUV_HTML_REPORT=${LUV_SAVE_RESULTS_DIR}/luv.html
+    fi
 fi
 
 if [ ! -z ${LUVDEBUG} ]; then
@@ -259,9 +262,10 @@ for r in $runner_list; do
     runner="${LUV_TESTS_DIR}$r"
 
     # if a test suite has already completed, do not run it again.
-    grep -q $r ${LUV_STORAGE}/first_boot
-    if [ $? -eq 0 ]; then
-        continue
+    if [ -e "$first_boot_file" ]; then
+        if grep -q $r $first_boot_file; then
+            continue
+        fi
     fi
 
     # Don't run the testsuite(s) if it is disabled by the user.
@@ -297,11 +301,15 @@ for r in $runner_list; do
               tee -a ${LUV_SAVE_PARSED_DIR}/$r | ${LUV_PARSER_DIR}/test-manager | \
               parse_line | \
               tee -a /tmp/luv.results ${LUV_SAVE_RESULTS_DIR}/luv.results
-    sync
+
     luv_msg_hide "Running ${arr[-1]} ..."
 
     # Update the first_boot file with test_suites that have completed.
-    echo $r >> ${LUV_STORAGE}/first_boot
+    if [ -e "$first_boot_file" ]; then
+        echo $r >> $first_boot_file
+    fi
+    sync
+
 done
 
 cat ${LUV_SAVE_RESULTS_DIR}/luv.results | awk '/\[\+/  { units += 1 }
@@ -324,7 +332,9 @@ sleep 2
 
 html_finish ${LUV_HTML_REPORT}
 
-rm ${LUV_STORAGE}/first_boot
+if [ -e "$first_boot_file" ]; then
+    rm $first_boot_file
+fi
 
 mountpoint -q ${LUV_EFI}
 if [ $? -eq 0 ]; then
