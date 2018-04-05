@@ -258,13 +258,6 @@ progress_step="$((100/$(echo $runner_list | wc -w)))"
 for r in $runner_list; do
     runner="${LUV_TESTS_DIR}$r"
 
-    # if a test suite has already completed, do not run it again.
-    if [ -e "$first_boot_file" ]; then
-        if grep -q $r $first_boot_file; then
-            continue
-        fi
-    fi
-
     # Don't run the testsuite(s) if it is disabled by the user.
     for line in $(cat /proc/cmdline); do
         if [[ "$line" =~ "$r" ]]; then
@@ -273,6 +266,13 @@ for r in $runner_list; do
     done
     if ! echo $luv_tests_string | grep -q $r; then
         continue
+    fi
+
+    # if a test suite has already completed, do not run it again.
+    if [ -e "$first_boot_file" ]; then
+        if grep -q $r $first_boot_file; then
+            continue
+        fi
     fi
 
     #We display each test suite running for equal amount of time
