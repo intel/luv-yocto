@@ -193,6 +193,10 @@ start_reports()
 EOF
 }
 
+create_luv_dirs
+display_luv_version
+start_reports
+
 # Create the "first_boot" file, only if one of the reboot tests is passed as
 # kernel parameters. Create the LUV result folder with the current timestamp
 # as suffix. Store this result folder name into a variable; should there be a
@@ -202,13 +206,6 @@ if ! grep -q "luv_reboot_tests=none" /proc/cmdline; then
     first_boot_file="${LUV_STORAGE}/first_boot"
     if [ ! -e "$first_boot_file" ]; then
         touch $first_boot_file
-
-        create_luv_dirs
-
-        display_luv_version
-
-        start_reports
-
         echo LUV_SAVE_RESULTS_DIR=$LUV_SAVE_RESULTS_DIR > $first_boot_file
     else
         export LUV_SAVE_RESULTS_DIR=`grep LUV_SAVE_RESULTS_DIR $first_boot_file | cut -d "=" -f2`
