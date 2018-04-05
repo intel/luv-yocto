@@ -156,6 +156,9 @@ do_configure () {
 
 do_compile_prepend_class-target () {
     sed -i 's/\((OPENSSL=\)".*"/\1"openssl"/' Makefile
+    oe_runmake depend
+	cc_sanitized=`echo "${CC} ${CFLAG}" | sed -e 's,--sysroot=${STAGING_DIR_TARGET},,g' -e 's|${DEBUG_PREFIX_MAP}||g'`
+	oe_runmake CC_INFO="${cc_sanitized}"
 }
 
 do_compile () {
@@ -255,6 +258,12 @@ do_install_ptest () {
 	for d in ssltest_old v3ext x509aux; do
 		rm -rf ${D}${libdir}/${BPN}/ptest/test/$d
 	done
+
+	# Remove build host references
+	sed -i \
+       -e 's,--sysroot=${STAGING_DIR_TARGET},,g' \
+       -e 's|${DEBUG_PREFIX_MAP}||g' \
+       ${D}${PTEST_PATH}/Makefile ${D}${PTEST_PATH}/Configure
 }
 
 do_install_append_class-native() {

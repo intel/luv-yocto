@@ -5,9 +5,9 @@ LIC_FILES_CHKSUM = "file://LICENSES;md5=e9a558e243b36d3209f380deb394b213 \
       file://posix/rxspencer/COPYRIGHT;md5=dc5485bb394a13b2332ec1c785f5d83a \
       file://COPYING.LIB;md5=4fbd65380cdd255951079008b364516c"
 
-DEPENDS += "gperf-native"
+DEPENDS += "gperf-native bison-native"
 
-SRCREV ?= "1c9a5c270d8b66f30dcfaf1cb2d6cf39d3e18369"
+SRCREV ?= "d300041c533a3d837c9f37a099bcc95466860e98"
 
 SRCBRANCH ?= "release/${PV}/master"
 
@@ -40,9 +40,9 @@ SRC_URI = "${GLIBC_GIT_URI};branch=${SRCBRANCH};name=glibc \
            file://0023-Define-DUMMY_LOCALE_T-if-not-defined.patch \
            file://0024-elf-dl-deps.c-Make-_dl_build_local_scope-breadth-fir.patch \
            file://0025-locale-fix-hard-coded-reference-to-gcc-E.patch \
-           file://0026-assert-Suppress-pedantic-warning-caused-by-statement.patch \
            file://0027-glibc-reset-dl-load-write-lock-after-forking.patch \
            file://0028-Bug-4578-add-ld.so-lock-while-fork.patch \
+           file://0029-bits-siginfo-consts.h-enum-definition-for-TRAP_HWBKP.patch \
 "
 
 NATIVESDKFIXES ?= ""
@@ -51,6 +51,7 @@ NATIVESDKFIXES_class-nativesdk = "\
            file://0002-nativesdk-glibc-Fix-buffer-overrun-with-a-relocated-.patch \
            file://0003-nativesdk-glibc-Raise-the-size-of-arrays-containing-.patch \
            file://0004-nativesdk-glibc-Allow-64-bit-atomics-for-x86.patch \
+           file://relocate-locales.patch \
 "
 
 S = "${WORKDIR}/git"
@@ -103,6 +104,10 @@ do_configure () {
 # version check and doesn't really help with anything
         (cd ${S} && gnu-configize) || die "failure in running gnu-configize"
         find ${S} -name "configure" | xargs touch
+        # "plural.c" may or may not get regenerated from "plural.y" so we
+        # touch "plural.y" to make sure it does. (This should not be needed
+        # for glibc version 2.26+)
+        find ${S}/intl -name "plural.y" | xargs touch
         CPPFLAGS="" oe_runconf
 }
 
@@ -132,12 +137,6 @@ do_compile () {
 		fi
 	fi
 
-}
-
-# Use the host locale archive when built for nativesdk so that we don't need to
-# ship a complete (100MB) locale set.
-do_compile_prepend_class-nativesdk() {
-    echo "complocaledir=/usr/lib/locale" >> ${S}/configparms
 }
 
 require glibc-package.inc

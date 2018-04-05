@@ -130,7 +130,7 @@
                     <emphasis>Website:</emphasis>
                     The
                     <ulink url='&YOCTO_HOME_URL;'>Yocto Project Website</ulink>
-                    provides bacground information, the latest builds, breaking
+                    provides background information, the latest builds, breaking
                     news, full development documentation, and access to a rich
                     Yocto Project Development Community into which you can tap.
                     </para></listitem>
@@ -364,15 +364,6 @@
                             </literallayout>
                             <note><title>Notes</title>
                                 <itemizedlist>
-                                    <listitem><para>
-                                        CentOS 6.x users need to ensure that the
-                                        required versions of Git, tar and Python
-                                        are available.
-                                        For details, See the
-                                        "<ulink url='&YOCTO_DOCS_REF_URL;#required-git-tar-and-python-versions'>Required Git, tar, and Python Versions</ulink>"
-                                        section in the Yocto Project Reference
-                                        Manual for information.
-                                        </para></listitem>
                                     <listitem><para>
                                         Extra Packages for Enterprise Linux
                                         (i.e. <filename>epel-release</filename>)
@@ -990,7 +981,7 @@
                     </para></listitem>
                 <listitem><para>
                     <emphasis>Look Through the
-                    <ulink url='&YOCTO_DOCS_SDK_URL;#sdk-intro'>Yocto Project Application Development and the Extensible Software Development Kit (eSDK)</ulink>
+                    <ulink url='&YOCTO_DOCS_SDK_URL;'>Yocto Project Application Development and the Extensible Software Development Kit (eSDK)</ulink>
                     manual:</emphasis>
                     This manual describes how to use both the
                     <ulink url='&YOCTO_DOCS_SDK_URL;#sdk-using-the-standard-sdk'>standard SDK</ulink>
