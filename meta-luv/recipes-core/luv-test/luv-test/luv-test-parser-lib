@@ -12,7 +12,7 @@
 function get_severity(testname, json)
 {
 
-	cmd = sprintf("jq -r '\''.[\"%s\"].severity'\'' %s", testname, json);
+	cmd = sprintf("jq -r '.[\"%s\"].severity' %s", testname, json);
 	cmd | getline severity;
 	close(cmd);
 
