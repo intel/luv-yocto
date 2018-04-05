@@ -214,12 +214,17 @@ if ! grep -q "luv_reboot_tests=none" /proc/cmdline; then
     first_boot_file="${LUV_STORAGE}/first_boot"
     if [ ! -e "$first_boot_file" ]; then
         touch $first_boot_file
-        echo LUV_SAVE_RESULTS_DIR=$LUV_SAVE_RESULTS_DIR > $first_boot_file
+        echo Machine_id=$(cat /sys/class/dmi/id/product_uuid) > $first_boot_file
+        echo LUV_SAVE_RESULTS_DIR=$LUV_SAVE_RESULTS_DIR >> $first_boot_file
     else
-        export LUV_SAVE_RESULTS_DIR=`grep LUV_SAVE_RESULTS_DIR $first_boot_file | cut -d "=" -f2`
-        LUV_SAVE_RAW_DIR=${LUV_SAVE_RESULTS_DIR}/raw
-        LUV_SAVE_PARSED_DIR=${LUV_SAVE_RESULTS_DIR}/parsed
-        export LUV_HTML_REPORT=${LUV_SAVE_RESULTS_DIR}/luv.html
+        product_id=$(cat /sys/class/dmi/id/product_uuid)
+        export Machine_id=`grep Machine_id $first_boot_file | cut -d "=" -f2`
+        if [ "$product_id" == "$Machine_id" ]; then
+            export LUV_SAVE_RESULTS_DIR=`grep LUV_SAVE_RESULTS_DIR $first_boot_file | cut -d "=" -f2`
+            LUV_SAVE_RAW_DIR=${LUV_SAVE_RESULTS_DIR}/raw
+            LUV_SAVE_PARSED_DIR=${LUV_SAVE_RESULTS_DIR}/parsed
+            export LUV_HTML_REPORT=${LUV_SAVE_RESULTS_DIR}/luv.html
+        fi
     fi
 fi
 
