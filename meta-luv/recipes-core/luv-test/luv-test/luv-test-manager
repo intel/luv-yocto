@@ -197,6 +197,14 @@ create_luv_dirs
 display_luv_version
 start_reports
 
+# If first boot file exists on the disk and if the test suites are completed
+# successfully, remove the file.
+if [ -e "$first_boot_file" ]; then
+    if grep -q "luv_signature=1" $first_boot_file; then
+        rm $first_boot_file
+    fi
+fi
+
 # Create the "first_boot" file, only if one of the reboot tests is passed as
 # kernel parameters. Create the LUV result folder with the current timestamp
 # as suffix. Store this result folder name into a variable; should there be a
@@ -273,6 +281,15 @@ for r in $runner_list; do
         if grep -q $r $first_boot_file; then
             continue
         fi
+        # Leave a signature when reboot_tests are enabled/configured.
+        for line in $(cat /proc/cmdline); do
+            if [[ "$line" =~ "luv_reboot_tests" ]]; then
+                reboot_string=$line
+            fi
+        done
+        if echo $reboot_string | grep -q $r; then
+            luv_signature="1"
+        fi
     fi
 
     #We display each test suite running for equal amount of time
@@ -303,6 +320,9 @@ for r in $runner_list; do
 
     # Update the first_boot file with test_suites that have completed.
     if [ -e "$first_boot_file" ]; then
+        if [[ "$luv_signature" == "1" ]]; then
+            echo luv_signature=$luv_signature >> $first_boot_file
+        fi
         echo $r >> $first_boot_file
     fi
     sync
