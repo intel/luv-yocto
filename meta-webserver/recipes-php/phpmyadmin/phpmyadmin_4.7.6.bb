@@ -11,8 +11,8 @@ SRC_URI = "https://files.phpmyadmin.net/phpMyAdmin/${PV}/phpMyAdmin-${PV}-all-la
            file://apache.conf \
 "
 
-SRC_URI[md5sum] = "4b0c5dbaf871eb86671613da3c31e6b3"
-SRC_URI[sha256sum] = "ed51669043f62494dc3bc21a87423373164ff63865a6c6bceaee535ef785f33e"
+SRC_URI[md5sum] = "a9aec05d44c68b4ac5e4987118d70cd7"
+SRC_URI[sha256sum] = "5fab6b92336386646bbb189d55817799487b5c27b06cab0cdfdcab3c88f5988f"
 
 S = "${WORKDIR}/phpMyAdmin-${PV}-all-languages"
 

@@ -120,7 +120,14 @@ RDEPENDS_gps-utils = "python-pygps"
 
 SUMMARY_python-pygps = "Python bindings to gpsd"
 FILES_python-pygps = "${PYTHON_SITEPACKAGES_DIR}/*"
-RDEPENDS_python-pygps = "python-core python-curses gpsd python-json"
+RDEPENDS_python-pygps = " \
+    python-core \
+    python-io \
+    python-threading \
+    python-terminal \
+    python-curses \
+    gpsd \
+    python-json"
 
 RPROVIDES_${PN} += "${PN}-systemd"
 RREPLACES_${PN} += "${PN}-systemd"
@@ -129,6 +136,5 @@ SYSTEMD_SERVICE_${PN} = "${PN}.socket"
 
 
 ALTERNATIVE_${PN} = "gpsd-defaults"
-ALTERNATIVE_PATH = "${sysconfdir}/default/gpsd.default"
-ALTERNATIVE_LINK = "${sysconfdir}/default/gpsd"
-ALTERNATIVE_TARGET = "${sysconfdir}/default/gpsd.default"
+ALTERNATIVE_LINK_NAME[gpsd-defaults] = "${sysconfdir}/default/gpsd"
+ALTERNATIVE_TARGET[gpsd-defaults] = "${sysconfdir}/default/gpsd.default"
