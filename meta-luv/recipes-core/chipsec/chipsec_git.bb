@@ -15,6 +15,7 @@ SRC_URI = "git://github.com/chipsec/chipsec.git \
     file://0001-chipsec-do-not-ship-manual.patch \
     file://0001-setup.py-give-CPU-architecture-to-the-driver-s-Makef.patch \
     file://0001-Revert-fix-issue-with-building-driver-on-32bit-syste.patch \
+    file://0001-chipsec-Fix-Unknown-symbol-issue-while-loading-chips.patch \
     "
 
 SRCREV="b0f400a27c296f40b54e6aff1723bd6ab3f654a6"
