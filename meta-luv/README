@@ -253,7 +253,7 @@ to alter the default behaviour of LUV.
     we have to prepare everything in case there is a kernel crash in the
     future. Unlike the other LUV boot parameters, this one is not intended
     to be used directly.
-  luv.pstore-test
+  luv.pstore-tests
     This kernel parameter will enable the pstore_crash_test test of the
     pstore-test suite. This test will cause a reboot post which the
     pstore_post_reboot_tests would run. Without this parameter, only the
