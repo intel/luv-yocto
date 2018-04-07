@@ -13,8 +13,8 @@
 
 . luv-message
 
-CURRENT_CMDLINE=`cat /proc/cmdline | sed -e 's/\<luv.pstore-test\>//g'`
-if grep -q luv.pstore-test /proc/cmdline; then
+CURRENT_CMDLINE=`cat /proc/cmdline | sed -e 's/\<luv.pstore-tests\>//g'`
+if grep -q luv.pstore-tests /proc/cmdline; then
     KEXEC_APPEND="${CURRENT_CMDLINE}"
 else
     KEXEC_APPEND="${CURRENT_CMDLINE} noluv systemd.unit=graphical.target irqpoll maxcpus=1 reset_devices luv.crash"
