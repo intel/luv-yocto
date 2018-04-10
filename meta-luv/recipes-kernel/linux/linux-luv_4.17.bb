@@ -142,6 +142,12 @@ PV = "${LINUX_VERSION}+git${SRCPV}"
 # file. Leaving it empty here ensures an early explicit build failure.
 COMPATIBLE_MACHINE = "qemux86|qemux86-64|qemuarm64"
 
+# extract-cert.c requires openssl development files
+# kernel-source/scripts/extract-cert.c:21:25:
+# fatal error: openssl/bio.h: No such file or directory
+DEPENDS += "openssl-native"
+HOST_EXTRACFLAGS += "-I${STAGING_INCDIR_NATIVE}"
+
 do_install_append() {
     if [ "${TARGET_ARCH}" = "x86_64" ]; then
          # There are 2 copies of the NVDIMM modules which are built. This is a
