@@ -516,6 +516,8 @@ class BBCooker:
             fn = runlist[0][3]
         else:
             envdata = self.data
+            data.expandKeys(envdata)
+            parse.ast.runAnonFuncs(envdata)
 
         if fn:
             try:
@@ -536,7 +538,6 @@ class BBCooker:
             logger.plain(env.getvalue())
 
         # emit the metadata which isnt valid shell
-        data.expandKeys(envdata)
         for e in sorted(envdata.keys()):
             if envdata.getVarFlag(e, 'func', False) and envdata.getVarFlag(e, 'python', False):
                 logger.plain("\npython %s () {\n%s}\n", e, envdata.getVar(e, False))

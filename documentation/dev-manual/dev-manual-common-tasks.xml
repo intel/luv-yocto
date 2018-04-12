@@ -34,11 +34,11 @@
             <para>
                 It is very easy to create your own layers to use with the
                 OpenEmbedded build system.
-                The Yocto Project ships with scripts that speed up creating
-                general layers and BSP layers.
+                The Yocto Project ships with tools that speed up creating
+                layers.
                 This section describes the steps you perform by hand to create
-                a layer so that you can better understand them.
-                For information about the layer-creation scripts, see the
+                layers so that you can better understand them.
+                For information about the layer-creation tools, see the
                 "<ulink url='&YOCTO_DOCS_BSP_URL;#creating-a-new-bsp-layer-using-the-bitbake-layers-script'>Creating a New BSP Layer Using the <filename>bitbake-layers</filename> Script</ulink>"
                 section in the Yocto Project Board Support Package (BSP)
                 Developer's Guide and the
@@ -47,9 +47,11 @@
             </para>
 
             <para>
-                Follow these general steps to create your layer without the aid of a script:
+                Follow these general steps to create your layer without using
+                tools:
                 <orderedlist>
-                    <listitem><para><emphasis>Check Existing Layers:</emphasis>
+                    <listitem><para>
+                        <emphasis>Check Existing Layers:</emphasis>
                         Before creating a new layer, you should be sure someone
                         has not already created a layer containing the Metadata
                         you need.
@@ -57,19 +59,35 @@
                         <ulink url='http://layers.openembedded.org/layerindex/layers/'><filename>OpenEmbedded Metadata Index</filename></ulink>
                         for a list of layers from the OpenEmbedded community
                         that can be used in the Yocto Project.
+                        You could find a layer that is identical or close to
+                        what you need.
                         </para></listitem>
-                    <listitem><para><emphasis>Create a Directory:</emphasis>
+                    <listitem><para>
+                        <emphasis>Create a Directory:</emphasis>
                         Create the directory for your layer.
                         While not strictly required, prepend the name of the
-                        folder with the string <filename>meta-</filename>.
+                        directory with the string "meta-".
                         For example:
                         <literallayout class='monospaced'>
      meta-mylayer
      meta-GUI_xyz
      meta-mymachine
                         </literallayout>
+                        With rare exceptions, a layer's name follows this
+                        form:
+                        <literallayout class='monospaced'>
+     meta-<replaceable>root_name</replaceable>
+                        </literallayout>
+                        Following this layer naming convention can
+                        save you trouble later when tools, components, or
+                        variables "assume" your layer name begins with "meta-".
+                        A notable example is in configuration files as
+                        shown in the following step where layer names without
+                        the "meta-" string are appended
+                        to several variables used in the configuration.
                         </para></listitem>
-                    <listitem><para><emphasis>Create a Layer Configuration
+                    <listitem><para>
+                       <emphasis>Create a Layer Configuration
                        File:</emphasis>
                        Inside your new layer folder, you need to create a
                        <filename>conf/layer.conf</filename> file.
@@ -77,9 +95,14 @@
                        file and copy that to your layer's
                        <filename>conf</filename> directory and then modify the
                        file as needed.</para>
+
                        <para>The
                        <filename>meta-yocto-bsp/conf/layer.conf</filename> file
-                       demonstrates the required syntax:
+                       in the Yocto Project
+                       <ulink url='&YOCTO_GIT_URL;/cgit/cgit.cgi/poky/tree/meta-yocto-bsp/conf'>Source Repositories</ulink>
+                       demonstrates the required syntax.
+                       For your layer, you need to replace "yoctobsp" with the
+                       root name of your layer:
                        <literallayout class='monospaced'>
      # We have a conf and classes directory, add to BBPATH
      BBPATH .= ":${LAYERDIR}"
@@ -91,35 +114,42 @@
      BBFILE_COLLECTIONS += "yoctobsp"
      BBFILE_PATTERN_yoctobsp = "^${LAYERDIR}/"
      BBFILE_PRIORITY_yoctobsp = "5"
-     LAYERVERSION_yoctobsp = "3"
+     LAYERVERSION_yoctobsp = "4"
+     LAYERSERIES_COMPAT_yoctobsp = "&DISTRO_NAME_NO_CAP;"
                         </literallayout></para>
+
                         <para>Here is an explanation of the example:
                         <itemizedlist>
-                            <listitem><para>The configuration and
-                                classes directory is appended to
+                            <listitem><para>
+                                The configuration and classes directory is
+                                appended to
                                 <ulink url='&YOCTO_DOCS_REF_URL;#var-BBPATH'><filename>BBPATH</filename></ulink>.
                                 <note>
-                                    All non-distro layers, which include all BSP
-                                    layers, are expected to append the layer
-                                    directory to the
+                                    All non-distro layers are expected to
+                                    append the layer directory to
                                     <filename>BBPATH</filename>.
                                     On the other hand, distro layers, such as
                                     <filename>meta-poky</filename>, can choose
                                     to enforce their own precedence over
                                     <filename>BBPATH</filename>.
                                     For an example of that syntax, see the
-                                    <filename>layer.conf</filename> file for
-                                    the <filename>meta-poky</filename> layer.
-                                </note></para></listitem>
-                            <listitem><para>The recipes for the layers are
-                                appended to
+                                    <filename>meta-poky/conf/layer.conf</filename>
+                                    file for in the
+                                    <ulink url='&YOCTO_GIT_URL;/cgit/cgit.cgi/poky/tree/meta-poky/conf'>Source Repositories</ulink>.
+                                </note>
+                                </para></listitem>
+                            <listitem><para>
+                                The recipes for the layers are appended to
                                 <filename><ulink url='&YOCTO_DOCS_REF_URL;#var-BBFILES'>BBFILES</ulink></filename>.
                                 </para></listitem>
-                            <listitem><para>The
+                            <listitem><para>
+                                The
                                 <filename><ulink url='&YOCTO_DOCS_REF_URL;#var-BBFILE_COLLECTIONS'>BBFILE_COLLECTIONS</ulink></filename>
-                                variable is then appended with the layer name.
+                                variable is appended with the layer's root name,
+                                which is "yoctobsp" in this example.
                                 </para></listitem>
-                            <listitem><para>The
+                            <listitem><para>
+                                The
                                 <filename><ulink url='&YOCTO_DOCS_REF_URL;#var-BBFILE_PATTERN'>BBFILE_PATTERN</ulink></filename>
                                 variable is set to a regular expression and is
                                 used to match files from
@@ -127,24 +157,34 @@
                                 layer.
                                 In this case,
                                 <filename><ulink url='&YOCTO_DOCS_REF_URL;#var-LAYERDIR'>LAYERDIR</ulink></filename>
-                                is used to make <filename>BBFILE_PATTERN</filename> match within the
-                                layer's path.</para></listitem>
-                            <listitem><para>The
+                                is used to make
+                                <filename>BBFILE_PATTERN</filename> match
+                                within the layer's path.
+                                </para></listitem>
+                            <listitem><para>
+                                The
                                 <filename><ulink url='&YOCTO_DOCS_REF_URL;#var-BBFILE_PRIORITY'>BBFILE_PRIORITY</ulink></filename>
-                                variable then assigns a priority to the layer.
+                                variable assigns a priority to the layer.
                                 Applying priorities is useful in situations
                                 where the same recipe might appear in multiple
-                                layers and allows you to choose the layer
-                                that takes precedence.</para></listitem>
-                            <listitem><para>The
+                                layers.
+                                A priority allows you to choose the layer
+                                that takes precedence.
+                                </para></listitem>
+                            <listitem><para>
+                                The
                                 <filename><ulink url='&YOCTO_DOCS_REF_URL;#var-LAYERVERSION'>LAYERVERSION</ulink></filename>
                                 variable optionally specifies the version of a
-                                layer as a single number.</para></listitem>
+                                layer as a single number.
+                                </para></listitem>
+                            <listitem><para>
+                                The
+                                <filename><ulink url='&YOCTO_DOCS_REF_URL;#var-LAYERDIR'>LAYERDIR</ulink></filename>
+                                variable expands to the directory of the
+                                current layer
+                                </para></listitem>
                         </itemizedlist></para>
-                        <para>Note the use of the
-                        <filename><ulink url='&YOCTO_DOCS_REF_URL;#var-LAYERDIR'>LAYERDIR</ulink></filename>
-                        variable, which expands to the directory of the current
-                        layer.</para>
+
                         <para>Through the use of the <filename>BBPATH</filename>
                         variable, BitBake locates class files
                         (<filename>.bbclass</filename>),
@@ -156,10 +196,11 @@
                         This is similar to the way the <filename>PATH</filename>
                         variable is used for binaries.
                         It is recommended, therefore, that you use unique
-                        class and configuration
-                        filenames in your custom layer.</para></listitem>
-                    <listitem><para><emphasis>Add Content:</emphasis> Depending
-                        on the type of layer, add the content.
+                        class and configuration filenames in your custom layer.
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Add Content:</emphasis>
+                        Depending on the type of layer, add the content.
                         If the layer adds support for a machine, add the machine
                         configuration in a <filename>conf/machine/</filename>
                         file within the layer.
@@ -169,9 +210,13 @@
                         If the layer introduces new recipes, put the recipes
                         you need in <filename>recipes-*</filename>
                         subdirectories within the layer.
-                        <note>In order to be compliant with the Yocto Project,
-                            a layer must contain a
-                            <ulink url='&YOCTO_DOCS_BSP_URL;#bsp-filelayout-readme'>README file.</ulink>
+                        <note>
+                            For an explanation of layer hierarchy that
+                            is compliant with the Yocto Project, see
+                            the
+                            "<ulink url='&YOCTO_DOCS_BSP_URL;#bsp-filelayout'>Example Filesystem Layout</ulink>"
+                            section in the Yocto Project Board
+                            Support Package (BSP) Developer's Guide.
                         </note>
                         </para></listitem>
                     <listitem><para>
@@ -596,7 +641,8 @@
 
             <para>
                 BitBake parses each <filename>conf/layer.conf</filename> file
-                as specified in the <filename>BBLAYERS</filename> variable
+                from the top down as specified in the
+                <filename>BBLAYERS</filename> variable
                 within the <filename>conf/bblayers.conf</filename> file.
                 During the processing of each
                 <filename>conf/layer.conf</filename> file, BitBake adds the
@@ -774,8 +820,7 @@
             <para>
                 To specify the layer's priority manually, use the
                 <ulink url='&YOCTO_DOCS_REF_URL;#var-BBFILE_PRIORITY'><filename>BBFILE_PRIORITY</filename></ulink>
-                variable.
-                For example:
+                variable and append the layer's root name:
                 <literallayout class='monospaced'>
      BBFILE_PRIORITY_mylayer = "1"
                 </literallayout>
@@ -796,7 +841,8 @@
             <title>Managing Layers</title>
 
             <para>
-                You can use the BitBake layer management tool to provide a view
+                You can use the BitBake layer management tool
+                <filename>bitbake-layers</filename> to provide a view
                 into the structure of recipes across a multi-layer project.
                 Being able to generate output that reports on configured layers
                 with their paths and priorities and on
@@ -805,42 +851,88 @@
             </para>
 
             <para>
-                Use the following form when running the layer management tool.
+                For help on the BitBake layer management tool, use the
+                following command:
                 <literallayout class='monospaced'>
-     $ bitbake-layers <replaceable>command</replaceable> [<replaceable>arguments</replaceable>]
+     $ bitbake-layers --help
+     NOTE: Starting bitbake server...
+     usage: bitbake-layers [-d] [-q] [-F] [--color COLOR] [-h] &lt;subcommand&gt; ...
+
+     BitBake layers utility
+
+     optional arguments:
+       -d, --debug           Enable debug output
+       -q, --quiet           Print only errors
+       -F, --force           Force add without recipe parse verification
+       --color COLOR         Colorize output (where COLOR is auto, always, never)
+       -h, --help            show this help message and exit
+
+     subcommands:
+       &lt;subcommand&gt;
+         show-layers         show current configured layers.
+         show-overlayed      list overlayed recipes (where the same recipe exists
+                             in another layer)
+         show-recipes        list available recipes, showing the layer they are
+                             provided by
+         show-appends        list bbappend files and recipe files they apply to
+         show-cross-depends  Show dependencies between recipes that cross layer
+                             boundaries.
+         add-layer           Add one or more layers to bblayers.conf.
+         remove-layer        Remove one or more layers from bblayers.conf.
+         flatten             flatten layer configuration into a separate output
+                             directory.
+         layerindex-fetch    Fetches a layer from a layer index along with its
+                             dependent layers, and adds them to conf/bblayers.conf.
+         layerindex-show-depends
+                             Find layer dependencies from layer index.
+         create-layer        Create a basic layer
+
+     Use bitbake-layers &lt;subcommand&gt; --help to get help on a specific command
                 </literallayout>
+            </para>
+
+            <para>
                 The following list describes the available commands:
                 <itemizedlist>
-                    <listitem><para><filename><emphasis>help:</emphasis></filename>
+                    <listitem><para>
+                        <emphasis><filename>help:</filename></emphasis>
                         Displays general help or help on a specified command.
                         </para></listitem>
-                    <listitem><para><filename><emphasis>show-layers:</emphasis></filename>
+                    <listitem><para>
+                        <emphasis><filename>show-layers:</filename></emphasis>
                         Shows the current configured layers.
                         </para></listitem>
-                    <listitem><para><filename><emphasis>show-recipes:</emphasis></filename>
-                        Lists available recipes and the layers that provide them.
-                        </para></listitem>
-                    <listitem><para><filename><emphasis>show-overlayed:</emphasis></filename>
+                    <listitem><para>
+                        <emphasis><filename>show-overlayed:</filename></emphasis>
                         Lists overlayed recipes.
                         A recipe is overlayed when a recipe with the same name
                         exists in another layer that has a higher layer
                         priority.
                         </para></listitem>
-                    <listitem><para><filename><emphasis>show-appends:</emphasis></filename>
+                    <listitem><para>
+                        <emphasis><filename>show-recipes:</filename></emphasis>
+                        Lists available recipes and the layers that provide them.
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis><filename>show-appends:</filename></emphasis>
                         Lists <filename>.bbappend</filename> files and the
                         recipe files to which they apply.
                         </para></listitem>
-                    <listitem><para><filename><emphasis>show-cross-depends:</emphasis></filename>
+                    <listitem><para>
+                        <emphasis><filename>show-cross-depends:</filename></emphasis>
                         Lists dependency relationships between recipes that
                         cross layer boundaries.
                         </para></listitem>
-                    <listitem><para><filename><emphasis>add-layer:</emphasis></filename>
+                    <listitem><para>
+                        <emphasis><filename>add-layer:</filename></emphasis>
                         Adds a layer to <filename>bblayers.conf</filename>.
                         </para></listitem>
-                    <listitem><para><filename><emphasis>remove-layer:</emphasis></filename>
+                    <listitem><para>
+                        <emphasis><filename>remove-layer:</filename></emphasis>
                         Removes a layer from <filename>bblayers.conf</filename>
                         </para></listitem>
-                    <listitem><para><filename><emphasis>flatten:</emphasis></filename>
+                    <listitem><para>
+                        <emphasis><filename>flatten:</filename></emphasis>
                         Flattens the layer configuration into a separate output
                         directory.
                         Flattening your layer configuration builds a "flattened"
@@ -851,18 +943,21 @@
                         You might have to perform some manual cleanup of the
                         flattened layer as follows:
                         <itemizedlist>
-                            <listitem><para>Non-recipe files (such as patches)
+                            <listitem><para>
+                                Non-recipe files (such as patches)
                                 are overwritten.
                                 The flatten command shows a warning for these
                                 files.
                                 </para></listitem>
-                            <listitem><para>Anything beyond the normal layer
+                            <listitem><para>
+                                Anything beyond the normal layer
                                 setup has been added to the
                                 <filename>layer.conf</filename> file.
                                 Only the lowest priority layer's
                                 <filename>layer.conf</filename> is used.
                                 </para></listitem>
-                            <listitem><para>Overridden and appended items from
+                            <listitem><para>
+                                Overridden and appended items from
                                 <filename>.bbappend</filename> files need to be
                                 cleaned up.
                                 The contents of each
@@ -925,11 +1020,24 @@
                 The <filename>bitbake-layers</filename> script with the
                 <filename>create-layer</filename> subcommand simplifies
                 creating a new general layer.
-                <note>
-                    For information on BSP layers, see the
-                    "<ulink url='&YOCTO_DOCS_BSP_URL;#bsp-layers'>BSP Layers</ulink>"
-                    section in the Yocto Project Board Specific (BSP)
-                    Developer's Guide.
+                <note><title>Notes</title>
+                    <itemizedlist>
+                        <listitem><para>
+                            For information on BSP layers, see the
+                            "<ulink url='&YOCTO_DOCS_BSP_URL;#bsp-layers'>BSP Layers</ulink>"
+                            section in the Yocto Project Board Specific (BSP)
+                            Developer's Guide.
+                            </para></listitem>
+                        <listitem><para>
+                            In order to use a layer with the OpenEmbedded
+                            build system, you need to add the layer to your
+                            <filename>bblayers.conf</filename> configuration
+                            file.
+                            See the
+                            "<link linkend='adding-a-layer-using-the-bitbake-layers-script'>Adding a Layer Using the <filename>bitbake-layers</filename> Script</link>"
+                            section for more information.
+                            </para></listitem>
+                    </itemizedlist>
                 </note>
                 The default mode of the script's operation with this
                 subcommand is to create a layer with the following:
@@ -967,6 +1075,13 @@
                 directory:
                 <literallayout class='monospaced'>
      $ bitbake-layers create-layer <replaceable>your_layer_name</replaceable>
+                </literallayout>
+                As an example, the following command adds a layer named
+                <filename>meta-scottrif</filename>:
+                <literallayout class='monospaced'>
+     $ bitbake-layers create-layer meta-scottrif
+     NOTE: Starting bitbake server...
+     Add your new layer with 'bitbake-layers add-layer meta-scottrif'
                 </literallayout>
             </para>
 
@@ -1010,26 +1125,36 @@
                              Filename of the example recipe
                 </literallayout>
             </para>
+        </section>
+
+        <section id='adding-a-layer-using-the-bitbake-layers-script'>
+            <title>Adding a Layer Using the <filename>bitbake-layers</filename> Script</title>
 
             <para>
                 Once you create your general layer, you must add it to your
                 <filename>bblayers.conf</filename> file.
-                You can add your layer by using the
+                Adding the layer to this configuration file makes the
+                OpenEmbedded build system aware of your layer so that it can
+                search it for metadata.
+            </para>
+
+            <para>
+                Add your layer by using the
                 <filename>bitbake-layers add-layer</filename> command:
                 <literallayout class='monospaced'>
      $ bitbake-layers add-layer <replaceable>your_layer_name</replaceable>
                 </literallayout>
-                Here is an example where a layer named
-                <filename>meta-scottrif</filename> is added and then the
-                layers are shown using the
-                <filename>bitbake-layers show-layers</filename> command:
+                Here is an example that adds a layer named
+                <filename>meta-scottrif</filename> to the configuration file.
+                Following the command that adds the layer is another
+                <filename>bitbake-layers</filename> command that shows the
+                layers that are in your <filename>bblayers.conf</filename>
+                file:
                 <literallayout class='monospaced'>
      $ bitbake-layers add-layer meta-scottrif
      NOTE: Starting bitbake server...
-     Loading cache: 100% |############################################| Time: 0:00:00
-     Loaded 1275 entries from dependency cache.
-     Parsing recipes: 100% |##########################################| Time: 0:00:00
-     Parsing of 819 .bb files complete (817 cached, 2 parsed). 1276 targets, 44 skipped, 0 masked, 0 errors.
+     Parsing recipes: 100% |##########################################################| Time: 0:00:49
+     Parsing of 1441 .bb files complete (0 cached, 1441 parsed). 2055 targets, 56 skipped, 0 masked, 0 errors.
      $ bitbake-layers show-layers
      NOTE: Starting bitbake server...
      layer                 path                                      priority
@@ -1037,12 +1162,16 @@
      meta                  /home/scottrif/poky/meta                  5
      meta-poky             /home/scottrif/poky/meta-poky             5
      meta-yocto-bsp        /home/scottrif/poky/meta-yocto-bsp        5
-     meta-mylayer          /home/scottrif/meta-mylayer               6
      workspace             /home/scottrif/poky/build/workspace       99
      meta-scottrif         /home/scottrif/poky/build/meta-scottrif   6
                 </literallayout>
                 Adding the layer to this file enables the build system to
                 locate the layer during the build.
+                <note>
+                    During a build, the OpenEmbedded build system looks in
+                    the layers from the top of the list down to the bottom
+                    in that order.
+                </note>
                 </para>
         </section>
     </section>
@@ -1493,47 +1622,43 @@
                     and have sourced the build environment setup script
                     (i.e.
                     <ulink url='&YOCTO_DOCS_REF_URL;#structure-core-script'><filename>oe-init-build-env</filename></ulink>).
-                    Here is the basic <filename>recipetool</filename> syntax:
-                    <note>
-                        Running <filename>recipetool -h</filename> or
-                        <filename>recipetool create -h</filename> produces the
-                        Python-generated help, which presented differently
-                        than what follows here.
-                    </note>
+                    To get help on the tool, use the following command:
                     <literallayout class='monospaced'>
-     recipetool -h
-     recipetool create [-h]
-     recipetool [-d] [-q] [--color auto | always | never ] create -o <replaceable>OUTFILE</replaceable> [-m] [-x <replaceable>EXTERNALSRC</replaceable>] <replaceable>source</replaceable>
+     $ recipetool -h
+     NOTE: Starting bitbake server...
+     usage: recipetool [-d] [-q] [--color COLOR] [-h] &lt;subcommand&gt; ...
 
-          -d       Enables debug output.
-          -q       Outputs only errors (quiet mode).
-          --color  Colorizes the output automatically, always, or never.
-          -h       Displays Python generated syntax for recipetool.
-          create   Causes recipetool to create a base recipe.  The create
-                   command is further defined with these options:
+     OpenEmbedded recipe tool
 
-                   -o <replaceable>OUTFILE</replaceable>      Specifies the full path and filename for the generated
-                                   recipe.
-                   -m              Causes the recipe to be machine-specific rather than
-                                   architecture-specific (default).
-                   -x <replaceable>EXTERNALSRC</replaceable>  Fetches and extracts source files from <replaceable>source</replaceable>
-                                   and places them in <replaceable>EXTERNALSRC</replaceable>.
-                                   <replaceable>source</replaceable> must be a URL.
-                   -h              Displays Python-generated syntax for create.
-                   <replaceable>source</replaceable>          Specifies the source code on which to base the
-                                   recipe.
+     options:
+       -d, --debug     Enable debug output
+       -q, --quiet     Print only errors
+       --color COLOR   Colorize output (where COLOR is auto, always, never)
+       -h, --help      show this help message and exit
+
+     subcommands:
+       create          Create a new recipe
+       newappend       Create a bbappend for the specified target in the specified
+                       layer
+       setvar          Set a variable within a recipe
+       appendfile      Create/update a bbappend to replace a target file
+       appendsrcfiles  Create/update a bbappend to add or replace source files
+       appendsrcfile   Create/update a bbappend to add or replace a source file
+     Use recipetool &lt;subcommand&gt; --help to get help on a specific command
                     </literallayout>
                 </para>
 
                 <para>
-                    Running <filename>recipetool create -o</filename>&nbsp;<replaceable>OUTFILE</replaceable>
+                    Running
+                    <filename>recipetool create -o</filename>&nbsp;<replaceable>OUTFILE</replaceable>
                     creates the base recipe and locates it properly in the
                     layer that contains your source files.
                     Following are some syntax examples:
                 </para>
 
                 <para>
-                    Use this syntax to generate a recipe based on <replaceable>source</replaceable>.
+                    Use this syntax to generate a recipe based on
+                    <replaceable>source</replaceable>.
                     Once generated, the recipe resides in the existing source
                     code layer:
                     <literallayout class='monospaced'>
@@ -1546,7 +1671,8 @@
                     <literallayout class='monospaced'>
      recipetool create -o <replaceable>OUTFILE</replaceable> -x <replaceable>EXTERNALSRC</replaceable> <replaceable>source</replaceable>
                     </literallayout>
-                    Use this syntax to generate a recipe based on <replaceable>source</replaceable>.
+                    Use this syntax to generate a recipe based on
+                    <replaceable>source</replaceable>.
                     The options direct <filename>recipetool</filename> to
                     generate debugging information.
                     Once generated, the recipe resides in the existing source
@@ -2898,6 +3024,133 @@
             </para>
         </section>
 
+        <section id='metadata-virtual-providers'>
+            <title>Using Virtual Providers</title>
+
+            <para>
+                Prior to a build, if you know that several different recipes
+                provide the same functionality, you can use a virtual provider
+                (i.e. <filename>virtual/*</filename>) as a placeholder for the
+                actual provider.
+                The actual provider is determined at build-time.
+            </para>
+
+            <para>
+                A common scenario where a virtual provider is used would be
+                for the kernel recipe.
+                Suppose you have three kernel recipes whose
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-PN'><filename>PN</filename></ulink>
+                values map to <filename>kernel-big</filename>,
+                <filename>kernel-mid</filename>, and
+                <filename>kernel-small</filename>.
+                Furthermore, each of these recipes in some way uses a
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-PROVIDES'><filename>PROVIDES</filename></ulink>
+                statement that essentially identifies itself as being able
+                to provide <filename>virtual/kernel</filename>.
+                Here is one way through the
+                <ulink url='&YOCTO_DOCS_REF_URL;#ref-classes-kernel'><filename>kernel</filename></ulink>
+                class:
+                <literallayout class='monospaced'>
+     PROVIDES += "${@ "virtual/kernel" if (d.getVar("KERNEL_PACKAGE_NAME") == "kernel") else "" }"
+                </literallayout>
+                Any recipe that inherits the <filename>kernel</filename> class
+                is going to utilize a <filename>PROVIDES</filename> statement
+                that identifies that recipe as being able to provide the
+                <filename>virtual/kernel</filename> item.
+            </para>
+
+            <para>
+                Now comes the time to actually build an image and you need a
+                kernel recipe, but which one?
+                You can configure your build to call out the kernel recipe
+                you want by using the
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-PREFERRED_PROVIDER'><filename>PREFERRED_PROVIDER</filename></ulink>
+                variable.
+                As an example, consider the
+                <ulink url='https://git.yoctoproject.org/cgit/cgit.cgi/poky/tree/meta/conf/machine/include/x86-base.inc'><filename>x86-base.inc</filename></ulink>
+                include file, which is a machine
+                (i.e. <ulink url='&YOCTO_DOCS_REF_URL;#var-MACHINE'><filename>MACHINE</filename></ulink>)
+                configuration file.
+                This include file is the reason all x86-based machines use the
+                <filename>linux-yocto</filename> kernel.
+                Here are the relevant lines from the include file:
+                <literallayout class='monospaced'>
+     PREFERRED_PROVIDER_virtual/kernel ??= "linux-yocto"
+     PREFERRED_VERSION_linux-yocto ??= "4.15%"
+                </literallayout>
+            </para>
+
+            <para>
+                When you use a virtual provider, you do not have to
+                "hard code" a recipe name as a build dependency.
+                You can use the
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-DEPENDS'><filename>DEPENDS</filename></ulink>
+                variable to state the build is dependent on
+                <filename>virtual/kernel</filename> for example:
+                <literallayout class='monospaced'>
+     DEPENDS = "virtual/kernel"
+                </literallayout>
+                During the build, the OpenEmbedded build system picks
+                the correct recipe needed for the
+                <filename>virtual/kernel</filename> dependency based on the
+                <filename>PREFERRED_PROVIDER</filename> variable.
+                If you want to use the small kernel mentioned at the beginning
+                of this section, configure your build as follows:
+                <literallayout class='monospaced'>
+     PREFERRED_PROVIDER_virtual/kernel ??= "kernel-small"
+                </literallayout>
+                <note>
+                    Any recipe that
+                    <ulink url='&YOCTO_DOCS_REF_URL;#var-PROVIDES'><filename>PROVIDES</filename></ulink>
+                    a <filename>virtual/*</filename> item that is ultimately
+                    not selected through
+                    <filename>PREFERRED_PROVIDER</filename> does not get built.
+                    Preventing these recipes from building is usually the
+                    desired behavior since this mechanism's purpose is to
+                    select between mutually exclusive alternative providers.
+                </note>
+            </para>
+
+            <para>
+                The following lists specific examples of virtual providers:
+                <itemizedlist>
+                    <listitem><para>
+                        <filename>virtual/kernel</filename>:
+                        Provides the name of the kernel recipe to use when
+                        building a kernel image.
+                        </para></listitem>
+                    <listitem><para>
+                        <filename>virtual/bootloader</filename>:
+                        Provides the name of the bootloader to use when
+                        building an image.
+                        </para></listitem>
+                    <listitem><para>
+                        <filename>virtual/mesa</filename>:
+                        Provides <filename>gbm.pc</filename>.
+                        </para></listitem>
+                    <listitem><para>
+                        <filename>virtual/egl</filename>:
+                        Provides <filename>egl.pc</filename> and possibly
+                        <filename>wayland-egl.pc</filename>.
+                        </para></listitem>
+                    <listitem><para>
+                        <filename>virtual/libgl</filename>:
+                        Provides <filename>gl.pc</filename> (i.e. libGL).
+                        </para></listitem>
+                    <listitem><para>
+                        <filename>virtual/libgles1</filename>:
+                        Provides <filename>glesv1_cm.pc</filename>
+                        (i.e. libGLESv1_CM).
+                        </para></listitem>
+                    <listitem><para>
+                        <filename>virtual/libgles2</filename>:
+                        Provides <filename>glesv2.pc</filename>
+                        (i.e. libGLESv2).
+                        </para></listitem>
+                </itemizedlist>
+            </para>
+        </section>
+
         <section id='properly-versioning-pre-release-recipes'>
             <title>Properly Versioning Pre-Release Recipes</title>
 
@@ -3941,6 +4194,562 @@
         </section>
     </section>
 
+    <section id='gs-upgrading-recipes'>
+        <title>Upgrading Recipes</title>
+
+        <para>
+            Over time, upstream developers publish new versions for software
+            built by layer recipes.
+            It is recommended to keep recipes up-to-date with upstream
+            version releases.
+            You can use the Automated Upgrade Helper (AUH) to set up
+            automatic version upgrades.
+            Alternatively, you can use <filename>devtool upgrade</filename>
+            to set up semi-automatic version upgrades.
+            Finally, you can even manually upgrade a recipe by editing the
+            recipe itself.
+        </para>
+
+        <section id='gs-using-the-auto-upgrade-helper'>
+            <title>Using the Auto Upgrade Helper (AUH)</title>
+
+            <para>
+                The AUH utility works in conjunction with the
+                OpenEmbedded build system in order to automatically generate
+                upgrades for recipes based on new versions being
+                published upstream.
+                Use AUH when you want to create a service that performs the
+                upgrades automatically and optionally sends you an email with
+                the results.
+            </para>
+
+            <para>
+                AUH allows you to update several recipes with a single use.
+                You can also optionally perform build and integration tests
+                using images with the results saved to your hard drive and
+                emails of results optionally sent to recipe maintainers.
+                Finally, AUH creates Git commits with appropriate commit
+                messages in the layer's tree for the changes made to recipes.
+                <note>
+                    Conditions do exist when you should not use AUH to upgrade
+                    recipes and you should instead use either
+                    <filename>devtool upgrade</filename> or upgrade your
+                    recipes manually:
+                    <itemizedlist>
+                        <listitem><para>
+                            When AUH cannot complete the upgrade sequence.
+                            This situation usually results because custom
+                            patches carried by the recipe cannot be
+                            automatically rebased to the new version.
+                            In this case, <filename>devtool upgrade</filename>
+                            allows you to manually resolve conflicts.
+                            </para></listitem>
+                        <listitem><para>
+                            When for any reason you want fuller control over
+                            the upgrade process.
+                            For example, when you want special arrangements
+                            for testing.
+                            </para></listitem>
+                    </itemizedlist>
+                </note>
+            </para>
+
+            <para>
+                The following steps describe how to set up the AUH utility:
+                <orderedlist>
+                    <listitem><para>
+                        <emphasis>Be Sure the Development Host is Set Up:</emphasis>
+                        You need to be sure that your development host is
+                        set up to use the Yocto Project.
+                        For information on how to set up your host, see the
+                        "<ulink url='&YOCTO_DOCS_DEV_URL;#setting-up-the-development-host-to-use-the-yocto-project'>Setting Up the Development Host to Use the Yocto Project</ulink>"
+                        section in the Yocto Project Development Tasks Manual.
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Make Sure Git is Configured:</emphasis>
+                        The AUH utility requires Git to be configured because
+                        AUH uses Git to save upgrades.
+                        Thus, you must have Git user and email configured.
+                        The following command shows your configurations:
+                        <literallayout class='monospaced'>
+     $ git config --list
+                        </literallayout>
+                        If you do not have the user and email configured, you
+                        can use the following commands to do so:
+                        <literallayout class='monospaced'>
+     $ git config --global user.name <replaceable>some_name</replaceable>
+     $ git config --global user.email <replaceable>username</replaceable>@<replaceable>domain</replaceable>.com
+                        </literallayout>
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Clone the AUH Repository:</emphasis>
+                        To use AUH, you must clone the repository onto your
+                        development host.
+                        The following command uses Git to create a local
+                        copy of the repository on your system:
+                        <literallayout class='monospaced'>
+     $ git clone git://git.yoctoproject.org/auto-upgrade-helper
+     Cloning into 'auto-upgrade-helper'...
+     remote: Counting objects: 768, done.
+     remote: Compressing objects: 100% (300/300), done.
+     remote: Total 768 (delta 499), reused 703 (delta 434)
+     Receiving objects: 100% (768/768), 191.47 KiB | 98.00 KiB/s, done.
+     Resolving deltas: 100% (499/499), done.
+     Checking connectivity... done.
+                        </literallayout>
+                        AUH is not part of the
+                        <ulink url='&YOCTO_DOCS_REF_URL;#oe-core'>OpenEmbedded-Core (OE-Core)</ulink>
+                        or
+                        <ulink url='&YOCTO_DOCS_REF_URL;#poky'>Poky</ulink>
+                        repositories.
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Create a Dedicated Build Directory:</emphasis>
+                        Run the
+                        <ulink url='&YOCTO_DOCS_REF_URL;#structure-core-script'><filename>oe-init-build-env</filename></ulink>
+                        script to create a fresh build directory that you
+                        use exclusively for running the AUH utility:
+                        <literallayout class='monospaced'>
+     $ cd ~/poky
+     $ source oe-init-build-env <replaceable>your_AUH_build_directory</replaceable>
+                        </literallayout>
+                        Re-using an existing build directory and its
+                        configurations is not recommended as existing settings
+                        could cause AUH to fail or behave undesirably.
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Make Configurations in Your Local Configuration File:</emphasis>
+                        Several settings need to exist in the
+                        <filename>local.conf</filename> file in the build
+                        directory you just created for AUH.
+                        Make these following configurations:
+                        <itemizedlist>
+                            <listitem><para>
+                                Enable "distrodata" as follows:
+                                <literallayout class='monospaced'>
+     INHERIT =+ "distrodata"
+                                </literallayout>
+                                </para></listitem>
+                            <listitem><para>
+                                If you want to enable
+                                <ulink url='&YOCTO_DOCS_DEV_URL;#maintaining-build-output-quality'>Build History</ulink>,
+                                which is optional, you need the following
+                                lines in the
+                                <filename>conf/local.conf</filename> file:
+                                <literallayout class='monospaced'>
+     INHERIT =+ "buildhistory"
+     BUILDHISTORY_COMMIT = "1"
+                                </literallayout>
+                                With this configuration and a successful
+                                upgrade, a build history "diff" file appears in
+                                the
+                                <filename>upgrade-helper/work/recipe/buildhistory-diff.txt</filename>
+                                file found in your build directory.
+                                </para></listitem>
+                            <listitem><para>
+                                If you want to enable testing through the
+                                <ulink url='&YOCTO_DOCS_REF_URL;#ref-classes-testimage*'><filename>testimage</filename></ulink>
+                                class, which is optional, you need to have the
+                                following set in your
+                                <filename>conf/local.conf</filename> file:
+                                <literallayout class='monospaced'>
+     INHERIT += "testimage"
+                                </literallayout>
+                                <note>
+                                    If your distro does not enable by default
+                                    ptest, which Poky does, you need the
+                                    following in your
+                                    <filename>local.conf</filename> file:
+                                    <literallayout class='monospaced'>
+     DISTRO_FEATURES_append = " ptest"
+                                    </literallayout>
+                                </note>
+                                </para></listitem>
+                        </itemizedlist>
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Optionally Start a vncserver:</emphasis>
+                        If you are running in a server without an X11 session,
+                        you need to start a vncserver:
+                        <literallayout class='monospaced'>
+     $ vncserver :1
+     $ export DISPLAY=:1
+                        </literallayout>
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Create and Edit an AUH Configuration File:</emphasis>
+                        You need to have the
+                        <filename>upgrade-helper/upgrade-helper.conf</filename>
+                        configuration file in your build directory.
+                        You can find a sample configuration file in the
+                        <ulink url='http://git.yoctoproject.org/cgit/cgit.cgi/auto-upgrade-helper/tree/'>AUH source repository</ulink>.
+                        </para>
+
+                        <para>Read through the sample file and make
+                        configurations as needed.
+                        For example, if you enabled build history in your
+                        <filename>local.conf</filename> as described earlier,
+                        you must enable it in
+                        <filename>upgrade-helper.conf</filename>.</para>
+
+                        <para>Also, if you are using the default
+                        <filename>maintainers.inc</filename> file supplied
+                        with Poky and located in
+                        <filename>meta-yocto</filename> and you do not set a
+                        "maintainers_whitelist" or "global_maintainer_override"
+                        in the <filename>upgrade-helper.conf</filename>
+                        configuration, and you specify "-e all" on the
+                        AUH command-line, the utility automatically sends out
+                        emails to all the default maintainers.
+                        Please avoid this.
+                        </para></listitem>
+                </orderedlist>
+            </para>
+
+            <para>
+                This next set of examples describes how to use the AUH:
+                <itemizedlist>
+                    <listitem><para>
+                        <emphasis>Upgrading a Specific Recipe:</emphasis>
+                        To upgrade a specific recipe, use the following
+                        form:
+                        <literallayout class='monospaced'>
+     $ upgrade-helper.py <replaceable>recipe_name</replaceable>
+                        </literallayout>
+                        For example, this command upgrades the
+                        <filename>xmodmap</filename> recipe:
+                        <literallayout class='monospaced'>
+     $ upgrade-helper.py xmodmap
+                        </literallayout>
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Upgrading a Specific Recipe to a Particular Version:</emphasis>
+                        To upgrade a specific recipe to a particular version,
+                        use the following form:
+                        <literallayout class='monospaced'>
+     $ upgrade-helper.py <replaceable>recipe_name</replaceable> -t <replaceable>version</replaceable>
+                        </literallayout>
+                        For example, this command upgrades the
+                        <filename>xmodmap</filename> recipe to version
+                        1.2.3:
+                        <literallayout class='monospaced'>
+     $ upgrade-helper.py xmodmap -t 1.2.3
+                        </literallayout>
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Upgrading all Recipes to the Latest Versions and Suppressing Email Notifications:</emphasis>
+                        To upgrade all recipes to their most recent versions
+                        and suppress the email notifications, use the following
+                        command:
+                        <literallayout class='monospaced'>
+     $ upgrade-helper.py all
+                        </literallayout>
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Upgrading all Recipes to the Latest Versions and Send Email Notifications:</emphasis>
+                        To upgrade all recipes to their most recent versions
+                        and send email messages to maintainers for each
+                        attempted recipe as well as a status email, use the
+                        following command:
+                        <literallayout class='monospaced'>
+     $ upgrade-helper.py -e all
+                        </literallayout>
+                        </para></listitem>
+                </itemizedlist>
+            </para>
+
+            <para>
+                Once you have run the AUH utility, you can find the results
+                in the AUH build directory:
+                <literallayout class='monospaced'>
+     ${BUILDDIR}/upgrade-helper/<replaceable>timestamp</replaceable>
+                </literallayout>
+                The AUH utility also creates recipe update commits from
+                successful upgrade attempts in the layer tree.
+            </para>
+
+            <para>
+                You can easily set up to run the AUH utility on a regular
+                basis by using a cron job.
+                See the
+                <ulink url='http://git.yoctoproject.org/cgit/cgit.cgi/auto-upgrade-helper/tree/weeklyjob.sh'><filename>weeklyjob.sh</filename></ulink>
+                file distributed with the utility for an example.
+            </para>
+        </section>
+
+        <section id='gs-using-devtool-upgrade'>
+            <title>Using <filename>devtool upgrade</filename></title>
+
+            <para>
+                As mentioned earlier, an alternative method for upgrading
+                recipes to newer versions is to use
+                <ulink url='&YOCTO_DOCS_REF_URL;#ref-devtool-reference'><filename>devtool upgrade</filename></ulink>.
+                You can read about <filename>devtool upgrade</filename> in
+                general in the
+                "<ulink url='&YOCTO_DOCS_SDK_URL;#sdk-devtool-use-devtool-upgrade-to-create-a-version-of-the-recipe-that-supports-a-newer-version-of-the-software'>Use <filename>devtool upgrade</filename> to Create a Version of the Recipe that Supports a Newer Version of the Software</ulink>"
+                section in the Yocto Project Application Development and the
+                Extensible Software Development Kit (eSDK) Manual.
+            </para>
+
+            <para>
+                To see all the command-line options available with
+                <filename>devtool upgrade</filename>, use the following help
+                command:
+                <literallayout class='monospaced'>
+     $ devtool upgrade -h
+                </literallayout>
+            </para>
+
+            <para>
+                If you want to find out what version a recipe is currently at
+                upstream without any attempt to upgrade your local version of
+                the recipe, you can use the following command:
+                <literallayout class='monospaced'>
+     $ devtool latest-version <replaceable>recipe_name</replaceable>
+                </literallayout>
+            </para>
+
+            <para>
+                As mentioned in the previous section describing AUH,
+                <filename>devtool upgrade</filename> works in a
+                less-automated manner than AUH.
+                Specifically, <filename>devtool upgrade</filename> only
+                works on a single recipe that you name on the command line,
+                cannot perform build and integration testing using images,
+                and does not automatically generate commits for changes in
+                the source tree.
+                Despite all these "limitations",
+                <filename>devtool upgrade</filename> updates the recipe file
+                to the new upstream version and attempts to rebase custom
+                patches contained by the recipe as needed.
+                <note>
+                    AUH uses much of <filename>devtool upgrade</filename>
+                    behind the scenes making AUH somewhat of a "wrapper"
+                    application for <filename>devtool upgrade</filename>.
+                </note>
+            </para>
+
+            <para>
+                A typical scenario involves having used Git to clone an
+                upstream repository that you use during build operations.
+                Because you are (or have) built the recipe in the past, the
+                layer is likely added to your configuration already.
+                If for some reason, the layer is not added, you could add
+                it easily using the
+                <ulink url='&YOCTO_DOCS_BSP_URL;#creating-a-new-bsp-layer-using-the-bitbake-layers-script'><filename>bitbake-layers</filename></ulink>
+                script.
+                For example, suppose you use the <filename>nano.bb</filename>
+                recipe from the <filename>meta-oe</filename> layer in the
+                <filename>meta-openembedded</filename> repository.
+                For this example, assume that the layer has been cloned into
+                following area:
+                <literallayout class='monospaced'>
+     /home/scottrif/meta-openembedded
+                </literallayout>
+                The following command from your
+                <ulink url='&YOCTO_DOCS_REF_URL;#build-directory'>Build Directory</ulink>
+                adds the layer to your build configuration (i.e.
+                <filename>${BUILDDIR}/conf/bblayers.conf</filename>):
+                <literallayout class='monospaced'>
+     $ bitbake-layers add-layer /home/scottrif/meta-openembedded/meta-oe
+     NOTE: Starting bitbake server...
+     Parsing recipes: 100% |##########################################| Time: 0:00:55
+     Parsing of 1431 .bb files complete (0 cached, 1431 parsed). 2040 targets, 56 skipped, 0 masked, 0 errors.
+     Removing 12 recipes from the x86_64 sysroot: 100% |##############| Time: 0:00:00
+     Removing 1 recipes from the x86_64_i586 sysroot: 100% |##########| Time: 0:00:00
+     Removing 5 recipes from the i586 sysroot: 100% |#################| Time: 0:00:00
+     Removing 5 recipes from the qemux86 sysroot: 100% |##############| Time: 0:00:00
+                </literallayout>
+                For this example, assume that the <filename>nano.bb</filename>
+                recipe that is upstream has a 2.9.3 version number.
+                However, the version in the local repository is 2.7.4.
+                The following command from your build directory automatically
+                upgrades the recipe for you:
+                <note>
+                    Using the <filename>-V</filename> option is not necessary.
+                    Omitting the version number causes
+                    <filename>devtool upgrade</filename> to upgrade the recipe
+                    to the most recent version.
+                </note>
+                <literallayout class='monospaced'>
+     $ devtool upgrade nano -V 2.9.3
+     NOTE: Starting bitbake server...
+     NOTE: Creating workspace layer in /home/scottrif/poky/build/workspace
+     Parsing recipes: 100% |##########################################| Time: 0:00:46
+     Parsing of 1431 .bb files complete (0 cached, 1431 parsed). 2040 targets, 56 skipped, 0 masked, 0 errors.
+     NOTE: Extracting current version source...
+     NOTE: Resolving any missing task queue dependencies
+            .
+            .
+            .
+     NOTE: Executing SetScene Tasks
+     NOTE: Executing RunQueue Tasks
+     NOTE: Tasks Summary: Attempted 74 tasks of which 72 didn't need to be rerun and all succeeded.
+     Adding changed files: 100% |#####################################| Time: 0:00:00
+     NOTE: Upgraded source extracted to /home/scottrif/poky/build/workspace/sources/nano
+     NOTE: New recipe is /home/scottrif/poky/build/workspace/recipes/nano/nano_2.9.3.bb
+                </literallayout>
+                Continuing with this example, you can use
+                <filename>devtool build</filename> to build the newly upgraded
+                recipe:
+                <literallayout class='monospaced'>
+     $ devtool build nano
+     NOTE: Starting bitbake server...
+     Loading cache: 100% |################################################################################################| Time: 0:00:01
+     Loaded 2040 entries from dependency cache.
+     Parsing recipes: 100% |##############################################################################################| Time: 0:00:00
+     Parsing of 1432 .bb files complete (1431 cached, 1 parsed). 2041 targets, 56 skipped, 0 masked, 0 errors.
+     NOTE: Resolving any missing task queue dependencies
+            .
+            .
+            .
+     NOTE: Executing SetScene Tasks
+     NOTE: Executing RunQueue Tasks
+     NOTE: nano: compiling from external source tree /home/scottrif/poky/build/workspace/sources/nano
+     NOTE: Tasks Summary: Attempted 520 tasks of which 304 didn't need to be rerun and all succeeded.
+                </literallayout>
+                Within the <filename>devtool upgrade</filename> workflow,
+                opportunity exists to deploy and test your rebuilt software.
+                For this example, however, running
+                <filename>devtool finish</filename> cleans up the workspace
+                once the source in your workspace is clean.
+                This usually means using Git to stage and submit commits
+                for the changes generated by the upgrade process.
+            </para>
+
+            <para>
+                Once the tree is clean, you can clean things up in this
+                example with the following command from the
+                <filename>${BUILDDIR}/workspace/sources/nano</filename>
+                directory:
+                <literallayout class='monospaced'>
+     $ devtool finish nano meta-oe
+     NOTE: Starting bitbake server...
+     Loading cache: 100% |################################################################################################| Time: 0:00:00
+     Loaded 2040 entries from dependency cache.
+     Parsing recipes: 100% |##############################################################################################| Time: 0:00:01
+     Parsing of 1432 .bb files complete (1431 cached, 1 parsed). 2041 targets, 56 skipped, 0 masked, 0 errors.
+     NOTE: Adding new patch 0001-nano.bb-Stuff-I-changed-when-upgrading-nano.bb.patch
+     NOTE: Updating recipe nano_2.9.3.bb
+     NOTE: Removing file /home/scottrif/meta-openembedded/meta-oe/recipes-support/nano/nano_2.7.4.bb
+     NOTE: Moving recipe file to /home/scottrif/meta-openembedded/meta-oe/recipes-support/nano
+     NOTE: Leaving source tree /home/scottrif/poky/build/workspace/sources/nano as-is; if you no longer need it then please delete it manually
+                </literallayout>
+                Using the <filename>devtool finish</filename> command cleans
+                up the workspace and creates a patch file based on your
+                commits.
+                The tool puts all patch files back into the source directory
+                in a sub-directory named <filename>nano</filename> in this
+                case.
+            </para>
+        </section>
+
+        <section id='dev-manually-upgrading-a-recipe'>
+            <title>Manually Upgrading a Recipe</title>
+
+            <para>
+                If for some reason you choose not to upgrade recipes using the
+                <link linkend='gs-using-the-auto-upgrade-helper'>Auto Upgrade Helper (AUH)</link>
+                or by using
+                <link linkend='gs-using-devtool-upgrade'><filename>devtool upgrade</filename></link>,
+                you can manually edit the recipe files to upgrade the versions.
+                <note><title>Caution</title>
+                    Manually updating multiple recipes scales poorly and
+                    involves many steps.
+                    The recommendation to upgrade recipe versions is through
+                    AUH or <filename>devtool upgrade</filename>, both of which
+                    automate some steps and provide guidance for others needed
+                    for the manual process.
+                </note>
+            </para>
+
+            <para>
+                To manually upgrade recipe versions, follow these general steps:
+                <orderedlist>
+                    <listitem><para>
+                        <emphasis>Change the Version:</emphasis>
+                        Rename the recipe such that the version (i.e. the
+                        <ulink url='&YOCTO_DOCS_REF_URL;#var-PV'><filename>PV</filename></ulink>
+                        part of the recipe name) changes appropriately.
+                        If the version is not part of the recipe name, change
+                        the value as it is set for <filename>PV</filename>
+                        within the recipe itself.
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Update <filename>SRCREV</filename> if Needed:</emphasis>
+                        If the source code your recipe builds is fetched from
+                        Git or some other version control system, update
+                        <ulink url='&YOCTO_DOCS_REF_URL;#var-SRCREV'><filename>SRCREV</filename></ulink>
+                        to point to the commit hash that matches the new
+                        version.
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Build the Software:</emphasis>
+                        Try to build the recipe using BitBake.
+                        Typical build failures include the following:
+                        <itemizedlist>
+                            <listitem><para>
+                                License statements were updated for the new
+                                version.
+                                For this case, you need to review any changes
+                                to the license and update the values of
+                                <ulink url='&YOCTO_DOCS_REF_URL;#var-LICENSE'><filename>LICENSE</filename></ulink>
+                                and
+                                <ulink url='&YOCTO_DOCS_REF_URL;#var-LIC_FILES_CHKSUM'><filename>LIC_FILES_CHKSUM</filename></ulink>
+                                as needed.
+                                <note>
+                                    License changes are often inconsequential.
+                                    For example, the license text's copyright
+                                    year might have changed.
+                                </note>
+                                </para></listitem>
+                            <listitem><para>
+                                Custom patches carried by the older version of
+                                the recipe might fail to apply to the new
+                                version.
+                                For these cases, you need to review the
+                                failures.
+                                Patches might not be necessary for the new
+                                version of the software if the upgraded version
+                                has fixed those issues.
+                                If a patch is necessary and failing, you need
+                                to rebase it into the new version.
+                                </para></listitem>
+                        </itemizedlist>
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Optionally Attempt to Build for Several Architectures:</emphasis>
+                        Once you successfully build the new software for a
+                        given architecture, you could test the build for
+                        other architectures by changing the
+                        <ulink url='&YOCTO_DOCS_REF_URL;#var-MACHINE'><filename>MACHINE</filename></ulink>
+                        variable and rebuilding the software.
+                        This optional step is especially important if the
+                        recipe is to be released publicly.
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Check the Upstream Change Log or Release Notes:</emphasis>
+                        Checking both these reveals if new features exist that
+                        could break backwards-compatibility.
+                        If so, you need to take steps to mitigate or eliminate
+                        that situation.
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Optionally Create a Bootable Image and Test:</emphasis>
+                        If you want, you can test the new software by booting
+                        it onto actual hardware.
+                        </para></listitem>
+                    <listitem><para>
+                        <emphasis>Create a Commit with the Change in the Layer Repository:</emphasis>
+                        After all builds work and any testing is successful,
+                        you can create commits for any changes in the layer
+                        holding your upgraded recipe.
+                        </para></listitem>
+                </orderedlist>
+            </para>
+        </section>
+    </section>
+
     <section id='finding-the-temporary-source-code'>
         <title>Finding Temporary Source Code</title>
 
@@ -4799,11 +5608,57 @@
             is a native 32-bit processor-specific ABI for
             <trademark class='registered'>Intel</trademark> 64 (x86-64)
             architectures.
-            <note>
-                For more information on x32 psABI, see the
-                "<ulink url='&YOCTO_DOCS_CM_URL;#x32'>x32 psABI</ulink>"
-                section in the Yocto Project Concepts Manual.
-            </note>
+            An ABI defines the calling conventions between functions in a
+            processing environment.
+            The interface determines what registers are used and what the
+            sizes are for various C data types.
+        </para>
+
+        <para>
+            Some processing environments prefer using 32-bit applications even
+            when running on Intel 64-bit platforms.
+            Consider the i386 psABI, which is a very old 32-bit ABI for Intel
+            64-bit platforms.
+            The i386 psABI does not provide efficient use and access of the
+            Intel 64-bit processor resources, leaving the system underutilized.
+            Now consider the x86_64 psABI.
+            This ABI is newer and uses 64-bits for data sizes and program
+            pointers.
+            The extra bits increase the footprint size of the programs,
+            libraries, and also increases the memory and file system size
+            requirements.
+            Executing under the x32 psABI enables user programs to utilize CPU
+            and system resources more efficiently while keeping the memory
+            footprint of the applications low.
+            Extra bits are used for registers but not for addressing mechanisms.
+        </para>
+
+        <para>
+            The Yocto Project supports the final specifications of x32 psABI
+            as follows:
+            <itemizedlist>
+                <listitem><para>
+                    You can create packages and images in x32 psABI format on
+                    x86_64 architecture targets.
+                    </para></listitem>
+                <listitem><para>
+                    You can successfully build recipes with the x32 toolchain.
+                    </para></listitem>
+                <listitem><para>
+                    You can create and boot
+                    <filename>core-image-minimal</filename> and
+                    <filename>core-image-sato</filename> images.
+                    </para></listitem>
+                <listitem><para>
+                    RPM Package Manager (RPM) support exists for x32 binaries.
+                    </para></listitem>
+                <listitem><para>
+                    Support for large images exists.
+                    </para></listitem>
+            </itemizedlist>
+        </para>
+
+        <para>
             To use the x32 psABI, you need to edit your
             <filename>conf/local.conf</filename> configuration file as
             follows:
@@ -5268,6 +6123,7 @@
                 <literallayout class='monospaced'>
      $ wic -h
      $ wic --help
+     $ wic help
                 </literallayout>
             </para>
 
@@ -5277,51 +6133,66 @@
                 <filename>help</filename>, <filename>list</filename>,
                 <filename>ls</filename>, <filename>rm</filename>, and
                 <filename>write</filename>.
-                You can get help for these commands as follows with
-                <replaceable>command</replaceable> being one of the
-                supported commands:
+                You can get help for all these commands except "help" by
+                using the following form:
                 <literallayout class='monospaced'>
      $ wic help <replaceable>command</replaceable>
                 </literallayout>
-            </para>
-
-            <para>
-                You can also get detailed help on a number of topics
-                from the help system.
-                The output of <filename>wic --help</filename>
-                displays a list of available help
-                topics under a "Help topics" heading.
-                You can have the help system display the help text for
-                a given topic by prefacing the topic with
-                <filename>wic help</filename>:
+                For example, the following command returns help for the
+                <filename>write</filename> command:
                 <literallayout class='monospaced'>
-     $ wic help <replaceable>help_topic</replaceable>
+     $ wic help write
                 </literallayout>
             </para>
 
             <para>
-                You can find out more about the images Wic creates using
-                the existing kickstart files with the following form of
-                the command:
+                Wic supports help for three topics:
+                <filename>overview</filename>,
+                <filename>plugins</filename>, and
+                <filename>kickstart</filename>.
+                You can get help for any topic using the following form:
                 <literallayout class='monospaced'>
-     $ wic list <replaceable>image</replaceable> help
+     $ wic help <replaceable>topic</replaceable>
                 </literallayout>
-                For <replaceable>image</replaceable>, you can provide
-                any of the following:
+                For example, the following returns overview help for Wic:
                 <literallayout class='monospaced'>
-       beaglebone
-       mpc8315e-rdb
-       genericx86
-       edgerouter
-       qemux86-directdisk
-       directdisk-gpt
-       mkefidisk
-       directdisk
-       systemd-bootdisk
-       mkhybridiso
-       sdimage-bootpart
-       directdisk-multi-rootfs
-       directdisk-bootloader-config
+     $ wic help overview
+                </literallayout>
+            </para>
+
+            <para>
+                One additional level of help exists for Wic.
+                You can get help on individual images through the
+                <filename>list</filename> command.
+                You can use the <filename>list</filename> command to return the
+                available Wic images as follows:
+                <literallayout class='monospaced'>
+     $ wic list images
+       mpc8315e-rdb                  		Create SD card image for MPC8315E-RDB
+       genericx86                    		Create an EFI disk image for genericx86*
+       beaglebone-yocto              		Create SD card image for Beaglebone
+       edgerouter                    		Create SD card image for Edgerouter
+       qemux86-directdisk            		Create a qemu machine 'pcbios' direct disk image
+       directdisk-gpt                		Create a 'pcbios' direct disk image
+       mkefidisk                     		Create an EFI disk image
+       directdisk                    		Create a 'pcbios' direct disk image
+       systemd-bootdisk              		Create an EFI disk image with systemd-boot
+       mkhybridiso                   		Create a hybrid ISO image
+       sdimage-bootpart              		Create SD card image with a boot partition
+       directdisk-multi-rootfs       		Create multi rootfs image using rootfs plugin
+       directdisk-bootloader-config  		Create a 'pcbios' direct disk image with custom bootloader config
+                </literallayout>
+                Once you know the list of available Wic images, you can use
+                <filename>help</filename> with the command to get help on a
+                particular image.
+                For example, the following command returns help on the
+                "beaglebone-yocto" image:
+                <literallayout class='monospaced'>
+     $ wic list beaglebone-yocto help
+
+
+     Creates a partitioned SD card image for Beaglebone.
+     Boot files are located in the first vfat partition.
                 </literallayout>
             </para>
         </section>
@@ -5338,7 +6209,7 @@
                     <listitem><para>
                         <emphasis>Raw Mode:</emphasis>
                         You explicitly specify build artifacts through
-                        <filename>wic</filename> command-line arguments.
+                        Wic command-line arguments.
                         </para></listitem>
                     <listitem><para>
                         <emphasis>Cooked Mode:</emphasis>
@@ -5433,7 +6304,7 @@
 
                 <para>
                     Running Wic in cooked mode leverages off artifacts in
-                    Build Directory.
+                    the Build Directory.
                     In other words, you do not have to specify kernel or
                     root filesystem locations as part of the command.
                     All you need to provide is a kickstart file and the
@@ -5485,9 +6356,9 @@
                 files:
                 <literallayout class='monospaced'>
      $ wic list images
-       beaglebone                    		Create SD card image for Beaglebone
        mpc8315e-rdb                  		Create SD card image for MPC8315E-RDB
        genericx86                    		Create an EFI disk image for genericx86*
+       beaglebone-yocto              		Create SD card image for Beaglebone
        edgerouter                    		Create SD card image for Edgerouter
        qemux86-directdisk            		Create a qemu machine 'pcbios' direct disk image
        directdisk-gpt                		Create a 'pcbios' direct disk image
@@ -5615,28 +6486,27 @@
                 prepare a partition using an implementation-specific
                 function:
                 <literallayout class='monospaced'>
-     bootimg-pcbios.py
                   .
                   .
                   .
-        class BootimgPcbiosPlugin(SourcePlugin):
-        """
-        Create MBR boot partition and install syslinux on it.
-        """
+     class BootimgPcbiosPlugin(SourcePlugin):
+         """
+         Create MBR boot partition and install syslinux on it.
+         """
 
-        name = 'bootimg-pcbios'
+         name = 'bootimg-pcbios'
                   .
                   .
                   .
-        @classmethod
-        def do_prepare_partition(cls, part, source_params, creator, cr_workdir,
-                                 oe_builddir, bootimg_dir, kernel_dir,
-                                 rootfs_dir, native_sysroot):
-            """
-            Called to do the actual content population for a partition i.e. it
-            'prepares' the partition to be incorporated into the image.
-            In this case, prepare content for legacy bios boot partition.
-            """
+         @classmethod
+         def do_prepare_partition(cls, part, source_params, creator, cr_workdir,
+                                  oe_builddir, bootimg_dir, kernel_dir,
+                                  rootfs_dir, native_sysroot):
+             """
+             Called to do the actual content population for a partition i.e. it
+             'prepares' the partition to be incorporated into the image.
+             In this case, prepare content for legacy bios boot partition.
+             """
                   .
                   .
                   .
@@ -5745,9 +6615,11 @@
             <section id='generate-an-image-using-a-provided-kickstart-file'>
                 <title>Generate an Image using an Existing Kickstart File</title>
 
-                <para>
+                <para role='writernotes'>
                     This example runs in Cooked Mode and uses the
                     <filename>mkefidisk</filename> kickstart file:
+                    [OUTPUT IS WRONG DUE TO A BUG - ROOTFS_DIR AND BOOTIMG_DIR
+                    ARE DISPLAYING TEMPORARY FILES THAT WIC CLEANS UP BY DELETING]
                     <literallayout class='monospaced'>
      $ wic create mkefidisk -e core-image-minimal
      INFO: Building wic-tools...
@@ -5755,10 +6627,10 @@
                .
                .
      INFO: The new image(s) can be found here:
-       ./mkefidisk-201710061409-sda.direct
+       ./mkefidisk-201802211426-sda.direct
 
      The following build artifacts were used to create the image(s):
-       ROOTFS_DIR:                   /home/scottrif/poky/build/tmp.wic.r4hkds0b/rootfs_copy
+       ROOTFS_DIR:                   /home/scottrif/poky/build/tmp.wic.zjs_iw41/rootfs_copy
        BOOTIMG_DIR:                  /home/scottrif/poky/build/tmp/work/qemux86-poky-linux/core-image-minimal/1.0-r0/recipe-sysroot/usr/share
        KERNEL_DIR:                   /home/scottrif/poky/build/tmp/deploy/images/qemux86
        NATIVE_SYSROOT:               /home/scottrif/poky/build/tmp/work/i586-poky-linux/wic-tools/1.0-r0/recipe-sysroot-native
@@ -5789,17 +6661,18 @@
 
                 <para>
                     Continuing with the example, you can now write the
-                    image to a USB stick, or whatever media for which you
-                    built your image, and boot from the media.
+                    image from the Build Directory onto a USB stick, or
+                    whatever media for which you built your image, and boot
+                    from the media.
                     You can write the image by using
                     <filename>bmaptool</filename> or
                     <filename>dd</filename>:
                     <literallayout class='monospaced'>
-     $ oe-run-native bmaptool copy build/mkefidisk-201710061409-sda.direct /dev/sd<replaceable>X</replaceable>
+     $ oe-run-native bmaptool copy mkefidisk-201802211426-sda.direct /dev/sd<replaceable>X</replaceable>
                     </literallayout>
                     or
                     <literallayout class='monospaced'>
-     $ sudo dd if=build/mkefidisk-201710061409-sda.direct of=/dev/sd<replaceable>X</replaceable>
+     $ sudo dd if=mkefidisk-201802211426-sda.direct of=/dev/sd<replaceable>X</replaceable>
                     </literallayout>
                     <note>
                         For more information on how to use the
@@ -6235,79 +7108,87 @@ Some notes from Cal:
         <title>Flashing Images Using <filename>bmaptool</filename></title>
 
         <para>
-            An easy way to flash an image to a bootable device is to use
-            <filename>bmaptool</filename>, which is integrated into the
-            OpenEmbedded build system.
+            A fast and easy way to flash an image to a bootable device
+            is to use Bmaptool, which is integrated into the OpenEmbedded
+            build system.
+            Bmaptool is a generic tool that creates a file's block map (bmap)
+            and then uses that map to copy the file.
+            As compared to traditional tools such as dd or cp, Bmaptool
+            can copy (or flash) large files like raw system image files
+            much faster.
+            <note><title>Notes</title>
+                <itemizedlist>
+                    <listitem><para>
+                        If you are using Ubuntu or Debian distributions, you
+                        can install the <filename>bmap-tools</filename> package
+                        using the following command and then use the tool
+                        without specifying <filename>PATH</filename> even from
+                        the root account:
+                        <literallayout class='monospaced'>
+     $ sudo apt-get install bmap-tools
+                        </literallayout>
+                        </para></listitem>
+                    <listitem><para>
+                        If you are unable to install the
+                        <filename>bmap-tools</filename> package, you will
+                        need to build Bmaptool before using it.
+                        Use the following command:
+                        <literallayout class='monospaced'>
+     $ bitbake bmap-tools-native
+                        </literallayout>
+                        </para></listitem>
+                </itemizedlist>
+            </note>
         </para>
 
         <para>
             Following, is an example that shows how to flash a Wic image.
-            <note>
-                You can use <filename>bmaptool</filename> to flash any
-                type of image.
-            </note>
-            Use these steps to flash an image using
-            <filename>bmaptool</filename>:
-            <note>
-                Unless you are able to install the
-                <filename>bmap-tools</filename> package as mentioned in the note
-                in the second bullet of step 3 further down, you will need to build
-                <filename>bmaptool</filename> before using it.
-                Build the tool using the following command:
-                <literallayout class='monospaced'>
-     $ bitbake bmap-tools-native
-                </literallayout>
-            </note>
+            Realize that while this example uses a Wic image, you can use
+            Bmaptool to flash any type of image.
+            Use these steps to flash an image using Bmaptool:
             <orderedlist>
                 <listitem><para>
-                    <emphasis>Update the <filename>local.conf</filename> File:</emphasis>
-                    Add the following to your <filename>local.conf</filename>
-                    file:
+                    <emphasis>Update your <filename>local.conf</filename> File:</emphasis>
+                    You need to have the following set in your
+                    <filename>local.conf</filename> file before building
+                    your image:
                     <literallayout class='monospaced'>
      IMAGE_FSTYPES += "wic wic.bmap"
                     </literallayout>
                     </para></listitem>
                 <listitem><para>
                     <emphasis>Get Your Image:</emphasis>
-                    Either have your image ready (pre-built) or take the step
-                    build the image:
+                    Either have your image ready (pre-built with the
+                    <ulink url='&YOCTO_DOCS_REF_URL;#var-IMAGE_FSTYPES'><filename>IMAGE_FSTYPES</filename></ulink>
+                    setting previously mentioned) or take the step to build
+                    the image:
                     <literallayout class='monospaced'>
      $ bitbake <replaceable>image</replaceable>
                     </literallayout>
                     </para></listitem>
                 <listitem><para>
                     <emphasis>Flash the Device:</emphasis>
-                    Flash the device with the image by using
-                    <filename>bmaptool</filename> depending on your particular
-                    setup:
+                    Flash the device with the image by using Bmaptool
+                    depending on your particular setup.
+                    The following commands assume the image resides in the
+                    Build Directory's <filename>deploy/images/</filename>
+                    area:
                     <itemizedlist>
                         <listitem><para>
-                            If you have write access to the media,
-                            use this command form:
+                            If you have write access to the media, use this
+                            command form:
                             <literallayout class='monospaced'>
-     $ oe-run-native bmap-tools-native bmaptool copy ./tmp/deploy/images/qemux86-64-core-image-minimal-<replaceable>machine</replaceable>.wic /dev/sd<replaceable>X</replaceable>
+     $ oe-run-native bmap-tools-native bmaptool copy <replaceable>build-directory</replaceable>/tmp/deploy/images/<replaceable>machine</replaceable>/<replaceable>image</replaceable>.wic /dev/sd<replaceable>X</replaceable>
                             </literallayout>
                             </para></listitem>
                         <listitem><para>
-                            If you do not have write access to
-                            the media, use the following
-                            commands:
+                            If you do not have write access to the media, set
+                            your permissions first and then use the same
+                            command form:
                             <literallayout class='monospaced'>
      $ sudo chmod 666 /dev/sd<replaceable>X</replaceable>
-     $ oe-run-native bmap-tools-native bmaptool copy ./tmp/deploy/images/qemux86-64-core-image-minimal-<replaceable>machine</replaceable>.wic /dev/sd<replaceable>X</replaceable>
+     $ oe-run-native bmap-tools-native bmaptool copy <replaceable>build-directory</replaceable>/tmp/deploy/images/<replaceable>machine</replaceable>/<replaceable>image</replaceable>.wic /dev/sd<replaceable>X</replaceable>
                             </literallayout>
-                            <note>
-                                If you are using Ubuntu or Debian distributions,
-                                you can install the
-                                <filename>bmap-tools</filename> package using
-                                the following command and then use the tool
-                                without specifying
-                                <filename>PATH</filename> even from the
-                                root account:
-                                <literallayout class='monospaced'>
-     $ sudo apt-get install bmap-tools
-                                </literallayout>
-                            </note>
                             </para></listitem>
                     </itemizedlist>
                     </para></listitem>
@@ -8083,11 +8964,13 @@ Some notes from Cal:
                 During a build, BitBake always transforms a recipe into one or
                 more packages.
                 For example, BitBake takes the <filename>bash</filename> recipe
-                and currently produces the <filename>bash-dbg</filename>,
-                <filename>bash-staticdev</filename>,
-                <filename>bash-dev</filename>, <filename>bash-doc</filename>,
-                <filename>bash-locale</filename>, and
-                <filename>bash</filename> packages.
+                and produces a number of packages (e.g.
+                <filename>bash</filename>, <filename>bash-bashbug</filename>,
+                <filename>bash-completion</filename>,
+                <filename>bash-completion-dbg</filename>,
+                <filename>bash-completion-dev</filename>,
+                <filename>bash-completion-extra</filename>,
+                <filename>bash-dbg</filename>, and so forth).
                 Not all generated packages are included in an image.
             </para>
 
@@ -8131,7 +9014,7 @@ Some notes from Cal:
 
             <para>
                 In order to use runtime package management, you
-                need a host/server machine that serves up the pre-compiled
+                need a host or server machine that serves up the pre-compiled
                 packages plus the required metadata.
                 You also need package manipulation tools on the target.
                 The build machine is a likely candidate to act as the server.
@@ -8139,6 +9022,10 @@ Some notes from Cal:
                 package server.
                 The build machine could push its artifacts to another machine
                 that acts as the server (e.g. Internet-facing).
+                In fact, doing so is advantageous for a production
+                environment as getting the packages away from the
+                development system's build directory prevents accidental
+                overwrites.
             </para>
 
             <para>
@@ -8148,11 +9035,11 @@ Some notes from Cal:
                 out into a couple of different package groupings based on
                 criteria such as the target's CPU architecture, the target
                 board, or the C library used on the target.
-                For example, a build targeting the <filename>qemuarm</filename>
+                For example, a build targeting the <filename>qemux86</filename>
                 device produces the following three package databases:
-                <filename>all</filename>, <filename>armv5te</filename>, and
-                <filename>qemuarm</filename>.
-                If you wanted your <filename>qemuarm</filename> device to be
+                <filename>noarch</filename>, <filename>i586</filename>, and
+                <filename>qemux86</filename>.
+                If you wanted your <filename>qemux86</filename> device to be
                 aware of all the packages that were available to it,
                 you would need to point it to each of these databases
                 individually.
@@ -8198,10 +9085,10 @@ Some notes from Cal:
      PACKAGE_CLASSES ?= “package_<replaceable>packageformat</replaceable>”
                             </literallayout>
                             where <replaceable>packageformat</replaceable>
-                            can be "ipk", "rpm", and "deb", which are the
+                            can be "ipk", "rpm", "deb", or "tar" which are the
                             supported package formats.
                             <note>
-                                Because the Yocto Project supports three
+                                Because the Yocto Project supports four
                                 different package formats, you can set the
                                 variable with more than one argument.
                                 However, the OpenEmbedded build system only
@@ -8220,12 +9107,12 @@ Some notes from Cal:
                     "package-management" in the
                     <ulink url='&YOCTO_DOCS_REF_URL;#var-IMAGE_FEATURES'><filename>IMAGE_FEATURES</filename></ulink>
                     variable.
-                    Including "package-management" in this
-                    configuration variable ensures that when the image
-                    is assembled for your target, the image includes
-                    the currently-known package databases as well as
-                    the target-specific tools required for runtime
-                    package management to be performed on the target.
+                    Including "package-management" in this configuration
+                    variable ensures that when the image is assembled for your
+                    target, the image includes the currently-known package
+                    databases as well as the target-specific tools required
+                    for runtime package management to be performed on the
+                    target.
                     However, this is not strictly necessary.
                     You could start your image off without any databases
                     but only include the required on-target package
@@ -8239,21 +9126,26 @@ Some notes from Cal:
 
                 <para>
                     Whenever you perform any sort of build step that can
-                    potentially generate a package or modify an existing
+                    potentially generate a package or modify   existing
                     package, it is always a good idea to re-generate the
-                    package index with:
+                    package index after the build by using the following
+                    command:
                     <literallayout class='monospaced'>
     $ bitbake package-index
                     </literallayout>
-                    Realize that it is not sufficient to simply do the
-                    following:
+                    It might be tempting to build the package and the
+                    package index at the same time with a command such as
+                    the following:
                     <literallayout class='monospaced'>
     $ bitbake <replaceable>some-package</replaceable> package-index
                     </literallayout>
-                    The reason for this restriction is because BitBake does not
-                    properly schedule the <filename>package-index</filename>
-                    target fully after any other target has completed.
-                    Thus, be sure to run the package update step separately.
+                    Do not do this as BitBake does not schedule the package
+                    index for after the completion of the package you are
+                    building.
+                    Consequently, you cannot be sure of the package index
+                    including information for the package you just built.
+                    Thus, be sure to run the package update step separately
+                    after building any packages.
                 </para>
 
                 <para>
@@ -8278,8 +9170,8 @@ Some notes from Cal:
                     For example, if
                     <filename>${</filename><ulink url='&YOCTO_DOCS_REF_URL;#var-TMPDIR'><filename>TMPDIR</filename></ulink><filename>}</filename>
                     is <filename>tmp</filename> and your selected package type
-                    is IPK, then your IPK packages are available in
-                    <filename>tmp/deploy/ipk</filename>.
+                    is RPM, then your RPM packages are available in
+                    <filename>tmp/deploy/rpm</filename>.
                 </para>
             </section>
 
@@ -8334,17 +9226,39 @@ Some notes from Cal:
                     <title>Using RPM</title>
 
                     <para>
-                        The <filename>dnf</filename> application performs
-                        runtime package management of RPM packages.
-                        You must perform an initial setup for
-                        <filename>dnf</filename> on the target machine
-                        if the
-                        <ulink url='&YOCTO_DOCS_REF_URL;#var-PACKAGE_FEED_ARCHS'><filename>PACKAGE_FEED_ARCHS</filename></ulink>,
-                        <ulink url='&YOCTO_DOCS_REF_URL;#var-PACKAGE_FEED_BASE_PATHS'><filename>PACKAGE_FEED_BASE_PATHS</filename></ulink>,
-                        and
-                        <ulink url='&YOCTO_DOCS_REF_URL;#var-PACKAGE_FEED_URIS'><filename>PACKAGE_FEED_URIS</filename></ulink>
-                        variables have not been set or the target image was
-                        built before the variables were set.
+                        The
+                        <ulink url='https://en.wikipedia.org/wiki/DNF_(software)'>Dandified Packaging Tool</ulink>
+                        (DNF) performs runtime package management of RPM
+                        packages.
+                        In order to use DNF for runtime package management,
+                        you must perform an initial setup on the target
+                        machine for cases where the
+                        <filename>PACKAGE_FEED_*</filename> variables were not
+                        set as part of the image that is running on the
+                        target.
+                        This means if you built your image and did not not use
+                        these variables as part of the build and your image is
+                        now running on the target, you need to perform the
+                        steps in this section if you want to use runtime
+                        package management.
+                        <note>
+                            For information on the
+                            <filename>PACKAGE_FEED_*</filename> variables, see
+                            <ulink url='&YOCTO_DOCS_REF_URL;#var-PACKAGE_FEED_ARCHS'><filename>PACKAGE_FEED_ARCHS</filename></ulink>,
+                            <ulink url='&YOCTO_DOCS_REF_URL;#var-PACKAGE_FEED_BASE_PATHS'><filename>PACKAGE_FEED_BASE_PATHS</filename></ulink>,
+                            and
+                            <ulink url='&YOCTO_DOCS_REF_URL;#var-PACKAGE_FEED_URIS'><filename>PACKAGE_FEED_URIS</filename></ulink>
+                            in the Yocto Project Reference Manual variables
+                            glossary.
+                        </note>
+                    </para>
+
+                    <para>
+                        On the target, you must inform DNF that package
+                        databases are available.
+                        You do this by creating a file named
+                        <filename>/etc/yum.repos.d/oe-packages.repo</filename>
+                        and defining the <filename>oe-packages</filename>.
                     </para>
 
                     <para>
@@ -8353,21 +9267,65 @@ Some notes from Cal:
                         <filename>all</filename>, <filename>i586</filename>,
                         and <filename>qemux86</filename> from a server named
                         <filename>my.server</filename>.
-                        You must inform <filename>dnf</filename> of the
-                        availability of these databases by creating a
-                        <filename>/etc/yum.repos.d/oe-packages.repo</filename>
-                        file with the following content:
-                        <literallayout class='monospaced'>
+                        The specifics for setting up the web server are up to
+                        you.
+                        The critical requirement is that the URIs in the
+                        target repository configuration point to the
+                        correct remote location for the feeds.
+                        <note><title>Tip</title>
+                            For development purposes, you can point the web
+                            server to the build system's
+                            <filename>deploy</filename> directory.
+                            However, for production use, it is better to copy
+                            the package directories to a location outside of
+                            the build area and use that location.
+                            Doing so avoids situations where the build system
+                            overwrites or changes the
+                            <filename>deploy</filename> directory.
+                        </note>
+                    </para>
+
+                    <para>
+                        When telling DNF where to look for the package
+                        databases, you must declare individual locations
+                        per architecture or a single location used for all
+                        architectures.
+                        You cannot do both:
+                        <itemizedlist>
+                            <listitem><para>
+                                <emphasis>Create an Explicit List of Architectures:</emphasis>
+                                Define individual base URLs to identify where
+                                each package database is located:
+                                <literallayout class='monospaced'>
      [oe-packages]
-     baseurl=http://my.server http://my.server/rpm/qemux86 http://my.server/rpm/all
-                        </literallayout>
-                        From the target machine, fetch the repository:
+     baseurl=http://my.server/rpm/i586 http://my.server/rpm/qemux86 http://my.server/rpm/all
+                                </literallayout>
+                                This example informs DNF about individual
+                                package databases for all three architectures.
+                                </para></listitem>
+                            <listitem><para>
+                                <emphasis>Create a Single (Full) Package Index:</emphasis>
+                                Define a single base URL that identifies where
+                                a full package database is located:
+                                <literallayout class='monospaced'>
+     [oe-packages]
+     baseurl=http://my.server/rpm
+                                </literallayout>
+                                This example informs DNF about a single package
+                                database that contains all the package index
+                                information for all supported architectures.
+                                </para></listitem>
+                        </itemizedlist>
+                    </para>
+
+                    <para>
+                        Once you have informed DNF where to find the package
+                        databases, you need to fetch them:
                         <literallayout class='monospaced'>
      # dnf makecache
                         </literallayout>
-                        After everything is set up, <filename>dnf</filename>
-                        is able to find, install, and upgrade packages from
-                        the specified repository.
+                        DNF is now able to find, install, and upgrade packages
+                        from the specified repository or repositories.
                         <note>
                             See the
                             <ulink url='http://dnf.readthedocs.io/en/latest/'>DNF documentation</ulink>
@@ -8778,8 +9736,8 @@ Some notes from Cal:
         </section>
     </section>
 
-    <section id='working-with-source-files'>
-        <title>Working with Source Files</title>
+    <section id='efficiently-fetching-source-files-during-a-build'>
+        <title>Efficiently Fetching Source Files During a Build</title>
 
         <para>
             The OpenEmbedded build system works with source files located
@@ -8793,16 +9751,16 @@ Some notes from Cal:
         </para>
 
         <para>
-            This section presents information for working with source
-            files that can lead to more efficient use of resources and
-            time.
+            This section shows you how you can use mirrors to speed up
+            fetching source files and how you can pre-fetch files all of which
+            leads to more efficient use of resources and time.
         </para>
 
         <section id='setting-up-effective-mirrors'>
             <title>Setting up Effective Mirrors</title>
 
             <para>
-                As mentioned, a good deal that goes into a Yocto Project
+                A good deal that goes into a Yocto Project
                 build is simply downloading all of the source tarballs.
                 Maybe you have been working with another build system
                 (OpenEmbedded or Angstrom) for which you have built up a
@@ -8865,7 +9823,7 @@ Some notes from Cal:
                 Use the following BitBake command form to fetch all the
                 necessary sources without starting the build:
                 <literallayout class='monospaced'>
-     $ bitbake -c fetchall <replaceable>target</replaceable>
+     $ bitbake -c <replaceable>target</replaceable> runall="fetch"
                 </literallayout>
                 This variation of the BitBake command guarantees that you
                 have all the sources for that BitBake target should you

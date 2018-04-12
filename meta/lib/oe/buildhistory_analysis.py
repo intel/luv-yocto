@@ -36,7 +36,6 @@ related_fields = {}
 related_fields['RDEPENDS'] = ['DEPENDS']
 related_fields['RRECOMMENDS'] = ['DEPENDS']
 related_fields['FILELIST'] = ['FILES']
-related_fields['PKGSIZE'] = ['FILELIST']
 related_fields['files-in-image.txt'] = ['installed-package-names.txt', 'USER_CLASSES', 'IMAGE_CLASSES', 'ROOTFS_POSTPROCESS_COMMAND', 'IMAGE_POSTPROCESS_COMMAND']
 related_fields['installed-package-names.txt'] = ['IMAGE_FEATURES', 'IMAGE_LINGUAS', 'IMAGE_INSTALL', 'BAD_RECOMMENDATIONS', 'NO_RECOMMENDATIONS', 'PACKAGE_EXCLUDE']
 
@@ -99,7 +98,17 @@ class ChangeRecord:
                                 for name in adirs - bdirs]
             files_ba = [(name, sorted(os.path.basename(item) for item in bitems if os.path.dirname(item) == name)) \
                                 for name in bdirs - adirs]
-            renamed_dirs = [(dir1, dir2) for dir1, files1 in files_ab for dir2, files2 in files_ba if files1 == files2]
+            renamed_dirs = []
+            for dir1, files1 in files_ab:
+                rename = False
+                for dir2, files2 in files_ba:
+                    if files1 == files2 and not rename:
+                        renamed_dirs.append((dir1,dir2))
+                        # Make sure that we don't use this (dir, files) pair again.
+                        files_ba.remove((dir2,files2))
+                        # If a dir has already been found to have a rename, stop and go no further.
+                        rename = True
+
             # remove files that belong to renamed dirs from aitems and bitems
             for dir1, dir2 in renamed_dirs:
                 aitems = [item for item in aitems if os.path.dirname(item) not in (dir1, dir2)]
@@ -108,6 +117,7 @@ class ChangeRecord:
 
         if self.fieldname in list_fields or self.fieldname in list_order_fields:
             renamed_dirs = []
+            changed_order = False
             if self.fieldname in ['RPROVIDES', 'RDEPENDS', 'RRECOMMENDS', 'RSUGGESTS', 'RREPLACES', 'RCONFLICTS']:
                 (depvera, depverb) = compare_pkg_lists(self.oldvalue, self.newvalue)
                 aitems = pkglist_combine(depvera)
@@ -120,6 +130,14 @@ class ChangeRecord:
 
             removed = list(set(aitems) - set(bitems))
             added = list(set(bitems) - set(aitems))
+
+            if not removed and not added:
+                depvera = bb.utils.explode_dep_versions2(self.oldvalue, sort=False)
+                depverb = bb.utils.explode_dep_versions2(self.newvalue, sort=False)
+                for i, j in zip(depvera.items(), depverb.items()):
+                    if i[0] != j[0]:
+                        changed_order = True
+                        break
 
             lines = []
             if renamed_dirs:
@@ -136,7 +154,10 @@ class ChangeRecord:
             else:
                 lines.append('changed order')
 
-            out = '%s: %s' % (self.fieldname, ', '.join(lines))
+            if not (removed or added or changed_order):
+                out = ''
+            else:
+                out = '%s: %s' % (self.fieldname, ', '.join(lines))
 
         elif self.fieldname in numeric_fields:
             aval = int(self.oldvalue or 0)

@@ -30,7 +30,10 @@
 
 BB_HASHBASE_WHITELIST += "ICECC_PARALLEL_MAKE ICECC_DISABLED ICECC_USER_PACKAGE_BL \
     ICECC_USER_CLASS_BL ICECC_USER_PACKAGE_WL ICECC_PATH ICECC_ENV_EXEC \
-    ICECC_CARET_WORKAROUND ICECC_CFLAGS"
+    ICECC_CARET_WORKAROUND ICECC_CFLAGS ICECC_ENV_VERSION \
+    ICECC_DEBUG ICECC_LOGFILE ICECC_REPEAT_RATE ICECC_PREFERRED_HOST \
+    ICECC_CLANG_REMOTE_CPP ICECC_IGNORE_UNVERIFIED ICECC_TEST_SOCKET \
+    "
 
 ICECC_ENV_EXEC ?= "${STAGING_BINDIR_NATIVE}/icecc-create-env"
 
@@ -58,7 +61,7 @@ def icecc_dep_prepend(d):
     # INHIBIT_DEFAULT_DEPS doesn't apply to the patch command.  Whether or  not
     # we need that built is the responsibility of the patch function / class, not
     # the application.
-    if not d.getVar('INHIBIT_DEFAULT_DEPS', False):
+    if not d.getVar('INHIBIT_DEFAULT_DEPS'):
         return "icecc-create-env-native"
     return ""
 
@@ -66,21 +69,20 @@ DEPENDS_prepend += "${@icecc_dep_prepend(d)} "
 
 get_cross_kernel_cc[vardepsexclude] += "KERNEL_CC"
 def get_cross_kernel_cc(bb,d):
-    kernel_cc = d.getVar('KERNEL_CC', False)
+    kernel_cc = d.getVar('KERNEL_CC')
 
     # evaluate the expression by the shell if necessary
     if '`' in kernel_cc or '$(' in kernel_cc:
         import subprocess
         kernel_cc = subprocess.check_output("echo %s" % kernel_cc, shell=True).decode("utf-8")[:-1]
 
-    kernel_cc = d.expand(kernel_cc)
     kernel_cc = kernel_cc.replace('ccache', '').strip()
     kernel_cc = kernel_cc.split(' ')[0]
     kernel_cc = kernel_cc.strip()
     return kernel_cc
 
 def get_icecc(d):
-    return d.getVar('ICECC_PATH', False) or bb.utils.which(os.getenv("PATH"), "icecc")
+    return d.getVar('ICECC_PATH') or bb.utils.which(os.getenv("PATH"), "icecc")
 
 def create_path(compilers, bb, d):
     """
@@ -115,7 +117,7 @@ def create_path(compilers, bb, d):
     return staging
 
 def use_icecc(bb,d):
-    if d.getVar('ICECC_DISABLED', False) == "1":
+    if d.getVar('ICECC_DISABLED') == "1":
         # don't even try it, when explicitly disabled
         return "no"
 
@@ -129,7 +131,7 @@ def use_icecc(bb,d):
     pn = d.getVar('PN')
 
     system_class_blacklist = []
-    user_class_blacklist = (d.getVar('ICECC_USER_CLASS_BL', False) or "none").split()
+    user_class_blacklist = (d.getVar('ICECC_USER_CLASS_BL') or "none").split()
     package_class_blacklist = system_class_blacklist + user_class_blacklist
 
     for black in package_class_blacklist:
@@ -146,8 +148,8 @@ def use_icecc(bb,d):
     # e.g. when there is new version
     # building libgcc-initial with icecc fails with CPP sanity check error if host sysroot contains cross gcc built for another target tune/variant
     system_package_blacklist = ["libgcc-initial"]
-    user_package_blacklist = (d.getVar('ICECC_USER_PACKAGE_BL', False) or "").split()
-    user_package_whitelist = (d.getVar('ICECC_USER_PACKAGE_WL', False) or "").split()
+    user_package_blacklist = (d.getVar('ICECC_USER_PACKAGE_BL') or "").split()
+    user_package_whitelist = (d.getVar('ICECC_USER_PACKAGE_WL') or "").split()
     package_blacklist = system_package_blacklist + user_package_blacklist
 
     if pn in package_blacklist:
@@ -158,7 +160,7 @@ def use_icecc(bb,d):
         bb.debug(1, "%s: found in whitelist, enable icecc" % pn)
         return "yes"
 
-    if d.getVar('PARALLEL_MAKE', False) == "":
+    if d.getVar('PARALLEL_MAKE') == "":
         bb.debug(1, "%s: has empty PARALLEL_MAKE, disable icecc" % pn)
         return "no"
 
@@ -188,13 +190,13 @@ def icecc_version(bb, d):
     if use_icecc(bb, d) == "no":
         return ""
 
-    parallel = d.getVar('ICECC_PARALLEL_MAKE', False) or ""
-    if not d.getVar('PARALLEL_MAKE', False) == "" and parallel:
+    parallel = d.getVar('ICECC_PARALLEL_MAKE') or ""
+    if not d.getVar('PARALLEL_MAKE') == "" and parallel:
         d.setVar("PARALLEL_MAKE", parallel)
 
     # Disable showing the caret in the GCC compiler output if the workaround is
     # disabled
-    if d.getVar('ICECC_CARET_WORKAROUND', True) == '0':
+    if d.getVar('ICECC_CARET_WORKAROUND') == '0':
         d.setVar('ICECC_CFLAGS', '-fno-diagnostics-show-caret')
 
     if icecc_is_native(bb, d):
@@ -205,7 +207,7 @@ def icecc_version(bb, d):
         prefix = d.expand('${HOST_PREFIX}' )
         distro = d.expand('${DISTRO}')
         target_sys = d.expand('${TARGET_SYS}')
-        float = d.getVar('TARGET_FPU', False) or "hard"
+        float = d.getVar('TARGET_FPU') or "hard"
         archive_name = prefix + distro + "-"        + target_sys + "-" + float
         if icecc_is_kernel(bb, d):
             archive_name += "-kernel"
@@ -214,7 +216,7 @@ def icecc_version(bb, d):
     ice_dir = icecc_dir(bb, d)
     tar_file = os.path.join(ice_dir, "{archive}-{version}-@VERSION@-{hostname}.tar.gz".format(
         archive=archive_name,
-        version=d.getVar('ICECC_ENV_VERSION', True),
+        version=d.getVar('ICECC_ENV_VERSION'),
         hostname=socket.gethostname()
         ))
 

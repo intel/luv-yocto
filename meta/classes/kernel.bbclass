@@ -151,6 +151,7 @@ PACKAGES_DYNAMIC += "^${KERNEL_PACKAGE_NAME}-firmware-.*"
 
 export OS = "${TARGET_OS}"
 export CROSS_COMPILE = "${TARGET_PREFIX}"
+export KBUILD_BUILD_VERSION = "1"
 export KBUILD_BUILD_USER = "oe-user"
 export KBUILD_BUILD_HOST = "oe-host"
 
@@ -279,7 +280,7 @@ get_cc_option () {
 
 kernel_do_compile() {
 	unset CFLAGS CPPFLAGS CXXFLAGS LDFLAGS MACHINE
-	if [ "$BUILD_REPRODUCIBLE_BINARIES" = "1" ]; then
+	if [ "${BUILD_REPRODUCIBLE_BINARIES}" = "1" ]; then
 		# kernel sources do not use do_unpack, so SOURCE_DATE_EPOCH may not
 		# be set....
 		if [ "$SOURCE_DATE_EPOCH" = "0" ]; then
@@ -466,8 +467,10 @@ do_shared_workdir () {
 	# arch/powerpc/lib/crtsavres.o which is present in
 	# KBUILD_LDFLAGS_MODULE, making it required to build external modules.
 	if [ ${ARCH} = "powerpc" ]; then
-		mkdir -p $kerneldir/arch/powerpc/lib/
-		cp arch/powerpc/lib/crtsavres.o $kerneldir/arch/powerpc/lib/crtsavres.o
+		if [ -e arch/powerpc/lib/crtsavres.o ]; then
+			mkdir -p $kerneldir/arch/powerpc/lib/
+			cp arch/powerpc/lib/crtsavres.o $kerneldir/arch/powerpc/lib/crtsavres.o
+		fi
 	fi
 
 	if [ -d include/generated ]; then
@@ -530,6 +533,8 @@ do_savedefconfig[nostamp] = "1"
 addtask savedefconfig after do_configure
 
 inherit cml1
+
+KCONFIG_CONFIG_COMMAND_append = " HOSTLDFLAGS='${BUILD_LDFLAGS}'"
 
 EXPORT_FUNCTIONS do_compile do_install do_configure
 

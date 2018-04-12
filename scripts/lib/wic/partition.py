@@ -185,6 +185,9 @@ class Partition():
         plugin.do_prepare_partition(self, srcparams_dict, creator,
                                     cr_workdir, oe_builddir, bootimg_dir,
                                     kernel_dir, rootfs_dir, native_sysroot)
+        plugin.do_post_partition(self, srcparams_dict, creator,
+                                    cr_workdir, oe_builddir, bootimg_dir,
+                                    kernel_dir, rootfs_dir, native_sysroot)
 
         # further processing required Partition.size to be an integer, make
         # sure that it is one
@@ -199,7 +202,7 @@ class Partition():
                            (self.mountpoint, self.size, self.fixed_size))
 
     def prepare_rootfs(self, cr_workdir, oe_builddir, rootfs_dir,
-                       native_sysroot):
+                       native_sysroot, real_rootfs = True):
         """
         Prepare content for a rootfs partition i.e. create a partition
         and fill it from a /rootfs dir.
@@ -223,7 +226,7 @@ class Partition():
             os.remove(rootfs)
 
         # Get rootfs size from bitbake variable if it's not set in .ks file
-        if not self.size:
+        if not self.size and real_rootfs:
             # Bitbake variable ROOTFS_SIZE is calculated in
             # Image._get_rootfs_size method from meta/lib/oe/image.py
             # using IMAGE_ROOTFS_SIZE, IMAGE_ROOTFS_ALIGNMENT,
@@ -319,7 +322,7 @@ class Partition():
 
         dosfs_cmd = "mkdosfs %s -i %s %s %s -C %s %d" % \
                     (label_str, self.fsuuid, size_str, extraopts, rootfs,
-                     rootfs_size)
+                     max(8250, rootfs_size))
         exec_native_cmd(dosfs_cmd, native_sysroot)
 
         mcopy_cmd = "mcopy -i %s -s %s/* ::/" % (rootfs, rootfs_dir)

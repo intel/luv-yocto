@@ -153,67 +153,6 @@
             </para>
         </section>
 
-        <section id='metadata-virtual-providers'>
-            <title>Metadata (Virtual Providers)</title>
-
-            <para>
-                Prior to the build, if you know that several different recipes
-                provide the same functionality, you can use a virtual provider
-                (i.e. <filename>virtual/*</filename>) as a placeholder for the
-                actual provider.
-                The actual provider would be determined at build time.
-                In this case, you should add <filename>virtual/*</filename>
-                to
-                <ulink url='&YOCTO_DOCS_REF_URL;#var-DEPENDS'><filename>DEPENDS</filename></ulink>,
-                rather than listing the specified provider.
-                You would select the actual provider by setting the
-                <ulink url='&YOCTO_DOCS_REF_URL;#var-PREFERRED_PROVIDER'><filename>PREFERRED_PROVIDER</filename></ulink>
-                variable (i.e.
-                <filename>PREFERRED_PROVIDER_virtual/*</filename>)
-                in the build's configuration file (e.g.
-                <filename>poky/build/conf/local.conf</filename>).
-                <note>
-                    Any recipe that
-                    <ulink url='&YOCTO_DOCS_REF_URL;#var-PROVIDES'><filename>PROVIDES</filename></ulink>
-                    a <filename>virtual/*</filename> item that is ultimately
-                    not selected through
-                    <filename>PREFERRED_PROVIDER</filename> does not get built.
-                    Preventing these recipes from building is usually the
-                    desired behavior since this mechanism's purpose is to
-                    select between mutually exclusive alternative providers.
-                </note>
-            </para>
-
-            <para>
-                The following lists specific examples of virtual providers:
-                <itemizedlist>
-                    <listitem><para>
-                        <filename>virtual/mesa</filename>:
-                        Provides <filename>gbm.pc</filename>.
-                        </para></listitem>
-                    <listitem><para>
-                        <filename>virtual/egl</filename>:
-                        Provides <filename>egl.pc</filename> and possibly
-                        <filename>wayland-egl.pc</filename>.
-                        </para></listitem>
-                    <listitem><para>
-                        <filename>virtual/libgl</filename>:
-                        Provides <filename>gl.pc</filename> (i.e. libGL).
-                        </para></listitem>
-                    <listitem><para>
-                        <filename>virtual/libgles1</filename>:
-                        Provides <filename>glesv1_cm.pc</filename>
-                        (i.e. libGLESv1_CM).
-                        </para></listitem>
-                    <listitem><para>
-                        <filename>virtual/libgles2</filename>:
-                        Provides <filename>glesv2.pc</filename>
-                        (i.e. libGLESv2).
-                        </para></listitem>
-                </itemizedlist>
-            </para>
-        </section>
-
         <section id='concepts-components-classes'>
             <title>Classes</title>
 
@@ -248,19 +187,41 @@
         </section>
     </section>
 
+    <section id='cm-layers'>
+        <title>Layers</title>
 
+        <para>
+            Layers are repositories that contain related sets of instructions
+            that tell the OpenEmbedded build system what to do.
+            You use different layers to logically separate information in your
+            build.
+            You can collaborate, share, and reuse layers.
+            The Layer Model simultaneously supports collaboration and
+            customization.
+        </para>
+
+        <para>
+            For more introductory information on the Yocto Project's layer
+            model, see the
+            "<ulink url='&YOCTO_DOCS_GS_URL;#the-yocto-project-layer-model'>The Yocto Project Layer Model</ulink>"
+            section in the Getting Started With Yocto Project Manual.
+            For procedures on how to create layers, see the
+            "<ulink url='&YOCTO_DOCS_DEV_URL;#understanding-and-creating-layers'>Understanding and Creating Layers</ulink>"
+            section in the Yocto Project Development Tasks Manual.
+        </para>
+    </section>
 
     <section id="development-concepts">
         <title>Development Concepts</title>
 
         <para>
-            This section takes a more detailed look inside the development
-            process.
-            The following diagram represents development at a high level.
+            This section takes a more detailed look inside the build
+            process used by the OpenEmbedded build system.
+            The following diagram represents the build at a high level.
             The remainder of this section expands on the fundamental input,
             output, process, and
-            <ulink url='&YOCTO_DOCS_REF_URL;#metadata'>Metadata</ulink>) blocks
-            that make up development in the Yocto Project environment.
+            <ulink url='&YOCTO_DOCS_REF_URL;#metadata'>Metadata</ulink>
+            blocks that make up the build process.
         </para>
 
         <para id='general-yocto-environment-figure'>
@@ -268,7 +229,7 @@
         </para>
 
         <para>
-            In general, development consists of several functional areas:
+            In general, the build process consists of several functional areas:
             <itemizedlist>
                 <listitem><para>
                     <emphasis>User Configuration:</emphasis>
@@ -327,7 +288,7 @@
             <para>
                 The following figure shows an expanded representation of the
                 "User Configuration" box of the
-                <link linkend='general-yocto-environment-figure'>general Yocto Project Development Environment figure</link>:
+                <link linkend='general-yocto-environment-figure'>general Build Process figure</link>:
             </para>
 
             <para>
@@ -598,7 +559,7 @@
                 The following figure shows an expanded representation of the
                 Metadata, Machine Configuration, and Policy Configuration input
                 (layers) boxes of the
-                <link linkend='general-yocto-environment-figure'>general Yocto Project Development Environment figure</link>:
+                <link linkend='general-yocto-environment-figure'>general Build Process figure</link>:
             </para>
 
             <para>
@@ -761,7 +722,7 @@
                 In order for the OpenEmbedded build system to create an
                 image or any target, it must be able to access source files.
                 The
-                <link linkend='general-yocto-environment-figure'>general Yocto Project Development Environment figure</link>
+                <link linkend='general-yocto-environment-figure'>general Build Process figure</link>
                 represents source files using the "Upstream Project Releases",
                 "Local Projects", and "SCMs (optional)" boxes.
                 The figure represents mirrors, which also play a role in
@@ -825,7 +786,7 @@
                 The remainder of this section provides a deeper look into the
                 source files and the mirrors.
                 Here is a more detailed look at the source file area of the
-                base figure:
+                <link linkend='general-yocto-environment-figure'>general Build Process figure</link>:
                 <imagedata fileref="figures/source-input.png" align="center" width="7in" depth="7.5in" />
             </para>
 
@@ -945,7 +906,7 @@
                 in the
                 <ulink url='&YOCTO_DOCS_REF_URL;#build-directory'>Build Directory</ulink>.
                 The
-                <link linkend='general-yocto-environment-figure'>general Yocto Project Development Environment figure</link>
+                <link linkend='general-yocto-environment-figure'>general Build Process figure</link>
                 shows this package feeds area in the upper-right corner.
             </para>
 
@@ -1039,7 +1000,7 @@
                 <ulink url='&YOCTO_DOCS_REF_URL;#bitbake-term'>BitBake</ulink>
                 to produce images.
                 You can see from the
-                <link linkend='general-yocto-environment-figure'>general Yocto Project Development Environment figure</link>,
+                <link linkend='general-yocto-environment-figure'>general Build Process figure</link>,
                 the BitBake area consists of several functional areas.
                 This section takes a closer look at each of those areas.
             </para>
@@ -1794,7 +1755,7 @@
                 are compressed forms of the
                 root filesystem that are ready to boot on a target device.
                 You can see from the
-                <link linkend='general-yocto-environment-figure'>general Yocto Project Development Environment figure</link>
+                <link linkend='general-yocto-environment-figure'>general Build Process figure</link>
                 that BitBake output, in part, consists of images.
                 This section is going to look more closely at this output:
                 <imagedata fileref="figures/images.png" align="center" width="5.5in" depth="5.5in" />
@@ -3642,72 +3603,6 @@
                 </para>
             </section>
         </section>
-    </section>
-
-    <section id='x32'>
-        <title>x32 psABI</title>
-
-        <para>
-            x32 processor-specific Application Binary Interface
-            (<ulink url='https://software.intel.com/en-us/node/628948'>x32 psABI</ulink>)
-            is a native 32-bit processor-specific ABI for
-            <trademark class='registered'>Intel</trademark> 64 (x86-64)
-            architectures.
-            An ABI defines the calling conventions between functions in a
-            processing environment.
-            The interface determines what registers are used and what the sizes are
-            for various C data types.
-        </para>
-
-        <para>
-            Some processing environments prefer using 32-bit applications even
-            when running on Intel 64-bit platforms.
-            Consider the i386 psABI, which is a very old 32-bit ABI for Intel
-            64-bit platforms.
-            The i386 psABI does not provide efficient use and access of the
-            Intel 64-bit processor resources, leaving the system underutilized.
-            Now consider the x86_64 psABI.
-            This ABI is newer and uses 64-bits for data sizes and program
-            pointers.
-            The extra bits increase the footprint size of the programs,
-            libraries, and also increases the memory and file system size
-            requirements.
-            Executing under the x32 psABI enables user programs to utilize CPU
-            and system resources more efficiently while keeping the memory
-            footprint of the applications low.
-            Extra bits are used for registers but not for addressing mechanisms.
-        </para>
-
-        <para>
-            The Yocto Project supports the final specifications of x32 psABI
-            as follows:
-            <itemizedlist>
-                <listitem><para>
-                    You can create packages and images in x32 psABI format on
-                    x86_64 architecture targets.
-                    </para></listitem>
-                <listitem><para>
-                    You can successfully build recipes with the x32 toolchain.
-                    </para></listitem>
-                <listitem><para>
-                    You can create and boot
-                    <filename>core-image-minimal</filename> and
-                    <filename>core-image-sato</filename> images.
-                    </para></listitem>
-                <listitem><para>
-                    RPM Package Manager (RPM) support exists for x32 binaries.
-                    </para></listitem>
-                <listitem><para>
-                    Support for large images exists.
-                    </para></listitem>
-            </itemizedlist>
-        </para>
-
-        <para>
-            For steps on how to use x32 psABI, see the
-            "<ulink url='&YOCTO_DOCS_DEV_URL;#using-x32-psabi'>Using x32 psABI</ulink>"
-            section in the Yocto Project Development Tasks Manual.
-        </para>
     </section>
 </chapter>
 <!--

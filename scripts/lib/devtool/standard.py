@@ -1061,7 +1061,7 @@ def rename(args, config, basepath, workspace):
     return 0
 
 
-def _get_patchset_revs(srctree, recipe_path, initial_rev=None):
+def _get_patchset_revs(srctree, recipe_path, initial_rev=None, force_patch_refresh=False):
     """Get initial and update rev of a recipe. These are the start point of the
     whole patchset and start point for the patches to be re-generated/updated.
     """
@@ -1080,7 +1080,7 @@ def _get_patchset_revs(srctree, recipe_path, initial_rev=None):
             if line.startswith('# initial_rev:'):
                 if not initial_rev:
                     initial_rev = line.split(':')[-1].strip()
-            elif line.startswith('# commit:'):
+            elif line.startswith('# commit:') and not force_patch_refresh:
                 commits.append(line.split(':')[-1].strip())
             elif line.startswith('# patches_%s:' % branchname):
                 patches = line.split(':')[-1].strip().split(',')
@@ -1102,7 +1102,7 @@ def _get_patchset_revs(srctree, recipe_path, initial_rev=None):
         except bb.process.ExecutionError as err:
             stdout = None
 
-        if stdout is not None:
+        if stdout is not None and not force_patch_refresh:
             changed_revs = []
             for line in stdout.splitlines():
                 if line.startswith('+ '):
@@ -1459,7 +1459,7 @@ def _update_recipe_srcrev(recipename, workspace, srctree, rd, appendlayerdir, wi
     _remove_source_files(appendlayerdir, remove_files, destpath, no_report_remove, dry_run=dry_run_outdir)
     return True, appendfile, remove_files
 
-def _update_recipe_patch(recipename, workspace, srctree, rd, appendlayerdir, wildcard_version, no_remove, no_report_remove, initial_rev, dry_run_outdir=None):
+def _update_recipe_patch(recipename, workspace, srctree, rd, appendlayerdir, wildcard_version, no_remove, no_report_remove, initial_rev, dry_run_outdir=None, force_patch_refresh=False):
     """Implement the 'patch' mode of update-recipe"""
     import bb
     import oe.recipeutils
@@ -1471,7 +1471,7 @@ def _update_recipe_patch(recipename, workspace, srctree, rd, appendlayerdir, wil
         raise DevtoolError('unable to find workspace bbappend for recipe %s' %
                            recipename)
 
-    initial_rev, update_rev, changed_revs, filter_patches = _get_patchset_revs(srctree, append, initial_rev)
+    initial_rev, update_rev, changed_revs, filter_patches = _get_patchset_revs(srctree, append, initial_rev, force_patch_refresh)
     if not initial_rev:
         raise DevtoolError('Unable to find initial revision - please specify '
                            'it with --initial-rev')
@@ -1623,7 +1623,7 @@ def _guess_recipe_update_mode(srctree, rdata):
 
     return 'patch'
 
-def _update_recipe(recipename, workspace, rd, mode, appendlayerdir, wildcard_version, no_remove, initial_rev, no_report_remove=False, dry_run_outdir=None, no_overrides=False):
+def _update_recipe(recipename, workspace, rd, mode, appendlayerdir, wildcard_version, no_remove, initial_rev, no_report_remove=False, dry_run_outdir=None, no_overrides=False, force_patch_refresh=False):
     srctree = workspace[recipename]['srctree']
     if mode == 'auto':
         mode = _guess_recipe_update_mode(srctree, rd)
@@ -1677,7 +1677,7 @@ def _update_recipe(recipename, workspace, rd, mode, appendlayerdir, wildcard_ver
             if mode == 'srcrev':
                 updated, appendf, removed = _update_recipe_srcrev(recipename, workspace, srctree, crd, appendlayerdir, wildcard_version, no_remove, no_report_remove, dry_run_outdir)
             elif mode == 'patch':
-                updated, appendf, removed = _update_recipe_patch(recipename, workspace, srctree, crd, appendlayerdir, wildcard_version, no_remove, no_report_remove, initial_rev, dry_run_outdir)
+                updated, appendf, removed = _update_recipe_patch(recipename, workspace, srctree, crd, appendlayerdir, wildcard_version, no_remove, no_report_remove, initial_rev, dry_run_outdir, force_patch_refresh)
             else:
                 raise DevtoolError('update_recipe: invalid mode %s' % mode)
             if updated:
@@ -1715,7 +1715,7 @@ def update_recipe(args, config, basepath, workspace):
         if args.dry_run:
             dry_run_output = tempfile.TemporaryDirectory(prefix='devtool')
             dry_run_outdir = dry_run_output.name
-        updated, _, _ = _update_recipe(args.recipename, workspace, rd, args.mode, args.append, args.wildcard_version, args.no_remove, args.initial_rev, dry_run_outdir=dry_run_outdir, no_overrides=args.no_overrides)
+        updated, _, _ = _update_recipe(args.recipename, workspace, rd, args.mode, args.append, args.wildcard_version, args.no_remove, args.initial_rev, dry_run_outdir=dry_run_outdir, no_overrides=args.no_overrides, force_patch_refresh=args.force_patch_refresh)
 
         if updated:
             rf = rd.getVar('FILE')
@@ -1744,6 +1744,7 @@ def status(args, config, basepath, workspace):
 
 def _reset(recipes, no_clean, config, basepath, workspace):
     """Reset one or more recipes"""
+    import oe.path
 
     def clean_preferred_provider(pn, layerconf_path):
         """Remove PREFERRED_PROVIDER from layer.conf'"""
@@ -1790,6 +1791,13 @@ def _reset(recipes, no_clean, config, basepath, workspace):
     for pn in recipes:
         _check_preserve(config, pn)
 
+        appendfile = workspace[pn]['bbappend']
+        if os.path.exists(appendfile):
+            # This shouldn't happen, but is possible if devtool errored out prior to
+            # writing the md5 file. We need to delete this here or the recipe won't
+            # actually be reset
+            os.remove(appendfile)
+
         preservepath = os.path.join(config.workspace_path, 'attic', pn, pn)
         def preservedir(origdir):
             if os.path.exists(origdir):
@@ -1802,7 +1810,10 @@ def _reset(recipes, no_clean, config, basepath, workspace):
                         preservedir(os.path.join(root, dn))
                 os.rmdir(origdir)
 
-        preservedir(os.path.join(config.workspace_path, 'recipes', pn))
+        recipefile = workspace[pn]['recipefile']
+        if recipefile and oe.path.is_path_parent(config.workspace_path, recipefile):
+            # This should always be true if recipefile is set, but just in case
+            preservedir(os.path.dirname(recipefile))
         # We don't automatically create this dir next to appends, but the user can
         preservedir(os.path.join(config.workspace_path, 'appends', pn))
 
@@ -1850,9 +1861,7 @@ def _get_layer(layername, d):
         layerdir = layers.get('meta', None)
     else:
         layerdir = layers.get(layername, None)
-    if layerdir:
-        layerdir = os.path.abspath(layerdir)
-    return layerdir or layername
+    return os.path.abspath(layerdir or layername)
 
 def finish(args, config, basepath, workspace):
     """Entry point for the devtool 'finish' subcommand"""
@@ -1938,7 +1947,7 @@ def finish(args, config, basepath, workspace):
         if args.dry_run:
             dry_run_output = tempfile.TemporaryDirectory(prefix='devtool')
             dry_run_outdir = dry_run_output.name
-        updated, appendfile, removed = _update_recipe(args.recipename, workspace, rd, args.mode, appendlayerdir, wildcard_version=True, no_remove=False, no_report_remove=removing_original, initial_rev=args.initial_rev, dry_run_outdir=dry_run_outdir, no_overrides=args.no_overrides)
+        updated, appendfile, removed = _update_recipe(args.recipename, workspace, rd, args.mode, appendlayerdir, wildcard_version=True, no_remove=False, no_report_remove=removing_original, initial_rev=args.initial_rev, dry_run_outdir=dry_run_outdir, no_overrides=args.no_overrides, force_patch_refresh=args.force_patch_refresh)
         removed = [os.path.relpath(pth, recipedir) for pth in removed]
 
         # Remove any old files in the case of an upgrade
@@ -2125,6 +2134,7 @@ def register_commands(subparsers, context):
     parser_update_recipe.add_argument('--no-remove', '-n', action="store_true", help='Don\'t remove patches, only add or update')
     parser_update_recipe.add_argument('--no-overrides', '-O', action="store_true", help='Do not handle other override branches (if they exist)')
     parser_update_recipe.add_argument('--dry-run', '-N', action="store_true", help='Dry-run (just report changes instead of writing them)')
+    parser_update_recipe.add_argument('--force-patch-refresh', action="store_true", help='Update patches in the layer even if they have not been modified (useful for refreshing patch context)')
     parser_update_recipe.set_defaults(func=update_recipe)
 
     parser_status = subparsers.add_parser('status', help='Show workspace status',
@@ -2150,4 +2160,5 @@ def register_commands(subparsers, context):
     parser_finish.add_argument('--force', '-f', action="store_true", help='Force continuing even if there are uncommitted changes in the source tree repository')
     parser_finish.add_argument('--no-overrides', '-O', action="store_true", help='Do not handle other override branches (if they exist)')
     parser_finish.add_argument('--dry-run', '-N', action="store_true", help='Dry-run (just report changes instead of writing them)')
+    parser_finish.add_argument('--force-patch-refresh', action="store_true", help='Update patches in the layer even if they have not been modified (useful for refreshing patch context)')
     parser_finish.set_defaults(func=finish)
