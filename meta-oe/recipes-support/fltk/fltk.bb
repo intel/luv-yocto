@@ -2,7 +2,8 @@ require ${BPN}.inc
 
 DEPENDS = "alsa-lib zlib jpeg libpng libxext libxft"
 
-inherit binconfig lib_package gtk-icon-cache mime
+inherit distro_features_check binconfig lib_package gtk-icon-cache mime
+REQUIRED_DISTRO_FEATURES = "x11"
 
 SRC_URI += "file://0003-CMake-build-Force-shared-libs-with-unsuffixed-names.patch"
 
@@ -34,4 +35,12 @@ python populate_packages_prepend () {
 
 LEAD_SONAME = "libfltk.so"
 
-FILES_${PN} += "${datadir}/mime"
+# .desktop / icons / mime only necessary for fluid app
+FILES_${PN}-bin += " \
+    ${datadir}/applications \
+    ${datadir}/icons \
+    ${datadir}/mime \
+"
+
+# cmake files
+FILES_${PN}-dev += "${datadir}/fltk"
