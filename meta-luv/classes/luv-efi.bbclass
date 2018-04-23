@@ -142,7 +142,7 @@ efi_iso_populate() {
         echo "${GRUB_IMAGE}" > ${EFIIMGDIR}/startup.nsh
     fi
 
-    cp $iso_dir/vmlinuz ${EFIIMGDIR}
+    cp $iso_dir/${KERNEL_IMAGETYPE} ${EFIIMGDIR}/
     if [ -f "$iso_dir/initrd" ] ; then
         cp $iso_dir/initrd ${EFIIMGDIR}
     fi
@@ -173,7 +173,8 @@ python build_efi_cfg() {
        cfgfile.write('fallback=0\n')
 
     cfgfile.write('menuentry \'luv\' {\n')
-    cfgfile.write('linux /vmlinuz ')
+    kernel = d.getVar('KERNEL_IMAGETYPE')
+    cfgfile.write('linux /%s ' % (kernel))
 
     cmdline = d.getVar('CMDLINE', True)
     if cmdline:
