@@ -1,6 +1,6 @@
-From 3e286835347cfbe01fca80496f4c767c2bdc2094 Mon Sep 17 00:00:00 2001
-From: Ashok Kumar Sekar <asekar@redhat.com>
-Date: Fri, 23 Sep 2016 04:16:19 -0700
+From 47e4c885e504c7747c70e088338ed85ec72a8af1 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Wed, 25 Apr 2018 11:09:32 -0700
 Subject: [PATCH 1/2] PCI: Vulcan: AHCI PCI bar fix for Broadcom Vulcan early
  silicon
 
@@ -16,10 +16,10 @@ Signed-off-by: Jayachandran C <jchandra@broadcom.com>
  1 file changed, 24 insertions(+)
 
 diff --git a/drivers/pci/quirks.c b/drivers/pci/quirks.c
-index 6736836..4565800 100644
+index 46d47bd..cb973fd 100644
 --- a/drivers/pci/quirks.c
 +++ b/drivers/pci/quirks.c
-@@ -3958,6 +3958,30 @@ static void quirk_mic_x200_dma_alias(struct pci_dev *pdev)
+@@ -4000,6 +4000,30 @@ static void quirk_mic_x200_dma_alias(struct pci_dev *pdev)
  DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_INTEL, 0x2264, quirk_mic_x200_dma_alias);
  
  /*
@@ -47,9 +47,9 @@ index 6736836..4565800 100644
 +DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_BROADCOM, 0x9027, quirk_fix_vulcan_ahci_bars);
 +
 +/*
-  * Intersil/Techwell TW686[4589]-based video capture cards have an empty (zero)
-  * class code.  Fix it.
-  */
+  * The IOMMU and interrupt controller on Broadcom Vulcan/Cavium ThunderX2 are
+  * associated not at the root bus, but at a bridge below. This quirk avoids
+  * generating invalid DMA aliases.
 -- 
-1.8.3.1
+1.9.1
 
