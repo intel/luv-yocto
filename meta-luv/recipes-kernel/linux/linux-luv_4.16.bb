@@ -80,7 +80,6 @@ SRC_URI += "file://0001-PCI-Vulcan-AHCI-PCI-bar-fix-for-Broadcom-Vulcan-earl.pat
             file://0001-selftests-change-reboot-flag-location.patch \
             file://0001-pstore-test-remove-log-directory.patch \
             file://0001-x86-mttr-Update-only-valid-variable-range-MTRRs.patch \
-            file://0001-x86-mm-Fix-overlap-of-i386-CPU_ENTRY_AREA-with-FIX_B.patch \
            "
 
 COMMON_CFG_x86 = " file://qemux86/modules.cfg \
@@ -127,13 +126,13 @@ KCONFIG_MODE = 'alldefconfig'
 KBUILD_DEFCONFIG = "defconfig"
 KBUILD_DEFCONFIG_x86 = "i386_defconfig"
 KBUILD_DEFCONFIG_x86-64 = "x86_64_defconfig"
-LINUX_VERSION = "4.15"
+LINUX_VERSION = "4.16"
 LINUX_VERSION_EXTENSION = "-luv"
 
 # Override SRCREV to point to a different commit in a bbappend file to
 # build a different release of the Linux kernel.
 # tag: v4.15 d8a5b80568a9cb66810e75b182018e9edb68e8ff
-SRCREV = "d8a5b80568a9cb66810e75b182018e9edb68e8ff"
+SRCREV = "0adb32858b0bddf4ada5f364a84ed60b196dbcda"
 
 PR = "r5"
 PV = "${LINUX_VERSION}+git${SRCPV}"
