@@ -11,7 +11,7 @@ HOMEPAGE = "https://git.kernel.org/cgit/linux/kernel/git/nvdimm/nvdimm.git/tree/
 LICENSE = "GPLv2+"
 LIC_FILES_CHKSUM = "file://COPYING;md5=e66651809cac5da60c8b80e9e4e79e08"
 
-PV = "v58+git${SRCPV}"
+PV = "v60+git${SRCPV}"
 
 RDEPENDS_${PN} = "nvdimm-test"
 COMPATIBLE_HOST='(x86_64).*'
@@ -25,7 +25,7 @@ SRC_URI += "file://luv-parser-ndctl"
 SRC_URI += "file://ndctl_runner"
 SRC_URI += "file://ndctl.json"
 
-SRCREV = "0a628fdf4fe58a283b16c1bbaa49bb28b1842bf9"
+SRCREV = "3f78a76c7d2339166cc4eeaa9f525ace8607bfd8"
 
 S = "${WORKDIR}/git"
 DEPENDS = "virtual/kernel kmod udev json-c"
