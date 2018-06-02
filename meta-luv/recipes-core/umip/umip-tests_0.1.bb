@@ -18,6 +18,7 @@ SRC_URI="file://umip_test_defs.h \
          file://umip_test_gen_16.py \
          file://umip_ldt_64.c \
          file://umip_test_gen_64.py \
+         file://cpuid.c \
          file://UMIP_README \
         "
 
@@ -70,6 +71,7 @@ do_install() {
                 install -m 755 ${WORKDIR}/umip_ldt_32_emul_all ${D}${bindir}
                 install -m 755 ${WORKDIR}/umip_ldt_16_emul_all ${D}${bindir}
         fi
+        install -m 755 ${WORKDIR}/umip_cpuid ${D}${bindir}
 
 }
 

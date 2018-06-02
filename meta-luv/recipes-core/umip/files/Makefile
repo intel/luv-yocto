@@ -1,3 +1,7 @@
+cpuid: CFLAGS += -fno-omit-frame-pointer
+cpuid:
+	$(CC) $(CFLAGS) -o umip_cpuid cpuid.c
+
 x86_64_minimal: CFLAGS += -fno-omit-frame-pointer
 x86_64_minimal:
 	$(CC) $(CFLAGS) -c umip_utils.c -o umip_utils_64.o
@@ -24,7 +28,7 @@ x86_64_emul_all: x86_64_minimal
 	$(CC) $(CFLAGS) -c umip_ldt_64.c
 	$(CC) $(CFLAGS) -o umip_ldt_64_emul_all test_umip_ldt_64.o umip_ldt_64.o umip_utils_64.o
 
-x86_64: x86_64_minimal x86_64_emul_all
+x86_64: x86_64_minimal x86_64_emul_all cpuid
 
 i686_minimal: CFLAGS += -fno-omit-frame-pointer -m32
 i686_minimal:
@@ -62,7 +66,7 @@ i686_emul_all: i686_minimal
 	$(CC) $(CFLAGS) -c umip_ldt_16.c
 	$(CC) $(CFLAGS) -o umip_ldt_16_emul_all test_umip_ldt_16.o umip_ldt_16.o umip_utils_32.o
 
-i686: i686_minimal i686_emul_all
+i686: i686_minimal i686_emul_all cpuid
 i586: i686
 
 .PHONY: clean
