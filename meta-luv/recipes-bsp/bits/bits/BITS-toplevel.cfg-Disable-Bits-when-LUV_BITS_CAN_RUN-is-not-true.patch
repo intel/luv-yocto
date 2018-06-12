@@ -1,0 +1,32 @@
+From 0448572fa5c13675088c3d49c2e6cdb24717bb81 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Wed, 13 Jun 2018 13:35:27 -0700
+Subject: [PATCH] toplevel.cfg: Disable Bits when LUV_BITS_CAN_RUN is not true
+
+This patch disables the bits testsuite from running when the variable
+LUV_BITS_CAN_RUN is not true.
+
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
+---
+ cfg/toplevel.cfg | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/cfg/toplevel.cfg b/cfg/toplevel.cfg
+index 2cf108e..07bd1ed 100644
+--- a/cfg/toplevel.cfg
++++ b/cfg/toplevel.cfg
+@@ -32,6 +32,11 @@ source /luv.cfg
+ regexp -s if_bits '^.*(bits).*' "$LUV_TESTS"
+ if [ -z $if_bits ]; then exit ; fi
+
++# If LUV grub did not return from ExitBootServices, LUV_BITS_CAN_RUN
++# remains false on the next boot; skip BITS in this case.
++regexp 'true' "$LUV_BITS_CAN_RUN"
++if [ $? -ne 0 ]; then exit; fi
++
+ echo "Starting BITS ..."
+
+ if [ -e /boot/cfg/init.cfg ]; then source /boot/cfg/init.cfg; fi
+--
+1.9.1
+
