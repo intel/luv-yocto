@@ -1,0 +1,56 @@
+From 3e1214811eb8a12175519aaf8ea7353c489f724d Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Mon, 11 Jun 2018 15:28:59 -0700
+Subject: [PATCH] Make LUV_BITS_CAN_RUN false after BITS starts
+
+We use the LUV_BITS_CAN_RUN variable as an indicator to see if the BITS
+testsuite should be skipped. By default, LUV_BITS_CAN_RUN is set to true.
+However, when BITS starts executing, we set this to false, so that if we
+see a hang when later when exit_boot_services fails, and the user reboots
+the system, BITS will not run. If exit_boot_services succeeds, we later
+set this variable back to true when running the luv_test_manager.
+
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
+---
+ python/init.py     |  1 +
+ python/redirect.py | 12 +++++++++++++
+ 2 files changed, 13 insertions(+)
+
+diff --git a/python/init.py b/python/init.py
+index 803d2f2..00bd898 100644
+--- a/python/init.py
++++ b/python/init.py
+@@ -250,6 +250,7 @@ def init():
+
+         print "\nBatch mode complete\n"
+         redirect.write_logfile_cpio("/boot/bitsrd", "home/root/bits-log.txt")
++        redirect.unset_luv_bits_can_run("/luv.cfg")
+
+     with import_annotation("cpumenu"):
+         import cpumenu
+diff --git a/python/redirect.py b/python/redirect.py
+index 4bb460a..42cb0c1 100644
+--- a/python/redirect.py
++++ b/python/redirect.py
+@@ -66,6 +66,18 @@ def write_logfile(filename):
+             _bits.disk_write(f, sector, offset, logdata[bytes_written:bytes_written+length])
+         bytes_written += length
+
++def unset_luv_bits_can_run(filename):
++    f = file(filename)
++    data, blocks = _bits.file_data_and_disk_blocks(f)
++    total_size = len(data)
++    logdata = data.replace("LUV_BITS_CAN_RUN=\'true\'","LUV_BITS_CAN_RUN=\'false\'")
++    bytes_written = 0
++    for sector, offset, length in blocks:
++        chunk = logdata[bytes_written:bytes_written+length]
++        if chunk != data[bytes_written:bytes_written+length]:
++            _bits.disk_write(f, sector, offset, logdata[bytes_written:bytes_written+length])
++        bytes_written += length
++
+ def write_logfile_cpio(cpio_archive, filename):
+     f = file(cpio_archive)
+     data, blocks = _bits.file_data_and_disk_blocks(f)
+--
+1.9.1
+
