@@ -184,6 +184,7 @@ python build_efi_cfg() {
     cfgfile.write(' luv_storage=${LUV_STORAGE_URL}')
     cfgfile.write(' luv_tests=${LUV_TESTS}')
     cfgfile.write(' luv_reboot_tests=${LUV_REBOOT_TESTS}')
+    cfgfile.write(' luv_bits_can_run=${LUV_BITS_CAN_RUN}')
 
     cfgfile.write('\n')
 
@@ -244,6 +245,14 @@ python build_luv_cfg() {
 
     comment = 'Add test suites if needed, to run reboot tests in LUV'
     name = 'LUVCFG_reboot_tests'
+    luvcfg.write(insert_var(name, comment, d))
+
+    luvcfg.write('\n#####################################################\n')
+    luvcfg.write('## User should not modify any parameter below this ##\n')
+    luvcfg.write('#####################################################\n')
+
+    comment = 'Do not run bits if exit_boot_services fail'
+    name = 'LUVCFG_bits_can_run'
     luvcfg.write(insert_var(name, comment, d))
 
     # pad with spaces only if luv-netboot is present, so to make EFI binary

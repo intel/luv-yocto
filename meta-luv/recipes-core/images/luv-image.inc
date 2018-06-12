@@ -34,6 +34,7 @@ LUVCFG_tests = "LUV_TESTS='efivarfs-test,fwts,kernel-efi-warnings,pstore-tests,"
 LUVCFG_tests_append_x86-64 = "bits,chipsec,ndctl'"
 LUVCFG_tests_append_aarch64 = "'"
 LUVCFG_reboot_tests = "LUV_REBOOT_TESTS=none"
+LUVCFG_bits_can_run = "LUV_BITS_CAN_RUN='true'"
 
 # Path to splash screen image
 FILESEXTRAPATHS_append := "${THISDIR}/luv-live-image:"
