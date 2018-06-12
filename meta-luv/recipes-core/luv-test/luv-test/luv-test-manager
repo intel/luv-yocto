@@ -135,6 +135,8 @@ if [ -z ${LUVNETBOOT} ]; then
     mkdir -p ${LUV_EFI}
     if [ $? -eq 0 ]; then
         mount /dev/disk/by-uuid/${LUV_EFI_UUID} ${LUV_EFI}
+	# if LUV_BITS_CAN_RUN is false(after running BITS), set it back to true
+        sed -i -e "s/LUV_BITS_CAN_RUN='false'/LUV_BITS_CAN_RUN='true'/g" ${LUV_EFI}/luv.cfg
     fi
 # booted from network
 else
