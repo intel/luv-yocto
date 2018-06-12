@@ -27,6 +27,7 @@ COMMON_GRUB_x86 += "file://0001-pe32.h-add-header-structures-for-TE-and-DOS-exec
            file://0012-grub-core-loader-add-support-for-memdisks.patch \
            file://0013-grub-core-loader-pass-current-disk-device-to-loaded-.patch \
            file://0001-tsc-Change-default-tsc-calibration-method-to-pmtimer.patch \
+           file://0014-grub-core-Make-user-aware-of-exit_boot_service-failure.patch \
           "
 
 # Add grub-efi patches for x86/x86-64/arm64
