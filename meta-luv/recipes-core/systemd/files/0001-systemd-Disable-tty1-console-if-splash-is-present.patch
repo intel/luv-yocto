@@ -1,4 +1,4 @@
-From 99106e8d38af1c95c0060c64ee527b63bfbc2ece Mon Sep 17 00:00:00 2001
+From f2816d5ea253818450042e2a52f5a68fcbbc950e Mon Sep 17 00:00:00 2001
 From: Megha Dey <megha.dey@linux.intel.com>
 Date: Mon, 13 Feb 2017 18:27:05 -0800
 Subject: [PATCH] Disable tty1 console when splash is present
@@ -7,26 +7,27 @@ When the splash parameter is passed to the kernel command line,
 we want the splash screen to be displayed even after boot has
 completed. By default, once boot is complete, tty1 is enabled
 and we reach the login screen. Conversely, when there is no splash,
-and user wants to boot in text only mode, we want to enable the
-getty@tty1.service file which will allow plymouth to shift
-from tty0(splash screen) to tty1(login screen) after boot. Hence,
-this service file is conditionally not executed if splash is
+(or splash=false) and user wants to boot in text only mode, we
+want to enable the getty@tty1.service file which will allow plymouth
+to shift from tty0(splash screen) to tty1(login screen) after boot.
+Hence, this service file is conditionally not executed if splash is
 enabled on the command line.
 
 Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
 ---
- units/getty@.service.m4 | 1 +
- 1 file changed, 1 insertion(+)
+ units/getty@.service.m4 | 2 ++
+ 1 file changed, 2 insertions(+)
 
 diff --git a/units/getty@.service.m4 b/units/getty@.service.m4
-index 46164ab..9962a10 100644
+index 80e793b..5c3291d 100644
 --- a/units/getty@.service.m4
 +++ b/units/getty@.service.m4
-@@ -24,6 +24,7 @@ IgnoreOnIsolate=yes
+@@ -32,6 +32,8 @@ Before=rescue.service
  # that serial gettys are covered by serial-getty@.service, not this
  # unit.
  ConditionPathExists=/dev/tty0
-+ConditionKernelCommandLine=!splash
++ConditionKernelCommandLine=|!splash
++ConditionKernelCommandLine=|splash=false
  
  [Service]
  # the VT is cleared by TTYVTDisallocate
