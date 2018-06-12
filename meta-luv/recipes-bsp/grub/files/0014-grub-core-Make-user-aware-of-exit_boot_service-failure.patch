@@ -1,0 +1,38 @@
+From 3018e5e8dc98002f8f38aaa48af56ae2ecadf104 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Fri, 8 Jun 2018 15:02:09 -0700
+Subject: [PATCH] grub-core: Make user aware of exit_boot_service failure
+
+Print a message letting the user know that call to the exit_boot_services()
+might never return.
+
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
+---
+ grub-core/kern/efi/mm.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/grub-core/kern/efi/mm.c b/grub-core/kern/efi/mm.c
+index 20a47aa..8bc9a93 100644
+--- a/grub-core/kern/efi/mm.c
++++ b/grub-core/kern/efi/mm.c
+@@ -49,6 +49,8 @@ static grub_efi_uintn_t finish_desc_size;
+ static grub_efi_uint32_t finish_desc_version;
+ int grub_efi_is_finished = 0;
+
++static const char *luv_grub_msg = "We are about to call EFI exit_boot_services from luv grub. We have seen that some systems never return after this call, if we execute the BITS testsuite, thus making it seem that the system has hung. If you continue seeing this message for more than a minute, then you might have to reboot the system. On the next run, we will automatically skip BITS and resume the other test suites.";
++
+ /* Allocate pages. Return the pointer to the first of allocated pages.  */
+ void *
+ grub_efi_allocate_pages (grub_efi_physical_address_t address,
+@@ -162,6 +164,8 @@ grub_efi_finish_boot_services (grub_efi_uintn_t *outbuf_size, void *outbuf,
+			   apple, sizeof (apple)) == 0);
+ #endif
+
++  grub_printf("%s\n", luv_grub_msg);
++
+   while (1)
+     {
+       if (grub_efi_get_memory_map (&finish_mmap_size, finish_mmap_buf, &finish_key,
+--
+1.9.1
+
