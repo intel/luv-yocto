@@ -2,7 +2,7 @@ DESCRIPTION = "pstore tests"
 HOMEPAGE = "https://www.kernel.org/pub/linux/kernel"
 SECTION = "base"
 LICENSE = "GPLv2"
-LIC_FILES_CHKSUM = "file://${STAGING_KERNEL_DIR}/COPYING;md5=d7810fab7487fb0aad327b76f1be7cd7"
+LIC_FILES_CHKSUM = "file://${STAGING_KERNEL_DIR}/COPYING;md5=bbea815ee2795b2f4230826c0c6b8814"
 KBRANCH="stable"
 
 # Picking up matts branch
