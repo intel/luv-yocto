@@ -126,13 +126,13 @@ KCONFIG_MODE = 'alldefconfig'
 KBUILD_DEFCONFIG = "defconfig"
 KBUILD_DEFCONFIG_x86 = "i386_defconfig"
 KBUILD_DEFCONFIG_x86-64 = "x86_64_defconfig"
-LINUX_VERSION = "4.16"
+LINUX_VERSION = "4.17"
 LINUX_VERSION_EXTENSION = "-luv"
 
 # Override SRCREV to point to a different commit in a bbappend file to
 # build a different release of the Linux kernel.
-# tag: v4.15 d8a5b80568a9cb66810e75b182018e9edb68e8ff
-SRCREV = "0adb32858b0bddf4ada5f364a84ed60b196dbcda"
+# tag: v4.17 29dcea88779c856c7dc92040a0c01233263101d4
+SRCREV = "29dcea88779c856c7dc92040a0c01233263101d4"
 
 PR = "r5"
 PV = "${LINUX_VERSION}+git${SRCPV}"
