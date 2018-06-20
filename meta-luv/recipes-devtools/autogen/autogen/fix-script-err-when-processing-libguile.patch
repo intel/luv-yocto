@@ -1,4 +1,7 @@
-autogen-native: fix script err when processing libguile
+From 284bd0ad83b1b45e052209c169a1446ec28956d5 Mon Sep 17 00:00:00 2001
+From: Zhenbo Gao <zhenbo.gao@windriver.com>
+Date: Mon, 20 Nov 2017 15:52:00 -0800
+Subject: [PATCH] autogen-native: fix script err when processing libguile
 
 do_configure for autogen will fail if project directory path
 contains '-I' character, which is caused by the unsuitable sed
@@ -8,6 +11,11 @@ Upstream-Status: Pending
 
 Signed-off-by: Zhenbo Gao <zhenbo.gao@windriver.com>
 Signed-off-by: Yi Zhao <yi.zhao@windriver.com>
+
+---
+ config/ag_macros.m4 | 2 +-
+ config/misc.def     | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/config/ag_macros.m4 b/config/ag_macros.m4
 index 58186b6..58ed2ad 100644
@@ -23,12 +31,12 @@ index 58186b6..58ed2ad 100644
    do  test -f "$d/libguile/version.h" && gdir=$d && break
    done
 diff --git a/config/misc.def b/config/misc.def
-index 490d361..6e183ef 100644
+index 684fd0a..44c8bfd 100644
 --- a/config/misc.def
 +++ b/config/misc.def
-@@ -342,7 +342,7 @@ do-always = <<- _END_ALWAYS_
-	GUILE_FLAGS
-	[ag_gv=`gdir=\`pkg-config --cflags-only-I \
+@@ -347,7 +347,7 @@ do-always = <<- _END_ALWAYS_
+		}
+		ag_gv=`gdir=\`${PKG_CONFIG} --cflags-only-I \
 			guile-${GUILE_EFFECTIVE_VERSION} | \
 -			sed 's/-I *//;s/ *-I.*/ /g'\`
 +			sed 's/ *-I *\// \//g'\`

@@ -1,3 +1,8 @@
+From 0df7fe937515d575205bc4e129f0b42e658d4e16 Mon Sep 17 00:00:00 2001
+From: Nitin A Kamble <nitin.a.kamble@intel.com>
+Date: Mon, 20 Nov 2017 15:42:13 -0800
+Subject: [PATCH] guile: add new recipe for autogen
+
 Upstream-Status: Pending
 
 This fixes sed issue when prefix has / in it, like /usr/local
@@ -9,12 +14,16 @@ autoreconf error avoided:
 Signed-off-by: Nitin A Kamble <nitin.a.kamble@intel.com>
 2012/05/01
 
-Index: guile-2.0.5/build-aux/git-version-gen
-===================================================================
---- guile-2.0.5.orig/build-aux/git-version-gen
-+++ guile-2.0.5/build-aux/git-version-gen
-@@ -187,7 +187,7 @@ else
-     v=UNKNOWN
+---
+ build-aux/git-version-gen | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/build-aux/git-version-gen b/build-aux/git-version-gen
+index 9e5e4fb..3a43faf 100755
+--- a/build-aux/git-version-gen
++++ b/build-aux/git-version-gen
+@@ -200,7 +200,7 @@ else
+     v=$fallback
  fi
 
 -v=`echo "$v" |sed "s/^$prefix//"`

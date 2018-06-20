@@ -1,4 +1,4 @@
-From 1200ddb15787de7186bf687ccdea2d9f3a7a7870 Mon Sep 17 00:00:00 2001
+From 444379fb77908b71268a428d45a49f298107ba2f Mon Sep 17 00:00:00 2001
 From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
 Date: Thu, 9 Mar 2017 19:32:58 -0800
 Subject: [PATCH] drivers: linux: Do not host system's kernel source directory
@@ -15,7 +15,7 @@ Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/drivers/linux/Makefile b/drivers/linux/Makefile
-index 0766cd9..f94c3a2 100644
+index 69e90e2..012c90e 100644
 --- a/drivers/linux/Makefile
 +++ b/drivers/linux/Makefile
 @@ -1,4 +1,4 @@
@@ -23,7 +23,7 @@ index 0766cd9..f94c3a2 100644
 +KERNEL_SRC_DIR = LUV_KERNEL_SRC_DIR
  #KERNEL_SRC_DIR = /usr/src/android/3.0-mid
  
- ifeq ($(ARCH),i386)
+ MACHINE ?= $(shell uname -m)
 -- 
-2.9.3
+1.9.1
 

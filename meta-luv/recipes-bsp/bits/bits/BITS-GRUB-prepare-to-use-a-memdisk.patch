@@ -1,6 +1,6 @@
-From e32191fed50df8c99484cde1b3cbfbba29c0ab22 Mon Sep 17 00:00:00 2001
-From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
-Date: Mon, 30 Nov 2015 10:41:10 -0800
+From bbfe92d81cc313f2859eb776cc832b7cac962c3c Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Tue, 19 Jun 2018 12:55:07 -0700
 Subject: [PATCH] BITS: GRUB: prepare to use a memdisk
 
 When running from a memdisk, the memdisk module is needed. Likewise, (memdisk)
@@ -15,10 +15,10 @@ Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/Makefile b/Makefile
-index 7ad3694..9691cc3 100644
+index 814ee51..a840f23 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -113,7 +113,7 @@ i386-pc-img:=boot/grub/core.img
+@@ -112,7 +112,7 @@ i386-pc-img:=boot/grub/core.img
  i386-efi-img:=efi/boot/bootia32.efi
  x86_64-efi-img:=efi/boot/bootx64.efi
  i386-pc-extra-modules:=biosdisk
@@ -27,15 +27,15 @@ index 7ad3694..9691cc3 100644
  
  build-grub-%: autogen-grub
  	$(Q)mkdir '$(workdir)/grub-build-$*'
-@@ -126,7 +126,7 @@ build-grub-%: autogen-grub
+@@ -125,7 +125,7 @@ build-grub-%: autogen-grub
  	$(call mk_faketarget)
  
  mkimage-grub-%: build-grub-%
 -	$(Q)bits-grub-mkimage -O $* --output='$(target)/$($*-img)' --prefix=/boot/grub -d '$(workdir)/grub-build-$*/grub-core' $($*-extra-modules) $(common-modules)
 +	$(Q)bits-grub-mkimage -O $* --output='$(target)/$($*-img)' --prefix="LUV_NETBOOT_ROOT/boot/grub" -d '$(workdir)/grub-build-$*/grub-core' $($*-extra-modules) $(common-modules)
  	$(call mk_faketarget)
+
  
- # Workaround for syslinux 5 bug booting lnxboot.img
 -- 
 1.9.1
 

@@ -1,6 +1,6 @@
-From eb378df238531c1d10543e2fb643cccb74a8f421 Mon Sep 17 00:00:00 2001
-From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
-Date: Fri, 10 Mar 2017 12:30:20 -0800
+From e24fbd79aaf06a80ceadcf03da943d75b99968b6 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Tue, 19 Jun 2018 11:26:12 -0700
 Subject: [PATCH] chipsec: do not ship manual
 
 Given that LUV is an automated tool we don't ship a PDF reader,
@@ -13,11 +13,11 @@ Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
  1 file changed, 1 insertion(+), 2 deletions(-)
 
 diff --git a/setup.py b/setup.py
-index 89bcc91..fb0da43 100644
+index ccb844f..2b4edd0 100644
 --- a/setup.py
 +++ b/setup.py
 @@ -141,7 +141,7 @@ package_data = {
-     "chipsec": ["VERSION", "WARNING.txt"],
+     "chipsec": ["*VERSION", "WARNING.txt"],
      "chipsec.cfg": ["*.xml", "*.xsd"],
  }
 -data_files = [("", ["chipsec-manual.pdf"])]
@@ -25,7 +25,7 @@ index 89bcc91..fb0da43 100644
  install_requires = []
  extra_kw = {}
  
-@@ -156,7 +156,6 @@ if platform.system().lower() == "windows":
+@@ -157,7 +157,6 @@ elif platform.system().lower() == "linux":
      compression_source_files = []
      package_data["chipsec_tools.linux"] = ['*']
      package_data["chipsec_tools.compression"] = ["*.c","*.h"]
@@ -34,5 +34,5 @@ index 89bcc91..fb0da43 100644
          for f in path:
              if os.path.splitext(f)[1][1:] == 'h':
 -- 
-2.9.3
+1.9.1
 

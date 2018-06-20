@@ -1,6 +1,6 @@
-From ee9d8dbb0e22450bb2b291b34b01538962303f82 Mon Sep 17 00:00:00 2001
-From: Megha Dey <megha.dey@intel.com>
-Date: Wed, 3 Feb 2016 11:17:54 -0800
+From 6b05219fb0f2e27ea01bdb049eaffa5ca516e053 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Mon, 25 Jun 2018 13:36:45 -0700
 Subject: [PATCH] grub: shim: compile chainloader.c for 32bit system
 
 Modify variable sizes, edit pointer indirections and casts to
@@ -11,16 +11,16 @@ grub_efi_physical_address variable, which is always 64-bit as this is
 required by the UEFI interface Allocate PAges. We internally (i.e.
 within the grub context) use the grub_addr_t.
 
-Signed-off-by: Megha Dey <megha.dey@intel.com>
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
 ---
- grub-core/loader/efi/chainloader.c | 58 +++++++++++++++++++-------------------
- 1 file changed, 29 insertions(+), 29 deletions(-)
+ grub-core/loader/efi/chainloader.c | 55 +++++++++++++++++++-------------------
+ 1 file changed, 28 insertions(+), 27 deletions(-)
 
 diff --git a/grub-core/loader/efi/chainloader.c b/grub-core/loader/efi/chainloader.c
-index e35f36a..4f793ba 100644
+index db8a598..6ee8571 100644
 --- a/grub-core/loader/efi/chainloader.c
 +++ b/grub-core/loader/efi/chainloader.c
-@@ -149,12 +149,12 @@ grub_shim_image_is_loadable (union grub_shim_optional_header_union *pe_hdr)
+@@ -153,12 +153,12 @@ grub_shim_image_is_loadable (union grub_shim_optional_header_union *pe_hdr)
  /*
   * Perform basic bounds checking of the intra-image pointers
   */
@@ -36,7 +36,7 @@ index e35f36a..4f793ba 100644
  }
  
  /*
-@@ -179,12 +179,8 @@ grub_shim_relocate_coff (struct grub_shim_pe_coff_loader_image_context *context,
+@@ -183,12 +183,8 @@ grub_shim_relocate_coff (struct grub_shim_pe_coff_loader_image_context *context,
    else
      context->pe_hdr->pe32.opt_hdr.image_base = (grub_efi_uint32_t)(unsigned long)data;
  
@@ -51,7 +51,7 @@ index e35f36a..4f793ba 100644
  					    + context->reloc_dir->size - 1);
  
    if (!reloc_base || !reloc_base_end)
-@@ -219,9 +215,7 @@ grub_shim_relocate_coff (struct grub_shim_pe_coff_loader_image_context *context,
+@@ -223,9 +219,7 @@ grub_shim_relocate_coff (struct grub_shim_pe_coff_loader_image_context *context,
            }
  
          fixup_base = (grub_uint8_t *)
@@ -62,7 +62,7 @@ index e35f36a..4f793ba 100644
          if (!fixup_base)
            {
              grub_printf("Invalid fixup_base\n");
-@@ -294,10 +288,12 @@ grub_shim_relocate_coff (struct grub_shim_pe_coff_loader_image_context *context,
+@@ -298,10 +292,12 @@ grub_shim_relocate_coff (struct grub_shim_pe_coff_loader_image_context *context,
  }
  
  /*
@@ -77,7 +77,7 @@ index e35f36a..4f793ba 100644
  		      struct grub_shim_pe_coff_loader_image_context *context)
  {
    struct grub_dos_header *dos_hdr = (struct grub_dos_header *)data;
-@@ -491,9 +487,13 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
+@@ -495,9 +491,13 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
        return GRUB_ERR_OUT_OF_MEMORY;
      }
  
@@ -94,23 +94,22 @@ index e35f36a..4f793ba 100644
    /*
     * Copy the executable's sections to their desired offsets
    */
-@@ -509,11 +509,11 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
-         if (sect_size > section->raw_data_size)
+@@ -514,10 +514,12 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
  	  sect_size = section->raw_data_size;
  
--	base = (grub_int8_t *)
+	base = (grub_int8_t *)
 -	       grub_shim_image_address (shim_buffer, context->image_size,
-+	base = grub_shim_image_address ((void *)(grub_addr_t)shim_buffer,
++	       grub_shim_image_address ((void *)(grub_addr_t)shim_buffer,
 +					context->image_size,
  					section->virtual_address);
--	end = (grub_int8_t *)
+	end = (grub_int8_t *)
 -	      grub_shim_image_address (shim_buffer, context->image_size,
-+	end = grub_shim_image_address ((void *)(grub_addr_t)shim_buffer,
++	      grub_shim_image_address ((void *)(grub_addr_t)shim_buffer,
 +				       context->image_size,
  				       section->virtual_address
  				       + sect_size - 1);
  	if (!base || !end)
-@@ -532,7 +532,6 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
+@@ -536,7 +538,6 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
  	  }
  
  	if (section->raw_data_size > 0)
@@ -118,7 +117,7 @@ index e35f36a..4f793ba 100644
  	  grub_memcpy ((void *)base,
  		       (void *) (((grub_addr_t) addr)
  		       + section->raw_data_offset), sect_size);
-@@ -552,7 +551,7 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
+@@ -556,7 +557,7 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
    if (context->reloc_dir->size)
      {
        status = grub_shim_relocate_coff (context, (void *) addr,
@@ -127,7 +126,7 @@ index e35f36a..4f793ba 100644
        if (status != GRUB_ERR_NONE)
  	{
  	  grub_printf("Relocation failed: [%u]\n", status);
-@@ -560,9 +559,9 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
+@@ -564,9 +565,9 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
  	  goto fail;
  	}
      }
@@ -140,7 +139,7 @@ index e35f36a..4f793ba 100644
    if (!shim_entry_point)
      {
        grub_printf("Invalid entry point\n");
-@@ -629,8 +628,9 @@ grub_chainloader_boot (void)
+@@ -633,8 +634,8 @@ grub_chainloader_boot (void)
        saved_exit = grub_efi_system_table->boot_services->exit;
        grub_efi_system_table->boot_services->exit = efi_shim_exit;
        status = efi_call_foo(shim_entry_point,
@@ -148,11 +147,10 @@ index e35f36a..4f793ba 100644
 -	                    (grub_efi_uint64_t)grub_efi_system_table);
 +			    (grub_addr_t)grub_efi_image_handle,
 +			    (grub_addr_t)grub_efi_system_table);
-+
        grub_efi_system_table->boot_services->exit = saved_exit;
  
        loaded_image = grub_efi_get_loaded_image (grub_efi_image_handle);
-@@ -903,7 +903,7 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
+@@ -946,7 +947,7 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
    if (shim_used)
      {
        grub_memcpy(&shim_li_bak, loaded_image, sizeof(shim_li_bak));

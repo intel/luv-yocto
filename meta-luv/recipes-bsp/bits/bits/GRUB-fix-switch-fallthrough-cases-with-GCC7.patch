@@ -1,6 +1,6 @@
-From 7f0fa548646b8c34f7c991e69f65110e10d0f07e Mon Sep 17 00:00:00 2001
+From 05e93b85b4ddad38d2277e344259b8a50a141a2f Mon Sep 17 00:00:00 2001
 From: Megha Dey <megha.dey@linux.intel.com>
-Date: Wed, 8 Nov 2017 18:07:49 -0800
+Date: Tue, 26 Jun 2018 16:07:36 -0700
 Subject: [PATCH] grub: fix switch fallthrough cases with GCC7
 
     Add the fallthrough comment to some files in grub to make it compliant
@@ -18,24 +18,24 @@ Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
  deps/grub/grub-core/gnulib/regexec.c            |  2 +-
  deps/grub/grub-core/lib/legacy_parse.c          |  1 +
  deps/grub/grub-core/lib/xzembed/xz_dec_lzma2.c  |  4 ++--
- deps/grub/grub-core/lib/xzembed/xz_dec_stream.c | 10 +++++++++-
+ deps/grub/grub-core/lib/xzembed/xz_dec_stream.c | 16 +++++++++-------
  deps/grub/grub-core/loader/i386/linux.c         |  3 +++
  deps/grub/grub-core/mmap/efi/mmap.c             | 10 +++++++++-
  deps/grub/grub-core/normal/charset.c            |  2 ++
  deps/grub/grub-core/video/bochs.c               |  2 +-
  deps/grub/grub-core/video/cirrus.c              |  2 +-
  deps/grub/grub-core/video/readers/jpeg.c        |  1 +
- util/grub-mkimagexx.c                 |  3 +++
- 18 files changed, 44 insertions(+), 12 deletions(-)
+ deps/grub/util/grub-mkimagexx.c                 |  3 +++
+ 18 files changed, 44 insertions(+), 18 deletions(-)
 
 diff --git a/deps/grub/grub-core/commands/hdparm.c b/deps/grub/grub-core/commands/hdparm.c
 index 3fb0891..9ae6d71 100644
 --- a/deps/grub/grub-core/commands/hdparm.c
 +++ b/deps/grub/grub-core/commands/hdparm.c
 @@ -328,6 +328,7 @@ grub_cmd_hdparm (grub_extcmd_context_t ctxt, int argc, char **args)
-	  ata = ((struct grub_scsi *) disk->data)->data;
-	  break;
-	}
+ 	  ata = ((struct grub_scsi *) disk->data)->data;
+ 	  break;
+ 	}
 +	/* fall through */
      default:
        return grub_error (GRUB_ERR_IO, "not an ATA device");
@@ -45,110 +45,110 @@ index 1ac906d..6036ae6 100644
 --- a/deps/grub/grub-core/disk/cryptodisk.c
 +++ b/deps/grub/grub-core/disk/cryptodisk.c
 @@ -268,6 +268,7 @@ grub_cryptodisk_endecrypt (struct grub_cryptodisk *dev,
-	  break;
-	case GRUB_CRYPTODISK_MODE_IV_PLAIN64:
-	  iv[1] = grub_cpu_to_le32 (sector >> 32);
+ 	  break;
+ 	case GRUB_CRYPTODISK_MODE_IV_PLAIN64:
+ 	  iv[1] = grub_cpu_to_le32 (sector >> 32);
 +	/* fall through */
-	case GRUB_CRYPTODISK_MODE_IV_PLAIN:
-	  iv[0] = grub_cpu_to_le32 (sector & 0xFFFFFFFF);
-	  break;
+ 	case GRUB_CRYPTODISK_MODE_IV_PLAIN:
+ 	  iv[0] = grub_cpu_to_le32 (sector & 0xFFFFFFFF);
+ 	  break;
 @@ -289,6 +290,7 @@ grub_cryptodisk_endecrypt (struct grub_cryptodisk *dev,
-					 dev->cipher->cipher->blocksize);
-	  if (err)
-	    return err;
+ 					 dev->cipher->cipher->blocksize);
+ 	  if (err)
+ 	    return err;
 +	/* fall through */
-	}
-
+ 	}
+ 
        switch (dev->mode)
 diff --git a/deps/grub/grub-core/disk/diskfilter.c b/deps/grub/grub-core/disk/diskfilter.c
 index 6e9745e..1f93fc1 100644
 --- a/deps/grub/grub-core/disk/diskfilter.c
 +++ b/deps/grub/grub-core/disk/diskfilter.c
 @@ -71,6 +71,7 @@ is_lv_readable (struct grub_diskfilter_lv *lv, int easily)
-	case GRUB_DISKFILTER_RAID6:
-	  if (!easily)
-	    need--;
+ 	case GRUB_DISKFILTER_RAID6:
+ 	  if (!easily)
+ 	    need--;
 +        /* fall through */
-	case GRUB_DISKFILTER_RAID4:
-	case GRUB_DISKFILTER_RAID5:
-	  if (!easily)
+ 	case GRUB_DISKFILTER_RAID4:
+ 	case GRUB_DISKFILTER_RAID5:
+ 	  if (!easily)
 @@ -507,6 +508,7 @@ read_segment (struct grub_diskfilter_segment *seg, grub_disk_addr_t sector,
        if (seg->node_count == 1)
-	return grub_diskfilter_read_node (&seg->nodes[0],
-					  sector, size, buf);
+ 	return grub_diskfilter_read_node (&seg->nodes[0],
+ 					  sector, size, buf);
 +    /* fall through */
      case GRUB_DISKFILTER_MIRROR:
      case GRUB_DISKFILTER_RAID10:
-      {
+       {
 diff --git a/deps/grub/grub-core/disk/efi/efidisk.c b/deps/grub/grub-core/disk/efi/efidisk.c
-index d9d788c..1dbab58 100644
+index 07f1eab..8ab4e1b 100644
 --- a/deps/grub/grub-core/disk/efi/efidisk.c
 +++ b/deps/grub/grub-core/disk/efi/efidisk.c
 @@ -262,7 +262,7 @@ name_devices (struct grub_efidisk_data *devices)
-	    {
-	    case GRUB_EFI_HARD_DRIVE_DEVICE_PATH_SUBTYPE:
-	      is_hard_drive = 1;
+ 	    {
+ 	    case GRUB_EFI_HARD_DRIVE_DEVICE_PATH_SUBTYPE:
+ 	      is_hard_drive = 1;
 -	      /* Fall through by intention.  */
 +	      /* fall through */
-	    case GRUB_EFI_CDROM_DEVICE_PATH_SUBTYPE:
-	      {
-		struct grub_efidisk_data *parent, *parent2;
+ 	    case GRUB_EFI_CDROM_DEVICE_PATH_SUBTYPE:
+ 	      {
+ 		struct grub_efidisk_data *parent, *parent2;
 diff --git a/deps/grub/grub-core/font/font.c b/deps/grub/grub-core/font/font.c
 index fca8c8d..5562990 100644
 --- a/deps/grub/grub-core/font/font.c
 +++ b/deps/grub/grub-core/font/font.c
 @@ -1297,7 +1297,7 @@ blit_comb (const struct grub_unicode_glyph *glyph_id,
-	    - grub_font_get_xheight (combining_glyphs[i]->font) - 1;
-	  if (space <= 0)
-	    space = 1 + (grub_font_get_xheight (main_glyph->font)) / 8;
+ 	    - grub_font_get_xheight (combining_glyphs[i]->font) - 1;
+ 	  if (space <= 0)
+ 	    space = 1 + (grub_font_get_xheight (main_glyph->font)) / 8;
 -
 +	/* fall through */
-	case GRUB_UNICODE_STACK_ATTACHED_ABOVE:
-	  do_blit (combining_glyphs[i], targetx,
-		   -(bounds.height + bounds.y + space
+ 	case GRUB_UNICODE_STACK_ATTACHED_ABOVE:
+ 	  do_blit (combining_glyphs[i], targetx,
+ 		   -(bounds.height + bounds.y + space
 @@ -1338,7 +1338,7 @@ blit_comb (const struct grub_unicode_glyph *glyph_id,
-		    + combining_glyphs[i]->height);
-	  if (space <= 0)
-	    space = 1 + (grub_font_get_xheight (main_glyph->font)) / 8;
+ 		    + combining_glyphs[i]->height);
+ 	  if (space <= 0)
+ 	    space = 1 + (grub_font_get_xheight (main_glyph->font)) / 8;
 -
 +	/* fall through */
-	case GRUB_UNICODE_STACK_ATTACHED_BELOW:
-	  do_blit (combining_glyphs[i], targetx, -(bounds.y - space));
-	  if (min_devwidth < combining_glyphs[i]->width)
+ 	case GRUB_UNICODE_STACK_ATTACHED_BELOW:
+ 	  do_blit (combining_glyphs[i], targetx, -(bounds.y - space));
+ 	  if (min_devwidth < combining_glyphs[i]->width)
 diff --git a/deps/grub/grub-core/fs/udf.c b/deps/grub/grub-core/fs/udf.c
 index 8e28d41..d79fc3c 100644
 --- a/deps/grub/grub-core/fs/udf.c
 +++ b/deps/grub/grub-core/fs/udf.c
 @@ -970,6 +970,7 @@ grub_udf_read_symlink (grub_fshelp_node_t node)
-	case 1:
-	  if (ptr[1])
-	    goto fail;
+ 	case 1:
+ 	  if (ptr[1])
+ 	    goto fail;
 +	  /* fall through */
-	case 2:
-	  /* in 4 bytes. out: 1 byte.  */
-	  optr = out;
+ 	case 2:
+ 	  /* in 4 bytes. out: 1 byte.  */
+ 	  optr = out;
 diff --git a/deps/grub/grub-core/gdb/cstub.c b/deps/grub/grub-core/gdb/cstub.c
 index a5c0c43..c65d89d 100644
 --- a/deps/grub/grub-core/gdb/cstub.c
 +++ b/deps/grub/grub-core/gdb/cstub.c
 @@ -336,7 +336,7 @@ grub_gdb_trap (int trap_no)
-	/* sAA..AA: Step one instruction from AA..AA(optional).  */
-	case 's':
-	  stepping = 1;
+ 	/* sAA..AA: Step one instruction from AA..AA(optional).  */
+ 	case 's':
+ 	  stepping = 1;
 -
 +	/* fall through */
-	/* cAA..AA: Continue at address AA..AA(optional).  */
-	case 'c':
-	  /* try to read optional parameter, pc unchanged if no parm */
+ 	/* cAA..AA: Continue at address AA..AA(optional).  */
+ 	case 'c':
+ 	  /* try to read optional parameter, pc unchanged if no parm */
 @@ -349,7 +349,7 @@ grub_gdb_trap (int trap_no)
-	  /* Set the trace bit if we're stepping.  */
-	  if (stepping)
-	    grub_gdb_regs[PS] |= 0x100;
+ 	  /* Set the trace bit if we're stepping.  */
+ 	  if (stepping)
+ 	    grub_gdb_regs[PS] |= 0x100;
 -
 +	  /* fall through */
-	  return;
-
-	/* Kill the program.  */
+ 	  return;
+ 
+ 	/* Kill the program.  */
 diff --git a/deps/grub/grub-core/gnulib/regexec.c b/deps/grub/grub-core/gnulib/regexec.c
 index dc449ce..2307c3a 100644
 --- a/deps/grub/grub-core/gnulib/regexec.c
@@ -162,196 +162,200 @@ index dc449ce..2307c3a 100644
 +      /* fall through */
      case OP_PERIOD:
        if ((ch == '\n' && !(mctx->dfa->syntax & RE_DOT_NEWLINE))
-	  || (ch == '\0' && (mctx->dfa->syntax & RE_DOT_NOT_NULL)))
+ 	  || (ch == '\0' && (mctx->dfa->syntax & RE_DOT_NOT_NULL)))
 diff --git a/deps/grub/grub-core/lib/legacy_parse.c b/deps/grub/grub-core/lib/legacy_parse.c
 index 775eaad..040ce56 100644
 --- a/deps/grub/grub-core/lib/legacy_parse.c
 +++ b/deps/grub/grub-core/lib/legacy_parse.c
 @@ -626,6 +626,7 @@ grub_legacy_parse (const char *buf, char **entryname, char **suffix)
-	  {
-	  case TYPE_FILE_NO_CONSUME:
-	    hold_arg = 1;
+ 	  {
+ 	  case TYPE_FILE_NO_CONSUME:
+ 	    hold_arg = 1;
 +	  /* fall through */
-	  case TYPE_PARTITION:
-	  case TYPE_FILE:
-	    args[i] = adjust_file (curarg, curarglen);
+ 	  case TYPE_PARTITION:
+ 	  case TYPE_FILE:
+ 	    args[i] = adjust_file (curarg, curarglen);
 diff --git a/deps/grub/grub-core/lib/xzembed/xz_dec_lzma2.c b/deps/grub/grub-core/lib/xzembed/xz_dec_lzma2.c
 index 7899e9e..b754023 100644
 --- a/deps/grub/grub-core/lib/xzembed/xz_dec_lzma2.c
 +++ b/deps/grub/grub-core/lib/xzembed/xz_dec_lzma2.c
 @@ -1041,7 +1041,7 @@ enum xz_ret xz_dec_lzma2_run(
-				return XZ_DATA_ERROR;
-
-			s->lzma2.sequence = SEQ_LZMA_PREPARE;
+ 				return XZ_DATA_ERROR;
+ 
+ 			s->lzma2.sequence = SEQ_LZMA_PREPARE;
 -
 +			/* fall through */
-		case SEQ_LZMA_PREPARE:
-			if (s->lzma2.compressed < RC_INIT_BYTES)
-				return XZ_DATA_ERROR;
+ 		case SEQ_LZMA_PREPARE:
+ 			if (s->lzma2.compressed < RC_INIT_BYTES)
+ 				return XZ_DATA_ERROR;
 @@ -1051,7 +1051,7 @@ enum xz_ret xz_dec_lzma2_run(
-
-			s->lzma2.compressed -= RC_INIT_BYTES;
-			s->lzma2.sequence = SEQ_LZMA_RUN;
+ 
+ 			s->lzma2.compressed -= RC_INIT_BYTES;
+ 			s->lzma2.sequence = SEQ_LZMA_RUN;
 -
 +			/* fall through */
-		case SEQ_LZMA_RUN:
-			/*
-			 * Set dictionary limit to indicate how much we want
+ 		case SEQ_LZMA_RUN:
+ 			/*
+ 			 * Set dictionary limit to indicate how much we want
 diff --git a/deps/grub/grub-core/lib/xzembed/xz_dec_stream.c b/deps/grub/grub-core/lib/xzembed/xz_dec_stream.c
-index 0d79b1f..c6e8b25 100644
+index 0d79b1f..52cb524 100644
 --- a/deps/grub/grub-core/lib/xzembed/xz_dec_stream.c
 +++ b/deps/grub/grub-core/lib/xzembed/xz_dec_stream.c
 @@ -748,7 +748,7 @@ static enum xz_ret dec_main(struct xz_dec *s, struct xz_buf *b)
-				return ret;
-
-			s->sequence = SEQ_BLOCK_START;
+ 				return ret;
+ 
+ 			s->sequence = SEQ_BLOCK_START;
 -
 +			/* fall through */
-		case SEQ_BLOCK_START:
-			/* We need one byte of input to continue. */
-			if (b->in_pos == b->in_size)
+ 		case SEQ_BLOCK_START:
+ 			/* We need one byte of input to continue. */
+ 			if (b->in_pos == b->in_size)
 @@ -771,6 +771,7 @@ static enum xz_ret dec_main(struct xz_dec *s, struct xz_buf *b)
-			s->temp.size = s->block_header.size;
-			s->temp.pos = 0;
-			s->sequence = SEQ_BLOCK_HEADER;
+ 			s->temp.size = s->block_header.size;
+ 			s->temp.pos = 0;
+ 			s->sequence = SEQ_BLOCK_HEADER;
 +			/* fall through */
-
-		case SEQ_BLOCK_HEADER:
-			if (!fill_temp(s, b))
-@@ -781,6 +782,7 @@ static enum xz_ret dec_main(struct xz_dec *s, struct xz_buf *b)
-				return ret;
-
-			s->sequence = SEQ_BLOCK_UNCOMPRESS;
+ 
+ 		case SEQ_BLOCK_HEADER:
+ 			if (!fill_temp(s, b))
+@@ -781,14 +782,14 @@ static enum xz_ret dec_main(struct xz_dec *s, struct xz_buf *b)
+ 				return ret;
+ 
+ 			s->sequence = SEQ_BLOCK_UNCOMPRESS;
+-
 +			/* fall through */
-
-		case SEQ_BLOCK_UNCOMPRESS:
-			ret = dec_block(s, b);
-@@ -788,6 +790,7 @@ static enum xz_ret dec_main(struct xz_dec *s, struct xz_buf *b)
-				return ret;
-
-			s->sequence = SEQ_BLOCK_PADDING;
+ 		case SEQ_BLOCK_UNCOMPRESS:
+ 			ret = dec_block(s, b);
+ 			if (ret != XZ_STREAM_END)
+ 				return ret;
+ 
+ 			s->sequence = SEQ_BLOCK_PADDING;
+-
 +			/* fall through */
-
-		case SEQ_BLOCK_PADDING:
-			/*
-@@ -808,6 +811,7 @@ static enum xz_ret dec_main(struct xz_dec *s, struct xz_buf *b)
-			}
-
-			s->sequence = SEQ_BLOCK_CHECK;
+ 		case SEQ_BLOCK_PADDING:
+ 			/*
+ 			 * Size of Compressed Data + Block Padding
+@@ -808,7 +809,7 @@ static enum xz_ret dec_main(struct xz_dec *s, struct xz_buf *b)
+ 			}
+ 
+ 			s->sequence = SEQ_BLOCK_CHECK;
+-
 +			/* fall through */
-
-		case SEQ_BLOCK_CHECK:
-			ret = hash_validate(s, b, 0);
-@@ -823,6 +827,7 @@ static enum xz_ret dec_main(struct xz_dec *s, struct xz_buf *b)
-				return ret;
-
-			s->sequence = SEQ_INDEX_PADDING;
+ 		case SEQ_BLOCK_CHECK:
+ 			ret = hash_validate(s, b, 0);
+ 			if (ret != XZ_STREAM_END)
+@@ -823,7 +824,7 @@ static enum xz_ret dec_main(struct xz_dec *s, struct xz_buf *b)
+ 				return ret;
+ 
+ 			s->sequence = SEQ_INDEX_PADDING;
+-
 +			/* fall through */
-
-		case SEQ_INDEX_PADDING:
-			while ((s->index.size + (b->in_pos - s->in_start))
-@@ -862,6 +867,7 @@ static enum xz_ret dec_main(struct xz_dec *s, struct xz_buf *b)
+ 		case SEQ_INDEX_PADDING:
+ 			while ((s->index.size + (b->in_pos - s->in_start))
+ 					& 3) {
+@@ -862,7 +863,7 @@ static enum xz_ret dec_main(struct xz_dec *s, struct xz_buf *b)
  #endif
-
-			s->sequence = SEQ_INDEX_CRC32;
+ 
+ 			s->sequence = SEQ_INDEX_CRC32;
+-
 +			/* fall through */
-
-		case SEQ_INDEX_CRC32:
-			ret = hash_validate(s, b, 1);
-@@ -870,12 +876,14 @@ static enum xz_ret dec_main(struct xz_dec *s, struct xz_buf *b)
-
-			s->temp.size = STREAM_HEADER_SIZE;
-			s->sequence = SEQ_STREAM_FOOTER;
+ 		case SEQ_INDEX_CRC32:
+ 			ret = hash_validate(s, b, 1);
+ 			if (ret != XZ_STREAM_END)
+@@ -870,12 +871,13 @@ static enum xz_ret dec_main(struct xz_dec *s, struct xz_buf *b)
+ 
+ 			s->temp.size = STREAM_HEADER_SIZE;
+ 			s->sequence = SEQ_STREAM_FOOTER;
+-
 +			/* fall through */
-
-		case SEQ_STREAM_FOOTER:
-			if (!fill_temp(s, b))
-				return XZ_OK;
-
-			return dec_stream_footer(s);
+ 		case SEQ_STREAM_FOOTER:
+ 			if (!fill_temp(s, b))
+ 				return XZ_OK;
+ 
+ 			return dec_stream_footer(s);
 +			/* fall through */
-		}
-	}
-
+ 		}
+ 	}
+ 
 diff --git a/deps/grub/grub-core/loader/i386/linux.c b/deps/grub/grub-core/loader/i386/linux.c
 index 62087cf..112b338 100644
 --- a/deps/grub/grub-core/loader/i386/linux.c
 +++ b/deps/grub/grub-core/loader/i386/linux.c
 @@ -977,10 +977,13 @@ grub_cmd_linux (grub_command_t cmd __attribute__ ((unused)),
-	      {
-	      case 'g':
-		shift += 10;
+ 	      {
+ 	      case 'g':
+ 		shift += 10;
 +		/* fall through */
-	      case 'm':
-		shift += 10;
+ 	      case 'm':
+ 		shift += 10;
 +		/* fall through */
-	      case 'k':
-		shift += 10;
+ 	      case 'k':
+ 		shift += 10;
 +		/* fall through */
-	      default:
-		break;
-	      }
+ 	      default:
+ 		break;
+ 	      }
 diff --git a/deps/grub/grub-core/mmap/efi/mmap.c b/deps/grub/grub-core/mmap/efi/mmap.c
-index 75f82ed..54902ae 100644
+index 75f82ed..1649b4d 100644
 --- a/deps/grub/grub-core/mmap/efi/mmap.c
 +++ b/deps/grub/grub-core/mmap/efi/mmap.c
 @@ -72,6 +72,7 @@ grub_efi_mmap_iterate (grub_memory_hook_t hook, int avoid_efi_boot_services)
-		    GRUB_MEMORY_AVAILABLE);
-	      break;
-	    }
+ 		    GRUB_MEMORY_AVAILABLE);
+ 	      break;
+ 	    }
 +	/* fall through */
-	case GRUB_EFI_RUNTIME_SERVICES_CODE:
-	  hook (desc->physical_start, desc->num_pages * 4096,
-		GRUB_MEMORY_CODE);
+ 	case GRUB_EFI_RUNTIME_SERVICES_CODE:
+ 	  hook (desc->physical_start, desc->num_pages * 4096,
+ 		GRUB_MEMORY_CODE);
 @@ -85,7 +86,7 @@ grub_efi_mmap_iterate (grub_memory_hook_t hook, int avoid_efi_boot_services)
-	default:
-	  grub_printf ("Unknown memory type %d, considering reserved\n",
-		       desc->type);
+ 	default:
+ 	  grub_printf ("Unknown memory type %d, considering reserved\n",
+ 		       desc->type);
 -
 +	/* fall through */
-	case GRUB_EFI_BOOT_SERVICES_DATA:
-	  if (!avoid_efi_boot_services)
-	    {
+ 	case GRUB_EFI_BOOT_SERVICES_DATA:
+ 	  if (!avoid_efi_boot_services)
+ 	    {
 @@ -93,17 +94,24 @@ grub_efi_mmap_iterate (grub_memory_hook_t hook, int avoid_efi_boot_services)
-		    GRUB_MEMORY_AVAILABLE);
-	      break;
-	    }
+ 		    GRUB_MEMORY_AVAILABLE);
+ 	      break;
+ 	    }
 +	/* fall through */
-	case GRUB_EFI_RESERVED_MEMORY_TYPE:
+ 	case GRUB_EFI_RESERVED_MEMORY_TYPE:
 +	/* fall through */
-	case GRUB_EFI_RUNTIME_SERVICES_DATA:
+ 	case GRUB_EFI_RUNTIME_SERVICES_DATA:
 +	/*fall through */
-	case GRUB_EFI_MEMORY_MAPPED_IO:
+ 	case GRUB_EFI_MEMORY_MAPPED_IO:
 +	/*fall through */
-	case GRUB_EFI_MEMORY_MAPPED_IO_PORT_SPACE:
+ 	case GRUB_EFI_MEMORY_MAPPED_IO_PORT_SPACE:
 +	/*fall through */
-	case GRUB_EFI_PAL_CODE:
-	  hook (desc->physical_start, desc->num_pages * 4096,
-		GRUB_MEMORY_RESERVED);
-	  break;
-
-	case GRUB_EFI_LOADER_CODE:
+ 	case GRUB_EFI_PAL_CODE:
+ 	  hook (desc->physical_start, desc->num_pages * 4096,
+ 		GRUB_MEMORY_RESERVED);
+ 	  break;
+ 
+ 	case GRUB_EFI_LOADER_CODE:
 +	/*fall through */
-	case GRUB_EFI_LOADER_DATA:
+ 	case GRUB_EFI_LOADER_DATA:
 +	/*fall through */
-	case GRUB_EFI_CONVENTIONAL_MEMORY:
-	  hook (desc->physical_start, desc->num_pages * 4096,
-		GRUB_MEMORY_AVAILABLE);
+ 	case GRUB_EFI_CONVENTIONAL_MEMORY:
+ 	  hook (desc->physical_start, desc->num_pages * 4096,
+ 		GRUB_MEMORY_AVAILABLE);
 diff --git a/deps/grub/grub-core/normal/charset.c b/deps/grub/grub-core/normal/charset.c
 index 25593ce..3802607 100644
 --- a/deps/grub/grub-core/normal/charset.c
 +++ b/deps/grub/grub-core/normal/charset.c
 @@ -856,8 +856,10 @@ grub_bidi_line_logical_to_visual (const grub_uint32_t *logical,
-	  case GRUB_BIDI_TYPE_BN:
-	    break;
-	  case GRUB_BIDI_TYPE_R:
+ 	  case GRUB_BIDI_TYPE_BN:
+ 	    break;
+ 	  case GRUB_BIDI_TYPE_R:
 +	  /* fall through */
-	  case GRUB_BIDI_TYPE_AL:
-	    bidi_needed = 1;
+ 	  case GRUB_BIDI_TYPE_AL:
+ 	    bidi_needed = 1;
 +	  /* fall through */
-	  default:
-	    {
-	      if (join_state == JOIN_FORCE)
+ 	  default:
+ 	    {
+ 	      if (join_state == JOIN_FORCE)
 diff --git a/deps/grub/grub-core/video/bochs.c b/deps/grub/grub-core/video/bochs.c
 index 79cae65..3689e9e 100644
 --- a/deps/grub/grub-core/video/bochs.c
@@ -383,35 +387,35 @@ index f5e63ae..de5baf2 100644
 --- a/deps/grub/grub-core/video/readers/jpeg.c
 +++ b/deps/grub/grub-core/video/readers/jpeg.c
 @@ -701,6 +701,7 @@ grub_jpeg_decode_jpeg (struct grub_jpeg_data *data)
-	case JPEG_MARKER_SOS:	/* Start Of Scan.  */
-	  if (grub_jpeg_decode_sos (data))
-	    break;
+ 	case JPEG_MARKER_SOS:	/* Start Of Scan.  */
+ 	  if (grub_jpeg_decode_sos (data))
+ 	    break;
 +	/* fall through */
-	case JPEG_MARKER_RST0:	/* Restart.  */
-	case JPEG_MARKER_RST1:
-	case JPEG_MARKER_RST2:
+ 	case JPEG_MARKER_RST0:	/* Restart.  */
+ 	case JPEG_MARKER_RST1:
+ 	case JPEG_MARKER_RST2:
 diff --git a/deps/grub/util/grub-mkimagexx.c b/deps/grub/util/grub-mkimagexx.c
 index 476d05e..ed0d50b 100644
 --- a/deps/grub/util/grub-mkimagexx.c
 +++ b/deps/grub/util/grub-mkimagexx.c
 @@ -473,6 +473,7 @@ SUFFIX (relocate_addresses) (Elf_Ehdr *e, Elf_Shdr *sections,
-		  break;
-
-		case R_IA64_LTOFF22X:
+ 		  break;
+ 
+ 		case R_IA64_LTOFF22X:
 +		  /* fall through */
-		case R_IA64_LTOFF22:
-		  {
-		    Elf_Sym *sym;
+ 		case R_IA64_LTOFF22:
+ 		  {
+ 		    Elf_Sym *sym;
 @@ -484,7 +485,9 @@ SUFFIX (relocate_addresses) (Elf_Ehdr *e, Elf_Shdr *sections,
-		      sym_addr = grub_target_to_host64 (*(grub_uint64_t *) (pe_target
-									    + sym->st_value
-									    - image_target->vaddr_offset));
+ 		      sym_addr = grub_target_to_host64 (*(grub_uint64_t *) (pe_target
+ 									    + sym->st_value
+ 									    - image_target->vaddr_offset));
 +		  /* fall through */
-		  }
+ 		  }
 +		  /* fall through */
-		case R_IA64_LTOFF_FPTR22:
-		  *gpptr = grub_host_to_target64 (addend + sym_addr);
-		  add_value_to_slot_21 ((grub_addr_t) target,
---
+ 		case R_IA64_LTOFF_FPTR22:
+ 		  *gpptr = grub_host_to_target64 (addend + sym_addr);
+ 		  add_value_to_slot_21 ((grub_addr_t) target,
+-- 
 1.9.1
 

@@ -1,4 +1,8 @@
-libguile/vm-i-system.c: workaround ice ssa corruption while compiling with option -g -O
+From 98860dafb9666bdefc1cb71cd280e091dd4ae74b Mon Sep 17 00:00:00 2001
+From: Hongxu Jia <hongxu.jia@windriver.com>
+Date: Mon, 20 Nov 2017 15:42:13 -0800
+Subject: [PATCH] libguile/vm-i-system.c: workaround ice ssa corruption while
+ compiling with option -g -O
 
 While compiling with option -g -O, there was a ssa corruption:
 ..
@@ -21,11 +25,13 @@ Tweak libguile/vm-i-system.c to add boundary value check to workaround it.
 Upstream-Status: Pending
 
 Signed-off-by: Hongxu Jia <hongxu.jia@windriver.com>
+
 ---
  libguile/vm-i-system.c | 20 ++++++++++++++++----
  1 file changed, 16 insertions(+), 4 deletions(-)
 
 diff --git a/libguile/vm-i-system.c b/libguile/vm-i-system.c
+index 5057fb0..421aa36 100644
 --- a/libguile/vm-i-system.c
 +++ b/libguile/vm-i-system.c
 @@ -625,10 +625,22 @@ VM_DEFINE_INSTRUCTION (47, bind_optionals_shuffle, "bind-optionals/shuffle", 6,
@@ -55,6 +61,3 @@ diff --git a/libguile/vm-i-system.c b/libguile/vm-i-system.c
    }
    /* and fill optionals & keyword args with SCM_UNDEFINED */
    while (walk <= (fp - 1) + ntotal)
---
-1.9.1
-

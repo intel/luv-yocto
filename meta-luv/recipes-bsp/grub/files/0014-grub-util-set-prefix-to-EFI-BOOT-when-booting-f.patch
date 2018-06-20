@@ -1,6 +1,6 @@
-From 6477cac1e026ee5b16e4f1c7097ad1dd7c3832d1 Mon Sep 17 00:00:00 2001
-From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
-Date: Mon, 30 Nov 2015 04:33:41 -0800
+From 8251ec464210267a1068e17a2938e77b225b28f5 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Wed, 20 Jun 2018 12:24:17 -0700
 Subject: [PATCH] grub: util: set prefix to EFI/BOOT when booting from
  memdisk
 
@@ -14,10 +14,10 @@ Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/util/grub-mkimage.c b/util/grub-mkimage.c
-index a551bbb..883c3bd 100644
+index aba19d2..0629b8d 100644
 --- a/util/grub-mkimage.c
 +++ b/util/grub-mkimage.c
-@@ -1768,7 +1768,7 @@ argp_parser (int key, char *arg, struct argp_state *state)
+@@ -173,7 +173,7 @@ argp_parser (int key, char *arg, struct argp_state *state)
        if (arguments->prefix)
  	free (arguments->prefix);
  
@@ -25,7 +25,7 @@ index a551bbb..883c3bd 100644
 +      arguments->prefix = xstrdup ("(memdisk)/EFI/BOOT");
        break;
  
-     case 'c':
+     case 'k':
 -- 
 1.9.1
 

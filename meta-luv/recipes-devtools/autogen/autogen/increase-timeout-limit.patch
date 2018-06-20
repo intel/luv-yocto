@@ -1,3 +1,6 @@
+From 92df25a0d2aa76609977f4156b40a3aa923544a4 Mon Sep 17 00:00:00 2001
+From: Xin Ouyang <Xin.Ouyang@windriver.com>
+Date: Mon, 20 Nov 2017 15:52:00 -0800
 Subject: [PATCH] autogen: increase timeout limit for shell commands
 
 On some overloaded hosts, shell commands of autogen may can not
@@ -7,15 +10,16 @@ the timeout limit to fix this.
 Upstream-Status: Inappropriate [configuration]
 
 Signed-off-by: Xin Ouyang <Xin.Ouyang@windriver.com>
+
 ---
- configure.ac |    6 +++---
+ configure.ac | 6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/configure.ac b/configure.ac
-index 58a848b..170dd9e 100644
+index ff04c48..5925ad8 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -178,9 +178,9 @@ time_delta=`expr ${config_end_time} - ${config_start_time} 2>/dev/null`
+@@ -185,9 +185,9 @@ time_delta=`expr ${config_end_time} - ${config_start_time} 2>/dev/null`
  if test -z "${AG_TIMEOUT}"
  then
    if test -z "${time_delta}"
