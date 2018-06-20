@@ -260,6 +260,33 @@ parse_line()
     done
 }
 
+# Checks if the size of the results file is always greater than it's size 3 secs
+# ago until the testsuite is finished executing. Otherwise, its a sign that the
+# testsuite is stalled and the process needs to be killed. Both the
+# results file and the process id are passed as parameters.
+detect_hang()
+{
+    file_size=1
+    file_size_inc=0
+    current_test="$1"
+    process_id="$2"
+
+    while [[ $file_size_inc -ge $file_size ]]
+    do
+        file_size=$(ls -la $current_test | awk '{ print $5}')
+        sleep 3
+        file_size_inc=$(ls -la $current_test | awk '{ print $5}')
+        if [ "$file_size_inc" == "$file_size" ]; then
+            break
+        fi
+    done
+
+    ps | grep -q "$process_id"
+    if [ $? -eq 0 ]; then
+        trap "kill $process_id" exit INT TERM
+    fi
+}
+
 runner_list=`ls -A ${LUV_TESTS_DIR}`
 
 # We can't get very accurate progress because we've no way of knowing
@@ -300,7 +327,9 @@ for r in $runner_list; do
     #We display each test suite running for equal amount of time
     luv_msg_hide "Running tests..."
 
-    [ -f "$runner" ] || continue
+    # run the runner in a forked subshell
+    [ -f "$runner" ] || continue &
+    process_runner_id="$!"
 
     arr[tests]=$r
     if [ $tests -ge 1 ]; then
@@ -320,6 +349,11 @@ for r in $runner_list; do
               tee -a ${LUV_SAVE_PARSED_DIR}/$r | ${LUV_PARSER_DIR}/test-manager | \
               parse_line | \
               tee -a /tmp/luv.results ${LUV_SAVE_RESULTS_DIR}/luv.results
+
+    detect_hang ${LUV_SAVE_RAW_DIR}/$r $process_runner_id
+    # Wait till the subprocess or the forked shell returns and then sync
+    wait
+    sync
 
     luv_msg_hide "Running ${arr[-1]} ..."
 
