@@ -1,6 +1,6 @@
-From 260ee69fa2825651f12fde856b6b15d2728fa943 Mon Sep 17 00:00:00 2001
-From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
-Date: Tue, 16 Feb 2016 09:26:55 -0800
+From c30121306f31b748c452212b53bf5556eda64484 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Wed, 20 Jun 2018 11:32:42 -0700
 Subject: [PATCH] grub: core: efi: chainloader: verify and load image
  separetely
 
@@ -22,10 +22,10 @@ Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
  1 file changed, 12 insertions(+), 13 deletions(-)
 
 diff --git a/grub-core/loader/efi/chainloader.c b/grub-core/loader/efi/chainloader.c
-index 4f793ba..ffec84f 100644
+index ff1f2a8..0648b67 100644
 --- a/grub-core/loader/efi/chainloader.c
 +++ b/grub-core/loader/efi/chainloader.c
-@@ -460,13 +460,6 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
+@@ -464,13 +464,6 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
    shim_used = 0;
    shim_buffer = 0;
  
@@ -39,7 +39,7 @@ index 4f793ba..ffec84f 100644
    grub_memset(context, 0, sizeof(*context));
    status = grub_shim_read_header (addr, size, context);
    if (status != GRUB_ERR_NONE)
-@@ -868,12 +861,18 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
+@@ -910,12 +903,18 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
        /* try with shim */
        else if (status == GRUB_EFI_SECURITY_VIOLATION)
          {

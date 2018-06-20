@@ -1,4 +1,7 @@
-guile: add aarch64 recognition
+From d66f746d3bbca2bdb9446002b4ef81fe7c508ade Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Mon, 20 Nov 2017 15:42:13 -0800
+Subject: [PATCH] guile: add aarch64 recognition
 
 Assume little-endian.
 
@@ -6,11 +9,17 @@ Upstream-Status: Pending
 
 Signed-off-by: joe.slater@windriver.com
 
+---
+ module/system/base/target.scm | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/module/system/base/target.scm b/module/system/base/target.scm
+index 80b70d5..82aed4e 100644
 --- a/module/system/base/target.scm
 +++ b/module/system/base/target.scm
 @@ -70,6 +70,8 @@
              ((member cpu '("sparc" "sparc64" "powerpc" "powerpc64" "spu"
-                            "mips" "mips64"))
+                            "mips" "mips64" "m68k" "s390x"))
               (endianness big))
 +            ((string-match "^aarch64" cpu)
 +             (endianness little))

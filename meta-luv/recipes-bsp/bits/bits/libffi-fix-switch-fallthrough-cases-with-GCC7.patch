@@ -1,13 +1,13 @@
-From 70c69d424e46b5e824737dc724662f0134bc222e Mon Sep 17 00:00:00 2001
+From 344e609ee7a37b285069ba6dd5c03a7feba3d6d6 Mon Sep 17 00:00:00 2001
 From: Megha Dey <megha.dey@linux.intel.com>
-Date: Mon, 13 Nov 2017 15:11:55 -0800
+Date: Tue, 19 Jun 2018 14:45:22 -0700
 Subject: [PATCH] libffi gcc
 
 Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
 ---
  deps/libffi/src/x86/ffi.c   |  1 +
- deps/libffi/src/x86/ffi64.c | 11 ++++++++++-
- 2 files changed, 11 insertions(+), 1 deletion(-)
+ deps/libffi/src/x86/ffi64.c | 10 +++++++++-
+ 2 files changed, 10 insertions(+), 1 deletion(-)
 
 diff --git a/deps/libffi/src/x86/ffi.c b/deps/libffi/src/x86/ffi.c
 index feb5cbb..394a299 100644
@@ -22,14 +22,12 @@ index feb5cbb..394a299 100644
        return FFI_BAD_ABI;
      }
 diff --git a/deps/libffi/src/x86/ffi64.c b/deps/libffi/src/x86/ffi64.c
-index f52749e..0909ecd 100644
+index f52749e..3e2f78e 100644
 --- a/deps/libffi/src/x86/ffi64.c
 +++ b/deps/libffi/src/x86/ffi64.c
-@@ -198,22 +198,27 @@ classify_argument (ffi_type *type, enum x86_64_reg_class classes[],
-	  }
+@@ -199,21 +199,25 @@ classify_argument (ffi_type *type, enum x86_64_reg_class classes[],
 	else
 	  FFI_ASSERT (0);
-+
        }
 +    /* fall through */
      case FFI_TYPE_FLOAT:
@@ -53,7 +51,7 @@ index f52749e..0909ecd 100644
      case FFI_TYPE_STRUCT:
        {
 	const size_t UNITS_PER_WORD = 8;
-@@ -233,6 +238,7 @@ classify_argument (ffi_type *type, enum x86_64_reg_class classes[],
+@@ -233,6 +237,7 @@ classify_argument (ffi_type *type, enum x86_64_reg_class classes[],
 	   signalize memory class, so handle it as special case.  */
 	if (!words)
 	  {
@@ -61,7 +59,7 @@ index f52749e..0909ecd 100644
      case FFI_TYPE_VOID:
 	    classes[0] = X86_64_NO_CLASS;
 	    return 1;
-@@ -303,6 +309,7 @@ classify_argument (ffi_type *type, enum x86_64_reg_class classes[],
+@@ -303,6 +308,7 @@ classify_argument (ffi_type *type, enum x86_64_reg_class classes[],
 	  }
 	return words;
        }
@@ -69,7 +67,7 @@ index f52749e..0909ecd 100644
      case FFI_TYPE_COMPLEX:
        {
 	ffi_type *inner = type->elements[0];
-@@ -318,7 +325,7 @@ classify_argument (ffi_type *type, enum x86_64_reg_class classes[],
+@@ -318,7 +324,7 @@ classify_argument (ffi_type *type, enum x86_64_reg_class classes[],
 	  case FFI_TYPE_UINT64:
 	  case FFI_TYPE_SINT64:
 	    goto do_integer;
@@ -78,7 +76,7 @@ index f52749e..0909ecd 100644
 	  case FFI_TYPE_FLOAT:
 	    classes[0] = X86_64_SSE_CLASS;
 	    if (byte_offset % 8)
-@@ -327,10 +334,12 @@ classify_argument (ffi_type *type, enum x86_64_reg_class classes[],
+@@ -327,10 +333,12 @@ classify_argument (ffi_type *type, enum x86_64_reg_class classes[],
 		return 2;
 	      }
 	    return 1;

@@ -1,6 +1,6 @@
-From 6e080302eb19702cd2499b147e35c6fee8e8645a Mon Sep 17 00:00:00 2001
+From 1d3e0e7744d746c3d57c48eab3b740cee3b6eac5 Mon Sep 17 00:00:00 2001
 From: Megha Dey <megha.dey@linux.intel.com>
-Date: Sun, 12 Nov 2017 13:16:49 -0800
+Date: Tue, 19 Jun 2018 14:35:35 -0700
 Subject: [PATCH] grub: btrfs: avoid "used uninitialized" error with GCC7
 
 sblock was local and so considered new variable on every loop iteration.

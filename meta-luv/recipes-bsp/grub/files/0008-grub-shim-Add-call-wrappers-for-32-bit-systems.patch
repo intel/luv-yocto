@@ -1,6 +1,6 @@
-From 604bc83ee2e924ddda552fd1edc4d79ecf6160cc Mon Sep 17 00:00:00 2001
-From: Megha Dey <megha.dey@intel.com>
-Date: Tue, 2 Feb 2016 21:39:44 -0800
+From e7b2683eef9606c2c125672b2dd497693b408be8 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Wed, 20 Jun 2018 11:14:57 -0700
 Subject: [PATCH] grub: shim: Add call wrappers for 32 bit systems
 
 This patch adds the callwrap.S function to the Makefile while building the
@@ -13,24 +13,26 @@ Signed-off-by: Megha Dey <megha.dey@intel.com>
 ---
  grub-core/Makefile.core.def        |  1 +
  grub-core/kern/i386/efi/callwrap.S | 40 ++++++++++++++++++++++++++++++++++++++
- include/grub/efi/api.h             |  9 ++++-----
- 3 files changed, 45 insertions(+), 5 deletions(-)
+ include/grub/efi/api.h             |  5 ++++-
+ 3 files changed, 45 insertions(+), 1 deletion(-)
+ create mode 100644 grub-core/kern/i386/efi/callwrap.S
 
 diff --git a/grub-core/Makefile.core.def b/grub-core/Makefile.core.def
-index 39e77a4..12fdfc1 100644
+index 2dfa22a..d1bd1d4 100644
 --- a/grub-core/Makefile.core.def
 +++ b/grub-core/Makefile.core.def
-@@ -136,6 +136,7 @@ kernel = {
+@@ -187,6 +187,7 @@ kernel = {
+   x86_64_efi = kern/i386/tsc_pmtimer.c;
 
-   i386_efi = kern/i386/tsc.c;
    i386_efi = kern/i386/efi/init.c;
 +  i386_efi = kern/i386/efi/callwrap.S;
    i386_efi = bus/pci.c;
 
-   x86_64_efi = kern/i386/tsc.c;
+   x86_64 = kern/x86_64/dl.c;
 diff --git a/grub-core/kern/i386/efi/callwrap.S b/grub-core/kern/i386/efi/callwrap.S
-index e69de29..3fae4d0 100644
---- a/grub-core/kern/i386/efi/callwrap.S
+new file mode 100644
+index 0000000..e0e5474
+--- /dev/null
 +++ b/grub-core/kern/i386/efi/callwrap.S
 @@ -0,0 +1,40 @@
 +/* callwrap.S */
@@ -74,21 +76,10 @@ index e69de29..3fae4d0 100644
 +	.data
 +saved_sp:	.long   0
 diff --git a/include/grub/efi/api.h b/include/grub/efi/api.h
-index 374d88b..180bf05 100644
+index c7c9f0e..47f46e3 100644
 --- a/include/grub/efi/api.h
 +++ b/include/grub/efi/api.h
-@@ -1437,10 +1437,6 @@ typedef struct grub_efi_block_io grub_efi_block_io_t;
- 
- grub_uint64_t EXPORT_FUNC(efi_wrap_0) (void *func);
- grub_uint64_t EXPORT_FUNC(efi_wrap_1) (void *func, grub_uint64_t arg1);
--grub_efi_status_t EXPORT_FUNC(efi_shim_exit) (grub_efi_handle_t handle, grub_efi_status_t exit_status,
--					      grub_efi_uintn_t exit_data_size, grub_efi_char16_t *exit_data) __attribute__((noreturn));
--grub_uint64_t EXPORT_FUNC(efi_call_foo) (void *func, grub_uint64_t arg1,
--					 grub_uint64_t arg2);
- grub_uint64_t EXPORT_FUNC(efi_wrap_2) (void *func, grub_uint64_t arg1,
-                                        grub_uint64_t arg2);
- grub_uint64_t EXPORT_FUNC(efi_wrap_3) (void *func, grub_uint64_t arg1,
-@@ -1466,5 +1462,8 @@ grub_uint64_t EXPORT_FUNC(efi_wrap_10) (void *func, grub_uint64_t arg1,
+@@ -1756,5 +1756,8 @@ grub_uint64_t EXPORT_FUNC(efi_wrap_10) (void *func, grub_uint64_t arg1,
                                          grub_uint64_t arg8, grub_uint64_t arg9,
                                          grub_uint64_t arg10);
  #endif

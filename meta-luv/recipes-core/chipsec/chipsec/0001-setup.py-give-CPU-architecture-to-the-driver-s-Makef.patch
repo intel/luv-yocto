@@ -1,4 +1,4 @@
-From 4df09a6f905c9e1cf8c65235ff309ac7bebcc6eb Mon Sep 17 00:00:00 2001
+From 66712ca321ca6e7ca29ff4ebefafcfa7a2f0041e Mon Sep 17 00:00:00 2001
 From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
 Date: Wed, 15 Mar 2017 12:00:57 -0700
 Subject: [PATCH] setup.py: give CPU architecture to the driver's Makefile
@@ -15,7 +15,7 @@ Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
  1 file changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/setup.py b/setup.py
-index fb0da43..e09eaa6 100644
+index 9e94d84..720f27e 100644
 --- a/setup.py
 +++ b/setup.py
 @@ -68,13 +68,14 @@ class build_ext(_build_ext):
@@ -36,5 +36,5 @@ index fb0da43..e09eaa6 100644
          # That is to the source directory if we are in "develop" mode,
          # otherwise to the helper subdirectory in the build directory.
 -- 
-2.9.3
+1.9.1
 

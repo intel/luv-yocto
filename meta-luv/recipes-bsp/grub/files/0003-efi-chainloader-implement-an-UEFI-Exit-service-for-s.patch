@@ -1,6 +1,6 @@
-From 3b75fa5071e4b1a40510669119791928859b46e7 Mon Sep 17 00:00:00 2001
-From: Matt Fleming <matt.fleming@intel.com>
-Date: Fri, 27 Mar 2015 08:11:19 -0700
+From 5301c3c18bc2a0dc6a3a6c8ab449268306433d97 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Tue, 19 Jun 2018 18:55:51 -0700
 Subject: [PATCH 3/7] efi: chainloader: implement an UEFI Exit service for shim
  in grub
 
@@ -18,17 +18,16 @@ the system Exit call is restored.
 Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
 ---
  grub-core/kern/x86_64/efi/callwrap.S | 23 +++++++++++++++++++++++
- include/grub/efi/api.h               |  4 ++++
- 2 files changed, 27 insertions(+)
+ 1 file changed, 23 insertions(+)
 
 diff --git a/grub-core/kern/x86_64/efi/callwrap.S b/grub-core/kern/x86_64/efi/callwrap.S
-index 2df95dd..f0f1dd8 100644
+index 1337fd9..ea1274f 100644
 --- a/grub-core/kern/x86_64/efi/callwrap.S
 +++ b/grub-core/kern/x86_64/efi/callwrap.S
 @@ -48,6 +48,26 @@ FUNCTION(efi_wrap_1)
- 	addq $48, %rsp
+	addq $40, %rsp
  	ret
- 
+
 +FUNCTION(efi_call_foo)
 +	pushq %rbp
 +	pushq %r12
@@ -36,7 +35,7 @@ index 2df95dd..f0f1dd8 100644
 +	pushq %r14
 +	pushq %r15
 +	movq %rsp, saved_sp(%rip)
-+	subq $48, %rsp
++ 	subq $40, %rsp
 +	mov  %rsi, %rcx
 +	call *%rdi
 +
@@ -50,30 +49,15 @@ index 2df95dd..f0f1dd8 100644
 +	ret
 +
  FUNCTION(efi_wrap_2)
- 	subq $48, %rsp
+	subq $40, %rsp
  	mov  %rsi, %rcx
 @@ -127,3 +147,6 @@ FUNCTION(efi_wrap_10)
  	call *%rdi
- 	addq $96, %rsp
+	addq $88, %rsp
  	ret
 +
 +	.data
 +saved_sp:	.quad   0
-diff --git a/include/grub/efi/api.h b/include/grub/efi/api.h
-index 26127de..374d88b 100644
---- a/include/grub/efi/api.h
-+++ b/include/grub/efi/api.h
-@@ -1437,6 +1437,10 @@ typedef struct grub_efi_block_io grub_efi_block_io_t;
- 
- grub_uint64_t EXPORT_FUNC(efi_wrap_0) (void *func);
- grub_uint64_t EXPORT_FUNC(efi_wrap_1) (void *func, grub_uint64_t arg1);
-+grub_efi_status_t EXPORT_FUNC(efi_shim_exit) (grub_efi_handle_t handle, grub_efi_status_t exit_status,
-+					      grub_efi_uintn_t exit_data_size, grub_efi_char16_t *exit_data) __attribute__((noreturn));
-+grub_uint64_t EXPORT_FUNC(efi_call_foo) (void *func, grub_uint64_t arg1,
-+					 grub_uint64_t arg2);
- grub_uint64_t EXPORT_FUNC(efi_wrap_2) (void *func, grub_uint64_t arg1,
-                                        grub_uint64_t arg2);
- grub_uint64_t EXPORT_FUNC(efi_wrap_3) (void *func, grub_uint64_t arg1,
 -- 
 1.9.1
 

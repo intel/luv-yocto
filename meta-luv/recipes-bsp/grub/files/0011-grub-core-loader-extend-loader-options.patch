@@ -1,6 +1,6 @@
-From 28f550ab329841871aaefd796e2e67f65213f274 Mon Sep 17 00:00:00 2001
+From e8ab3a6ba69794d1395da6a19537cf1fa3797bb1 Mon Sep 17 00:00:00 2001
 From: Megha Dey <megha.dey@linux.intel.com>
-Date: Fri, 3 Nov 2017 16:03:47 -0700
+Date: Thu, 21 Jun 2018 12:26:41 -0700
 Subject: [PATCH] grub: core: chainloader: efi: extend loader options
 
 The EFI Loaded Image protocol interface structure described in the UEFI
@@ -24,7 +24,7 @@ Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
  2 files changed, 35 insertions(+), 7 deletions(-)
 
 diff --git a/grub-core/loader/efi/chainloader.c b/grub-core/loader/efi/chainloader.c
-index 28396ef..8c68e24 100644
+index 0648b67..2d400bb 100644
 --- a/grub-core/loader/efi/chainloader.c
 +++ b/grub-core/loader/efi/chainloader.c
 @@ -49,7 +49,7 @@ static grub_efi_physical_address_t address;
@@ -36,7 +36,7 @@ index 28396ef..8c68e24 100644
  static grub_int32_t shim_used;
  static grub_efi_physical_address_t shim_buffer;
  static grub_efi_uintn_t shim_pages;
-@@ -602,8 +602,11 @@ grub_chainloader_unload (void)
+@@ -594,8 +594,11 @@ grub_chainloader_unload (void)
      }
  
    grub_free (file_path);
@@ -50,9 +50,9 @@ index 28396ef..8c68e24 100644
    file_path = 0;
  
    grub_dl_unref (my_mod);
-@@ -921,6 +924,10 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
-     }
-   loaded_image->device_handle = dev_handle;
+@@ -950,6 +953,10 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
+   else
+     loaded_image->device_handle = dev_handle;
  
 +  loader_options = grub_malloc (sizeof (*loader_options));
 +  if (!loader_options)
@@ -61,7 +61,7 @@ index 28396ef..8c68e24 100644
    if (argc > 1)
      {
        int i, len;
-@@ -930,8 +937,8 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
+@@ -959,8 +966,8 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
          len += grub_strlen (argv[i]) + 1;
  
        len *= sizeof (grub_efi_char16_t);
@@ -72,7 +72,7 @@ index 28396ef..8c68e24 100644
          goto fail;
  
        for (i = 1; i < argc; i++)
-@@ -946,11 +953,21 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
+@@ -975,11 +982,21 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
          }
        *(--p16) = 0;
  
@@ -96,7 +96,7 @@ index 28396ef..8c68e24 100644
    grub_device_close (dev);
  
    grub_loader_set (grub_chainloader_boot, grub_chainloader_unload, 0);
-@@ -958,6 +975,8 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
+@@ -987,6 +1004,8 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
  
   fail:
  

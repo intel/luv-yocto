@@ -1,12 +1,22 @@
+From 6fceca327a12a128813098817cbd533d2b9184cc Mon Sep 17 00:00:00 2001
+From: Nitin A Kamble <nitin.a.kamble@intel.com>
+Date: Mon, 20 Nov 2017 15:42:13 -0800
+Subject: [PATCH] guile: add new recipe for autogen
+
 Upstream-Status: Inappropriate [opensuse patch]
 
 Signed-off-by: Nitin A Kamble <nitin.a.kamble@intel.com>
 
-Index: guile-2.0.3/libguile/hash.c
-===================================================================
---- guile-2.0.3.orig/libguile/hash.c	2011-07-06 15:49:59.000000000 -0700
-+++ guile-2.0.3/libguile/hash.c	2012-01-13 21:49:43.332844884 -0800
-@@ -270,7 +270,7 @@ scm_hasher(SCM obj, unsigned long n, siz
+---
+ libguile/hash.c   | 4 ++--
+ libguile/struct.c | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/libguile/hash.c b/libguile/hash.c
+index d51c661..dd0db84 100644
+--- a/libguile/hash.c
++++ b/libguile/hash.c
+@@ -296,7 +296,7 @@ scm_hasher(SCM obj, unsigned long n, size_t d)
  unsigned long
  scm_ihashq (SCM obj, unsigned long n)
  {
@@ -15,7 +25,7 @@ Index: guile-2.0.3/libguile/hash.c
  }
 
 
-@@ -306,7 +306,7 @@ scm_ihashv (SCM obj, unsigned long n)
+@@ -332,7 +332,7 @@ scm_ihashv (SCM obj, unsigned long n)
    if (SCM_NUMP(obj))
      return (unsigned long) scm_hasher(obj, n, 10);
    else
@@ -24,11 +34,11 @@ Index: guile-2.0.3/libguile/hash.c
  }
 
 
-Index: guile-2.0.3/libguile/struct.c
-===================================================================
---- guile-2.0.3.orig/libguile/struct.c	2011-07-06 15:50:00.000000000 -0700
-+++ guile-2.0.3/libguile/struct.c	2012-01-13 21:49:43.332844884 -0800
-@@ -942,7 +942,7 @@ scm_struct_ihashq (SCM obj, unsigned lon
+diff --git a/libguile/struct.c b/libguile/struct.c
+index 3906a42..9967728 100644
+--- a/libguile/struct.c
++++ b/libguile/struct.c
+@@ -918,7 +918,7 @@ scm_struct_ihashq (SCM obj, unsigned long n, void *closure)
  {
    /* The length of the hash table should be a relative prime it's not
       necessary to shift down the address.  */
@@ -36,4 +46,4 @@ Index: guile-2.0.3/libguile/struct.c
 +  return (unsigned long) SCM_UNPACK (obj) % n;
  }
 
- SCM_DEFINE (scm_struct_vtable_name, "struct-vtable-name", 1, 0, 0,
+ /* Return the hash of struct OBJ, modulo N.  Traverse OBJ's fields to
