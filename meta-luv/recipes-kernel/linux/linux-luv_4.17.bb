@@ -111,6 +111,7 @@ SRC_URI_append = "file://pstore.cfg \
                   file://pstore-test.cfg \
                   file://efi.cfg \
                   file://cpus.cfg \
+                  file://lockup.cfg \
                  "
 
 # Override KCONFIG_MODE to '--alldefconfig' from the default '--allnoconfig'
