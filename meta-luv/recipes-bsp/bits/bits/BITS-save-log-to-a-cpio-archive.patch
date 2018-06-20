@@ -1,6 +1,6 @@
-From 99b8fe2e5446f6ef8687106b99fbea8b27cdf869 Mon Sep 17 00:00:00 2001
-From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
-Date: Wed, 23 Dec 2015 13:28:48 -0800
+From a48d106e87b596387297596b78e44779fcb669ff Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Tue, 19 Jun 2018 12:46:51 -0700
 Subject: [PATCH] python: save log to a cpio archive
 
 Now that support for cpio file archivers has been added, generate
@@ -19,7 +19,7 @@ Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
  2 files changed, 5 insertions(+), 2 deletions(-)
 
 diff --git a/Makefile b/Makefile
-index 4d24e5b..ddcebd2 100644
+index 75fd5bc..814ee51 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -154,7 +154,10 @@ dist: install-grub-cfg
@@ -35,18 +35,18 @@ index 4d24e5b..ddcebd2 100644
  dist: install-log
  
 diff --git a/python/init.py b/python/init.py
-index db5abd8..3dec2cc 100644
+index bcd147b..b2a97b2 100644
 --- a/python/init.py
 +++ b/python/init.py
-@@ -241,7 +241,7 @@ def init():
+@@ -243,7 +243,7 @@ def init():
                  traceback.print_exc()
  
          print "\nBatch mode complete\n"
 -        redirect.write_logfile("/boot/bits-log.txt")
 +        redirect.write_logfile_cpio("/boot/bitsrd", "home/root/bits-log.txt")
  
-     import_start_msg("cpumenu")
-     import cpumenu
+     with import_annotation("cpumenu"):
+         import cpumenu
 -- 
 1.9.1
 

@@ -1,4 +1,4 @@
-From 24813411bf05b19e4a750be34f9d61833a8455e6 Mon Sep 17 00:00:00 2001
+From da81a4d091fedcff335fb9ce5b1be67b0eda5e33 Mon Sep 17 00:00:00 2001
 From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
 Date: Wed, 5 Jul 2017 15:03:24 -0700
 Subject: [PATCH] Revert "fix issue with building driver on 32bit system
@@ -15,11 +15,11 @@ defined variable.
  1 file changed, 5 insertions(+), 7 deletions(-)
 
 diff --git a/drivers/linux/Makefile b/drivers/linux/Makefile
-index 69e90e2..0766cd9 100644
+index 012c90e..f94c3a2 100644
 --- a/drivers/linux/Makefile
 +++ b/drivers/linux/Makefile
 @@ -1,14 +1,12 @@
- KERNEL_SRC_DIR ?= /lib/modules/`uname -r`/build
+ KERNEL_SRC_DIR = LUV_KERNEL_SRC_DIR
  #KERNEL_SRC_DIR = /usr/src/android/3.0-mid
  
 -MACHINE ?= $(shell uname -m)
@@ -39,5 +39,5 @@ index 69e90e2..0766cd9 100644
  
  chipsec-objs := chipsec_km.o $(asm-path)/cpu.o
 -- 
-2.13.0
+1.9.1
 

@@ -1,4 +1,4 @@
-From b22fb35a7293952ea91da6ab0f17c181992610ed Mon Sep 17 00:00:00 2001
+From 67f500b4a2a4551cd9a1d4015cb543d44a04a990 Mon Sep 17 00:00:00 2001
 From: Megha Dey <megha.dey@intel.com>
 Date: Tue, 5 Jan 2016 17:28:45 -0800
 Subject: [PATCH] chipsec : building for 32 bit systems
@@ -12,10 +12,10 @@ Signed-off-by: Megha Dey <megha.dey@intel.com>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/drivers/linux/chipsec_km.c b/drivers/linux/chipsec_km.c
-index 60e1247..4f993f6 100644
+index e93f807..4a9fd4f 100644
 --- a/drivers/linux/chipsec_km.c
 +++ b/drivers/linux/chipsec_km.c
-@@ -1437,8 +1437,8 @@ static long d_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioc
+@@ -1596,8 +1596,8 @@ static long d_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioc
  				first = ioread32(ioaddr);
  				second = ioread32( ioaddr + 4 );
  				ptr[0] = first | (second << 32);

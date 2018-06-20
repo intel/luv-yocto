@@ -1,6 +1,6 @@
-From f922ac74714d01972a3c291e15f0c316b67e40eb Mon Sep 17 00:00:00 2001
-From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
-Date: Fri, 27 Mar 2015 08:26:08 -0700
+From 5e771aaba926ce1d4fcac88b5ffe11416f99256e Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Wed, 20 Jun 2018 11:00:26 -0700
 Subject: [PATCH 5/7] efi: chainloader: use shim to load and verify an image
 
 The grub chainloader module uses the UEFI LoadImage service
@@ -17,18 +17,18 @@ Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
  1 file changed, 40 insertions(+), 9 deletions(-)
 
 diff --git a/grub-core/loader/efi/chainloader.c b/grub-core/loader/efi/chainloader.c
-index bd83859..01d2ebe 100644
+index 40c6b5f..5f2a516 100644
 --- a/grub-core/loader/efi/chainloader.c
 +++ b/grub-core/loader/efi/chainloader.c
-@@ -733,6 +733,7 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
-   grub_efi_loaded_image_t *loaded_image;
+@@ -737,6 +737,7 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
    char *filename;
+   void *boot_image = 0;
    grub_efi_handle_t dev_handle = 0;
 +  struct grub_shim_pe_coff_loader_image_context context;
  
    if (argc == 0)
      return grub_error (GRUB_ERR_BAD_ARGUMENT, N_("filename expected"));
-@@ -827,23 +828,53 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
+@@ -868,23 +869,53 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
    if (status != GRUB_EFI_SUCCESS)
      {
        if (status == GRUB_EFI_OUT_OF_RESOURCES)
@@ -89,8 +89,8 @@ index bd83859..01d2ebe 100644
 +  else
 +    loaded_image->device_handle = dev_handle;
  
-   grub_file_close (file);
- 
+   if (argc > 1)
+     {
 -- 
 1.9.1
 

@@ -1,6 +1,6 @@
-From 7c7e59083c92f41c3c66ab638349015a4e3f02d0 Mon Sep 17 00:00:00 2001
+From cf752b48b3278d41a54126f3e27c4c55e5463149 Mon Sep 17 00:00:00 2001
 From: Megha Dey <megha.dey@linux.intel.com>
-Date: Sun, 12 Nov 2017 12:41:46 -0800
+Date: Tue, 19 Jun 2018 15:12:26 -0700
 Subject: [PATCH] python : Fix switch fallthrough cases with GCC7
 
     Add the fallthrough comment to some files in python to make it
@@ -20,7 +20,7 @@ Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
  9 files changed, 65 insertions(+), 2 deletions(-)
 
 diff --git a/deps/python/Modules/_ctypes/_ctypes.c b/deps/python/Modules/_ctypes/_ctypes.c
-index aa34478..d96d7d8 100644
+index aa34478..fee7620 100644
 --- a/deps/python/Modules/_ctypes/_ctypes.c
 +++ b/deps/python/Modules/_ctypes/_ctypes.c
 @@ -3704,7 +3704,9 @@ _build_callargs(PyCFuncPtrObject *self, PyObject *argtypes,
@@ -34,7 +34,7 @@ index aa34478..d96d7d8 100644
              /* 'in' parameter.  Copy it from inargs. */
              ob =_get_arg(&inargs_index, name, defval, inargs, kwds);
 diff --git a/deps/python/Modules/zlib/inflate.c b/deps/python/Modules/zlib/inflate.c
-index 870f89b..9eec5ea 100644
+index 4fd3f3c..943ae2a 100644
 --- a/deps/python/Modules/zlib/inflate.c
 +++ b/deps/python/Modules/zlib/inflate.c
 @@ -702,6 +702,7 @@ int flush;
@@ -235,7 +235,7 @@ index 870f89b..9eec5ea 100644
              return Z_STREAM_ERROR;
          }
 diff --git a/deps/python/Objects/stringobject.c b/deps/python/Objects/stringobject.c
-index c1e12a7..0b2e021 100644
+index c1e12a7..9aca36a 100644
 --- a/deps/python/Objects/stringobject.c
 +++ b/deps/python/Objects/stringobject.c
 @@ -590,7 +590,7 @@ string_dealloc(PyObject *op)
@@ -248,7 +248,7 @@ index c1e12a7..0b2e021 100644
              Py_FatalError("Inconsistent interned string state.");
      }
 diff --git a/deps/python/Objects/unicodeobject.c b/deps/python/Objects/unicodeobject.c
-index 08723ac..8c9f682 100644
+index 08723ac..86f66fe 100644
 --- a/deps/python/Objects/unicodeobject.c
 +++ b/deps/python/Objects/unicodeobject.c
 @@ -796,6 +796,7 @@ PyUnicode_FromFormatV(const char *format, va_list vargs)
@@ -260,7 +260,7 @@ index 08723ac..8c9f682 100644
                  n++;
                  break;
 diff --git a/deps/python/Python/ast.c b/deps/python/Python/ast.c
-index e5d7ac6..37e708b 100644
+index 03dcffc..b6d25ad 100644
 --- a/deps/python/Python/ast.c
 +++ b/deps/python/Python/ast.c
 @@ -268,6 +268,7 @@ PyAST_FromNode(const node *n, PyCompilerFlags *flags, const char *filename,
@@ -422,7 +422,7 @@ index fa9e7e0..0ecb441 100644
                  why = do_raise(w, v, u);
                  break;
 diff --git a/deps/python/Python/compile.c b/deps/python/Python/compile.c
-index 2900757..6efa846 100644
+index 2900757..42e85cd 100644
 --- a/deps/python/Python/compile.c
 +++ b/deps/python/Python/compile.c
 @@ -3079,12 +3079,14 @@ compiler_visit_expr(struct compiler *c, expr_ty e)
@@ -441,7 +441,7 @@ index 2900757..6efa846 100644
          case Store:
              ADDOP_NAME(c, STORE_ATTR, e->v.Attribute.attr, names);
 diff --git a/deps/python/Python/dtoa.c b/deps/python/Python/dtoa.c
-index 73e23af..01f59c5 100644
+index 73e23af..13b30ec 100644
 --- a/deps/python/Python/dtoa.c
 +++ b/deps/python/Python/dtoa.c
 @@ -1528,6 +1528,7 @@ _Py_dg_strtod(const char *s00, char **se)
@@ -477,7 +477,7 @@ index 73e23af..01f59c5 100644
          i = ndigits + k + 1;
          ilim = i;
 diff --git a/deps/python/Python/getargs.c b/deps/python/Python/getargs.c
-index 81a2721..bb1beec 100644
+index 81a2721..accc0e4 100644
 --- a/deps/python/Python/getargs.c
 +++ b/deps/python/Python/getargs.c
 @@ -1738,7 +1738,7 @@ skipitem(const char **p_format, va_list *p_va, int flags)
