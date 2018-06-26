@@ -42,5 +42,5 @@ SRC_URI += "file://0014-grub-util-set-prefix-to-EFI-BOOT-when-booting-f.patch \
 GRUB_BUILDIN = "boot linux ext2 fat serial part_msdos part_gpt \
         normal efi_gop iso9660 configfile search efinet tftp all_video chain \
         gfxmenu jpeg gfxterm"
-do_deploy[depends] += "${@bb.utils.contains('DISTRO_FEATURES', 'luv-netboot','luv-netboot-image:do_mkimage' , '', d)}"
 
+do_mkimage[depends] += "${@bb.utils.contains('DISTRO_FEATURES', 'luv-netboot','luv-netboot-image:do_mkimage' , '', d)}"
