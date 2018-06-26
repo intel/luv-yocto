@@ -33,6 +33,9 @@ do_populate_image() {
 	install -d ${HDDDIR}${EFIDIR}
 	install -m 0644 ${GRUBCFG} ${HDDDIR}${EFIDIR}
 	install -m 0644 ${LUV_CFG} ${HDDDIR}
+	if [ "${TARGET_ARCH}" != "aarch64" ]; then
+		efi_populate_bits ${HDDDIR}
+	fi
 	build_hddimg
 }
 
