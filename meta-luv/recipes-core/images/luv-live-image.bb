@@ -1,6 +1,8 @@
 require luv-image.inc
 
 DEPENDS = "python-native parted-native"
+DEPENDS_append_x86 += " grub-efi"
+DEPENDS_append_x86-64 += " grub-efi"
 
 HDDIMG_ID = "423cc2c8"
 LABELS_LIVE = "luv"
