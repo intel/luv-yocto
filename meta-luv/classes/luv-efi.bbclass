@@ -59,7 +59,7 @@ efi_populate() {
 
     # TODO: need conditional signing; e.g., if (DISTRO_FEATURES contains secure_boot)
     # shim bootloader does not seem to work with i386. Thus we don't use it for 32-bit
-    elif [ "${TARGET_ARCH}" = "x86_64" ] && [ "${LUV_FOR_NETBOOT}" = "0"  ]; then
+    elif [ "${TARGET_ARCH}" = "x86_64" ] ; then
                 # sign grub2 bootloader
                 sbsign --key ${DEPLOY_DIR_IMAGE}/LUV.key --cert ${DEPLOY_DIR_IMAGE}/LUV.crt \
                        --output ${DEPLOY_DIR_IMAGE}/grubx64.efi ${DEPLOY_DIR_IMAGE}/${GRUB_EFI_LOADER_IMAGE}
@@ -75,8 +75,6 @@ efi_populate() {
 
                 # restore files to leave all in good shape for all the callers of the funciton
                 cp ${DEPLOY_DIR_IMAGE}/${DEST_EFI_LOADER_IMAGE} ${DEPLOY_DIR_IMAGE}/shim.efi
-    else
-		install -m 0644 ${DEPLOY_DIR_IMAGE}/${GRUB_EFI_LOADER_IMAGE} ${DEST}${EFIDIR}/${DEST_EFI_LOADER_IMAGE}
     fi
 
     if echo "${TARGET_ARCH}" | grep -q "i.86" || [ "${TARGET_ARCH}" = "x86_64" ]; then
