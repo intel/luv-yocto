@@ -4,8 +4,8 @@ SECTION = "devel/python"
 LICENSE = "ISC"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=1c7a725251880af8c6a148181665385b"
 
-SRC_URI[md5sum] = "16aa4549136b2d1b2bf1e0e9788d75a6"
-SRC_URI[sha256sum] = "8e287b171dbaf249d0b06b5f2e88cb7e694651d2d0b8c15bccb83170d3c55575"
+SRC_URI[md5sum] = "913fc0a68a915cdf6ad4250493c94cf7"
+SRC_URI[sha256sum] = "9f8eb3277716a01faafaba553d629d3d60a1a624c7cf45daa600d2148c30020c"
 
 UPSTREAM_CHECK_URI = "https://pypi.python.org/pypi/pexpect"
 

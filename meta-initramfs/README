@@ -25,8 +25,7 @@ with '[meta-initramfs][pyro]' in the subject.
 When sending single patches, please using something like:
 'git send-email -M -1 --to openembedded-devel@lists.openembedded.org --subject-prefix=meta-initramfs][pyro][PATCH'
 
-pyro Branch Maintainer:
-Armin Kuster <akuster808@gmail.com>
+Interm layer maintainer: Armin Kuster <akuster808@gmail.com>
 
 
 License
