@@ -30,7 +30,7 @@ PACKAGES += "${PN}-codegen ${PN}-utils"
 
 LEAD_SONAME = "libglib-2.0.*"
 
-inherit autotools gettext gtk-doc pkgconfig ptest-gnome upstream-version-is-even bash-completion gio-module-cache python3native manpages
+inherit autotools gettext gtk-doc pkgconfig ptest-gnome upstream-version-is-even bash-completion gio-module-cache manpages
 
 S = "${WORKDIR}/glib-${PV}"
 
@@ -91,6 +91,9 @@ USE_NLS_class-target = "yes"
 USE_NLS_class-nativesdk = "yes"
 CACHED_CONFIGUREVARS_append_class-native = " ac_cv_path_MSGFMT=/bin/false"
 
+EXEEXT = ""
+EXEEXT_mingw32 = ".exe"
+
 do_install_append () {
 	if [ -f ${D}${bindir}/gtester-report ]; then
 		sed ${D}${bindir}/gtester-report -i -e '1s|^#!.*|#!/usr/bin/env python3|'
@@ -104,6 +107,11 @@ do_install_append () {
 	if [ -e ${D}${libdir}/charset.alias ]; then
 		rm -f ${D}${libdir}/charset.alias
 	fi
+
+        # Make sure gio-querymodules is unique among multilibs
+        if test "x${MLPREFIX}" != "x"; then
+                mv ${D}${libexecdir}/gio-querymodules${EXEEXT} ${D}${libexecdir}/${MLPREFIX}gio-querymodules${EXEEXT}
+        fi
 }
 
 do_install_append_class-target () {
@@ -113,11 +121,6 @@ do_install_append_class-target () {
 		if ${@bb.utils.contains("DISTRO_FEATURES", "x11", "false", "true", d)}; then
 			rm ${D}${datadir}/installed-tests/glib/gdbus-serialization.test
 		fi
-	fi
-
-	# Make sure gio-querymodules is unique among multilibs
-	if test "x${MLPREFIX}" != "x"; then
-		mv ${D}${libexecdir}/gio-querymodules ${D}${libexecdir}/${MLPREFIX}gio-querymodules
 	fi
 }
 

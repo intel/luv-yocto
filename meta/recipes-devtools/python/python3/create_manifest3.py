@@ -80,7 +80,7 @@ with open('python3-manifest.json') as manifest:
 
 # First pass to get core-package functionality, because we base everything on the fact that core is actually working
 # Not exactly the same so it should not be a function
-print ('Getting dependencies for core package:')
+print ('Getting dependencies for package: core')
 
 # Special call to check for core package
 output = subprocess.check_output([sys.executable, 'get_module_deps3.py', 'python-core-package']).decode('utf8')
@@ -124,11 +124,11 @@ for value in old_manifest['core']['files']:
   # Get module name , shouldnt be affected by libdir/bindir
   value = os.path.splitext(os.path.basename(os.path.normpath(value)))[0]
 
-
   # Launch separate task for each module for deterministic behavior
   # Each module will only import what is necessary for it to work in specific
   print ('Getting dependencies for module: %s' % value)
   output = subprocess.check_output([sys.executable, 'get_module_deps3.py', '%s' % value]).decode('utf8')
+  print ('The following dependencies were found for module %s:\n' % value)
   print (output)
   for item in output.split():
     # We append it so it doesnt hurt what we currently have:
@@ -171,7 +171,10 @@ for key in old_manifest:
 
     # Handle special cases, we assume that when they were manually added 
     # to the manifest we knew what we were doing.
+    print('\n')
+    print('--------------------------')
     print ('Handling package %s' % key)
+    print('--------------------------')
     special_packages=['misc', 'modules', 'dev']
     if key in special_packages or 'staticdev' in key:
         print('Passing %s package directly' % key)
@@ -200,16 +203,33 @@ for key in old_manifest:
             if value not in new_manifest[key]['files']:
                 new_manifest[key]['files'].append(value)
             continue
+
         # Get module name , shouldnt be affected by libdir/bindir
-        value = os.path.splitext(os.path.basename(os.path.normpath(value)))[0]
+        # We need to check if the imported module comes from another (e.g. sqlite3.dump)
+        path,value = os.path.split(value)
+        path = os.path.basename(path)
+        value = os.path.splitext(os.path.basename(value))[0]
+
+        # If this condition is met, it means we need to import it from another module
+        # or its the folder itself (e.g. unittest)
+        if path == key:
+          if value:
+            value = path + '.' + value
+          else:
+            value = path
 
         # Launch separate task for each module for deterministic behavior
         # Each module will only import what is necessary for it to work in specific
-        print ('Getting dependencies for module: %s' % value)
+        print ('\nGetting dependencies for module: %s' % value)
         output = subprocess.check_output([sys.executable, 'get_module_deps3.py', '%s' % value]).decode('utf8')
         # We can print dependencies for debugging purposes
+        print ('The following dependencies were found for module %s:\n' % value)
         print (output)
         # Output will have all dependencies
+
+        reportFILES = []
+        reportRDEPS = []
+
         for item in output.split():
 
             # Warning: This first part is ugly
@@ -241,7 +261,7 @@ for key in old_manifest:
                             #print('Checking folder %s on package %s' % (item,keyfolder))
                             for file_folder in old_manifest[keyfolder]['files'] or file_folder in old_manifest[keyfolder]['cached']:
                                 if file_folder==folder:
-                                    print ('%s found in %s' % (folder, keyfolder))
+                                    print ('%s folder found in %s' % (folder, keyfolder))
                                     folderFound = True
                                     if keyfolder not in new_manifest[key]['rdepends'] and keyfolder != key:
                                         new_manifest[key]['rdepends'].append(keyfolder)
@@ -252,6 +272,7 @@ for key in old_manifest:
             # A folder was found so we're done with this item, we can go on
             if inFolders:
                 continue
+
 
             # We might already have it on the dictionary since it could depend on a (previously checked) module
             if item not in new_manifest[key]['files'] and item not in new_manifest[key]['cached']:
@@ -273,6 +294,7 @@ for key in old_manifest:
 
                 else:
 
+
                     # Check if this dependency is already contained on another package, so we add it
                     # as an RDEPENDS, or if its not, it means it should be contained on the current
                     # package, so we should add it to FILES
@@ -284,24 +306,34 @@ for key in old_manifest:
                                 if(newkey!=key):
                                     if newkey not in new_manifest[key]['rdepends']:
                                        # Add it to the new manifest data struct
-                                       # Debug
-                                       print('Adding %s to %s RDEPENDS, because it contains %s' % (newkey, key, item))
+                                       reportRDEPS.append('Adding %s to %s RDEPENDS, because it contains %s\n' % (newkey, key, item))
                                        new_manifest[key]['rdepends'].append(newkey)
                                     break
                     else:
-                      # Debug
-                      print('Adding %s to %s FILES' % (item, key))
-                      # Since it wasnt found on another package, its not an RDEP, so add it to FILES for this package
-                      if isCached(item):
-                          new_manifest[key]['cached'].append(item)
-                      else:
-                          new_manifest[key]['files'].append(item)
-                      if item.endswith('*'):
-                          wildcards.append(item)
-                      if item not in allfiles:
-                          allfiles.append(item)
-                      else:
-                          repeated.append(item)
+                      # A module shouldn't contain itself (${libdir}/python3/sqlite3 shouldnt be on sqlite3 files)
+                      if os.path.basename(item) != key:
+                        reportFILES.append(('Adding %s to %s FILES\n' % (item, key)))
+                        # Since it wasnt found on another package, its not an RDEP, so add it to FILES for this package
+                        if isCached(item):
+                            new_manifest[key]['cached'].append(item)
+                        else:
+                            new_manifest[key]['files'].append(item)
+
+                        if item.endswith('*'):
+                            wildcards.append(item)
+                        if item not in allfiles:
+                            allfiles.append(item)
+                        else:
+                            repeated.append(item)
+
+        print('\n')
+        print('#################################')
+        print('Summary for module %s' % value)
+        print('FILES found for module %s:' % value)
+        print(''.join(reportFILES))
+        print('RDEPENDS found for module %s:' % value)
+        print(''.join(reportRDEPS))
+        print('#################################')
 
 print ('The following files are repeated (contained in more than one package), please check which package should get it:')
 print (repeated)
@@ -319,3 +351,4 @@ for key in new_manifest:
 # Create the manifest from the data structure that was built
 with open('python3-manifest.json.new','w') as outfile:
     json.dump(new_manifest,outfile,sort_keys=True, indent=4)
+    outfile.write('\n')

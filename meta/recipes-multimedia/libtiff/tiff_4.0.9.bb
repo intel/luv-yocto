@@ -6,6 +6,9 @@ CVE_PRODUCT = "libtiff"
 
 SRC_URI = "http://download.osgeo.org/libtiff/tiff-${PV}.tar.gz \
            file://libtool2.patch \
+           file://CVE-2017-9935.patch \
+           file://CVE-2017-18013.patch \
+           file://CVE-2018-5784.patch \
           "
 
 SRC_URI[md5sum] = "54bad211279cc93eb4fca31ba9bfdc79"
@@ -14,7 +17,7 @@ SRC_URI[sha256sum] = "6e7bdeec2c310734e734d19aae3a71ebe37a4d842e0e23dbb1b8921c00
 # exclude betas
 UPSTREAM_CHECK_REGEX = "tiff-(?P<pver>\d+(\.\d+)+).tar"
 
-inherit autotools
+inherit autotools multilib_header
 
 CACHED_CONFIGUREVARS = "ax_cv_check_gl_libgl=no"
 
@@ -44,5 +47,9 @@ PACKAGECONFIG[chunky-strip-read] = "--enable-chunky-strip-read,--disable-chunky-
 PACKAGES =+ "tiffxx tiff-utils"
 FILES_tiffxx = "${libdir}/libtiffxx.so.*"
 FILES_tiff-utils = "${bindir}/*"
+
+do_install_append() {
+    oe_multilib_header tiffconf.h
+}
 
 BBCLASSEXTEND = "native"
