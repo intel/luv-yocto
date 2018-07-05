@@ -39,7 +39,7 @@ if [ $? -eq 1 ]; then
         mount ${LUV_DISK_DEVICE} ${LUV_BOOT_PARTITION}
         if [ $? -eq 0 ]; then
             kexec -p --initrd=${LUV_BOOT_PARTITION}initrd --append="${KEXEC_APPEND}" \
-                  ${LUV_BOOT_PARTITION}${KERNEL_IMAGETYPE}
+                  ${LUV_BOOT_PARTITION}kernel_image
             umount ${LUV_BOOT_PARTITION}
         fi
     fi
