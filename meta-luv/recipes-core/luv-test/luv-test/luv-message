@@ -8,7 +8,7 @@ luv_msg_write() {
 
     if [ $# == 2 ]; then
          sleep $2
-         plymouth_hide "$1"
+         luv_msg_hide $1
     fi
 
     echo "$1" >&2
