@@ -73,6 +73,7 @@ do_install_append() {
                ${D}${sysconfdir}/luv/parsers/libparser
 
        install -m 755 ${WORKDIR}/luv-crash-handler ${D}${sbindir}/
+       sed -i 's,kernel_image,${KERNEL_IMAGETYPE},g' ${D}${sbindir}/luv-crash-handler
 
        install -m 755 ${WORKDIR}/luv-netconsole ${D}${sbindir}/
 
