@@ -8,6 +8,7 @@ IMAGE_LINGUAS ?= "en-us en-gb"
 ENABLE_BINARY_LOCALE_GENERATION ?= "1"
 LOCALE_UTF8_ONLY ?= "0"
 LOCALE_UTF8_IS_DEFAULT ?= "1"
+LOCALE_UTF8_IS_DEFAULT_class-nativesdk = "0"
 
 DISTRO_FEATURES_DEFAULT ?= "acl alsa argp bluetooth ext2 irda largefile pcmcia usbgadget usbhost wifi xattr nfs zeroconf pci 3g nfc x11"
 DISTRO_FEATURES_LIBC_DEFAULT ?= "ipv4 ipv6 libc-backtrace libc-big-macros libc-bsd libc-cxx-tests libc-catgets libc-charsets libc-crypt \
@@ -46,3 +47,9 @@ BB_STRICT_CHECKSUM = "1"
 
 GTK2DISTROFEATURES = "directfb x11"
 GTK3DISTROFEATURES = "x11 wayland"
+
+ARCH_DEFAULT_KERNELIMAGETYPE = "zImage"
+ARCH_DEFAULT_KERNELIMAGETYPE_x86 = "bzImage"
+ARCH_DEFAULT_KERNELIMAGETYPE_x86-64 = "bzImage"
+KERNEL_IMAGETYPE ??= "${ARCH_DEFAULT_KERNELIMAGETYPE}"
+KERNEL_IMAGETYPES ??= "${KERNEL_IMAGETYPE}"

@@ -10,13 +10,15 @@ DEPENDS = "libusb zlib virtual/libiconv udev"
 
 SRC_URI = "${KERNELORG_MIRROR}/linux/utils/usb/usbutils/usbutils-${PV}.tar.gz \
            file://usb-devices-avoid-dependency-on-bash.patch \
-           file://Fix-NULL-pointer-crash.patch \
           "
 
 SRC_URI[md5sum] = "b5dbc498b2eb5058f7a57fc6532d0aad"
 SRC_URI[sha256sum] = "e73543293a17c7803994eac97a49e58b377e08e6299ba11aad09794b91340e8b"
 
-inherit autotools pkgconfig distro_features_check
+inherit autotools pkgconfig distro_features_check update-alternatives
+
+ALTERNATIVE_${PN} = "lsusb"
+ALTERNATIVE_PRIORITY = "100"
 
 FILES_${PN}-dev += "${datadir}/pkgconfig"
 

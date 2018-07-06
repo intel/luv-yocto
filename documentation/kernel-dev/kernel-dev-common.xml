@@ -136,7 +136,7 @@
                             Developer's Guide, respectively.
                             For information on how to use the
                             <filename>bitbake-layers create-layer</filename>
-                            command, see the
+                            command to quickly set up a layer, see the
                             "<ulink url='&YOCTO_DOCS_DEV_URL;#creating-a-general-layer-using-the-bitbake-layers-script'>Creating a General Layer Using the <filename>bitbake-layers</filename> Script</ulink>"
                             section in the Yocto Project Development Tasks
                             Manual.
@@ -360,7 +360,7 @@
                             Developer's Guide, respectively.
                             For information on how to use the
                             <filename>bitbake-layers create-layer</filename>
-                            command, see the
+                            command to quickly set up a layer, see the
                             "<ulink url='&YOCTO_DOCS_DEV_URL;#creating-a-general-layer-using-the-bitbake-layers-script'>Creating a General Layer Using the <filename>bitbake-layers</filename> Script</ulink>"
                             section in the Yocto Project Development Tasks
                             Manual.
@@ -489,7 +489,8 @@
                 See the
                 "<ulink url='&YOCTO_DOCS_DEV_URL;#creating-a-general-layer-using-the-bitbake-layers-script'>Creating a General Layer Using the <filename>bitbake-layers</filename> Script</ulink>"
                 section in the Yocto Project Development Tasks Manual for
-                information on how to use this script.
+                information on how to use this script to quick set up a
+                new layer.
             </note>
         </para>
 
@@ -1224,18 +1225,6 @@
             the
             "<link linkend='getting-ready-for-traditional-kernel-development'>Getting Ready for Traditional Kernel Development</link>"
             Section.
-        </para>
-
-        <para>
-            Although this example uses Git and shell commands to generate the
-            patch, you could use the <filename>yocto-kernel</filename> script
-            found in the <ulink url='&YOCTO_DOCS_REF_URL;#source-directory'>Source Directory</ulink>
-            under <filename>scripts</filename> to add and manage kernel
-            patches and configuration.
-            See the "<ulink url='&YOCTO_DOCS_BSP_URL;#managing-kernel-patches-and-config-items-with-yocto-kernel'>Managing kernel Patches and Config Items with yocto-kernel</ulink>"
-            section in the Yocto Project Board Support Packages (BSP)
-            Developer's Guide for more information on the
-            <filename>yocto-kernel</filename> script.
             <orderedlist>
                 <listitem><para>
                     <emphasis>Edit the Source Files</emphasis>

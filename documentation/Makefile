@@ -84,12 +84,28 @@
 # for the 'denzil' branch.
 #
 
+ifeq ($(DOC),brief-yoctoprojectqs)
+XSLTOPTS = --stringparam html.stylesheet brief-yoctoprojectqs-style.css \
+           --stringparam  chapter.autolabel 0 \
+           --stringparam  section.autolabel 0 \
+           --stringparam  section.label.includes.component.label 0 \
+           --xinclude
+ALLPREQ = html tarball
+TARFILES = brief-yoctoprojectqs-style.css brief-yoctoprojectqs.html figures/ypqs-title.png \
+           figures/yocto-project-transp.png
+MANUALS = $(DOC)/$(DOC).html $(DOC)/eclipse
+FIGURES = figures
+STYLESHEET = $(DOC)/*.css
+
+endif
+
 ifeq ($(DOC),getting-started)
 XSLTOPTS = --xinclude
 ALLPREQ = html eclipse tarball
 TARFILES = getting-started-style.css getting-started.html figures/getting-started-title.png \
            figures/git-workflow.png figures/source-repos.png figures/index-downloads.png \
            figures/yp-download.png figures/YP-flow-diagram.png figures/key-dev-elements.png \
+           figures/poky-reference-distribution.png \
            eclipse
 MANUALS = $(DOC)/$(DOC).html $(DOC)/eclipse
 FIGURES = figures
@@ -274,7 +290,7 @@ TARFILES = mega-manual.html mega-style.css \
 	figures/sdk-generation.png figures/recipe-workflow.png \
 	figures/build-workspace-directory.png figures/mega-title.png \
 	figures/toaster-title.png figures/hosted-service.png \
-	figures/simple-configuration.png \
+	figures/simple-configuration.png figures/poky-reference-distribution.png \
 	figures/compatible-layers.png figures/import-layer.png figures/new-project.png \
 	figures/sdk-environment.png figures/sdk-installed-standard-sdk-directory.png \
 	figures/sdk-devtool-add-flow.png figures/sdk-installed-extensible-sdk-directory.png \
@@ -383,9 +399,9 @@ XSL_XHTML_URI = $(XSL_BASE_URI)/xhtml/docbook.xsl
 all: $(ALLPREQ)
 
 pdf:
-ifeq ($(DOC),yocto-project-qs)
+ifeq ($(DOC),yocto-project-qs brief-yoctoprojectqs)
 	@echo " "
-	@echo "ERROR: You cannot generate a yocto-project-qs PDF file."
+	@echo "ERROR: You cannot generate yocto-project-qs or brief-yoctoprojectqs PDF files."
 	@echo " "
 
 else ifeq ($(DOC),mega-manual)

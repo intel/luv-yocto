@@ -20,7 +20,7 @@ LIC_FILES_CHKSUM = "file://README.licensing;md5=1715f5ee3e01203ca1e1e0b9ee65918c
 
 #gtk-doc is not enabled as it requires xmlto which requires util-linux
 inherit autotools gettext pkgconfig systemd update-alternatives python3-dir bash-completion ptest
-DEPENDS = "zlib ncurses"
+DEPENDS = "zlib ncurses virtual/crypt"
 DEPENDS_append_class-native = " lzo-native"
 DEPENDS_append_class-nativesdk = " lzo-native"
 
@@ -196,15 +196,17 @@ do_install () {
 }
 
 # nologin causes a conflict with shadow-native
+# kill causes a conflict with coreutils-native (if ${bindir}==${base_bindir})
 do_install_append_class-native () {
 	rm -f ${D}${base_sbindir}/nologin
+	rm -f ${D}${base_bindir}/kill
 }
 
 ALTERNATIVE_PRIORITY = "80"
 
 ALTERNATIVE_${PN}  = "dmesg kill more mkswap blockdev pivot_root switch_root"
 ALTERNATIVE_${PN} += "hexdump last lastb logger mesg renice wall"
-ALTERNATIVE_${PN} += "setsid chrt flock utmpdump eject nologin"
+ALTERNATIVE_${PN} += "setsid chrt flock utmpdump eject nologin taskset"
 
 ALTERNATIVE_LINK_NAME[dmesg] = "${base_bindir}/dmesg"
 ALTERNATIVE_LINK_NAME[kill] = "${base_bindir}/kill"

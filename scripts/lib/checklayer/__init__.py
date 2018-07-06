@@ -42,8 +42,8 @@ def _get_layer_collections(layer_path, lconf=None, data=None):
     ldata.setVar('LAYERDIR', layer_path)
     try:
         ldata = bb.parse.handle(lconf, ldata, include=True)
-    except BaseException as exc:
-        raise LayerError(exc)
+    except:
+        raise RuntimeError("Parsing of layer.conf from layer: %s failed" % layer_path)
     ldata.expandVarref('LAYERDIR')
 
     collections = (ldata.getVar('BBFILE_COLLECTIONS') or '').split()
@@ -56,9 +56,11 @@ def _get_layer_collections(layer_path, lconf=None, data=None):
         priority = ldata.getVar('BBFILE_PRIORITY_%s' % name)
         pattern = ldata.getVar('BBFILE_PATTERN_%s' % name)
         depends = ldata.getVar('LAYERDEPENDS_%s' % name)
+        compat = ldata.getVar('LAYERSERIES_COMPAT_%s' % name)
         collections[name]['priority'] = priority
         collections[name]['pattern'] = pattern
         collections[name]['depends'] = depends
+        collections[name]['compat'] = compat
 
     return collections
 
