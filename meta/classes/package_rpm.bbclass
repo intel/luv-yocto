@@ -470,12 +470,12 @@ python write_specfile () {
 
         # Now process scriptlets
         if splitrpreinst:
-            spec_scriptlets_bottom.append('%%pre -n %s -p "/bin/sh -e"' % splitname)
+            spec_scriptlets_bottom.append('%%pre -n %s' % splitname)
             spec_scriptlets_bottom.append('# %s - preinst' % splitname)
             spec_scriptlets_bottom.append(splitrpreinst)
             spec_scriptlets_bottom.append('')
         if splitrpostinst:
-            spec_scriptlets_bottom.append('%%post -n %s -p "/bin/sh -e"' % splitname)
+            spec_scriptlets_bottom.append('%%post -n %s' % splitname)
             spec_scriptlets_bottom.append('# %s - postinst' % splitname)
             spec_scriptlets_bottom.append(splitrpostinst)
             spec_scriptlets_bottom.append('')
@@ -564,12 +564,12 @@ python write_specfile () {
     spec_preamble_top.append('')
 
     if srcrpreinst:
-        spec_scriptlets_top.append('%pre -p "/bin/sh -e"')
+        spec_scriptlets_top.append('%pre')
         spec_scriptlets_top.append('# %s - preinst' % srcname)
         spec_scriptlets_top.append(srcrpreinst)
         spec_scriptlets_top.append('')
     if srcrpostinst:
-        spec_scriptlets_top.append('%post -p "/bin/sh -e"')
+        spec_scriptlets_top.append('%post')
         spec_scriptlets_top.append('# %s - postinst' % srcname)
         spec_scriptlets_top.append(srcrpostinst)
         spec_scriptlets_top.append('')
@@ -670,7 +670,7 @@ python do_package_rpm () {
     cmd = rpmbuild
     cmd = cmd + " --noclean --nodeps --short-circuit --target " + pkgarch + " --buildroot " + pkgd
     cmd = cmd + " --define '_topdir " + workdir + "' --define '_rpmdir " + pkgwritedir + "'"
-    cmd = cmd + " --define '_builddir " + d.getVar('S') + "'"
+    cmd = cmd + " --define '_builddir " + d.getVar('B') + "'"
     cmd = cmd + " --define '_build_name_fmt %%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm'"
     cmd = cmd + " --define '_use_internal_dependency_generator 0'"
     cmd = cmd + " --define '_binaries_in_noarch_packages_terminate_build 0'"

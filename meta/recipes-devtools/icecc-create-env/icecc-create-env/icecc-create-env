@@ -7,6 +7,24 @@
 target_paths=
 target_aliases=
 
+# Always prints, optionally to a log file
+print_output ()
+{
+    if test -n "$log_path"; then
+        echo "$@" | tee -a "$log_path"
+    else
+        echo "$@"
+    fi
+}
+
+# Only prints if the debug flag is specified
+print_debug ()
+{
+    if test -n "$debug"; then
+        print_output "$@"
+    fi
+}
+
 is_dynamic_elf ()
 {
     # Is the file an dynamically linked ELF executable?
@@ -24,11 +42,13 @@ fix_rpath ()
     if ! is_dynamic_elf "$path"; then
         return
     fi
-    local new_rpath="`readelf -w -d "$path" | grep RPATH | \
+    local old_rpath="`$PATCHELF --print-rpath "$path"`"
+    local new_rpath="`echo "$old_rpath" | \
         sed 's/.*\[\(.*\)\]/\1/g' | \
         sed "s,\\\$ORIGIN,/$origin,g"`"
 
     if test -n "$new_rpath"; then
+        print_debug "Converting RPATH '$old_rpath' -> '$new_rpath'"
         $PATCHELF --set-rpath "$new_rpath" "$path"
     fi
 }
@@ -54,6 +74,7 @@ add_alias ()
             *" $alias "*)
                 ;;
             *)
+                print_debug "Adding alias '$2' -> '$1'"
                 target_aliases="$target_aliases $alias"
                 ;;
         esac
@@ -78,62 +99,113 @@ normalize_path ()
     echo $path
 }
 
+add_file_common()
+{
+    local p="$1"
+    local path="$2"
+    local alias="$3"
+
+    add_alias "$path" "$p"
+    if test -n "$alias"; then
+        add_alias "$path" "$alias"
+    fi
+
+    add_path "$path" || return 1
+    print_debug "Adding file '$path'"
+
+    return 0
+}
+
+add_deps()
+{
+    local path="$1"
+    local interp="$2"
+
+    if test -n "$interp" && test -x "$interp"; then
+        # Use the dynamic loaders --list argument to list the
+        # dependencies. The program may have a different program
+        # interpreter (typical when using uninative tarballs), which is
+        # why we can't just call ldd.
+        deps="`$interp --list "$path"`"
+    else
+        deps="`ldd "$path"`"
+    fi
+
+    print_debug "Dependencies are:"
+    print_debug "$deps"
+    if test -n "$deps"; then
+        for lib in $deps; do
+            # ldd now outputs ld as /lib/ld-linux.so.xx on current nptl
+            # based glibc this regexp parse the outputs like:
+            # ldd /usr/bin/gcc
+            #         linux-gate.so.1 =>  (0xffffe000)
+            #         libc.so.6 => /lib/tls/libc.so.6 (0xb7e81000)
+            #         /lib/ld-linux.so.2 (0xb7fe8000)
+            # covering both situations ( with => and without )
+            lib="`echo "$lib" | sed -n 's,^[^/]*\(/[^ ]*\).*,\1,p'`"
+
+            test -f "$lib" || continue
+            # Check whether the same library also exists in the parent
+            # directory, and prefer that on the assumption that it is a
+            # more generic one.
+            local baselib=`echo "$lib" | sed 's,\(/[^/]*\)/.*\(/[^/]*\)$,\1\2,'`
+            test -f "$baselib" && lib=$baselib
+            add_dependency "$lib" "$interp"
+        done
+    fi
+}
+
+add_dependency()
+{
+    local p=`normalize_path $1`
+    # readlink is required for Yocto, so we can use it
+    local path=`readlink -f "$p"`
+    local interp="$2"
+
+    add_file_common "$p" "$path" || return
+
+    if test -x "$path" && is_dynamic_elf "$path"; then
+        add_deps "$path" "$interp"
+    fi
+}
+
 add_file ()
 {
     local p=`normalize_path $1`
     # readlink is required for Yocto, so we can use it
     local path=`readlink -f "$p"`
 
-    add_alias "$path" "$p"
-    if test -n "$2"; then
-        add_alias "$path" "$2"
-    fi
+    add_file_common "$p" "$path" "$2" || return
 
-    add_path "$path" || return
+    if test -x "$path" && is_dynamic_elf "$path"; then
+        # Request the program interpeter (dynamic loader)
+        interp=`readelf -W -l "$path" | grep "Requesting program interpreter:" | sed "s/\s*\[Requesting program interpreter:\s*\(.*\)\]/\1/g"`
+        print_debug "Interpreter is '$interp'"
 
-    if test -x "$path"; then
-        # Only call ldd when it makes sense
-        if is_dynamic_elf "$path"; then
-            # Request the program interpeter (dynamic loader)
-            interp=`readelf -w -l "$path" | grep "Requesting program interpreter:" | sed "s/\s*\[Requesting program interpreter:\s*\(.*\)\]/\1/g"`
-
-            if test -n "$interp" && test -x "$interp"; then
-                # Use the dynamic loaders --list argument to list the
-                # depenencies. The program may have a a different program
-                # interpeter (typical when using uninative tarballs), which is
-                # why we can't just call ldd.
-                #
-                # ldd now outputs ld as /lib/ld-linux.so.xx on current nptl based glibc
-                # this regexp parse the outputs like:
-                # ldd /usr/bin/gcc
-                #         linux-gate.so.1 =>  (0xffffe000)
-                #         libc.so.6 => /lib/tls/libc.so.6 (0xb7e81000)
-                #         /lib/ld-linux.so.2 (0xb7fe8000)
-                # covering both situations ( with => and without )
-                for lib in `$interp --list "$path" | sed -n 's,^[^/]*\(/[^ ]*\).*,\1,p'`; do
-                    test -f "$lib" || continue
-                    # Check wether the same library also exists in the parent directory,
-                    # and prefer that on the assumption that it is a more generic one.
-                    local baselib=`echo "$lib" | sed 's,\(/[^/]*\)/.*\(/[^/]*\)$,\1\2,'`
-                    test -f "$baselib" && lib=$baselib
-                    add_file "$lib"
-                done
-            fi
-        fi
+        add_deps "$path" "$interp"
     fi
 }
 
-# backward compat
-if test "$1" = "--respect-path"; then
+while test -n "$1"; do
+    case "$1" in
+        --respect-path)
+            # Ignore for backward compatability
+            ;;
+        --debug)
+            debug=1
+            ;;
+        --log)
+            do_log=1
+            ;;
+        --extra=*)
+            extra_tools="$extra_tools ${1#--extra=}"
+            ;;
+        *)
+            break
+            ;;
+    esac
     shift
-fi
-
-#add a --silent switch to avoid "broken pipe" errors when calling this scipt from within OE
-if test "$1" = "--silent"; then
-    silent=1
-    shift
-fi
-
+done
 
 added_gcc=$1
 shift
@@ -143,6 +215,11 @@ added_as=$1
 shift
 archive_name=$1
 
+if test -n "$do_log"; then
+    log_path="$archive_name.log"
+    rm -f "$log_path"
+fi
+
 if test -z "$PATCHELF"; then
     PATCHELF=`which patchelf 2> /dev/null`
 fi
@@ -150,22 +227,22 @@ if test -z "$PATCHELF"; then
     PATCHELF=`which patchelf-uninative 2> /dev/null`
 fi
 if test -z "$PATCHELF"; then
-    echo "patchelf is required"
+    print_output "patchelf is required"
     exit 1
 fi
 
 if test -z "$added_gcc" || test -z "$added_gxx" ; then
-    echo "usage: $0 <gcc_path> <g++_path>"
+    print_output "usage: $0 <gcc_path> <g++_path>"
     exit 1
 fi
 
 if ! test -x "$added_gcc" ; then
-    echo "'$added_gcc' is no executable."
+    print_output "'$added_gcc' is not executable."
     exit 1
 fi
 
 if ! test -x "$added_gxx" ; then
-    echo "'$added_gcc' is no executable."
+    print_output "'$added_gcc' is not executable."
     exit 1
 fi
 
@@ -178,7 +255,7 @@ if test -z "$added_as" ; then
     add_file /usr/bin/as /usr/bin/as
 else
     if ! test -x "$added_as" ; then
-        echo "'$added_as' is no executable."
+        print_output "'$added_as' is not executable."
         exit 1
     fi
 
@@ -206,9 +283,18 @@ if test -x /bin/true; then
 elif test -x /usr/bin/true; then
     add_file /usr/bin/true /bin/true
 else
-    echo "'true' not found"
+    print_output "'true' not found"
     exit 1
 fi
+
+for extra in $extra_tools; do
+    if test -x "$extra"; then
+        add_file "$extra"
+    else
+        print_output "'$extra' not found"
+        exit 1
+    fi
+done
 
 link_rel ()
 {
@@ -266,9 +352,7 @@ if test -z "$archive_name"; then
 
     #calculate md5 and use it as the archive name
     archive_name=`for i in $target_files; do test -f $tempdir/$i && $md5sum $tempdir/$i; done | sed -e 's/ .*$//' | $md5sum | sed -e 's/ .*$//'`.tar.gz || {
-        if test -z "$silent"; then
-            echo "Couldn't compute MD5 sum."
-        fi
+        print_output "Couldn't compute MD5 sum."
         exit 2
     }
     mydir=`pwd`
@@ -283,9 +367,7 @@ else
     fi
 fi
 
-if test -z "$silent"; then
-    echo "creating $archive_name"
-fi
+print_output "creating $archive_name"
 
 cd $tempdir
 # Add everything in the temp directory. Tar doesn't like to be given files with
@@ -293,9 +375,7 @@ cd $tempdir
 # the path prefix past the offending "..". This makes the archive generate
 # incorrectly
 tar -czf "$mydir/$archive_name" . || {
-    if test -z "$silent"; then
-        echo "Couldn't create archive"
-    fi
+    print_output "Couldn't create archive"
     exit 3
 }
 cd ..

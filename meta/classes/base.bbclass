@@ -152,12 +152,8 @@ python base_do_fetch() {
 addtask unpack after do_fetch
 do_unpack[dirs] = "${WORKDIR}"
 
-python () {
-    if d.getVar('S') != d.getVar('WORKDIR'):
-        d.setVarFlag('do_unpack', 'cleandirs', '${S}')
-    else:
-        d.setVarFlag('do_unpack', 'cleandirs', os.path.join('${S}', 'patches'))
-}
+do_unpack[cleandirs] = "${@d.getVar('S') if d.getVar('S') != d.getVar('WORKDIR') else os.path.join('${S}', 'patches')}"
+
 python base_do_unpack() {
     src_uri = (d.getVar('SRC_URI') or "").split()
     if len(src_uri) == 0:
@@ -222,8 +218,6 @@ python base_eventhandler() {
         if not d.getVar("NATIVELSBSTRING", False):
             d.setVar("NATIVELSBSTRING", lsb_distro_identifier(d))
         d.setVar('BB_VERSION', bb.__version__)
-        oe.utils.features_backfill("DISTRO_FEATURES", d)
-        oe.utils.features_backfill("MACHINE_FEATURES", d)
         # Works with the line in layer.conf which changes PATH to point here
         setup_hosttools_dir(d.getVar('HOSTTOOLS_DIR'), 'HOSTTOOLS', d)
         setup_hosttools_dir(d.getVar('HOSTTOOLS_DIR'), 'HOSTTOOLS_NONFATAL', d, fatal=False)
@@ -382,6 +376,10 @@ def set_packagetriplet(d):
 python () {
     import string, re
 
+    # Handle backfilling
+    oe.utils.features_backfill("DISTRO_FEATURES", d)
+    oe.utils.features_backfill("MACHINE_FEATURES", d)
+
     # Handle PACKAGECONFIG
     #
     # These take the form:
@@ -456,7 +454,7 @@ python () {
 
     pn = d.getVar('PN')
     license = d.getVar('LICENSE')
-    if license == "INVALID":
+    if license == "INVALID" and pn != "defaultpkgname":
         bb.fatal('This recipe does not have the LICENSE field set (%s)' % pn)
 
     if bb.data.inherits_class('license', d):

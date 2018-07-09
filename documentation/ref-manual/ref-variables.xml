@@ -5951,52 +5951,19 @@
                     class.
                     You should use the <filename>IMAGE_INSTALL</filename>
                     variable with care to avoid ordering issues.
-                    <note>
-                        When working with an
-                        <link linkend='images-core-image-minimal-initramfs'><filename>core-image-minimal-initramfs</filename></link>
-                        image, do not use the <filename>IMAGE_INSTALL</filename>
-                        variable to specify packages for installation.
-                        Instead, use the
-                        <link linkend='var-PACKAGE_INSTALL'><filename>PACKAGE_INSTALL</filename></link>
-                        variable, which allows the initial RAM filesystem
-                        (initramfs) recipe to use a fixed set of packages and
-                        not be affected by <filename>IMAGE_INSTALL</filename>.
-                        For information on creating an initramfs, see the
-                        "<ulink url='&YOCTO_DOCS_DEV_URL;#building-an-initramfs-image'>Building an Initial RAM Filesystem (initramfs) Image</ulink>"
-                        section in the Yocto Project Development Tasks Manual.
-                    </note>
                 </para>
 
                 <para>
                     Image recipes set <filename>IMAGE_INSTALL</filename>
                     to specify the packages to install into an image through
                     <filename>image.bbclass</filename>.
-                    Additionally, "helper" classes exist, such as
-                    <filename>core-image.bbclass</filename>, that can take
+                    Additionally, "helper" classes exist, such as the
+                    <link linkend='ref-classes-core-image'><filename>core-image</filename></link>,
+                    class that can take
                     <filename><link linkend='var-IMAGE_FEATURES'>IMAGE_FEATURES</link></filename>
                     lists and turn these into auto-generated entries in
                     <filename>IMAGE_INSTALL</filename> in addition to its
                     default contents.
-                </para>
-
-                <para>
-                    Using <filename>IMAGE_INSTALL</filename> with the
-                    <filename>+=</filename> operator from the
-                    <filename>/conf/local.conf</filename> file or from within
-                    an image recipe is not recommended as it can cause ordering
-                    issues.
-                    Since <filename>core-image.bbclass</filename> sets
-                    <filename>IMAGE_INSTALL</filename> to a default value using
-                    the <filename>?=</filename> operator, using a
-                    <filename>+=</filename> operation against
-                    <filename>IMAGE_INSTALL</filename> will result in
-                    unexpected behavior when used in
-                    <filename>conf/local.conf</filename>.
-                    Furthermore, the same operation from within an image
-                    recipe may or may not succeed depending on the specific
-                    situation.
-                    In both these cases, the behavior is contrary to how most
-                    users expect the <filename>+=</filename> operator to work.
                 </para>
 
                 <para>
@@ -6006,6 +5973,53 @@
                     </literallayout>
                     Be sure to include the space between the quotation character
                     and the start of the package name or names.
+                    <note><title>Caution</title>
+                        <itemizedlist>
+                            <listitem><para>
+                                When working with a
+                                <link linkend='images-core-image-minimal-initramfs'><filename>core-image-minimal-initramfs</filename></link>
+                                image, do not use the
+                                <filename>IMAGE_INSTALL</filename> variable to
+                                specify packages for installation.
+                                Instead, use the
+                                <link linkend='var-PACKAGE_INSTALL'><filename>PACKAGE_INSTALL</filename></link>
+                                variable, which allows the initial RAM
+                                filesystem (initramfs) recipe to use a fixed
+                                set of packages and not be affected by
+                                <filename>IMAGE_INSTALL</filename>.
+                                For information on creating an initramfs, see
+                                the
+                                "<ulink url='&YOCTO_DOCS_DEV_URL;#building-an-initramfs-image'>Building an Initial RAM Filesystem (initramfs) Image</ulink>"
+                                section in the Yocto Project Development Tasks
+                                Manual.
+                                </para></listitem>
+                            <listitem><para>
+                                Using <filename>IMAGE_INSTALL</filename> with
+                                the
+                                <ulink url='&YOCTO_DOCS_BB_URL;#appending-and-prepending'><filename>+=</filename></ulink>
+                                BitBake operator within the
+                                <filename>/conf/local.conf</filename> file or
+                                from within an image recipe is not recommended.
+                                Use of this operator in these ways can cause
+                                ordering issues.
+                                Since <filename>core-image.bbclass</filename>
+                                sets <filename>IMAGE_INSTALL</filename> to a
+                                default value using the
+                                <ulink url='&YOCTO_DOCS_BB_URL;#setting-a-default-value'><filename>?=</filename></ulink>
+                                operator, using a <filename>+=</filename>
+                                operation against
+                                <filename>IMAGE_INSTALL</filename> results in
+                                unexpected behavior when used within
+                                <filename>conf/local.conf</filename>.
+                                Furthermore, the same operation from within
+                                an image recipe may or may not succeed
+                                depending on the specific situation.
+                                In both these cases, the behavior is contrary
+                                to how most users expect the
+                                <filename>+=</filename> operator to work.
+                                </para></listitem>
+                        </itemizedlist>
+                    </note>
                 </para>
             </glossdef>
         </glossentry>
@@ -9580,20 +9594,29 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
 
         <glossentry id='var-PACKAGE_FEED_ARCHS'><glossterm>PACKAGE_FEED_ARCHS</glossterm>
             <info>
-                PACKAGE_FEED_ARCHS[doc] = "Specifies user-defined package architectures when constructing package feed URIs."
+                PACKAGE_FEED_ARCHS[doc] = "Optionally specifies user-defined package architectures when constructing package feed URIs."
             </info>
             <glossdef>
                 <para role="glossdeffirst">
 <!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
-                    Specifies the package architectures used as part of the
-                    package feed URIs during the build.
-                    The <filename>PACKAGE_FEED_ARCHS</filename> variable is
-                    appended to the final package feed URI, which is constructed
-                    using the
+                    Optionally specifies the package architectures used as
+                    part of the package feed URIs during the build.
+                    When used, the <filename>PACKAGE_FEED_ARCHS</filename>
+                    variable is appended to the final package feed URI, which
+                    is constructed using the
                     <link linkend='var-PACKAGE_FEED_URIS'><filename>PACKAGE_FEED_URIS</filename></link>
                     and
                     <link linkend='var-PACKAGE_FEED_BASE_PATHS'><filename>PACKAGE_FEED_BASE_PATHS</filename></link>
                     variables.
+                    <note><title>Tip</title>
+                        You can use the <filename>PACKAGE_FEEDS_ARCHS</filename>
+                        variable to whitelist specific package architectures.
+                        If you do not need to whitelist specific architectures,
+                        which is a common case, you can omit this variable.
+                        Omitting the variable results in all available
+                        architectures for the current machine being included
+                        into remote package feeds.
+                    </note>
                 </para>
 
                 <para>
@@ -10701,27 +10724,40 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
             <glossdef>
                 <para role="glossdeffirst">
 <!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
-                    If multiple recipes provide an item, this variable
-                    determines which recipe should be given preference.
-                    You should always suffix the variable with the name of the
-                    provided item, and you should set it to the
-                    <link linkend='var-PN'><filename>PN</filename></link>
-                    of the recipe to which you want to give precedence.
-                    Some examples:
+                    If multiple recipes provide the same item, this variable
+                    determines which recipe is preferred and thus provides
+                    the item (i.e. the preferred provider).
+                    You should always suffix this variable with the name of the
+                    provided item.
+                    And, you should define the variable using the preferred
+                    recipe's name
+                    (<link linkend='var-PN'><filename>PN</filename></link>).
+                    Here is a common example:
                     <literallayout class='monospaced'>
      PREFERRED_PROVIDER_virtual/kernel ?= "linux-yocto"
+                    </literallayout>
+                    In the previous example, multiple recipes are providing
+                    "virtual/kernel".
+                    The <filename>PREFERRED_PROVIDER</filename> variable is
+                    set with the name (<filename>PN</filename>) of the recipe
+                    you prefer to provide "virtual/kernel".
+                </para>
+
+                <para>
+                    Following are more examples:
+                    <literallayout class='monospaced'>
      PREFERRED_PROVIDER_virtual/xserver = "xserver-xf86"
      PREFERRED_PROVIDER_virtual/libgl ?= "mesa"
                     </literallayout>
                     For more information, see the
-                    "<ulink url='&YOCTO_DOCS_CM_URL;#metadata-virtual-providers'>Metadata (Virtual Providers)</ulink>"
-                    section in the Yocto Project Concepts Manual.
+                    "<ulink url='&YOCTO_DOCS_DEV_URL;#metadata-virtual-providers'>Using Virtual Providers</ulink>"
+                    section in the Yocto Project Development Tasks Manual.
                     <note>
-                        If you set <filename>PREFERRED_PROVIDER</filename>
-                        for a <filename>virtual/*</filename> item, then any
+                        If you use a <filename>virtual/*</filename> item
+                        with <filename>PREFERRED_PROVIDER</filename>, then any
                         recipe that
                         <link linkend='var-PROVIDES'><filename>PROVIDES</filename></link>
-                        that item that is not selected by
+                        that item but is not selected (defined) by
                         <filename>PREFERRED_PROVIDER</filename> is prevented
                         from building, which is usually desirable since this
                         mechanism is designed to select between mutually

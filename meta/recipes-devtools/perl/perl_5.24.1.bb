@@ -1,7 +1,7 @@
 require perl.inc
 
 # We need gnugrep (for -I)
-DEPENDS = "db grep-native gdbm zlib"
+DEPENDS = "db grep-native gdbm zlib virtual/crypt"
 
 # Pick up patches from debian
 # http://ftp.de.debian.org/debian/pool/main/p/perl/perl_5.22.0-1.debian.tar.xz
@@ -45,7 +45,6 @@ SRC_URI += " \
         file://letgcc-find-errno.patch \
         file://generate-sh.patch \
         file://native-perlinc.patch \
-        file://perl-enable-gdbm.patch \
         file://cross-generate_uudmap.patch \
         file://fix_bad_rpath.patch \
         file://dynaloaderhack.patch \
@@ -64,6 +63,8 @@ SRC_URI += " \
         file://perl-errno-generation-gcc5.patch \
         file://perl-fix-conflict-between-skip_all-and-END.patch \
         file://perl-test-customized.patch \
+        file://perl-5.26.1-guard_old_libcrypt_fix.patch \
+        file://CVE-2017-12883.patch \
 "
 
 # Fix test case issues

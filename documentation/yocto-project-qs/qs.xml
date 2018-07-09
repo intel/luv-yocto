@@ -335,6 +335,7 @@
      Receiving objects: 100% (361782/361782), 131.94 MiB | 6.88 MiB/s, done.
      Resolving deltas: 100% (268619/268619), done.
      Checking connectivity... done.
+     $ cd poky
      $ git checkout tags/&DISTRO_REL_TAG; -b poky_&DISTRO;
                     </literallayout>
                 </para>
@@ -970,8 +971,8 @@
                         section in the same manual.
                         </para></listitem>
                     <listitem><para>
-                        <emphasis>Add a Layer for Software:</emphasis>
-                        For steps on how to add a general layer for software,
+                        <emphasis>Create a Layer for Software:</emphasis>
+                        For steps on how to create a general layer for software,
                         see the
                         "<ulink url='&YOCTO_DOCS_DEV_URL;#creating-a-general-layer-using-the-bitbake-layers-script'>Creating a General Layer Using the <filename>bitbake-layers</filename> Script</ulink>"
                         section in the Yocto Project Development Tasks Manual.
@@ -1060,11 +1061,14 @@
                         section in the Yocto Project Development Tasks Manual
                         for more information.
                         </para></listitem>
-                    <listitem><para role='writernotes'>
+                    <listitem><para>
                         <emphasis>Auto Upgrade Tools:</emphasis>
-                        This is a step suggested by Richard.
-                        I don't know what this is and need help with this
-                        bullet item.
+                        Tools exits to help ease upgrading recipe versions.
+                        In particular, you can use the
+                        <ulink url='&YOCTO_DOCS_DEV_URL;#gs-using-the-auto-upgrade-helper'>Auto Upgrade Helper (AUH)</ulink>
+                        and
+                        <ulink url='&YOCTO_DOCS_DEV_URL;#gs-using-devtool-upgrade'><filename>devtool upgrade</filename></ulink>
+                        to upgrade recipes to newer versions.
                         </para></listitem>
                     <listitem><para role='writernotes'>
                         <emphasis>Patches and Patchwork:</emphasis>
