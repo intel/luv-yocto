@@ -4,8 +4,8 @@ SECTION = "devel/python"
 LICENSE = "LGPL-2.1"
 LIC_FILES_CHKSUM = "file://COPYING;md5=751419260aa954499f7abaabaa882bbe"
 
-SRC_URI[md5sum] = "a40b1724b586f3cd29e213a5d2109c17"
-SRC_URI[sha256sum] = "f0a0e386dbca9f93ea9f3ea6f32b37a24720502b7baa9cb17c3976a680d43a06"
+SRC_URI[md5sum] = "7d7dc000b25f0cbfcca20cb9a8dc0310"
+SRC_URI[sha256sum] = "35cfae47aac19c7b407b7095410e895e836f2285ccf1220336afba744cc4c5f2"
 
 inherit pypi
 
@@ -19,6 +19,7 @@ FILES_${PN}-tests += " \
 RDEPENDS_${PN}_class-target += "\
     ${PYTHON_PN}-distutils \
     ${PYTHON_PN}-lazy-object-proxy \
+    ${PYTHON_PN}-logging \
     ${PYTHON_PN}-six \
     ${PYTHON_PN}-wrapt \
     ${PYTHON_PN}-setuptools \
