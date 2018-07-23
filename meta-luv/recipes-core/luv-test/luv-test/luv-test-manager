@@ -181,7 +181,7 @@ start_reports()
 
     # Begin the results files by stating the version of luv
     cat <<EOF | tee -a ${LUV_SAVE_RESULTS_DIR}/luv.results \
-          /tmp/luv.results html_inline ${LUV_HTML_REPORT}
+          /tmp/luv.results | html_inline ${LUV_HTML_REPORT}
     $luv_version
 
     Date and time of the system : $tstamp
