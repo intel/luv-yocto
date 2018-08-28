@@ -148,10 +148,6 @@ COMPATIBLE_MACHINE = "qemux86|qemux86-64|qemuarm64"
 DEPENDS += "openssl-native"
 HOST_EXTRACFLAGS += "-I${STAGING_INCDIR_NATIVE}"
 
-do_configure_prepend() {
-	rm ${B}/.cache.mk
-}
-
 do_install_append() {
     if [ "${TARGET_ARCH}" = "x86_64" ]; then
          # There are 2 copies of the NVDIMM modules which are built. This is a
