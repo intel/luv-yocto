@@ -70,7 +70,7 @@ sysroot_stage_all() {
 python sysroot_strip () {
     inhibit_sysroot = d.getVar('INHIBIT_SYSROOT_STRIP')
     if inhibit_sysroot and oe.types.boolean(inhibit_sysroot):
-        return 0
+        return
 
     dstdir = d.getVar('SYSROOT_DESTDIR')
     pn = d.getVar('PN')
@@ -79,7 +79,7 @@ python sysroot_strip () {
     qa_already_stripped = 'already-stripped' in (d.getVar('INSANE_SKIP_' + pn) or "").split()
     strip_cmd = d.getVar("STRIP")
 
-    oe.package.strip_execs(pn, dstdir, strip_cmd, libdir, base_libdir,
+    oe.package.strip_execs(pn, dstdir, strip_cmd, libdir, base_libdir, d,
                            qa_already_stripped=qa_already_stripped)
 }
 
@@ -256,7 +256,7 @@ python extend_recipe_sysroot() {
     workdir = d.getVar("WORKDIR")
     #bb.warn(str(taskdepdata))
     pn = d.getVar("PN")
-
+    mc = d.getVar("BB_CURRENT_MC")
     stagingdir = d.getVar("STAGING_DIR")
     sharedmanifests = d.getVar("COMPONENTS_DIR") + "/manifests"
     recipesysroot = d.getVar("RECIPE_SYSROOT")
@@ -383,8 +383,6 @@ python extend_recipe_sysroot() {
     lock = bb.utils.lockfile(recipesysroot + "/sysroot.lock")
 
     fixme = {}
-    fixme[''] = []
-    fixme['native'] = []
     seendirs = set()
     postinsts = []
     multilibs = {}
@@ -445,7 +443,13 @@ python extend_recipe_sysroot() {
 
     msg_exists = []
     msg_adding = []
+
     for dep in configuredeps:
+        if mc != 'default':
+            # We should not care about other multiconfigs
+            depmc = dep.split(':')[1]
+            if depmc != mc:
+                continue
         c = setscenedeps[dep][0]
         if c not in installed:
             continue
@@ -471,7 +475,14 @@ python extend_recipe_sysroot() {
         os.symlink(c + "." + taskhash, depdir + "/" + c)
 
         manifest, d2 = oe.sstatesig.find_sstate_manifest(c, setscenedeps[dep][2], "populate_sysroot", d, multilibs)
+        if d2 is not d:
+            # If we don't do this, the recipe sysroot will be placed in the wrong WORKDIR for multilibs
+            # We need a consistent WORKDIR for the image
+            d2.setVar("WORKDIR", d.getVar("WORKDIR"))
         destsysroot = d2.getVar("RECIPE_SYSROOT")
+        # We put allarch recipes into the default sysroot
+        if manifest and "allarch" in manifest:
+            destsysroot = d.getVar("RECIPE_SYSROOT")
 
         native = False
         if c.endswith("-native") or "-cross-" in c or "-crosssdk" in c:
@@ -479,12 +490,13 @@ python extend_recipe_sysroot() {
 
         if manifest:
             newmanifest = collections.OrderedDict()
+            targetdir = destsysroot
             if native:
-                fm = fixme['native']
                 targetdir = recipesysrootnative
-            else:
-                fm = fixme['']
-                targetdir = destsysroot
+            if targetdir not in fixme:
+                fixme[targetdir] = []
+            fm = fixme[targetdir]
+
             with open(manifest, "r") as f:
                 manifests[dep] = manifest
                 for l in f:
@@ -542,12 +554,7 @@ python extend_recipe_sysroot() {
     bb.note("Skipping as already exists in sysroot: %s" % str(msg_exists))
 
     for f in fixme:
-        if f == '':
-            staging_processfixme(fixme[f], recipesysroot, recipesysroot, recipesysrootnative, d)
-        elif f == 'native':
-            staging_processfixme(fixme[f], recipesysrootnative, recipesysroot, recipesysrootnative, d)
-        else:
-            staging_processfixme(fixme[f], multilibs[f].getVar("RECIPE_SYSROOT"), recipesysroot, recipesysrootnative, d)
+        staging_processfixme(fixme[f], f, recipesysroot, recipesysrootnative, d)
 
     for p in postinsts:
         subprocess.check_output(p, shell=True, stderr=subprocess.STDOUT)

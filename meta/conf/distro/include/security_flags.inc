@@ -6,7 +6,7 @@
 # in the DISTRO="poky-lsb" configuration.
 
 GCCPIE ?= "--enable-default-pie"
-GLIBCPIE ?= "--enable-static-pie"
+# If static PIE is known to work well, GLIBCPIE="--enable-static-pie" can be set
 
 # _FORTIFY_SOURCE requires -O1 or higher, so disable in debug builds as they use
 # -O0 which then results in a compiler warning.
@@ -28,12 +28,11 @@ SECURITY_LDFLAGS ?= "-fstack-protector-strong -Wl,-z,relro,-z,now"
 SECURITY_X_LDFLAGS ?= "-fstack-protector-strong -Wl,-z,relro"
 
 # powerpc does not get on with pie for reasons not looked into as yet
-SECURITY_CFLAGS_powerpc = "-fstack-protector-strong ${lcl_maybe_fortify} ${SECURITY_NOPIE_CFLAGS}"
-SECURITY_CFLAGS_pn-libgcc_powerpc = ""
 GCCPIE_powerpc = ""
 GLIBCPIE_powerpc = ""
+SECURITY_CFLAGS_remove_powerpc = "${SECURITY_PIE_CFLAGS}"
+SECURITY_CFLAGS_pn-libgcc_powerpc = ""
 
-# arm specific security flag issues
 SECURITY_CFLAGS_pn-glibc = ""
 SECURITY_CFLAGS_pn-glibc-initial = ""
 SECURITY_CFLAGS_pn-gcc-runtime = ""
@@ -43,7 +42,6 @@ SECURITY_CFLAGS_pn-grub-efi-native = ""
 SECURITY_CFLAGS_pn-grub-efi-x86-native = ""
 SECURITY_CFLAGS_pn-grub-efi-i586-native = ""
 SECURITY_CFLAGS_pn-grub-efi-x86-64-native = ""
-
 SECURITY_CFLAGS_pn-mkelfimage_x86 = ""
 
 SECURITY_CFLAGS_pn-valgrind = "${SECURITY_NOPIE_CFLAGS}"

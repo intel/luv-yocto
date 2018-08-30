@@ -383,7 +383,7 @@ def decodeurl(url):
         path = location
     else:
         host = location
-        path = ""
+        path = "/"
     if user:
         m = re.compile('(?P<user>[^:]+)(:?(?P<pswd>.*))').match(user)
         if m:
@@ -452,8 +452,8 @@ def uri_replace(ud, uri_find, uri_replace, replacements, d, mirrortarball=None):
             # Handle URL parameters
             if i:
                 # Any specified URL parameters must match
-                for k in uri_replace_decoded[loc]:
-                    if uri_decoded[loc][k] != uri_replace_decoded[loc][k]:
+                for k in uri_find_decoded[loc]:
+                    if uri_decoded[loc][k] != uri_find_decoded[loc][k]:
                         return None
             # Overwrite any specified replacement parameters
             for k in uri_replace_decoded[loc]:

@@ -1,7 +1,7 @@
 require go-common.inc
 
 GO_BASEVERSION = "1.9"
-GO_MINOR = ".4"
+GO_MINOR = ".7"
 PV .= "${GO_MINOR}"
 
 FILESEXTRAPATHS_prepend := "${FILE_DIRNAME}/go-${GO_BASEVERSION}:"
@@ -22,5 +22,5 @@ SRC_URI += "\
 "
 SRC_URI_append_libc-musl = " file://set-external-linker.patch"
 
-SRC_URI[main.md5sum] = "6816441fd6680c63865cdd5cb8bc1960"
-SRC_URI[main.sha256sum] = "0573a8df33168977185aa44173305e5a0450f55213600e94541604b75d46dc06"
+SRC_URI[main.md5sum] = "3c2cf876ed6612a022574a565206c6ea"
+SRC_URI[main.sha256sum] = "582814fa45e8ecb0859a208e517b48aa0ad951e3b36c7fff203d834e0ef27722"

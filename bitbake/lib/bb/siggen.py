@@ -193,15 +193,24 @@ class SignatureGeneratorBasic(SignatureGenerator):
         return taint
 
     def get_taskhash(self, fn, task, deps, dataCache):
+
+        mc = ''
+        if fn.startswith('multiconfig:'):
+            mc = fn.split(':')[1]
         k = fn + "." + task
+
         data = dataCache.basetaskhash[k]
         self.basehash[k] = data
         self.runtaskdeps[k] = []
         self.file_checksum_values[k] = []
         recipename = dataCache.pkg_fn[fn]
-
         for dep in sorted(deps, key=clean_basepath):
-            depname = dataCache.pkg_fn[self.pkgnameextract.search(dep).group('fn')]
+            pkgname = self.pkgnameextract.search(dep).group('fn')
+            if mc:
+                depmc = pkgname.split(':')[1]
+                if mc != depmc:
+                    continue
+            depname = dataCache.pkg_fn[pkgname]
             if not self.rundep_check(fn, recipename, task, dep, depname, dataCache):
                 continue
             if dep not in self.taskhash:
@@ -347,7 +356,7 @@ class SignatureGeneratorBasicHash(SignatureGeneratorBasic):
 
     def stampcleanmask(self, stampbase, fn, taskname, extrainfo):
         return self.stampfile(stampbase, fn, taskname, extrainfo, clean=True)
-        
+
     def invalidate_task(self, task, d, fn):
         bb.note("Tainting hash to force rebuild of task %s, %s" % (fn, task))
         bb.build.write_taint(task, d, fn)
@@ -636,7 +645,7 @@ def compare_sigfiles(a, b, recursecb=None, color=False, collapsed=False):
                         if collapsed:
                             output.extend(recout)
                         else:
-                            # If a dependent hash changed, might as well print the line above and then defer to the changes in 
+                            # If a dependent hash changed, might as well print the line above and then defer to the changes in
                             # that hash since in all likelyhood, they're the same changes this task also saw.
                             output = [output[-1]] + recout
 

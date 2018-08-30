@@ -39,8 +39,9 @@ PACKAGECONFIG ??= "system-pcre libmount"
 PACKAGECONFIG[system-pcre] = "--with-pcre=system,--with-pcre=internal,libpcre"
 PACKAGECONFIG[libmount] = "--enable-libmount,--disable-libmount,util-linux"
 PACKAGECONFIG[manpages] = "--enable-man --with-xml-catalog=${STAGING_ETCDIR_NATIVE}/xml/catalog.xml, --disable-man, libxslt-native xmlto-native"
+PACKAGECONFIG[libelf] = "--enable-libelf,--disable-libelf,elfutils"
 
-CORECONF = "--disable-dtrace --disable-fam --disable-libelf --disable-systemtap"
+CORECONF = "--disable-dtrace --disable-fam --disable-systemtap"
 
 PRINTF = "--enable-included-printf=no"
 PRINTF_darwin = "--enable-included-printf=yes"
@@ -116,7 +117,7 @@ do_install_append () {
 
 do_install_append_class-target () {
 	# Tests are only installed on targets, not native builds.  Separating this out
-	# keeps glib-2.0-native from depending on ${DISTRO_FEATURES}
+	# keeps glib-2.0-native from depending on DISTRO_FEATURES
 	if [ -f ${D}${datadir}/installed-tests/glib/gdbus-serialization.test ]; then
 		if ${@bb.utils.contains("DISTRO_FEATURES", "x11", "false", "true", d)}; then
 			rm ${D}${datadir}/installed-tests/glib/gdbus-serialization.test

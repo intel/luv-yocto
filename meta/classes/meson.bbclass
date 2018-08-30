@@ -35,14 +35,29 @@ MESON_LINK_ARGS = "${MESON_TOOLCHAIN_ARGS} ${LDFLAGS}"
 MESON_HOST_ENDIAN = "bogus-endian"
 MESON_TARGET_ENDIAN = "bogus-endian"
 
-EXTRA_OEMESON += "${PACKAGECONFIG_CONFARGS}"
+EXTRA_OEMESON_append = " ${PACKAGECONFIG_CONFARGS}"
 
 MESON_CROSS_FILE = ""
 MESON_CROSS_FILE_class-target = "--cross-file ${WORKDIR}/meson.cross"
 MESON_CROSS_FILE_class-nativesdk = "--cross-file ${WORKDIR}/meson.cross"
 
 def meson_array(var, d):
-    return "', '".join(d.getVar(var).split()).join(("'", "'"))
+    items = d.getVar(var).split()
+    return repr(items[0] if len(items) == 1 else items)
+
+# Map our ARCH values to what Meson expects:
+# http://mesonbuild.com/Reference-tables.html#cpu-families
+def meson_cpu_family(var, d):
+    import re
+    arch = d.getVar(var)
+    if arch == 'powerpc':
+        return 'ppc'
+    elif arch == 'mipsel':
+        return 'mips'
+    elif re.match(r"i[3-6]86", arch):
+        return "x86"
+    else:
+        return arch
 
 addtask write_config before do_configure
 do_write_config[vardeps] += "MESON_C_ARGS MESON_CPP_ARGS MESON_LINK_ARGS CC CXX LD AR NM STRIP READELF"
@@ -50,32 +65,32 @@ do_write_config() {
     # This needs to be Py to split the args into single-element lists
     cat >${WORKDIR}/meson.cross <<EOF
 [binaries]
-c = [${@meson_array('CC', d)}]
-cpp = [${@meson_array('CXX', d)}]
-ar = [${@meson_array('AR', d)}]
-nm = [${@meson_array('NM', d)}]
-ld = [${@meson_array('LD', d)}]
-strip = [${@meson_array('STRIP', d)}]
-readelf = [${@meson_array('READELF', d)}]
+c = ${@meson_array('CC', d)}
+cpp = ${@meson_array('CXX', d)}
+ar = ${@meson_array('AR', d)}
+nm = ${@meson_array('NM', d)}
+ld = ${@meson_array('LD', d)}
+strip = ${@meson_array('STRIP', d)}
+readelf = ${@meson_array('READELF', d)}
 pkgconfig = 'pkg-config'
 
 [properties]
 needs_exe_wrapper = true
-c_args = [${@meson_array('MESON_C_ARGS', d)}]
-c_link_args = [${@meson_array('MESON_LINK_ARGS', d)}]
-cpp_args = [${@meson_array('MESON_CPP_ARGS', d)}]
-cpp_link_args = [${@meson_array('MESON_LINK_ARGS', d)}]
+c_args = ${@meson_array('MESON_C_ARGS', d)}
+c_link_args = ${@meson_array('MESON_LINK_ARGS', d)}
+cpp_args = ${@meson_array('MESON_CPP_ARGS', d)}
+cpp_link_args = ${@meson_array('MESON_LINK_ARGS', d)}
 gtkdoc_exe_wrapper = '${B}/gtkdoc-qemuwrapper'
 
 [host_machine]
 system = '${HOST_OS}'
-cpu_family = '${HOST_ARCH}'
+cpu_family = '${@meson_cpu_family('HOST_ARCH', d)}'
 cpu = '${HOST_ARCH}'
 endian = '${MESON_HOST_ENDIAN}'
 
 [target_machine]
 system = '${TARGET_OS}'
-cpu_family = '${TARGET_ARCH}'
+cpu_family = '${@meson_cpu_family('TARGET_ARCH', d)}'
 cpu = '${TARGET_ARCH}'
 endian = '${MESON_TARGET_ENDIAN}'
 EOF
@@ -84,13 +99,13 @@ EOF
 CONFIGURE_FILES = "meson.build"
 
 meson_do_configure() {
+    bbnote Executing meson ${EXTRA_OEMESON}...
     if ! meson ${MESONOPTS} "${MESON_SOURCEPATH}" "${B}" ${MESON_CROSS_FILE} ${EXTRA_OEMESON}; then
-        cat ${B}/meson-logs/meson-log.txt
         bbfatal_log meson failed
     fi
 }
 
-meson_do_configure_prepend_class-target() {
+override_native_tools() {
     # Set these so that meson uses the native tools for its build sanity tests,
     # which require executables to be runnable. The cross file will still
     # override these for the target build. Note that we do *not* set CFLAGS,
@@ -100,18 +115,15 @@ meson_do_configure_prepend_class-target() {
     export CXX="${BUILD_CXX}"
     export LD="${BUILD_LD}"
     export AR="${BUILD_AR}"
+
+}
+
+meson_do_configure_prepend_class-target() {
+    override_native_tools
 }
 
 meson_do_configure_prepend_class-nativesdk() {
-    # Set these so that meson uses the native tools for its build sanity tests,
-    # which require executables to be runnable. The cross file will still
-    # override these for the nativesdk build. Note that we do *not* set CFLAGS,
-    # LDFLAGS, etc. as they will be slurped in by meson and applied to the
-    # nativesdk build, causing errors.
-    export CC="${BUILD_CC}"
-    export CXX="${BUILD_CXX}"
-    export LD="${BUILD_LD}"
-    export AR="${BUILD_AR}"
+    override_native_tools
 }
 
 meson_do_configure_prepend_class-native() {
@@ -120,11 +132,11 @@ meson_do_configure_prepend_class-native() {
 
 do_compile[progress] = "outof:^\[(\d+)/(\d+)\]\s+"
 meson_do_compile() {
-    ninja ${PARALLEL_MAKE}
+    ninja -v ${PARALLEL_MAKE}
 }
 
 meson_do_install() {
-    DESTDIR='${D}' ninja ${PARALLEL_MAKEINST} install
+    DESTDIR='${D}' ninja -v ${PARALLEL_MAKEINST} install
 }
 
 EXPORT_FUNCTIONS do_configure do_compile do_install

@@ -61,7 +61,7 @@
     <para>
         Each major release receives a codename that identifies the release in
         the
-        <ulink url='&YOCTO_DOCS_GS_URL;#yocto-project-repositories'>Yocto Project Source Repositories</ulink>.
+        <ulink url='&YOCTO_DOCS_OM_URL;#yocto-project-repositories'>Yocto Project Source Repositories</ulink>.
         The concept is that branches of
         <link linkend='metadata'>Metadata</link>
         with the same codename are likely to be compatible and thus
@@ -189,7 +189,7 @@
                     Running <filename>oe-selftest</filename> requires
                     host packages beyond the "Essential" grouping.
                     See the
-                    "<link linkend='required-packages-for-the-host-development-system'>Required Packages for the Host Development System</link>"
+                    "<link linkend='required-packages-for-the-build-host'>Required Packages for the Build Host</link>"
                     section for more information.
                 </note>
                 </para></listitem>
@@ -217,7 +217,7 @@
         in the <filename>poky</filename> repository.
         <note>
             You can find all these branches in the Yocto Project
-            <ulink url='&YOCTO_DOCS_GS_URL;#source-repositories'>Source Repositories</ulink>.
+            <ulink url='&YOCTO_DOCS_OM_URL;#source-repositories'>Source Repositories</ulink>.
         </note>
         Testing within these public branches ensures in a publicly visible way
         that all of the main supposed architectures and recipes in OE-Core

@@ -14,7 +14,7 @@
             create Yocto Linux kernel repositories.
             These kernel repositories are found under the heading "Yocto Linux
             Kernel" at
-            <ulink url='&YOCTO_GIT_URL;/cgit.cgi'>&YOCTO_GIT_URL;/cgit.cgi</ulink>
+            <ulink url='&YOCTO_GIT_URL;'>&YOCTO_GIT_URL;</ulink>
             and are shipped as part of a Yocto Project release.
             The team creates these repositories by compiling and executing the
             set of feature descriptions for every BSP and feature in the
@@ -118,7 +118,7 @@
             The following steps describe what happens when the Yocto Project
             Team constructs the Yocto Project kernel source Git repository
             (or tree) found at
-            <ulink url='&YOCTO_GIT_URL;/cgit.cgi'></ulink> given the
+            <ulink url='&YOCTO_GIT_URL;'></ulink> given the
             introduction of a new top-level kernel feature or BSP.
             The following actions effectively provide the Metadata
             and create the tree that includes the new feature, patch, or BSP:
@@ -217,7 +217,7 @@
                         end of an existing branch.
                         The full repository generation that is found in the
                         official Yocto Project kernel repositories at
-                        <ulink url='&YOCTO_GIT_URL;/cgit.cgi'>http://git.yoctoproject.org/cgit.cgi</ulink>
+                        <ulink url='&YOCTO_GIT_URL;'>http://git.yoctoproject.org</ulink>
                         is the combination of all supported boards and
                         configurations.
                         </para></listitem>
@@ -231,7 +231,7 @@
                         </para></listitem>
                     <listitem><para>
                         The full kernel tree that you see on
-                        <ulink url='&YOCTO_GIT_URL;/cgit.cgi'></ulink> is
+                        <ulink url='&YOCTO_GIT_URL;'></ulink> is
                         generated through repeating the above steps for all
                         valid BSPs.
                         The end result is a branched, clean history tree that

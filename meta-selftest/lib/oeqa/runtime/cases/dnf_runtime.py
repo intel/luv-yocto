@@ -1,6 +1,7 @@
 from oeqa.core.decorator.depends import OETestDepends
 from oeqa.runtime.cases.dnf import DnfTest
 from oeqa.utils.httpserver import HTTPService
+from oeqa.core.decorator.data import skipIfDataVar
 
 class DnfSelftest(DnfTest):
 
@@ -18,13 +19,15 @@ class DnfSelftest(DnfTest):
         cls.temp_dir.cleanup()
 
     @OETestDepends(['dnf.DnfBasicTest.test_dnf_help'])
+    @skipIfDataVar('PACKAGE_FEED_URIS', None,
+                   'Not suitable as PACKAGE_FEED_URIS is not set')
     def test_verify_package_feeds(self):
         """
         Summary: Check correct setting of PACKAGE_FEED_URIS var
         Expected: 1. Feeds were correctly set for dnf
                   2. Update recovers packages from host's repo
         Author: Humberto Ibarra <humberto.ibarra.lopez@intel.com>
-        Author: Alexander Kanavin <alexander.kanavin@intel.com>
+        Author: Alexander Kanavin <alex.kanavin@gmail.com>
         """
         # When we created an image, we had to supply fake ip and port
         # for the feeds. Now we can patch the real ones into the config file.
