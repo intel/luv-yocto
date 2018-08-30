@@ -1,0 +1,26 @@
+From f39474f4c8960a284480c04340150b6dab404b48 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Fri, 29 Jun 2018 17:56:18 -0700
+Subject: [PATCH] do not compile lsns
+
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
+---
+ configure.ac | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/configure.ac b/configure.ac
+index b3430da..c49c1e3 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1679,7 +1679,7 @@ UL_BUILD_INIT([lsns], [check])
+ UL_REQUIRES_LINUX([lsns])
+ UL_REQUIRES_BUILD([lsns], [libsmartcols])
+ UL_REQUIRES_BUILD([lsns], [libmount])
+-AM_CONDITIONAL([BUILD_LSNS], [test "x$build_lsns" = xyes])
++AM_CONDITIONAL([BUILD_LSNS], [test "x$build_lsns" = xno])
+
+ UL_BUILD_INIT([renice], [yes])
+ AM_CONDITIONAL([BUILD_RENICE], [test "x$build_renice" = xyes])
+--
+1.9.1
+
