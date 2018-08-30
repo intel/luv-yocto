@@ -7,9 +7,9 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=8ca43cbc842c2336e835926c2166c28b \
 
 inherit autotools-brokensep
 
-DEPENDS_append_libc-musl = " libtirpc"
-CFLAGS_append_libc-musl = " -I${STAGING_INCDIR}/tirpc"
-LDLIBS_append_libc-musl = " -ltirpc "
+DEPENDS += "libtirpc"
+CFLAGS += "-I${STAGING_INCDIR}/tirpc"
+LDLIBS += " -ltirpc "
 
 PR = "r2"
 
@@ -29,6 +29,9 @@ SRC_URI = "${SOURCEFORGE_MIRROR}/lmbench/lmbench-${PV}.tgz \
            "
 SRC_URI[md5sum] = "b3351a3294db66a72e2864a199d37cbf"
 SRC_URI[sha256sum] = "cbd5777d15f44eab7666dcac418054c3c09df99826961a397d9acf43d8a2a551"
+
+UPSTREAM_CHECK_URI = "https://sourceforge.net/projects/lmbench/files/development/"
+UPSTREAM_CHECK_REGEX = "lmbench-(?P<pver>\d+(\.\d+)+-[a-z]+\d+)"
 
 EXTRA_OEMAKE = 'CC="${CC}" AR="${AR}" RANLIB="${RANLIB}" CFLAGS="${CFLAGS}" \
                 LDFLAGS="${LDFLAGS}" LDLIBS="${LDLIBS}" LD="${LD}" OS="${TARGET_SYS}" \

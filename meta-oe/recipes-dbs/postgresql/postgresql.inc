@@ -19,7 +19,7 @@ DESCRIPTION = "\
 "
 HOMEPAGE = "http://www.postgresql.com"
 LICENSE = "BSD"
-DEPENDS = "zlib readline tzcode-native"
+DEPENDS = "libnsl2 zlib readline tzcode-native"
 
 ARM_INSTRUCTION_SET = "arm"
 
@@ -59,7 +59,7 @@ PACKAGECONFIG ??= "${enable_pam} openssl python uuid libxml tcl nls libxml perl"
 PACKAGECONFIG[pam] = "--with-pam,--without-pam,libpam,"
 PACKAGECONFIG[openssl] = "--with-openssl,--without-openssl,openssl,"
 PACKAGECONFIG[python] = "--with-python,--without-python,python,python"
-PACKAGECONFIG[uuid] = "--with-ossp-uuid,--without-ossp-uuid,ossp-uuid,"
+PACKAGECONFIG[uuid] = "--with-uuid=e2fs,--without-uuid,util-linux,"
 PACKAGECONFIG[tcl] = "--with-tcl --with-tclconfig=${STAGING_BINDIR_CROSS},--without-tcl,tcl tcl-native,"
 PACKAGECONFIG[nls] = "--enable-nls,--disable-nls,,"
 PACKAGECONFIG[libxml] = "--with-libxml,--without-libxml,libxml2,libxml2"
@@ -202,6 +202,7 @@ do_install_append() {
 }
 
 SSTATE_SCAN_FILES += "Makefile.global"
+SSTATE_SCAN_FILES_remove = "*_config"
 
 PACKAGES =+ "${PN}-client ${PN}-server-dev ${PN}-timezone \
     libecpg-compat-dbg libecpg-compat libecpg-compat-dev \

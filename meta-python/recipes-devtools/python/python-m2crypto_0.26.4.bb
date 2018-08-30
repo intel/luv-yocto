@@ -27,7 +27,7 @@ export SWIG_FEATURES
 # Get around a problem with swig, but only if the
 # multilib header file exists.
 #
-do_compile_prepend() {
+do_configure_prepend() {
     ${CPP} -dM - < /dev/null | grep -v __STDC__ | grep -v __REGISTER_PREFIX__ | grep -v __GNUC__ \
 	| sed 's/^\(#define \([^ ]*\) .*\)$/#undef \2\n\1/' > SWIG/gcc_macros.h
     if [ "${SITEINFO_BITS}" = "64" ];then
@@ -48,3 +48,7 @@ do_compile_prepend() {
 }
 
 BBCLASSEXTEND = "native"
+
+# http://errors.yoctoproject.org/Errors/Details/184714/
+# SWIG/_m2crypto.i:10: Error: Unable to find 'gcc_macros.h'
+CLEANBROKEN = "1"
