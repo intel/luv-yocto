@@ -4,16 +4,16 @@ HOMEPAGE = "https://wiki.ubuntu.com/Kernel/Reference/fwts"
 LICENSE = "GPLv2+"
 LIC_FILES_CHKSUM = "file://src/main.c;beginline=1;endline=16;md5=31da590f3e9f3bd34dcdb9e4db568519"
 
-PV = "V18.06.00+git${SRCPV}"
+PV = "V18.08.00+git${SRCPV}"
 
-SRCREV = "bba3a1ce52376a33177f9e77a8a90bdcbd24005b"
+SRCREV = "a45f3eee0453390eda6c2eaaabad4e67890b837a"
 SRC_URI = "git://kernel.ubuntu.com/hwe/fwts.git \
            file://luv-parser-fwts \
           "
 
 S = "${WORKDIR}/git"
-DEPENDS = "autoconf automake libtool libpcre json-c flex bison \
-	virtual/kernel glib-2.0"
+DEPENDS = "autoconf automake libtool libpcre json-c flex bison-native \
+	virtual/kernel glib-2.0 libbsd"
 
 inherit autotools-brokensep luv-test module-base pkgconfig
 
