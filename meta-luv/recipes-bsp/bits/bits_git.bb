@@ -15,7 +15,7 @@ LICENSE = "GPLv3"
 LIC_FILES_CHKSUM = "file://COPYING;md5=71a9ec458a3c65c2bfb461b227ef3049"
 
 BBCLASSEXTEND = "native"
-
+CFLAGS_append = " -Wno-error "
 BITSVERSION="2079"
 PV="${BITSVERSION}+git${SRCPV}"
 
@@ -70,7 +70,7 @@ SRC_URI = "gitsm://github.com/biosbits/bits.git;protocol=http  \
 S = "${WORKDIR}/git"
 
 DEPENDS = "virtual/gettext autogen-native gettext-native sqlite3-native zip-native \
-           xorriso-native bits-native flex bison autogen-native"
+           xorriso-native bits-native flex bison-native autogen-native"
 RDEPENDS_${PN}_class-target = "coreutils findutils cpio"
 
 COMPATIBLE_HOST = '(x86_64.*|i.86.*)-(linux|freebsd.*)'
