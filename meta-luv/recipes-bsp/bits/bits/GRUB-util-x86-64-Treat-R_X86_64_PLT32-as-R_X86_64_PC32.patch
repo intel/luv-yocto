@@ -1,0 +1,66 @@
+From 206dfee3349c85e236f978cfb5a2ac3b940b7a6d Mon Sep 17 00:00:00 2001
+From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Date: Fri, 31 Aug 2018 15:14:48 -0700
+Subject: [PATCH] x86-64: Treat R_X86_64_PLT32 as R_X86_64_PC32
+
+This is a backport of commit 842c390469e2 ("x86-64: Treat
+R_X86_64_PLT32 as R_X86_64_PC32") from mainline GRUB. A recent change in
+binutils to generate R_X86_64_PLT32relocations instead of R_X86_64_PC32
+when possible. See more details here:
+
+https://sourceware.org/git/?p=binutils-gdb.git;a=commit;h=bd7ab16b4537788ad53521c45469a1bdae84ad4a
+
+Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+---
+ grub-core/efiemu/i386/loadcore64.c | 1 +
+ grub-core/kern/x86_64/dl.c         | 1 +
+ util/grub-mkimagexx.c              | 3 ++-
+ 3 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/deps/grub/grub-core/efiemu/i386/loadcore64.c b/deps/grub/grub-core/efiemu/i386/loadcore64.c
+index e49d0b6..18facf4 100644
+--- a/deps/grub/grub-core/efiemu/i386/loadcore64.c
++++ b/deps/grub/grub-core/efiemu/i386/loadcore64.c
+@@ -98,6 +98,7 @@ grub_arch_efiemu_relocate_symbols64 (grub_efiemu_segment_t segs,
+ 		    break;
+ 
+ 		  case R_X86_64_PC32:
++		  case R_X86_64_PLT32:
+ 		    err = grub_efiemu_write_value (addr,
+ 						   *addr32 + rel->r_addend
+ 						   + sym.off
+diff --git a/deps/grub/grub-core/kern/x86_64/dl.c b/deps/grub/grub-core/kern/x86_64/dl.c
+index 65f09ef..58f41c9 100644
+--- a/deps/grub/grub-core/kern/x86_64/dl.c
++++ b/deps/grub/grub-core/kern/x86_64/dl.c
+@@ -100,6 +100,7 @@ grub_arch_dl_relocate_symbols (grub_dl_t mod, void *ehdr)
+ 		    break;
+ 
+ 		  case R_X86_64_PC32:
++		  case R_X86_64_PLT32:
+ 		    *addr32 += rel->r_addend + sym->st_value -
+ 		              (Elf64_Xword) seg->addr - rel->r_offset;
+ 		    break;
+diff --git a/deps/grub/util/grub-mkimagexx.c b/deps/grub/util/grub-mkimagexx.c
+index 476d05e..b7be221 100644
+--- a/deps/grub/util/grub-mkimagexx.c
++++ b/deps/grub/util/grub-mkimagexx.c
+@@ -427,13 +427,14 @@ SUFFIX (relocate_addresses) (Elf_Ehdr *e, Elf_Shdr *sections,
+ 		  break;
+ 
+ 		case R_X86_64_PC32:
++		case R_X86_64_PLT32:
+ 		  {
+ 		    grub_uint32_t *t32 = (grub_uint32_t *) target;
+ 		    *t32 = grub_host_to_target64 (grub_target_to_host32 (*t32)
+ 						  + addend + sym_addr
+ 						  - target_section_addr - offset
+ 						  - image_target->vaddr_offset);
+-		    grub_util_info ("relocating an R_X86_64_PC32 entry to 0x%x at the offset 0x%llx",
++		    grub_util_info ("relocating an R_X86_64_PC32/R_X86_64_PLT32 entry to 0x%x at the offset 0x%llx",
+ 				    *t32, (unsigned long long) offset);
+ 		    break;
+ 		  }
+-- 
+2.7.4
+
