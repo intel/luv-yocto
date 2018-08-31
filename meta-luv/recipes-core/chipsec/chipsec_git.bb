@@ -18,8 +18,8 @@ SRC_URI = "git://github.com/chipsec/chipsec.git \
     file://0001-chipsec-Fix-Unknown-symbol-issue-while-loading-chips.patch \
     "
 
-SRCREV="b0f400a27c296f40b54e6aff1723bd6ab3f654a6"
-PV="1.3.5"
+SRCREV="0baff4ee566418d83fb7fc0d665945765f6a640e"
+PV="1.3.6rc1"
 
 DEPENDS = "virtual/kernel python nasm-native python-setuptools-native"
 RDEPENDS_${PN} = "python python-shell python-stringold python-xml \
