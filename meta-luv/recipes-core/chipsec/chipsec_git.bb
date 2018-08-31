@@ -74,14 +74,7 @@ do_install_append() {
     install -d ${D}${bindir}
     install -m 0755 ${WORKDIR}/chipsec ${D}${bindir}
 
-    #
-    # FIXME: for some reason chipsec ends up installed in a repeated
-    # directory structure. Thus, we need to move it to its proper location
-    # under PYTHON_SITEPACKAGES_DIR
-    #
-
     install -d ${D}${PYTHON_SITEPACKAGES_DIR}/${PN}
-    mv ${D}${PYTHON_SITEPACKAGES_DIR}${D}${PYTHON_SITEPACKAGES_DIR}/* ${D}${PYTHON_SITEPACKAGES_DIR}/${PN}
     # remove old files
     cd ${D}${PYTHON_SITEPACKAGES_DIR}
     ls | grep -v chipsec | xargs rm -fr
