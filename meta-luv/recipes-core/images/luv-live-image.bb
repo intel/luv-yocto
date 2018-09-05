@@ -16,7 +16,7 @@ GRUB_TIMEOUT = "2"
 inherit image-live
 
 S = "${WORKDIR}"
-
+IMAGE_FSTYPES+="hddimg"
 build_img() {
 
     if [ "$1" = "mbr" ]; then
