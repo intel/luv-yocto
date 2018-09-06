@@ -16,6 +16,12 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=71a9ec458a3c65c2bfb461b227ef3049"
 
 BBCLASSEXTEND = "native"
 
+# CFLAGS has a -Werror which ensures all warnings are treated as errors.
+# Since BITS has a dependency on grub and python and no one is actively
+# maintaining it, resolving all these warnings consumes a lot of time.
+# Thus, we have decided to not treat the warnings as errors.
+CFLAGS_append = " -Wno-error "
+
 BITSVERSION="2079"
 PV="${BITSVERSION}+git${SRCPV}"
 
