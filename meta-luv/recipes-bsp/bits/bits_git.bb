@@ -15,7 +15,7 @@ LICENSE = "GPLv3"
 LIC_FILES_CHKSUM = "file://COPYING;md5=71a9ec458a3c65c2bfb461b227ef3049"
 
 BBCLASSEXTEND = "native"
-
+CFLAGS_append = " -Wno-error "
 BITSVERSION="2079"
 PV="${BITSVERSION}+git${SRCPV}"
 
