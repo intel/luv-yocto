@@ -20,8 +20,6 @@
 # External variables (also used by syslinux.bbclass)
 # ${INITRD} - indicates a list of filesystem images to concatenate and use as an initrd (optional)
 # ${EFI_USEXORRISO} - For EFI images, use xorriso instead of mkisofs if set to 1. Useful when syslinux is not supported.
-# ${NOISO}  - skip building the ISO image if set to 1
-# ${NOHDD}  - skip building the HDD image if set to 1
 # ${HDDIMG_ID} - FAT image volume-id
 # ${ROOTFS} - indicates a filesystem image to include as the root filesystem (optional)
 
@@ -80,8 +78,8 @@ populate_live() {
 }
 
 build_iso() {
-	# Only create an ISO if we have an INITRD and NOISO was not set
-	if [ -z "${INITRD}" ] || [ "${NOISO}" = "1" ]; then
+	# Only create an ISO if we have an INITRD and the live or iso image type was selected
+	if [ -z "${INITRD}" ] || [ "${@bb.utils.contains_any('IMAGE_FSTYPES', 'live iso', '1', '0', d)}" != "1" ]; then
 		bbnote "ISO image will not be created."
 		return
 	fi
@@ -226,7 +224,7 @@ build_fat_img() {
 
 build_hddimg() {
 	# Create an HDD image
-	if [ "${NOHDD}" != "1" ] ; then
+	if [ "${@bb.utils.contains_any('IMAGE_FSTYPES', 'live hddimg', '1', '0', d)}" = "1" ] ; then
 		populate_live ${HDDDIR}
 
 		if [ "${PCBIOS}" = "1" ]; then
@@ -241,11 +239,11 @@ build_hddimg() {
 		if [ -f ${HDDDIR}/rootfs.img ]; then
 			rootfs_img_size=`stat -c '%s' ${HDDDIR}/rootfs.img`
 			max_size=`expr 4 \* 1024 \* 1024 \* 1024`
-			if [ $rootfs_img_size -gt $max_size ]; then
-				bberror "${HDDDIR}/rootfs.img execeeds 4GB,"
-				bberror "this doesn't work on FAT filesystem, you can try either of:"
-				bberror "1) Reduce the size of rootfs.img"
-				bbfatal "2) Use iso, vmdk or vdi to instead of hddimg\n"
+			if [ $rootfs_img_size -ge $max_size ]; then
+				bberror "${HDDDIR}/rootfs.img rootfs size is greather than or equal to 4GB,"
+				bberror "and this doesn't work on a FAT filesystem. You can either:"
+				bberror "1) Reduce the size of rootfs.img, or,"
+				bbfatal "2) Use wic, vmdk or vdi instead of hddimg\n"
 			fi
 		fi
 

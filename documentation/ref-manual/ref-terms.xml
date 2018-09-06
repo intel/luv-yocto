@@ -200,8 +200,8 @@
                 <para>Creation of these toolchains is simple and automated.
                 For information on toolchain concepts as they apply to the
                 Yocto Project, see the
-                "<ulink url='&YOCTO_DOCS_CM_URL;#cross-development-toolchain-generation'>Cross-Development Toolchain Generation</ulink>"
-                section in the Yocto Project Concepts Manual.
+                "<ulink url='&YOCTO_DOCS_OM_URL;#cross-development-toolchain-generation'>Cross-Development Toolchain Generation</ulink>"
+                section in the Yocto Project Overview and Concepts Manual.
                 You can also find more information on using the
                 relocatable toolchain in the
                 <ulink url='&YOCTO_DOCS_SDK_URL;'>Yocto Project Application Development and the Extensible Software Development Kit (eSDK)</ulink>
@@ -215,7 +215,7 @@
                 their code available to other application developers.</para>
 
                 <para>For information on the eSDK, see the
-                <ulink url='&YOCTO_DOCS_SDK_URL;'>Yocto Project Application Development and Extensible Software Development Kit (eSDK)</ulink>
+                <ulink url='&YOCTO_DOCS_SDK_URL;'>Yocto Project Application Development and the Extensible Software Development Kit (eSDK)</ulink>
                 manual.
                 </para></listitem>
             <listitem><para>
@@ -245,8 +245,8 @@
                 Yocto Project.</para>
 
                 <para>For introductory information on layers, see the
-                "<ulink url='&YOCTO_DOCS_GS_URL;#the-yocto-project-layer-model'>The Yocto Project Layer Model</ulink>"
-                section in the Getting Started With Yocto Project Manual.
+                "<ulink url='&YOCTO_DOCS_OM_URL;#the-yocto-project-layer-model'>The Yocto Project Layer Model</ulink>"
+                section in the Yocto Project Overview and Concepts Manual.
                 For more detailed information on layers, see the
                 "<ulink url='&YOCTO_DOCS_DEV_URL;#understanding-and-creating-layers'>Understanding and Creating Layers</ulink>"
                 section in the Yocto Project Development Tasks Manual.
@@ -273,7 +273,7 @@
                 software itself (patches or auxiliary files) that
                 are used to fix bugs or customize the software for use
                 in a particular situation.
-                OpenEmbedded Core is an important set of validated
+                OpenEmbedded-Core is an important set of validated
                 metadata.</para>
 
                 <para>In the context of the kernel ("kernel Metadata"), the
@@ -283,7 +283,7 @@
                 Git repository.
                 </para></listitem>
             <listitem><para id='oe-core'>
-                <emphasis>OpenEmbedded Core (OE-Core):</emphasis>
+                <emphasis>OpenEmbedded-Core (OE-Core):</emphasis>
                 OE-Core is metadata comprised of foundational recipes,
                 classes, and associated files that are meant to be
                 common among many different OpenEmbedded-derived systems,
@@ -329,10 +329,9 @@
                 <para>It is worth noting that the term "package" can,
                 in general, have subtle meanings.
                 For example, the packages referred to in the
-                "<ulink url='&YOCTO_DOCS_QS_URL;#packages'>The Build Host Packages</ulink>"
-                section in the Yocto Project Quick Start are compiled binaries
-                that, when installed, add functionality to your Linux
-                distribution.</para>
+                "<link linkend='required-packages-for-the-build-host'>Required Packages for the Build Host</link>"
+                section are compiled binaries that, when installed, add
+                functionality to your Linux distribution.</para>
 
                 <para>Another point worth noting is that historically within
                 the Yocto Project, recipes were referred to as packages - thus,
@@ -471,8 +470,8 @@
 
                 <para>For more information on concepts related to Git
                 repositories, branches, and tags, see the
-                "<ulink url='&YOCTO_DOCS_GS_URL;#repositories-tags-and-branches'>Repositories, Tags, and Branches</ulink>"
-                section in the Getting Started With Yocto Project Manual.
+                "<ulink url='&YOCTO_DOCS_OM_URL;#repositories-tags-and-branches'>Repositories, Tags, and Branches</ulink>"
+                section in the Yocto Project Overview and Concepts Manual.
                 </para></listitem>
             <listitem><para><emphasis>Task:</emphasis>
                 A unit of execution for BitBake (e.g.
@@ -487,7 +486,7 @@
                 The interface enables you to configure and run your builds.
                 Information about builds is collected and stored in a database.
                 For information on Toaster, see the
-                <ulink url='&YOCTO_DOCS_TOAST_URL;'>Yocto Project Toaster Manual</ulink>.
+                <ulink url='&YOCTO_DOCS_TOAST_URL;'>Toaster User Manual</ulink>.
                 </para></listitem>
             <listitem><para>
                 <emphasis>Upstream:</emphasis>

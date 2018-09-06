@@ -284,8 +284,8 @@ class Disk:
             aname = "_%s" % name
             if aname not in self.__dict__:
                 setattr(self, aname, find_executable(name, self.paths))
-                if aname not in self.__dict__:
-                    raise WicError("Can't find executable {}".format(name))
+                if aname not in self.__dict__ or self.__dict__[aname] is None:
+                    raise WicError("Can't find executable '{}'".format(name))
             return self.__dict__[aname]
         return self.__dict__[name]
 
@@ -340,9 +340,21 @@ class Disk:
         """Remove files/dirs from the partition."""
         partimg = self._get_part_image(pnum)
         if self.partitions[pnum].fstype.startswith('ext'):
-            exec_cmd("{} {} -wR 'rm {}'".format(self.debugfs,
+            cmd = "{} {} -wR 'rm {}'".format(self.debugfs,
                                                 self._get_part_image(pnum),
-                                                path), as_shell=True)
+                                                path)
+            out = exec_cmd(cmd , as_shell=True)
+            for line in out.splitlines():
+                if line.startswith("rm:"):
+                    if "file is a directory" in line:
+                        # Try rmdir to see if this is an empty directory. This won't delete
+                        # any non empty directory so let user know about any error that this might
+                        # generate.
+                        print(exec_cmd("{} {} -wR 'rmdir {}'".format(self.debugfs,
+                                                    self._get_part_image(pnum),
+                                                    path), as_shell=True))
+                    else:
+                        raise WicError("Could not complete operation: wic %s" % str(line))
         else: # fat
             cmd = "{} -i {} ::{}".format(self.mdel, partimg, path)
             try:
@@ -391,11 +403,8 @@ class Disk:
         def write_ptable(parts, target):
             with tempfile.NamedTemporaryFile(prefix="wic-sfdisk-", mode='w') as outf:
                 write_sfdisk_script(outf, parts)
-                cmd = "{} --no-reread {} < {} 2>/dev/null".format(self.sfdisk, target, outf.name)
-                try:
-                    subprocess.check_output(cmd, shell=True)
-                except subprocess.CalledProcessError as err:
-                    raise WicError("Can't run '{}' command: {}".format(cmd, err))
+                cmd = "{} --no-reread {} < {} ".format(self.sfdisk, target, outf.name)
+                exec_cmd(cmd, as_shell=True)
 
         if expand is None:
             sparse_copy(self.imagepath, target)
@@ -412,11 +421,14 @@ class Disk:
             for line in exec_cmd("{} -F {}".format(self.sfdisk, target)).splitlines():
                 if line.startswith("Unpartitioned space ") and line.endswith("sectors"):
                     free = int(line.split()[-2])
+                    # Align free space to a 2048 sector boundary. YOCTO #12840.
+                    free = free - (free % 2048)
             if free is None:
                 raise WicError("Can't get size of unpartitioned space")
 
             # calculate expanded partitions sizes
             sizes = {}
+            num_auto_resize = 0
             for num, part in enumerate(parts['partitiontable']['partitions'], 1):
                 if num in expand:
                     if expand[num] != 0: # don't resize partition if size is set to 0
@@ -426,10 +438,11 @@ class Disk:
                         sizes[num] = sectors
                 elif part['type'] != 'f':
                     sizes[num] = -1
+                    num_auto_resize += 1
 
             for num, part in enumerate(parts['partitiontable']['partitions'], 1):
                 if sizes.get(num) == -1:
-                    part['size'] += free // len(sizes)
+                    part['size'] += free // num_auto_resize
 
             # write resized partition table to the target
             write_ptable(parts, target)
@@ -493,7 +506,7 @@ class Disk:
                     sparse_copy(partfname, target, seek=part['start'] * self._lsector_size)
                     os.unlink(partfname)
                 elif part['type'] != 'f':
-                    logger.warn("skipping partition {}: unsupported fstype {}".format(pnum, fstype))
+                    logger.warning("skipping partition {}: unsupported fstype {}".format(pnum, fstype))
 
 def wic_ls(args, native_sysroot):
     """List contents of partitioned image or vfat partition."""

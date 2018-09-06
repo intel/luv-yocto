@@ -39,8 +39,10 @@ SRC_URI = "git://github.com/rpm-software-management/rpm;branch=rpm-4.14.x \
            file://0003-rpmstrpool.c-make-operations-over-string-pools-threa.patch \
            file://0004-build-pack.c-remove-static-local-variables-from-buil.patch \
            file://0001-perl-disable-auto-reqs.patch \
-           file://0001-Revert-Set-FD_CLOEXEC-on-opened-files-before-exec-fr.patch \
            file://0001-configure.ac-add-option-for-dbus.patch \
+           file://0001-Factor-out-and-unify-setting-CLOEXEC.patch \
+           file://0002-Optimize-rpmSetCloseOnExec.patch \
+           file://0003-rpmSetCloseOnExec-use-getrlimit.patch \
            "
 
 PE = "1"
@@ -67,35 +69,51 @@ EXTRA_OECONF_append_libc-musl = " --disable-nls"
 # Disable dbus for native, so that rpm doesn't attempt to inhibit shutdown via session dbus even when plugins support is enabled.
 # Also disable plugins by default for native.
 EXTRA_OECONF_append_class-native = " --sysconfdir=/etc --localstatedir=/var --without-dbus --disable-plugins"
+EXTRA_OECONF_append_class-nativesdk = " --sysconfdir=/etc --localstatedir=/var --without-dbus --disable-plugins"
 
 BBCLASSEXTEND = "native nativesdk"
 
 PACKAGECONFIG ??= ""
 PACKAGECONFIG[imaevm] = "--with-imaevm,,ima-evm-utils"
 
+ASNEEDED = ""
+
 # Direct rpm-native to read configuration from our sysroot, not the one it was compiled in
 # libmagic also has sysroot path contamination, so override it
-do_install_append_class-native() {
-        tools="\
-                ${bindir}/rpm \
-                ${bindir}/rpm2archive \
-                ${bindir}/rpm2cpio \
-                ${bindir}/rpmbuild \
-                ${bindir}/rpmdb \
-                ${bindir}/rpmgraph \
-                ${bindir}/rpmkeys \
-                ${bindir}/rpmsign \
-                ${bindir}/rpmspec \
-                ${libdir}/rpm/rpmdeps \
-        "
 
-        for tool in $tools; do
+WRAPPER_TOOLS = " \
+   ${bindir}/rpm \
+   ${bindir}/rpm2archive \
+   ${bindir}/rpm2cpio \
+   ${bindir}/rpmbuild \
+   ${bindir}/rpmdb \
+   ${bindir}/rpmgraph \
+   ${bindir}/rpmkeys \
+   ${bindir}/rpmsign \
+   ${bindir}/rpmspec \
+   ${libdir}/rpm/rpmdeps \
+"
+
+do_install_append_class-native() {
+        for tool in ${WRAPPER_TOOLS}; do
                 create_wrapper ${D}$tool \
                         RPM_CONFIGDIR=${STAGING_LIBDIR_NATIVE}/rpm \
                         RPM_ETCCONFIGDIR=${STAGING_DIR_NATIVE} \
                         MAGIC=${STAGING_DIR_NATIVE}${datadir_native}/misc/magic.mgc \
                         RPM_NO_CHROOT_FOR_SCRIPTS=1
         done
+}
+
+do_install_append_class-nativesdk() {
+        for tool in ${WRAPPER_TOOLS}; do
+                create_wrapper ${D}$tool \
+                        RPM_CONFIGDIR='`dirname $''realpath`'/${@os.path.relpath(d.getVar('libdir', True), d.getVar('bindir', True))}/rpm \
+                        RPM_ETCCONFIGDIR='$'{RPM_ETCCONFIGDIR-'`dirname $''realpath`'/${@os.path.relpath(d.getVar('sysconfdir', True), d.getVar('bindir', True))}/..} \
+                        MAGIC='`dirname $''realpath`'/${@os.path.relpath(d.getVar('datadir', True), d.getVar('bindir', True))}/misc/magic.mgc \
+                        RPM_NO_CHROOT_FOR_SCRIPTS=1
+        done
+
+        rm -rf ${D}/var
 }
 
 # Rpm's make install creates var/tmp which clashes with base-files packaging

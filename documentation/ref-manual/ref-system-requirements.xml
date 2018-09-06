@@ -21,16 +21,19 @@
     <para>
         For introductory information on the Yocto Project, see the
         <ulink url='&YOCTO_HOME_URL;'>Yocto Project Website</ulink> and the
-        "<ulink url='&YOCTO_DOCS_GS_URL;#overview-development-environment'>Yocto Project Development Environment</ulink>"
-        chapter in the Getting Started With Yocto Project Manual.
+        "<ulink url='&YOCTO_DOCS_OM_URL;#overview-development-environment'>Yocto Project Development Environment</ulink>"
+        chapter in the Yocto Project Overview and Concepts Manual.
     </para>
 
     <para>
-        If you want to use the Yocto Project to test run building an image
+        If you want to use the Yocto Project to quickly build an image
         without having to understand concepts, work through the
-        <ulink url='&YOCTO_DOCS_QS_URL;'>Yocto Project Quick Start</ulink>.
+        <ulink url='&YOCTO_DOCS_BRIEF_URL;'>Yocto Project Quick Build</ulink>
+        document.
         You can find "how-to" information in the
         <ulink url='&YOCTO_DOCS_DEV_URL;'>Yocto Project Development Tasks Manual</ulink>.
+        You can find Yocto Project overview and conceptual information in the
+        <ulink url='&YOCTO_DOCS_OM_URL;'>Yocto Project Overview and Concepts Manual</ulink>.
         <note><title>Tip</title>
             For more information about the Yocto Project Documentation set,
             see the
@@ -129,8 +132,8 @@
         </note>
     </section>
 
-    <section id='required-packages-for-the-host-development-system'>
-    <title>Required Packages for the Host Development System</title>
+    <section id='required-packages-for-the-build-host'>
+    <title>Required Packages for the Build Host</title>
 
         <para>
             The list of packages you need on the host development system can
@@ -367,7 +370,7 @@
                         Execute the installation script.
                         Here is an example:
                         <literallayout class='monospaced'>
-     $ sh poky-glibc-x86_64-buildtools-tarball-x86_64-buildtools-nativesdk-standalone-&DISTRO;.sh
+     $ sh ~/Downloads/x86_64-buildtools-nativesdk-standalone-&DISTRO;.sh
                         </literallayout>
                         During execution, a prompt appears that allows you to
                         choose the installation directory.
@@ -451,7 +454,7 @@
                        to install the tools.
                        Here is an example:
                        <literallayout class='monospaced'>
-     $ sh poky-glibc-x86_64-buildtools-tarball-x86_64-buildtools-nativesdk-standalone-&DISTRO;.sh
+     $ sh ~/Downloads/x86_64-buildtools-nativesdk-standalone-&DISTRO;.sh
                        </literallayout>
                        During execution, a prompt appears that allows you to
                        choose the installation directory.

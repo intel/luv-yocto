@@ -25,14 +25,14 @@ class OESelftestTestContext(OETestContext):
         self.custommachine = None
         self.config_paths = config_paths
 
-    def runTests(self, machine=None, skips=[]):
+    def runTests(self, processes=None, machine=None, skips=[]):
         if machine:
             self.custommachine = machine
             if machine == 'random':
                 self.custommachine = choice(self.machines)
             self.logger.info('Run tests with custom MACHINE set to: %s' % \
                     self.custommachine)
-        return super(OESelftestTestContext, self).runTests(skips)
+        return super(OESelftestTestContext, self).runTests(processes, skips)
 
     def listTests(self, display_type, machine=None):
         return super(OESelftestTestContext, self).listTests(display_type)
@@ -67,6 +67,9 @@ class OESelftestTestContextExecutor(OETestContextExecutor):
         group.add_argument('-l', '--list-tests', required=False,
                 action="store_true", default=False,
                 help='List all available tests.')
+
+        parser.add_argument('-j', '--num-processes', dest='processes', action='store',
+                type=int, help="number of processes to execute in parallel with")
 
         parser.add_argument('--machine', required=False, choices=['random', 'all'],
                             help='Run tests on different machines (random/all).')
@@ -137,6 +140,7 @@ class OESelftestTestContextExecutor(OETestContextExecutor):
                 self.tc_kwargs['init']['config_paths']['bblayers_backup'])
 
         self.tc_kwargs['run']['skips'] = args.skips
+        self.tc_kwargs['run']['processes'] = args.processes
 
     def _pre_run(self):
         def _check_required_env_variables(vars):
@@ -152,7 +156,7 @@ class OESelftestTestContextExecutor(OETestContextExecutor):
                 os.chdir(builddir)
 
             if not "meta-selftest" in self.tc.td["BBLAYERS"]:
-                self.tc.logger.warn("meta-selftest layer not found in BBLAYERS, adding it")
+                self.tc.logger.warning("meta-selftest layer not found in BBLAYERS, adding it")
                 meta_selftestdir = os.path.join(
                     self.tc.td["BBLAYERS_FETCH_DIR"], 'meta-selftest')
                 if os.path.isdir(meta_selftestdir):
@@ -183,6 +187,10 @@ class OESelftestTestContextExecutor(OETestContextExecutor):
             self.tc.logger.error("You have buildhistory enabled already and this isn't recommended for selftest, please disable it first.")
             raise OEQAPreRun
 
+        if "rm_work.bbclass" in self.tc.td["BBINCLUDED"]:
+            self.tc.logger.error("You have rm_work enabled which isn't recommended while running oe-selftest. Please disable it before continuing.")
+            raise OEQAPreRun
+
         if "PRSERV_HOST" in self.tc.td:
             self.tc.logger.error("Please unset PRSERV_HOST in order to run oe-selftest")
             raise OEQAPreRun
@@ -193,8 +201,8 @@ class OESelftestTestContextExecutor(OETestContextExecutor):
 
         _add_layer_libs()
 
-        self.tc.logger.info("Running bitbake -p")
-        runCmd("bitbake -p")
+        self.tc.logger.info("Running bitbake -e to test the configuration is valid/parsable")
+        runCmd("bitbake -e")
 
     def _internal_run(self, logger, args):
         self.module_paths = self._get_cases_paths(

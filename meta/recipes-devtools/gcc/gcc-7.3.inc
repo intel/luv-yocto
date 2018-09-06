@@ -32,7 +32,6 @@ BASEURI ?= "${GNU_MIRROR}/gcc/gcc-${PV}/gcc-${PV}.tar.xz"
 SRC_URI = "\
            ${BASEURI} \
            file://0001-gcc-4.3.1-ARCH_FLAGS_FOR_TARGET.patch \
-           file://0008-c99-snprintf.patch \
            file://0009-gcc-poison-system-directories.patch \
            file://0010-gcc-poison-dir-extend.patch \
            file://0011-gcc-4.3.3-SYSROOT_CFLAGS_FOR_TARGET.patch \
@@ -72,6 +71,7 @@ SRC_URI = "\
            file://0045-Link-libgcc-using-LDFLAGS-not-just-SHLIB_LDFLAGS.patch \
            file://0047-sync-gcc-stddef.h-with-musl.patch \
            file://0048-gcc-Enable-static-PIE.patch \
+           file://0049-gcc-override-TARGET_LIBC_PROVIDES_SSP.patch \
            file://fix-segmentation-fault-precompiled-hdr.patch \
            file://no-sse-fix-test-case-failures.patch \
            ${BACKPORTS} \
@@ -79,6 +79,8 @@ SRC_URI = "\
 BACKPORTS = "\
            file://0001-Fix-internal-compiler-error-in-testcase.patch \
            file://0001-PR-rtl-optimization-83030.patch \
+           file://0001-Fix-ppc64le-build-Partial-backport-r256656.patch \
+           file://0001-PR-c-80290-memory-hog-with-std-pair.patch \
 "
 
 SRC_URI[md5sum] = "be2da21680f27624f3a87055c4ba5af2"
@@ -93,10 +95,12 @@ FORTRAN = ""
 JAVA = ""
 
 LTO = "--enable-lto"
+SSP ?= "--disable-libssp"
+SSP_mingw32 = "--enable-libssp"
 
 EXTRA_OECONF_BASE = "\
     ${LTO} \
-    --enable-libssp \
+    ${SSP} \
     --enable-libitm \
     --disable-bootstrap \
     --disable-libmudflap \
@@ -118,9 +122,10 @@ EXTRA_OECONF_INITIAL = "\
     --with-system-zlib \
     --disable-lto \
     --disable-plugin \
+    --enable-linker-build-id \
     --enable-decimal-float=no \
     --without-isl \
-    gcc_cv_libc_provides_ssp=yes \
+    --disable-libssp \
 "
 
 EXTRA_OECONF_PATHS = "\

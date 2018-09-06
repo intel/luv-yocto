@@ -158,7 +158,6 @@ RDEPENDS_packagegroup-core-lsb-core = "\
     make \
     man \
     man-pages \
-    mktemp \
     msmtp \
     patch \
     procps \
@@ -220,7 +219,7 @@ RDEPENDS_packagegroup-core-lsb-desktop = "\
     liberation-fonts \
     gtk+ \
     atk \
-    libasound \
+    alsa-lib \
 "
 
 RDEPENDS_packagegroup-core-lsb-runtime-add = "\

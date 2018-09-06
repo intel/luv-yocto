@@ -1,7 +1,7 @@
 require go-common.inc
 
 GO_BASEVERSION = "1.10"
-GO_MINOR = ".1"
+GO_MINOR = ".3"
 PV .= "${GO_MINOR}"
 FILESEXTRAPATHS_prepend := "${FILE_DIRNAME}/go-${GO_BASEVERSION}:"
 
@@ -20,6 +20,5 @@ SRC_URI += "\
 
 SRC_URI_append_libc-musl = " file://0009-ld-replace-glibc-dynamic-linker-with-musl.patch"
 
-SRC_URI[main.md5sum] = "d55e8b2c6272ab1abf5e4e6cdaaca680"
-SRC_URI[main.sha256sum] = "589449ff6c3ccbff1d391d4e7ab5bb5d5643a5a41a04c99315e55c16bbf73ddc"
-
+SRC_URI[main.md5sum] = "d15dfb264105c5e84fbe33f4a4aa5021"
+SRC_URI[main.sha256sum] = "567b1cc66c9704d1c019c50bef946272e911ec6baf244310f87f4e678be155f2"

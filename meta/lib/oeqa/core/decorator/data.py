@@ -54,6 +54,20 @@ class skipIfNotDataVar(OETestDecorator):
             self.case.skipTest(self.msg)
 
 @registerDecorator
+class skipIfInDataVar(OETestDecorator):
+    """
+        Skip test if value is in data store's variable.
+    """
+
+    attrs = ('var', 'value', 'msg')
+    def setUpDecorator(self):
+        msg = ('Checking if %r value contains %r to skip '
+              'the test' % (self.var, self.value))
+        self.logger.debug(msg)
+        if self.value in (self.case.td.get(self.var)):
+            self.case.skipTest(self.msg)
+
+@registerDecorator
 class skipIfNotInDataVar(OETestDecorator):
     """
         Skip test if value is not in data store's variable.
@@ -61,10 +75,10 @@ class skipIfNotInDataVar(OETestDecorator):
 
     attrs = ('var', 'value', 'msg')
     def setUpDecorator(self):
-        msg = ('Checking if %r value is in %r to run '
+        msg = ('Checking if %r value contains %r to run '
               'the test' % (self.var, self.value))
         self.logger.debug(msg)
-        if not self.value in self.case.td.get(self.var):
+        if not self.value in (self.case.td.get(self.var) or ""):
             self.case.skipTest(self.msg)
 
 @registerDecorator

@@ -51,6 +51,10 @@ toolchain_create_sdk_env_script () {
 	echo "export OECORE_NATIVE_SYSROOT=\"$sdkpathnative\"" >> $script
 	echo 'export OECORE_TARGET_SYSROOT="$SDKTARGETSYSROOT"' >> $script
 	echo "export OECORE_ACLOCAL_OPTS=\"-I $sdkpathnative/usr/share/aclocal\"" >> $script
+	echo 'export OECORE_BASELIB="${baselib}"' >> $script
+	echo 'export OECORE_TARGET_ARCH="${TARGET_ARCH}"' >>$script
+	echo 'export OECORE_TARGET_OS="${TARGET_OS}"' >>$script
+
 	echo 'unset command_not_found_handle' >> $script
 
 	toolchain_shared_env_script
@@ -62,7 +66,8 @@ toolchain_create_tree_env_script () {
 	script=${TMPDIR}/environment-setup-${REAL_MULTIMACH_TARGET_SYS}
 	rm -f $script
 	touch $script
-	echo 'export PATH=${STAGING_DIR_NATIVE}/usr/bin:${PATH}' >> $script
+	echo 'orig=`pwd`; cd ${COREBASE}; . ./oe-init-build-env ${TOPDIR}; cd $orig' >> $script
+	echo 'export PATH=${STAGING_DIR_NATIVE}/usr/bin:${STAGING_BINDIR_TOOLCHAIN}:$PATH' >> $script
 	echo 'export PKG_CONFIG_SYSROOT_DIR=${PKG_CONFIG_SYSROOT_DIR}' >> $script
 	echo 'export PKG_CONFIG_PATH=${PKG_CONFIG_PATH}' >> $script
 	echo 'export CONFIG_SITE="${@siteinfo_get_files(d)}"' >> $script
@@ -117,14 +122,34 @@ EOF
 }
 
 toolchain_create_post_relocate_script() {
-	script=$1
-	rm -f $script
-	touch $script
+	relocate_script=$1
+	env_dir=$2
+	rm -f $relocate_script
+	touch $relocate_script
 
-    cat >> $script <<EOF
+	cat >> $relocate_script <<EOF
+# Source top-level SDK env scripts in case they are needed for the relocate
+# scripts.
+for env_setup_script in ${env_dir}/environment-setup-*; do
+    . \$env_setup_script
+    status=\$?
+    if [ \$status != 0 ]; then
+        echo "\$0: Failed to source \$env_setup_script with status \$status"
+        exit \$status
+    fi
+done
+
 if [ -d "${SDKPATHNATIVE}/post-relocate-setup.d/" ]; then
-    for s in ${SDKPATHNATIVE}/post-relocate-setup.d/*.sh; do
+    for s in ${SDKPATHNATIVE}/post-relocate-setup.d/*; do
+        if [ ! -x \$s ]; then
+            continue
+        fi
         \$s "\$1"
+        status=\$?
+        if [ \$status != 0 ]; then
+            echo "post-relocate command \"\$s \$1\" failed with status \$status" >&2
+            exit \$status
+        fi
     done
     rm -rf "${SDKPATHNATIVE}/post-relocate-setup.d"
 fi

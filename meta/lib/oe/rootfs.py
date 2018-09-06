@@ -472,7 +472,8 @@ class RpmRootfs(Rootfs):
         self._log_check_error()
 
     def _cleanup(self):
-        self.pm._invoke_dnf(["clean", "all"])
+        if bb.utils.contains("IMAGE_FEATURES", "package-management", True, False, self.d):
+            self.pm._invoke_dnf(["clean", "all"])
 
 
 class DpkgOpkgRootfs(Rootfs):
@@ -560,6 +561,9 @@ class DpkgOpkgRootfs(Rootfs):
         return pkg_list
 
     def _save_postinsts_common(self, dst_postinst_dir, src_postinst_dir):
+        if bb.utils.contains("IMAGE_FEATURES", "package-management",
+                         True, False, self.d):
+            return
         num = 0
         for p in self._get_delayed_postinsts():
             bb.utils.mkdirhier(dst_postinst_dir)
@@ -782,7 +786,7 @@ class OpkgRootfs(DpkgOpkgRootfs):
             ml_opkg_conf = os.path.join(ml_temp,
                                         variant + "-" + os.path.basename(self.opkg_conf))
 
-            ml_pm = OpkgPM(self.d, ml_target_rootfs, ml_opkg_conf, self.pkg_archs)
+            ml_pm = OpkgPM(self.d, ml_target_rootfs, ml_opkg_conf, self.pkg_archs, prepare_index=False)
 
             ml_pm.update()
             ml_pm.install(pkgs)

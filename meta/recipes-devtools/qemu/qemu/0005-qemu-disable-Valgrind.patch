@@ -1,0 +1,33 @@
+From 4475b3d97371e588540333988a97d7df3ec2c65a Mon Sep 17 00:00:00 2001
+From: Ross Burton <ross.burton@intel.com>
+Date: Tue, 20 Oct 2015 22:19:08 +0100
+Subject: [PATCH] qemu: disable Valgrind
+
+There isn't an option to enable or disable valgrind support, so disable it to avoid non-deterministic builds.
+
+Upstream-Status: Inappropriate
+Signed-off-by: Ross Burton <ross.burton@intel.com>
+---
+ configure | 9 ---------
+ 1 file changed, 9 deletions(-)
+
+diff --git a/configure b/configure
+index 0a19b033bc..69e05fb6c0 100755
+--- a/configure
++++ b/configure
+@@ -4895,15 +4895,6 @@ fi
+ # check if we have valgrind/valgrind.h
+ 
+ valgrind_h=no
+-cat > $TMPC << EOF
+-#include <valgrind/valgrind.h>
+-int main(void) {
+-  return 0;
+-}
+-EOF
+-if compile_prog "" "" ; then
+-    valgrind_h=yes
+-fi
+ 
+ ########################################
+ # check if environ is declared

@@ -21,13 +21,13 @@ RDEPENDS_localedef += "glibc"
 # to decrease initial boot time and avoid localedef being killed by the OOM
 # killer which used to effectively break i18n on machines with < 128MB RAM.
 
-# default to disabled 
+# default to disabled
 ENABLE_BINARY_LOCALE_GENERATION ?= "0"
 ENABLE_BINARY_LOCALE_GENERATION_pn-nativesdk-glibc-locale = "1"
 
 #enable locale generation on these arches
 # BINARY_LOCALE_ARCHES is a space separated list of regular expressions
-BINARY_LOCALE_ARCHES ?= "arm.* aarch64 i[3-6]86 x86_64 powerpc mips mips64"
+BINARY_LOCALE_ARCHES ?= "arm.* aarch64 i[3-6]86 x86_64 powerpc mips mips64 riscv32 riscv64"
 
 # set "1" to use cross-localedef for locale generation
 # set "0" for qemu emulation of native localedef for locale generation
@@ -74,23 +74,22 @@ LOCALETREESRC = "${COMPONENTS_DIR}/${PACKAGE_ARCH}/glibc-stash-locale"
 do_install () {
 	mkdir -p ${D}${bindir} ${D}${datadir} ${D}${libdir}
 	if [ -n "$(ls ${LOCALETREESRC}/${bindir})" ]; then
-		cp -fpPR ${LOCALETREESRC}/${bindir}/* ${D}${bindir}
+		cp -R --no-dereference --preserve=mode,links ${LOCALETREESRC}/${bindir}/* ${D}${bindir}
 	fi
 	if [ -n "$(ls ${LOCALETREESRC}/${localedir})" ]; then
 		mkdir -p ${D}${localedir}
-		cp -fpPR ${LOCALETREESRC}/${localedir}/* ${D}${localedir}
+		cp -R --no-dereference --preserve=mode,links ${LOCALETREESRC}/${localedir}/* ${D}${localedir}
 	fi
 	if [ -e ${LOCALETREESRC}/${libdir}/gconv ]; then
-		cp -fpPR ${LOCALETREESRC}/${libdir}/gconv ${D}${libdir}
+		cp -R --no-dereference --preserve=mode,links ${LOCALETREESRC}/${libdir}/gconv ${D}${libdir}
 	fi
 	if [ -e ${LOCALETREESRC}/${datadir}/i18n ]; then
-		cp -fpPR ${LOCALETREESRC}/${datadir}/i18n ${D}${datadir}
+		cp -R --no-dereference --preserve=mode,links ${LOCALETREESRC}/${datadir}/i18n ${D}${datadir}
 	fi
 	if [ -e ${LOCALETREESRC}/${datadir}/locale ]; then
-		cp -fpPR ${LOCALETREESRC}/${datadir}/locale ${D}${datadir}
+		cp -R --no-dereference --preserve=mode,links ${LOCALETREESRC}/${datadir}/locale ${D}${datadir}
 	fi
-	chown root:root -R ${D}
-	cp -fpPR ${LOCALETREESRC}/SUPPORTED ${WORKDIR}
+	cp -R --no-dereference --preserve=mode,links ${LOCALETREESRC}/SUPPORTED ${WORKDIR}
 }
 
 inherit libc-package

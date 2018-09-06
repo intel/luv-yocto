@@ -12,6 +12,7 @@ LICENSE = "GPLv2"
 PR = "r9"
 
 PACKAGECONFIG ??= "scripting tui libunwind"
+PACKAGECONFIG[dwarf] = ",NO_DWARF=1"
 PACKAGECONFIG[scripting] = ",NO_LIBPERL=1 NO_LIBPYTHON=1,perl python"
 # gui support was added with kernel 3.6.35
 # since 3.10 libnewt was replaced by slang
@@ -38,7 +39,7 @@ do_configure[depends] += "virtual/kernel:do_shared_workdir"
 
 PROVIDES = "virtual/perf"
 
-inherit linux-kernel-base kernel-arch
+inherit linux-kernel-base kernel-arch manpages
 
 # needed for building the tools/perf Python bindings
 inherit ${@bb.utils.contains('PACKAGECONFIG', 'scripting', 'pythonnative', '', d)}
@@ -61,7 +62,7 @@ export PERL_ARCHLIB = "${STAGING_LIBDIR}${PERL_OWN_DIR}/perl/${@get_perl_version
 
 inherit kernelsrc
 
-B = "${WORKDIR}/${BPN}-${PV}"
+S = "${WORKDIR}/${BP}"
 SPDX_S = "${S}/tools/perf"
 
 # The LDFLAGS is required or some old kernels fails due missing
@@ -80,7 +81,7 @@ EXTRA_OEMAKE = '\
     EXTRA_CFLAGS="-ldw" \
     EXTRA_LDFLAGS="${PERF_EXTRA_LDFLAGS}" \
     perfexecdir=${libexecdir} \
-    NO_GTK2=1 NO_DWARF=1 \
+    NO_GTK2=1 \
     ${PACKAGECONFIG_CONFARGS} \
 '
 
@@ -95,6 +96,24 @@ EXTRA_OEMAKE += "\
     'sharedir=${@os.path.relpath(datadir, prefix)}' \
     'mandir=${@os.path.relpath(mandir, prefix)}' \
     'infodir=${@os.path.relpath(infodir, prefix)}' \
+"
+
+# During do_configure, we might run a 'make clean'. That often breaks
+# when done in parallel, so disable parallelism for do_configure. Note
+# that it has to be done this way rather than by passing -j1, since
+# perf's build system by default ignores any -j argument, but does
+# honour a JOBS variable.
+EXTRA_OEMAKE_append_task-configure = " JOBS=1"
+
+PERF_SRC ?= "Makefile \
+             include \
+             tools/arch \
+             tools/build \
+             tools/include \
+             tools/lib \
+             tools/Makefile \
+             tools/perf \
+             tools/scripts \
 "
 
 PERF_EXTRA_LDFLAGS = ""
@@ -119,11 +138,24 @@ do_install() {
 	fi
 }
 
-do_configure_prepend () {
-    # Fix for rebuilding
-    rm -rf ${B}/
-    mkdir -p ${B}/
+do_configure[prefuncs] += "copy_perf_source_from_kernel"
+python copy_perf_source_from_kernel() {
+    sources = (d.getVar("PERF_SRC") or "").split()
+    src_dir = d.getVar("STAGING_KERNEL_DIR")
+    dest_dir = d.getVar("S")
+    bb.utils.mkdirhier(dest_dir)
+    for s in sources:
+        src = oe.path.join(src_dir, s)
+        dest = oe.path.join(dest_dir, s)
+        if not os.path.exists(src):
+            bb.fatal("Path does not exist: %s. Maybe PERF_SRC does not match the kernel version." % src)
+        if os.path.isdir(src):
+            oe.path.copyhardlinktree(src, dest)
+        else:
+            bb.utils.copyfile(src, dest)
+}
 
+do_configure_prepend () {
     # If building a multlib based perf, the incorrect library path will be
     # detected by perf, since it triggers via: ifeq ($(ARCH),x86_64). In a 32 bit
     # build, with a 64 bit multilib, the arch won't match and the detection of a 
@@ -217,7 +249,6 @@ PACKAGE_ARCH = "${MACHINE_ARCH}"
 PACKAGES =+ "${PN}-archive ${PN}-tests ${PN}-perl ${PN}-python"
 
 RDEPENDS_${PN} += "elfutils bash"
-RDEPENDS_${PN}-doc += "man"
 RDEPENDS_${PN}-archive =+ "bash"
 RDEPENDS_${PN}-python =+ "bash python python-modules ${@bb.utils.contains('PACKAGECONFIG', 'audit', 'audit-python', '', d)}"
 RDEPENDS_${PN}-perl =+ "bash perl perl-modules"
