@@ -15,7 +15,7 @@ inherit autotools-brokensep pkgconfig
 
 BBCLASSEXTEND = "native"
 
-DEPENDS = "binutils openssl gnu-efi util-linux"
+DEPENDS = "binutils openssl10 gnu-efi util-linux"
 
 S = "${WORKDIR}/git"
 
