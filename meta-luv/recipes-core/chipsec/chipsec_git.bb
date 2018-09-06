@@ -81,7 +81,7 @@ do_install_append() {
     #
 
     install -d ${D}${PYTHON_SITEPACKAGES_DIR}/${PN}
-    mv ${D}${PYTHON_SITEPACKAGES_DIR}${D}${PYTHON_SITEPACKAGES_DIR}/* ${D}${PYTHON_SITEPACKAGES_DIR}/${PN}
+    mv ${D}${PYTHON_SITEPACKAGES_DIR}${RECIPE_SYSROOT_NATIVE}${PYTHON_SITEPACKAGES_DIR}/* ${D}${PYTHON_SITEPACKAGES_DIR}/${PN}
     # remove old files
     cd ${D}${PYTHON_SITEPACKAGES_DIR}
     ls | grep -v chipsec | xargs rm -fr
