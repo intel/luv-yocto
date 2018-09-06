@@ -76,7 +76,7 @@ SRC_URI = "gitsm://github.com/biosbits/bits.git;protocol=http  \
 S = "${WORKDIR}/git"
 
 DEPENDS = "virtual/gettext autogen-native gettext-native sqlite3-native zip-native \
-           xorriso-native bits-native flex bison autogen-native"
+           xorriso-native bits-native flex bison-native autogen-native"
 RDEPENDS_${PN}_class-target = "coreutils findutils cpio"
 
 COMPATIBLE_HOST = '(x86_64.*|i.86.*)-(linux|freebsd.*)'
