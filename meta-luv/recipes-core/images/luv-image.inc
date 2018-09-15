@@ -9,6 +9,8 @@ HDDDIR = "${S}/hddimg"
 INITRD_IMAGE_LIVE = "core-image-efi-initramfs"
 IMGDEPLOYDIR = "${DEPLOY_DIR_IMAGE}"
 
+IMAGE_FSTYPES+="hddimg"
+
 # Tell plymouth to ignore serial consoles and limit the amount of systemD logs.
 CMDLINE_USERSPACE = "systemd.log_target=null plymouth.ignore-serial-consoles"
 
