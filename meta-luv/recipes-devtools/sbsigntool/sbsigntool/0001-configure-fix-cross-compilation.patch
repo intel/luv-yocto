@@ -1,6 +1,6 @@
-From 763589e15cc7c7acca7372d1f0c645605a240b9b Mon Sep 17 00:00:00 2001
-From: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
-Date: Wed, 5 Aug 2015 10:17:57 -0700
+From 171892a8d92e72515e82751a44b11c3ead4df07a Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Thu, 13 Sep 2018 16:13:12 -0700
 Subject: [PATCH] configure: Prevent unsafe cross-compilation
 
 When cross-compiling, directories from the host machine are included in
@@ -23,18 +23,19 @@ as described in the gcc documentation.
 Upstream status: applicable only to LUV.
 
 Signed-off-by: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
 ---
  configure.ac | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/configure.ac b/configure.ac
-index 0d8f0bb..6c6fb0b 100644
+index bce6f0e..7115553 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -65,7 +65,7 @@ PKG_CHECK_MODULES(uuid, uuid,
+@@ -79,7 +79,7 @@ if test -z "$CRTPATH"; then
+    AC_MSG_ERROR([cannot find the gnu-efi crt path])
+ fi
  
- dnl gnu-efi headers require extra include dirs
- EFI_ARCH=$(uname -m)
 -EFI_CPPFLAGS="-I/usr/include/efi -I/usr/include/efi/$EFI_ARCH \
 +EFI_CPPFLAGS="-I=/usr/include/efi -I=/usr/include/efi/$EFI_ARCH \
   -DEFI_FUNCTION_WRAPPER"
