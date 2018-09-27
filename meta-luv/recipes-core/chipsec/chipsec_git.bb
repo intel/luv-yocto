@@ -51,14 +51,11 @@ def get_target_arch(d):
 
 export CHIPSEC_ARCH = "${@get_target_arch(d)}"
 
-DISTUTILS_INSTALL_ARGS = "--root=${D}${PYTHON_SITEPACKAGES_DIR} \
-    --install-data=${D}/${datadir}"
-
 DISTUTILS_BUILD_ARGS = "--build-lib=${TARGET_ARCH}"
 
 fix_mod_path() {
     sed -i -e "s:^INSTALL_MOD_PATH_PREFIX = .*:INSTALL_MOD_PATH_PREFIX = \"${PYTHON_SITEPACKAGES_DIR}\":" ${S}/chipsec_main.py
-    sed -i -e "s:PYTHONPATH:${PYTHON_SITEPACKAGES_DIR}/chipsec:" ${WORKDIR}/chipsec
+    sed -i -e "s:PYTHONPATH:${PYTHON_SITEPACKAGES_DIR}:" ${WORKDIR}/chipsec
 }
 
 fix_kernel_source_dir() {
@@ -74,22 +71,9 @@ do_install_append() {
     install -d ${D}${bindir}
     install -m 0755 ${WORKDIR}/chipsec ${D}${bindir}
 
-    #
-    # FIXME: for some reason chipsec ends up installed in a repeated
-    # directory structure. Thus, we need to move it to its proper location
-    # under PYTHON_SITEPACKAGES_DIR
-    #
-
-    install -d ${D}${PYTHON_SITEPACKAGES_DIR}/${PN}
-    mv ${D}${PYTHON_SITEPACKAGES_DIR}${D}${PYTHON_SITEPACKAGES_DIR}/* ${D}${PYTHON_SITEPACKAGES_DIR}/${PN}
-    # remove old files
-    cd ${D}${PYTHON_SITEPACKAGES_DIR}
-    ls | grep -v chipsec | xargs rm -fr
-    cd $OLDPWD
-
     if [ ! "${TARGET_ARCH}" = "x86_64" ]; then
-        rm ${D}${PYTHON_SITEPACKAGES_DIR}/${PN}/chipsec_tools/linux/LzmaCompress.bin
-        rm ${D}${PYTHON_SITEPACKAGES_DIR}/${PN}/chipsec_tools/linux/TianoCompress.bin
+        rm ${D}${PYTHON_SITEPACKAGES_DIR}/chipsec_tools/linux/LzmaCompress.bin
+        rm ${D}${PYTHON_SITEPACKAGES_DIR}/chipsec_tools/linux/TianoCompress.bin
     fi
 }
 
