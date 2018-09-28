@@ -3,7 +3,7 @@ DESCRIPTION = "BusyBox combines tiny versions of many common UNIX utilities into
 HOMEPAGE = "http://www.busybox.net"
 BUGTRACKER = "https://bugs.busybox.net/"
 
-DEPENDS += "kern-tools-native"
+DEPENDS += "kern-tools-native virtual/crypt"
 
 # bzip2 applet in busybox is based on lightly-modified bzip2 source
 # the GPL is version 2 only
@@ -208,6 +208,10 @@ do_install () {
 	sed -i "s:^/usr/bin/:BINDIR/:" busybox.links*
 	sed -i "s:^/usr/sbin/:SBINDIR/:" busybox.links*
 
+	# Move arch/link to BINDIR to match coreutils
+	sed -i "s:^BASE_BINDIR/arch:BINDIR/arch:" busybox.links*
+	sed -i "s:^BASE_BINDIR/link:BINDIR/link:" busybox.links*
+
 	sed -i "s:^BASE_BINDIR/:${base_bindir}/:" busybox.links*
 	sed -i "s:^BASE_SBINDIR/:${base_sbindir}/:" busybox.links*
 	sed -i "s:^BINDIR/:${bindir}/:" busybox.links*
@@ -315,19 +319,23 @@ do_install () {
         fi
 
     if ${@bb.utils.contains('DISTRO_FEATURES','systemd','true','false',d)}; then
+        if grep -q "CONFIG_KLOGD=y" ${B}/.config; then
+            install -d ${D}${systemd_unitdir}/system
+            sed 's,@base_sbindir@,${base_sbindir},g' < ${WORKDIR}/busybox-klogd.service.in \
+            > ${D}${systemd_unitdir}/system/busybox-klogd.service
+        fi
+
         if grep -q "CONFIG_SYSLOGD=y" ${B}/.config; then
             install -d ${D}${systemd_unitdir}/system
             sed 's,@base_sbindir@,${base_sbindir},g' < ${WORKDIR}/busybox-syslog.service.in \
 		> ${D}${systemd_unitdir}/system/busybox-syslog.service
+            if  [ ! -e ${D}${systemd_unitdir}/system/busybox-klogd.service ] ; then
+                sed -i '/klog/d' ${D}${systemd_unitdir}/system/busybox-syslog.service
+            fi
             if [ -f ${WORKDIR}/busybox-syslog.default ] ; then
 		install -d ${D}${sysconfdir}/default
 		install -m 0644 ${WORKDIR}/busybox-syslog.default ${D}${sysconfdir}/default/busybox-syslog
             fi
-        fi
-        if grep -q "CONFIG_KLOGD=y" ${B}/.config; then
-            install -d ${D}${systemd_unitdir}/system
-            sed 's,@base_sbindir@,${base_sbindir},g' < ${WORKDIR}/busybox-klogd.service.in \
-		> ${D}${systemd_unitdir}/system/busybox-klogd.service
         fi
     fi
 
@@ -363,7 +371,10 @@ python do_package_prepend () {
             # Match coreutils
             if alt_name == '[':
                 alt_name = 'lbracket'
-            d.appendVar('ALTERNATIVE_%s' % (pn), ' ' + alt_name)
+            if alt_name == 'klogd' or alt_name == 'syslogd':
+                d.appendVar('ALTERNATIVE_%s-syslog' % (pn), ' ' + alt_name)
+            else:
+                d.appendVar('ALTERNATIVE_%s' % (pn), ' ' + alt_name)
             d.setVarFlag('ALTERNATIVE_LINK_NAME', alt_name, alt_link_name)
             if os.path.exists('%s%s' % (dvar, target)):
                 d.setVarFlag('ALTERNATIVE_TARGET', alt_name, target)

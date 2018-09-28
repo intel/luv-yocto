@@ -66,7 +66,6 @@ class Partition():
 
         self.lineno = lineno
         self.source_file = ""
-        self.sourceparams_dict = {}
 
     def get_extra_block_count(self, current_blocks):
         """
@@ -211,7 +210,7 @@ class Partition():
         """
         p_prefix = os.environ.get("PSEUDO_PREFIX", "%s/usr" % native_sysroot)
         p_localstatedir = os.environ.get("PSEUDO_LOCALSTATEDIR",
-                                         "%s/../pseudo" %  get_bitbake_var("IMAGE_ROOTFS"))
+                                         "%s/../pseudo" %  rootfs_dir)
         p_passwd = os.environ.get("PSEUDO_PASSWD", rootfs_dir)
         p_nosymlinkexp = os.environ.get("PSEUDO_NOSYMLINKEXP", "1")
         pseudo = "export PSEUDO_PREFIX=%s;" % p_prefix

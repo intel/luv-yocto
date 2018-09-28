@@ -12,10 +12,9 @@ LIC_FILES_CHKSUM = "file://COPYING.txt;md5=02ee26814dd044bd7838ae24e05b880f"
 
 PROVIDES = "virtual/libsdl2"
 
-DEPENDS_class-nativesdk = "${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'virtual/nativesdk-libx11 nativesdk-libxrandr nativesdk-libxrender nativesdk-libxext', '', d)}"
-
-SRC_URI = " \
-    http://www.libsdl.org/release/SDL2-${PV}.tar.gz \
+SRC_URI = "http://www.libsdl.org/release/SDL2-${PV}.tar.gz \
+           file://more-gen-depends.patch \
+           file://0001-GLES2-Get-sin-cos-out-of-vertex-shader.patch \
 "
 
 S = "${WORKDIR}/SDL2-${PV}"
@@ -37,6 +36,8 @@ EXTRA_OECONF = "--disable-oss --disable-esd --disable-arts \
 # and BSP layers to pick either (desktop) opengl, gles2, or no GL
 PACKAGECONFIG_GL ?= "${@bb.utils.filter('DISTRO_FEATURES', 'opengl', d)}"
 
+PACKAGECONFIG_class-native = "x11"
+PACKAGECONFIG_class-nativesdk = "${@bb.utils.filter('DISTRO_FEATURES', 'x11', d)}"
 PACKAGECONFIG ??= " \
     ${PACKAGECONFIG_GL} \
     ${@bb.utils.filter('DISTRO_FEATURES', 'alsa directfb pulseaudio x11', d)} \
@@ -63,3 +64,5 @@ do_configure_prepend() {
 }
 
 FILES_${PN}-dev += "${libdir}/cmake"
+
+BBCLASSEXTEND = "native nativesdk"

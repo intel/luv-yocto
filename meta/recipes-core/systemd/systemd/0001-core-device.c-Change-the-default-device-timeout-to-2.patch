@@ -1,7 +1,9 @@
-From 9820c165a9e559cf851e3beb60fad2571de4ded2 Mon Sep 17 00:00:00 2001
-From: Khem Raj <raj.khem@gmail.com>
-Date: Mon, 14 Dec 2015 04:09:19 +0000
+From 2925c0c3b6ce4056622b86c1c61ee14add430790 Mon Sep 17 00:00:00 2001
+From: Chen Qi <Qi.Chen@windriver.com>
+Date: Thu, 28 Jun 2018 10:56:29 +0800
 Subject: [PATCH] core/device.c: Change the default device timeout to 240 sec.
+ MIME-Version: 1.0 Content-Type: text/plain; charset=UTF-8
+ Content-Transfer-Encoding: 8bit
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
@@ -10,16 +12,16 @@ Upstream-Status: Inappropriate [Specific case QEMU/AB]
 
 Signed-off-by: Aníbal Limón <anibal.limon@linux.intel.com>
 Signed-off-by: Khem Raj <raj.khem@gmail.com>
-
+Signed-off-by: Chen Qi <Qi.Chen@windriver.com>
 ---
  src/core/device.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/src/core/device.c b/src/core/device.c
-index 77601c552..98bf49ba2 100644
+index a2d00a0fb..f26e55ebb 100644
 --- a/src/core/device.c
 +++ b/src/core/device.c
-@@ -112,7 +112,7 @@ static void device_init(Unit *u) {
+@@ -95,7 +95,7 @@ static void device_init(Unit *u) {
           * indefinitely for plugged in devices, something which cannot
           * happen for the other units since their operations time out
           * anyway. */
@@ -27,7 +29,7 @@ index 77601c552..98bf49ba2 100644
 +        u->job_running_timeout = (240 * USEC_PER_SEC);
  
          u->ignore_on_isolate = true;
- }
+ 
 -- 
-2.16.1
+2.11.0
 

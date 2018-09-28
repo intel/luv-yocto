@@ -32,7 +32,6 @@ RDEPENDS_${PN}-base = "\
     adwaita-icon-theme \
     settings-daemon \
     shutdown-desktop \
-    libsdl \
     ${NETWORK_MANAGER} \
     udev-extraconf \
     ${@bb.utils.contains('DISTRO_FEATURES', 'pulseaudio', 'pulseaudio-server pulseaudio-client-conf-sato pulseaudio-misc', '', d)} \
@@ -43,13 +42,16 @@ FILEMANAGER ?= "pcmanfm"
 WEB ?= ""
 #WEB = "epiphany"
 
+GSTEXAMPLES ?= "gst-examples"
+GSTEXAMPLES_riscv64 = ""
+
 SUMMARY_${PN}-apps = "Sato desktop - applications"
 RDEPENDS_${PN}-apps = "\
     l3afpad \
-    gst-examples \
     matchbox-terminal \
     sato-screenshot \
     ${FILEMANAGER} \
+    ${GSTEXAMPLES} \
     ${WEB} \
     "
 

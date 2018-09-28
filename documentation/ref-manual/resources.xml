@@ -37,8 +37,8 @@
 
     <para>
         The Yocto Project uses its own implementation of
-        <ulink url='http://www.bugzilla.org/about/'>Bugzilla</ulink> to track
-        defects (bugs).
+        <ulink url='&YOCTO_BUGZILLA_URL;'>Bugzilla</ulink> to
+        track defects (bugs).
         Implementations of Bugzilla work well for group development because
         they track bugs and code changes, can be used to communicate changes
         and problems with developers, can be used to submit and review patches,
@@ -68,6 +68,8 @@
                 <ulink url='&YOCTO_WIKI_URL;/wiki/Bugzilla_Configuration_and_Bug_Tracking'>Bugzilla wiki page</ulink>
                 </para></listitem>
         </itemizedlist>
+        For information on Bugzilla in general, see
+        <ulink url='http://www.bugzilla.org/about/'></ulink>.
     </para>
 </section>
 
@@ -160,25 +162,18 @@
                 </para></listitem>
             <listitem><para>
                 <emphasis>
-                <ulink url='&YOCTO_DOCS_QS_URL;'>Yocto Project Quick Start</ulink>:
+                <ulink url='&YOCTO_DOCS_BRIEF_URL;'>Yocto Project Quick Build</ulink>:
                 </emphasis>
-                This short document lets you get started
-                with the Yocto Project and quickly begin building an image.
+                This short document lets you experience building an image using
+                the Yocto Project without having to understand any concepts or
+                details.
                 </para></listitem>
             <listitem><para>
                 <emphasis>
-                <ulink url='&YOCTO_DOCS_GS_URL;'>Getting Started With Yocto Project Manual</ulink>:
+                <ulink url='&YOCTO_DOCS_OM_URL;'>Yocto Project Overview and Concepts Manual</ulink>:
                 </emphasis>
-                This manual introduces the Yocto Project and provides
-                development environment basics.
-                </para></listitem>
-            <listitem><para>
-                <emphasis>
-                <ulink url='&YOCTO_DOCS_CM_URL;'>Yocto Project Concepts Manual</ulink>:
-                </emphasis>
-                This manual offers conceptual information not suited for
-                reference or "how-to" procedures (e.g. a deep look into the
-                image build process).
+                This manual provides overview and conceptual information
+                about the Yocto Project.
                 </para></listitem>
             <listitem><para>
                 <emphasis>
@@ -223,7 +218,7 @@
                 </para></listitem>
             <listitem><para>
                 <emphasis>
-                <ulink url='&YOCTO_DOCS_MM_URL;'>Yocto Project Reference Mega-Manual</ulink>:
+                <ulink url='&YOCTO_DOCS_MM_URL;'>Yocto Project Mega-Manual</ulink>:
                 </emphasis>
                 This manual is simply a single HTML file comprised of the
                 bulk of the Yocto Project manuals.
@@ -252,7 +247,7 @@
                 </para></listitem>
             <listitem><para>
                 <emphasis>
-                <ulink url='&YOCTO_DOCS_SDK_URL;#sdk-appendix-latest-yp-eclipse-plug-in'>Eclipse IDE Yocto Plug-in</ulink>:
+                <ulink url='&YOCTO_DOCS_SDK_URL;#adt-eclipse'>Eclipse IDE Yocto Plug-in</ulink>:
                 </emphasis>
                 Instructions that demonstrate how an application developer
                 uses the Eclipse Yocto Project Plug-in feature within
@@ -265,11 +260,13 @@
                 A list of commonly asked questions and their answers.
                 </para></listitem>
             <listitem><para>
-                <emphasis>
-                <ulink url='&YOCTO_RELEASE_NOTES;'>Release Notes</ulink>:
-                </emphasis>
+                <emphasis>Release Notes:</emphasis>
                 Features, updates and known issues for the current
                 release of the Yocto Project.
+                To access the Release Notes, go to the
+                <ulink url='&YOCTO_HOME_URL;/software-overview/downloads/'>Downloads</ulink>
+                page on the Yocto Project website and click on the
+                "RELEASE INFORMATION" link for the appropriate release.
                 </para></listitem>
             <listitem><para>
                 <emphasis>

@@ -7,16 +7,8 @@ import unittest
 import logging
 import re
 
-xmlEnabled = False
-try:
-    import xmlrunner
-    from xmlrunner.result import _XMLTestResult as _TestResult
-    from xmlrunner.runner import XMLTestRunner as _TestRunner
-    xmlEnabled = True
-except ImportError:
-    # use the base runner instead
-    from unittest import TextTestResult as _TestResult
-    from unittest import TextTestRunner as _TestRunner
+from unittest import TextTestResult as _TestResult
+from unittest import TextTestRunner as _TestRunner
 
 class OEStreamLogger(object):
     def __init__(self, logger):
@@ -42,22 +34,35 @@ class OETestResult(_TestResult):
     def __init__(self, tc, *args, **kwargs):
         super(OETestResult, self).__init__(*args, **kwargs)
 
+        self.successes = []
+        self.starttime = {}
+        self.endtime = {}
+        self.progressinfo = {}
+
+        # Inject into tc so that TestDepends decorator can see results
+        tc.results = self
+
         self.tc = tc
-        self._tc_map_results()
 
     def startTest(self, test):
-        # Allow us to trigger the testcase buffer mode on a per test basis
-        # so stdout/stderr are only printed upon failure. Enables debugging
-        # but clean output
-        if hasattr(test, "buffer"):
-            self.buffer = test.buffer
+        # May have been set by concurrencytest
+        if test.id() not in self.starttime:
+            self.starttime[test.id()] = time.time()
         super(OETestResult, self).startTest(test)
 
-    def _tc_map_results(self):
-        self.tc._results['failures'] = self.failures
-        self.tc._results['errors'] = self.errors
-        self.tc._results['skipped'] = self.skipped
-        self.tc._results['expectedFailures'] = self.expectedFailures
+    def stopTest(self, test):
+        self.endtime[test.id()] = time.time()
+        super(OETestResult, self).stopTest(test)
+        if test.id() in self.progressinfo:
+            self.tc.logger.info(self.progressinfo[test.id()])
+
+        # Print the errors/failures early to aid/speed debugging, its a pain
+        # to wait until selftest finishes to see them.
+        for t in ['failures', 'errors', 'skipped', 'expectedFailures']:
+            for (scase, msg) in getattr(self, t):
+                if test.id() == scase.id():
+                    self.tc.logger.info(str(msg))
+                    break
 
     def logSummary(self, component, context_msg=''):
         elapsed_time = self.tc._run_end_time - self.tc._run_start_time
@@ -70,7 +75,7 @@ class OETestResult(_TestResult):
             msg = "%s - OK - All required tests passed" % component
         else:
             msg = "%s - FAIL - Required tests failed" % component
-        skipped = len(self.tc._results['skipped'])
+        skipped = len(self.skipped)
         if skipped: 
             msg += " (skipped=%d)" % skipped
         self.tc.logger.info(msg)
@@ -78,20 +83,11 @@ class OETestResult(_TestResult):
     def _getDetailsNotPassed(self, case, type, desc):
         found = False
 
-        for (scase, msg) in self.tc._results[type]:
-            # XXX: When XML reporting is enabled scase is
-            # xmlrunner.result._TestInfo instance instead of
-            # string.
-            if xmlEnabled:
-                if case.id() == scase.test_id:
-                    found = True
-                    break
-                scase_str = scase.test_id
-            else:
-                if case == scase:
-                    found = True
-                    break
-                scase_str = str(scase)
+        for (scase, msg) in getattr(self, type):
+            if case.id() == scase.id():
+                found = True
+                break
+            scase_str = str(scase.id())
 
             # When fails at module or class level the class name is passed as string
             # so figure out to see if match
@@ -115,13 +111,18 @@ class OETestResult(_TestResult):
 
         return (found, None)
 
+    def addSuccess(self, test):
+        #Added so we can keep track of successes too
+        self.successes.append((test, None))
+        super(OETestResult, self).addSuccess(test)
+
     def logDetails(self):
         self.tc.logger.info("RESULTS:")
         for case_name in self.tc._registry['cases']:
             case = self.tc._registry['cases'][case_name]
 
-            result_types = ['failures', 'errors', 'skipped', 'expectedFailures']
-            result_desc = ['FAILED', 'ERROR', 'SKIPPED', 'EXPECTEDFAIL']
+            result_types = ['failures', 'errors', 'skipped', 'expectedFailures', 'successes']
+            result_desc = ['FAILED', 'ERROR', 'SKIPPED', 'EXPECTEDFAIL', 'PASSED']
 
             fail = False
             desc = None
@@ -138,12 +139,16 @@ class OETestResult(_TestResult):
                     if hasattr(d, 'oeid'):
                         oeid = d.oeid
 
+            t = ""
+            if case.id() in self.starttime and case.id() in self.endtime:
+                t = " (" + "{0:.2f}".format(self.endtime[case.id()] - self.starttime[case.id()]) + "s)"
+
             if fail:
-                self.tc.logger.info("RESULTS - %s - Testcase %s: %s" % (case.id(),
-                    oeid, desc))
+                self.tc.logger.info("RESULTS - %s - Testcase %s: %s%s" % (case.id(),
+                    oeid, desc, t))
             else:
-                self.tc.logger.info("RESULTS - %s - Testcase %s: %s" % (case.id(),
-                    oeid, 'PASSED'))
+                self.tc.logger.info("RESULTS - %s - Testcase %s: %s%s" % (case.id(),
+                    oeid, 'UNKNOWN', t))
 
 class OEListTestsResult(object):
     def wasSuccessful(self):
@@ -153,33 +158,14 @@ class OETestRunner(_TestRunner):
     streamLoggerClass = OEStreamLogger
 
     def __init__(self, tc, *args, **kwargs):
-        if xmlEnabled:
-            if not kwargs.get('output'):
-                kwargs['output'] = os.path.join(os.getcwd(),
-                        'TestResults_%s_%s' % (time.strftime("%Y%m%d%H%M%S"), os.getpid()))
-
         kwargs['stream'] = self.streamLoggerClass(tc.logger)
         super(OETestRunner, self).__init__(*args, **kwargs)
         self.tc = tc
         self.resultclass = OETestResult
 
-    # XXX: The unittest-xml-reporting package defines _make_result method instead
-    # of _makeResult standard on unittest.
-    if xmlEnabled:
-        def _make_result(self):
-            """
-            Creates a TestResult object which will be used to store
-            information about the executed tests.
-            """
-            # override in subclasses if necessary.
-            return self.resultclass(self.tc,
-                self.stream, self.descriptions, self.verbosity, self.elapsed_times
-            )
-    else:
-        def _makeResult(self):
-            return self.resultclass(self.tc, self.stream, self.descriptions,
-                    self.verbosity)
-
+    def _makeResult(self):
+        return self.resultclass(self.tc, self.stream, self.descriptions,
+                self.verbosity)
 
     def _walk_suite(self, suite, func):
         for obj in suite:
