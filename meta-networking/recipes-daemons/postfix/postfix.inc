@@ -6,14 +6,13 @@ has a definite Sendmail-ish flavor, but the inside is completely different."
 
 HOMEPAGE= "http://www.postfix.org"
 SECTION = "mail"
-DEPENDS = "db icu libpcre openssl postfix-native \
+DEPENDS = "db icu libpcre libnsl2 openssl postfix-native \
     ${@bb.utils.contains('DISTRO_FEATURES', 'ldap', 'openldap', '', d)} \
     ${@bb.utils.contains('DISTRO_FEATURES', 'sasl', 'cyrus-sasl', '', d)} \
 "
-DEPENDS_class-native = "db-native icu-native openssl-native libpcre-native"
 
-LICENSE = "IPL-1.0"
-LIC_FILES_CHKSUM = "file://LICENSE;md5=64375f37431336ea1b1b3005fe3fa354"
+LICENSE = "IPL-1.0 | EPL-2.0"
+LIC_FILES_CHKSUM = "file://LICENSE;md5=b181651ad99a7dc4cc8c4ce2f491ed1a"
 
 SRC_URI = "ftp://ftp.porcupine.org/mirrors/postfix-release/official/postfix-${PV}.tar.gz \
     file://makedefs.patch \
@@ -77,7 +76,6 @@ export CCARGS  = "${CFLAGS} -DHAS_PCRE -DUSE_TLS -I${STAGING_INCDIR}/openssl ${C
 export AUXLIBS = "-lpcre -lssl -lcrypto ${AUXLIBS-sasl} ${AUXLIBS-ldap}"
 export POSTCONF = "${STAGING_DIR_NATIVE}${sbindir_native}/postconf"
 
-export CCARGS-nonis_libc-musl = "-DNO_NIS"
 # OPT,DEBUG is aready in CFLAGS
 # ignore the OPTS="CC=$CC" in Makefile it will not use the CC=$CC $CCARGS
 EXTRA_OEMAKE += "OPT= DEBUG= OPTS= "
@@ -207,6 +205,8 @@ do_install () {
     chown :postdrop ${D}${sbindir}/postdrop
     chmod g+s ${D}${sbindir}/postqueue
     chmod g+s ${D}${sbindir}/postdrop
+
+    rm -rf ${D}/etc/postfix/makedefs.out
 }
 
 do_install_append_class-native() {
@@ -214,14 +214,10 @@ do_install_append_class-native() {
     ln -sf ../sbin/sendmail.postfix ${D}${bindir}/mailq
 }
 
-do_install_append_class-target() {
-    # Remove references to buildmachine paths in target makedefs.out
-    sed -i 's:-fdebug-prefix-map[^ ]*::g; s:--sysroot=${STAGING_DIR_TARGET}::g' ${D}/etc/postfix/makedefs.out
-}
+ALTERNATIVE_${PN} += "mailq newaliases"
+ALTERNATIVE_TARGET[mailq] = "${bindir}/mailq"
+ALTERNATIVE_TARGET[newaliases] = "${bindir}/newaliases"
 
-ALTERNATIVE_${PN} = "sendmail"
-ALTERNATIVE_TARGET[sendmail] = "${sbindir}/sendmail.postfix"
-ALTERNATIVE_LINK_NAME[sendmail] = "${sbindir}/sendmail"
 ALTERNATIVE_PRIORITY = "120"
 
 ALTERNATIVE_${PN}-doc += "mailq.1 newaliases.1 sendmail.1"
