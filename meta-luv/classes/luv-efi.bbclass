@@ -16,8 +16,17 @@ def get_bits_depends(d):
                  return ""
 _BITSDEPENDS = "${@get_bits_depends(d)}"
 
+def get_sbsigntool_depends(d):
+         import re
+         deps = d.getVar('TARGET_PREFIX', True)
+         if re.search("(x86_64|i.86).*",deps):
+                 return "sbsigntool-native:do_populate_sysroot"
+         if re.search("aarch64",deps):
+                 return "xorriso-native:do_populate_sysroot"
+SBSIGNTOOLDEPENDS = "${@get_sbsigntool_depends(d)}"
+
 do_bootimg[depends] += "${MLPREFIX}grub-efi:do_deploy \
-                        sbsigntool-native:do_populate_sysroot"
+                        ${SBSIGNTOOLDEPENDS}"
 
 GRUB_EFI_LOADER_IMAGE_x86-64 = "grub-efi-bootx64.efi"
 GRUB_EFI_LOADER_IMAGE_x86 = "grub-efi-bootia32.efi"
