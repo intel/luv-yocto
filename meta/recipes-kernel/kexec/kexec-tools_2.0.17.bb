@@ -18,6 +18,7 @@ SRC_URI = "${KERNELORG_MIRROR}/linux/utils/kernel/kexec/kexec-tools-${PV}.tar.gz
            file://0010-kexec-ARM-Fix-add_buffer_phys_virt-align-issue.patch \
            file://kexec-x32.patch \
            file://0001-Disable-PIE-during-link.patch \
+           file://0001-kexec-fix-for-Unhandled-rela-relocation-R_X86_64_PLT.patch \
            "
 
 SRC_URI[md5sum] = "8e071ca473694a71e4ae60ed7ef6f377"
@@ -76,6 +77,9 @@ FILES_vmcore-dmesg = "${sbindir}/vmcore-dmesg"
 INITSCRIPT_PACKAGES = "kdump"
 INITSCRIPT_NAME_kdump = "kdump"
 INITSCRIPT_PARAMS_kdump = "start 56 2 3 4 5 . stop 56 0 1 6 ."
+
+SYSTEMD_PACKAGES = "kdump"
+SYSTEMD_SERVICE_kdump = "kdump.service"
 
 SECURITY_PIE_CFLAGS_remove = "-fPIE -pie"
 

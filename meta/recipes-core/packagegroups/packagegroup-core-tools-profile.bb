@@ -55,6 +55,7 @@ VALGRIND = "valgrind"
 VALGRIND_libc-musl = ""
 VALGRIND_mipsarch = ""
 VALGRIND_nios2 = ""
+VALGRIND_arc = ""
 VALGRIND_armv4 = ""
 VALGRIND_armv5 = ""
 VALGRIND_armv6 = ""
@@ -62,6 +63,7 @@ VALGRIND_armeb = ""
 VALGRIND_aarch64 = ""
 VALGRIND_riscv64 = ""
 VALGRIND_linux-gnux32 = ""
+VALGRIND_linux-gnun32 = ""
 
 RDEPENDS_${PN} = "\
     ${PROFILETOOLS} \

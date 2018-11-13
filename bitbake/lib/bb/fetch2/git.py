@@ -299,16 +299,21 @@ class Git(FetchMethod):
         return ud.clonedir
 
     def need_update(self, ud, d):
+        return self.clonedir_need_update(ud, d) or self.shallow_tarball_need_update(ud) or self.tarball_need_update(ud)
+
+    def clonedir_need_update(self, ud, d):
         if not os.path.exists(ud.clonedir):
             return True
         for name in ud.names:
             if not self._contains_ref(ud, d, name, ud.clonedir):
                 return True
-        if ud.shallow and ud.write_shallow_tarballs and not os.path.exists(ud.fullshallow):
-            return True
-        if ud.write_tarballs and not os.path.exists(ud.fullmirror):
-            return True
         return False
+
+    def shallow_tarball_need_update(self, ud):
+        return ud.shallow and ud.write_shallow_tarballs and not os.path.exists(ud.fullshallow)
+
+    def tarball_need_update(self, ud):
+        return ud.write_tarballs and not os.path.exists(ud.fullmirror)
 
     def try_premirror(self, ud, d):
         # If we don't do this, updating an existing checkout with only premirrors
@@ -471,11 +476,27 @@ class Git(FetchMethod):
         if os.path.exists(destdir):
             bb.utils.prunedir(destdir)
 
-        if ud.shallow and self.need_update(ud, d):
-            bb.utils.mkdirhier(destdir)
-            runfetchcmd("tar -xzf %s" % ud.fullshallow, d, workdir=destdir)
-        else:
-            runfetchcmd("%s clone %s %s/ %s" % (ud.basecmd, ud.cloneflags, ud.clonedir, destdir), d)
+        source_found = False
+        source_error = []
+
+        if not source_found:
+            clonedir_is_up_to_date = not self.clonedir_need_update(ud, d)
+            if clonedir_is_up_to_date:
+                runfetchcmd("%s clone %s %s/ %s" % (ud.basecmd, ud.cloneflags, ud.clonedir, destdir), d)
+                source_found = True
+            else:
+                source_error.append("clone directory not available or not up to date: " + ud.clonedir)
+
+        if not source_found:
+            if ud.shallow and os.path.exists(ud.fullshallow):
+                bb.utils.mkdirhier(destdir)
+                runfetchcmd("tar -xzf %s" % ud.fullshallow, d, workdir=destdir)
+                source_found = True
+            else:
+                source_error.append("shallow clone not enabled or not available: " + ud.fullshallow)
+
+        if not source_found:
+            raise bb.fetch2.UnpackError("No up to date source found: " + "; ".join(source_error), ud.url)
 
         repourl = self._get_repo_url(ud)
         runfetchcmd("%s remote set-url origin %s" % (ud.basecmd, repourl), d, workdir=destdir)
