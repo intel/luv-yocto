@@ -46,12 +46,11 @@ SRC_URI_append_x86 = " file://x86_sys_io.patch file://x86_basename.patch \
                        file://x86_vfscanf.patch file://x86_kexec_test.patch"
 
 SRC_URI_append_x86-64 = " file://x86_sys_io.patch file://x86_basename.patch \
-                          file://x86_vfscanf.patch file://x86_kexec_test.patch \
-                          file://x86-64-purgatory-Makefile-remove-unknown-flags.patch"
+                          file://x86_vfscanf.patch file://x86_kexec_test.patch"
 
-SRC_URI_append_aarch64 = " file://arm64_purgatory-Makefile-remove-unknown-flags.patch \
-                           file://arm64_kexec-image-header.h-add-missing-le64toh.patch \
-                           file://arm64-crashdump-arm64.c-fix-warning.patch"
+SRC_URI_append_aarch64 = " file://arm64_kexec-image-header.h-add-missing-le64toh.patch \
+                           file://arm64-crashdump-arm64.c-fix-warning.patch \
+                           file://arm64_kexec-arm64.c-workaround-for-getrandom-syscall.patch"
 
 SRC_URI_append_powerpc = " file://powerpc-purgatory-Makefile-remove-unknown-flags.patch"
 
@@ -61,7 +60,7 @@ EXTRA_OECONF += "--without-zlib --without-lzma --without-xen"
 
 # fix purgatory/printf.c:2:10: fatal error: limits.h: No such file or directory
 # fix include/limits.h:42:10: fatal error: bitsize/limits.h: No such file or directory
-COMMON_CFLAGS += "-I${STAGING_DIR_HOST}${libdir}/klibc/include -I${S}/purgatory/include"
+COMMON_CFLAGS += "-O2 -I${STAGING_DIR_HOST}${libdir}/klibc/include -I${S}/purgatory/include"
 CFLAGS_x86_append = " ${COMMON_CFLAGS} -I${STAGING_DIR_HOST}${libdir}/klibc/include/bits32"
 CFLAGS_x86-64_append = " ${COMMON_CFLAGS} -I${STAGING_DIR_HOST}${libdir}/klibc/include/bits64"
 CFLAGS_arm_append = " ${COMMON_CFLAGS} -I${STAGING_DIR_HOST}${libdir}/klibc/include/bits32"
