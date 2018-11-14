@@ -17,7 +17,7 @@ check_valid_port() {
     if  [[ $netconsole_port =~ ^[0-9]+$ ]] ; then
         if [ $netconsole_port -lt $low_scale ]  && [ $netconsole_port -gt $high_scale ] ;
         then
-            echo "LUV_NETCONSOLE:Provide port ranges between $low_scale and $high_scale"
+            echo "LUV_NETCONSOLE:Provide port ranges between $low_scale and $high_scale" | tee -a ${LUV_DEBUG_LOG_DIR}
             return 1
         else
             return 0
@@ -67,7 +67,7 @@ compare_params_size() {
         else
             rec_ip=$luv_net2
             netconsole_port=$luv_net1
-            echo "LUV_NETCONSOLE: You changed the format! we will take care of it."
+            echo "LUV_NETCONSOLE: You changed the format! we will take care of it." | tee -a ${LUV_DEBUG_LOG_DIR}
         fi
             return 0
     else
@@ -98,23 +98,23 @@ if [ $? -eq 0 ] ; then
                         if [ $? -eq 0 ] ; then
                             echo $rec_ip  $netconsole_port
                         else
-                            echo "LUV_NETCONSOLE: Not a valid port!"
+                            echo "LUV_NETCONSOLE: Not a valid port!" | tee -a ${LUV_DEBUG_LOG_DIR}
                         fi
                     else
-                        echo "LUV_NETCONSOLE: Not a valid IP!"
+                        echo "LUV_NETCONSOLE: Not a valid IP!" | tee -a ${LUV_DEBUG_LOG_DIR}
                     fi
                 else
-                    echo " LUV_NETCONSOLE: Missing port and/or IP!"
+                    echo " LUV_NETCONSOLE: Missing port and/or IP!" | tee -a ${LUV_DEBUG_LOG_DIR}
                 fi
             else
-                echo $Param_empty_error
-                echo $Netconsole_usage
+                echo $Param_empty_error | tee -a ${LUV_DEBUG_LOG_DIR}
+                echo $Netconsole_usage | tee -a ${LUV_DEBUG_LOG_DIR}
             fi
         else
-            echo ${Param_format_invalid}
-            echo ${Netconsole_usage}
+            echo ${Param_format_invalid} | tee -a ${LUV_DEBUG_LOG_DIR}
+            echo ${Netconsole_usage} | tee -a ${LUV_DEBUG_LOG_DIR}
         fi
 else
-    echo "luv_netconsole parameter is not available!"
-    echo "Please see the meta-luv/README file for further information"
+    echo "luv_netconsole parameter is not available!" | tee -a ${LUV_DEBUG_LOG_DIR}
+    echo "Please see the meta-luv/README file for further information" | tee -a ${LUV_DEBUG_LOG_DIR}
 fi
