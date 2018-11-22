@@ -21,6 +21,7 @@ BBCLASSEXTEND = "native"
 # maintaining it, resolving all these warnings consumes a lot of time.
 # Thus, we have decided to not treat the warnings as errors.
 CFLAGS_append = " -Wno-error "
+LDFLAGS_append = " -no-pie "
 
 BITSVERSION="2079"
 PV="${BITSVERSION}+git${SRCPV}"
