@@ -1,0 +1,47 @@
+From 1e47b9675db0d9c7eba96c40078102d9bf7677d2 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Mon, 3 Dec 2018 10:52:30 -0800
+Subject: [PATCH] grub-core: correcting 'storage size isn't known' error
+
+When compiling bits, we see a new error after updating to the latest
+poky:
+
+    ..git/build/grub/grub-core/gettext/gettext.c:37:36:
+    error: storage size of 'main_context' isn't known
+    |  static struct grub_gettext_context main_context, secondary_context;
+                                         ^~~~~~~~~~~~
+
+This error occurs because the static structure is declared before it has been
+defined. This patch ensures that the structure is first defined and only
+then declared.
+
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
+---
+ deps/grub/grub-core/gettext/gettext.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/deps/grub/grub-core/gettext/gettext.c b/deps/grub/grub-core/gettext/gettext.c
+index 569f985..4f2834c 100644
+--- a/deps/grub/grub-core/gettext/gettext.c
++++ b/deps/grub/grub-core/gettext/gettext.c
+@@ -34,8 +34,6 @@ GRUB_MOD_LICENSE ("GPLv3+");
+    http://www.gnu.org/software/autoconf/manual/gettext/MO-Files.html .
+ */
+
+-static struct grub_gettext_context main_context, secondary_context;
+-
+ static const char *(*grub_gettext_original) (const char *s);
+
+ struct grub_gettext_msg
+@@ -69,6 +67,8 @@ struct grub_gettext_context
+   struct grub_gettext_msg *grub_gettext_msg_list;
+ };
+
++static struct grub_gettext_context main_context, secondary_context;
++
+ #define MO_MAGIC_NUMBER 		0x950412de
+
+ static grub_err_t
+--
+1.9.1
+
