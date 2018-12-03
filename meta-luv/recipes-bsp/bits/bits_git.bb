@@ -73,6 +73,7 @@ SRC_URI = "gitsm://github.com/biosbits/bits.git;protocol=http  \
            file://BITS-toplevel.cfg-Disable-Bits-when-LUV_BITS_CAN_RUN-is-not-true.patch \
            file://BITS-Make-LUV_BITS_CAN_RUN-false-after-BITS-starts.patch \
            file://GRUB-util-x86-64-Treat-R_X86_64_PLT32-as-R_X86_64_PC32.patch \
+           file://GRUB-resolve-storage-size-isn-t-known-error.patch \
           "
 
 S = "${WORKDIR}/git"
