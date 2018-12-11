@@ -1,0 +1,119 @@
+From c0f21519ae43e19efa4cace4f423a3e4e2eba24a Mon Sep 17 00:00:00 2001
+From: Sai Praneeth Prakhya <sai.praneeth.prakhya@intel.com>
+Date: Wed, 5 Dec 2018 19:15:51 -0800
+Subject: [PATCH] OvmfPkg: Enable FPDT in OVMF
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Although EDK II (EFI Development Kit) has source code for FPDT (Firmware
+Performance Data Table [1]) it is not included in the build process of OVMF
+(Open source Virtual Machine Firmware). So, OVMF never publishes FPDT table
+during boot. FWTS (FirmWare Test Suite - a test suite in LUV) has a
+unit test that could test this table. Since OVMF never publishes this
+table, fpdt test in FWTS is always skipped when LUV is run on OVMF.
+
+Include FPDT in OVMF build process by default, so that FWTS can now
+validate this table published by OVMF. This will help in finding bugs
+either in FWTS fpdt test case or in OVMF FPDT source code.
+
+These changes to build system of OVMF enables FPDT in 32-bit and 64-bit
+OVMF. There are only two files that need to be modified in order to do
+this. The first one being OvmfPkg*.dsc (this file describes the platform)
+and the second one being OvmfPkg*.fdf (this file describes firmware
+descriptor volume). A *.inf file (here “FirmwarePerformanceDxe.inf”)
+describes a module (here FPDT). So, include "FirmwarePerformanceDxe.inf"
+file in "OvmfPkg*.dsc" so that FPDT source code will be compiled and
+"FirmwarePerformanceDxe.efi" file is generated and also include
+"FirmwarePerformanceDxe.inf" file in "OvmfPkg*.fdf" file so that
+"FirmwarePerformanceDxe.efi" will be placed in a firmware volume and thus
+gets published.
+
+[1] Please refer to ACPI specification section 5.2.23 for details on FPDT
+table.
+
+Signed-off-by: Sai Praneeth Prakhya <sai.praneeth.prakhya@intel.com>
+---
+ OvmfPkg/OvmfPkgIa32.dsc    | 1 +
+ OvmfPkg/OvmfPkgIa32.fdf    | 1 +
+ OvmfPkg/OvmfPkgIa32X64.dsc | 1 +
+ OvmfPkg/OvmfPkgIa32X64.fdf | 1 +
+ OvmfPkg/OvmfPkgX64.dsc     | 1 +
+ OvmfPkg/OvmfPkgX64.fdf     | 1 +
+ 6 files changed, 6 insertions(+)
+
+diff --git a/OvmfPkg/OvmfPkgIa32.dsc b/OvmfPkg/OvmfPkgIa32.dsc
+index 0647f346257a..2ba2fe1f1e86 100644
+--- a/OvmfPkg/OvmfPkgIa32.dsc
++++ b/OvmfPkg/OvmfPkgIa32.dsc
+@@ -719,6 +719,7 @@
+   MdeModulePkg/Universal/Acpi/S3SaveStateDxe/S3SaveStateDxe.inf
+   MdeModulePkg/Universal/Acpi/BootScriptExecutorDxe/BootScriptExecutorDxe.inf
+   MdeModulePkg/Universal/Acpi/BootGraphicsResourceTableDxe/BootGraphicsResourceTableDxe.inf
++  MdeModulePkg/Universal/Acpi/FirmwarePerformanceDataTableDxe/FirmwarePerformanceDxe.inf
+ 
+   #
+   # Network Support
+diff --git a/OvmfPkg/OvmfPkgIa32.fdf b/OvmfPkg/OvmfPkgIa32.fdf
+index 09c165882c3f..90a2f5d735a6 100644
+--- a/OvmfPkg/OvmfPkgIa32.fdf
++++ b/OvmfPkg/OvmfPkgIa32.fdf
+@@ -279,6 +279,7 @@ INF  RuleOverride=ACPITABLE OvmfPkg/AcpiTables/AcpiTables.inf
+ INF  MdeModulePkg/Universal/Acpi/S3SaveStateDxe/S3SaveStateDxe.inf
+ INF  MdeModulePkg/Universal/Acpi/BootScriptExecutorDxe/BootScriptExecutorDxe.inf
+ INF  MdeModulePkg/Universal/Acpi/BootGraphicsResourceTableDxe/BootGraphicsResourceTableDxe.inf
++INF  MdeModulePkg/Universal/Acpi/FirmwarePerformanceDataTableDxe/FirmwarePerformanceDxe.inf
+ 
+ INF  FatPkg/EnhancedFatDxe/Fat.inf
+ 
+diff --git a/OvmfPkg/OvmfPkgIa32X64.dsc b/OvmfPkg/OvmfPkgIa32X64.dsc
+index 1182b1858a7d..11e0d37cb130 100644
+--- a/OvmfPkg/OvmfPkgIa32X64.dsc
++++ b/OvmfPkg/OvmfPkgIa32X64.dsc
+@@ -728,6 +728,7 @@
+   MdeModulePkg/Universal/Acpi/S3SaveStateDxe/S3SaveStateDxe.inf
+   MdeModulePkg/Universal/Acpi/BootScriptExecutorDxe/BootScriptExecutorDxe.inf
+   MdeModulePkg/Universal/Acpi/BootGraphicsResourceTableDxe/BootGraphicsResourceTableDxe.inf
++  MdeModulePkg/Universal/Acpi/FirmwarePerformanceDataTableDxe/FirmwarePerformanceDxe.inf
+ 
+   #
+   # Network Support
+diff --git a/OvmfPkg/OvmfPkgIa32X64.fdf b/OvmfPkg/OvmfPkgIa32X64.fdf
+index 5233314139bc..8d1c630d1a74 100644
+--- a/OvmfPkg/OvmfPkgIa32X64.fdf
++++ b/OvmfPkg/OvmfPkgIa32X64.fdf
+@@ -279,6 +279,7 @@ INF  RuleOverride=ACPITABLE OvmfPkg/AcpiTables/AcpiTables.inf
+ INF  MdeModulePkg/Universal/Acpi/S3SaveStateDxe/S3SaveStateDxe.inf
+ INF  MdeModulePkg/Universal/Acpi/BootScriptExecutorDxe/BootScriptExecutorDxe.inf
+ INF  MdeModulePkg/Universal/Acpi/BootGraphicsResourceTableDxe/BootGraphicsResourceTableDxe.inf
++INF  MdeModulePkg/Universal/Acpi/FirmwarePerformanceDataTableDxe/FirmwarePerformanceDxe.inf
+ 
+ INF  FatPkg/EnhancedFatDxe/Fat.inf
+ 
+diff --git a/OvmfPkg/OvmfPkgX64.dsc b/OvmfPkg/OvmfPkgX64.dsc
+index 636dfb1b5638..51519538a098 100644
+--- a/OvmfPkg/OvmfPkgX64.dsc
++++ b/OvmfPkg/OvmfPkgX64.dsc
+@@ -726,6 +726,7 @@
+   MdeModulePkg/Universal/Acpi/S3SaveStateDxe/S3SaveStateDxe.inf
+   MdeModulePkg/Universal/Acpi/BootScriptExecutorDxe/BootScriptExecutorDxe.inf
+   MdeModulePkg/Universal/Acpi/BootGraphicsResourceTableDxe/BootGraphicsResourceTableDxe.inf
++  MdeModulePkg/Universal/Acpi/FirmwarePerformanceDataTableDxe/FirmwarePerformanceDxe.inf
+ 
+   #
+   # Network Support
+diff --git a/OvmfPkg/OvmfPkgX64.fdf b/OvmfPkg/OvmfPkgX64.fdf
+index 36150101e784..ac017d62c6ca 100644
+--- a/OvmfPkg/OvmfPkgX64.fdf
++++ b/OvmfPkg/OvmfPkgX64.fdf
+@@ -279,6 +279,7 @@ INF  RuleOverride=ACPITABLE OvmfPkg/AcpiTables/AcpiTables.inf
+ INF  MdeModulePkg/Universal/Acpi/S3SaveStateDxe/S3SaveStateDxe.inf
+ INF  MdeModulePkg/Universal/Acpi/BootScriptExecutorDxe/BootScriptExecutorDxe.inf
+ INF  MdeModulePkg/Universal/Acpi/BootGraphicsResourceTableDxe/BootGraphicsResourceTableDxe.inf
++INF  MdeModulePkg/Universal/Acpi/FirmwarePerformanceDataTableDxe/FirmwarePerformanceDxe.inf
+ 
+ INF  FatPkg/EnhancedFatDxe/Fat.inf
+ 
+-- 
+2.19.1
+
