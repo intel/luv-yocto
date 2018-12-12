@@ -6,7 +6,7 @@ LIC_FILES_CHKSUM = "file://LICENSE.GPLv3;md5=9eef91148a9b14ec7f9df333daebc746"
 SRC_URI = "gitsm://git.kernel.org/pub/scm/linux/kernel/git/jejb/sbsigntools.git;protocol=git \
     file://fix-mixed-implicit-and-normal-rules.patch;apply=1 \
     file://disable-man-page-creation.patch \
-    file://0001-configure-fix-cross-compilation.patch \
+    file://configure-Fixup-build-dependencies-for-cross-compili.patch \
 "
 
 SRCREV="a631793f2d02ef219b5348eab0ac2ae604ed1269"
@@ -34,4 +34,12 @@ do_configure() {
     export CFLAGS="-I${STAGING_INCDIR}/efi -I${STAGING_INCDIR}/efi/x86_64"
     ./autogen.sh --noconfigure
     oe_runconf
+}
+
+patch() {
+    sed -i s#RECIPE_SYSROOT#${RECIPE_SYSROOT_NATIVE}#g ${S}/configure.ac
+}
+
+do_patch_append() {
+    bb.build.exec_func('patch', d)
 }
