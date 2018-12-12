@@ -59,6 +59,10 @@
 {
 	"severity": 3
 },
+"chipsec.modules.common.cpu.spectre_v2":
+{
+	"severity": 3
+},
 "chipsec.modules.memconfig":
 {
 	"severity": 3
