@@ -15,11 +15,10 @@ SRC_URI = "git://github.com/chipsec/chipsec.git \
     file://0001-chipsec-do-not-ship-manual.patch \
     file://0001-setup.py-give-CPU-architecture-to-the-driver-s-Makef.patch \
     file://0001-Revert-fix-issue-with-building-driver-on-32bit-syste.patch \
-    file://0001-chipsec-Fix-Unknown-symbol-issue-while-loading-chips.patch \
     "
 
-SRCREV="0baff4ee566418d83fb7fc0d665945765f6a640e"
-PV="1.3.6rc1"
+SRCREV="4761a38aa2414ffc0ebb22a40b8a25818b167845"
+PV="1.3.6"
 
 DEPENDS = "virtual/kernel python nasm-native python-setuptools-native"
 RDEPENDS_${PN} = "python python-shell python-stringold python-xml \
