@@ -7,6 +7,10 @@ SRC_URI += "file://0001-explicitly-do-not-install-libdm.patch"
 
 DEPENDS += "autoconf-archive-native"
 
+inherit multilib_script
+
+MULTILIB_SCRIPTS = "${PN}:${sysconfdir}/lvm/lvm.conf"
+
 CACHED_CONFIGUREVARS += "MODPROBE_CMD=${base_sbindir}/modprobe"
 
 do_install_append() {
@@ -46,6 +50,7 @@ FILES_${PN}-scripts = " \
 # Specified explicitly for the udev rules, just in case that it does not get picked
 # up automatically:
 FILES_${PN}-udevrules = "${nonarch_base_libdir}/udev/rules.d"
+RDEPENDS_${PN}-udevrules = "${PN}"
 RDEPENDS_${PN}_append_class-target = " libdevmapper"
 RDEPENDS_${PN}_append_class-nativesdk = " libdevmapper"
 
