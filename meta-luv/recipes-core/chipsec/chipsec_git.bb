@@ -24,7 +24,7 @@ PV="1.3.6rc1"
 DEPENDS = "virtual/kernel python nasm-native python-setuptools-native"
 RDEPENDS_${PN} = "python python-shell python-stringold python-xml \
     python-ctypes python-fcntl python-json python-mmap \
-    python-resource"
+    python-resource python-logging"
 
 COMPATIBLE_HOST='(i.86|x86_64).*'
 
