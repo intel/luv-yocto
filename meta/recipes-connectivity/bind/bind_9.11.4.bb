@@ -19,6 +19,8 @@ SRC_URI = "https://ftp.isc.org/isc/bind9/${PV}/${BPN}-${PV}.tar.gz \
            file://0001-lib-dns-gen.c-fix-too-long-error.patch \
            file://0001-configure.in-remove-useless-L-use_openssl-lib.patch \
            file://0001-named-lwresd-V-and-start-log-hide-build-options.patch \
+           file://0001-avoid-start-failure-with-bind-user.patch \
+           file://CVE-2018-5740.patch \
 "
 
 SRC_URI[md5sum] = "9b4834d78f30cdb796ce437262272a36"
@@ -27,7 +29,9 @@ SRC_URI[sha256sum] = "595070b031f869f8939656b5a5d11b121211967f15f6afeafa895df745
 UPSTREAM_CHECK_URI = "https://ftp.isc.org/isc/bind9/"
 UPSTREAM_CHECK_REGEX = "(?P<pver>9(\.\d+)+(-P\d+)*)/"
 
-inherit autotools update-rc.d systemd useradd pkgconfig
+inherit autotools update-rc.d systemd useradd pkgconfig multilib_script
+
+MULTILIB_SCRIPTS = "${PN}:${bindir}/bind9-config ${PN}:${bindir}/isc-config.sh"
 
 # PACKAGECONFIGs readline and libedit should NOT be set at same time
 PACKAGECONFIG ?= "readline"

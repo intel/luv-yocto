@@ -1750,8 +1750,8 @@ class CustomImageRecipe(Recipe):
         if base_recipe_path:
             base_recipe = open(base_recipe_path, 'r').read()
         else:
-            raise IOError("Based on recipe file not found: %s" %
-                          base_recipe_path)
+            # Pass back None to trigger error message to user
+            return None
 
         # Add a special case for when the recipe we have based a custom image
         # recipe on requires another recipe.
@@ -1877,7 +1877,7 @@ class Distro(models.Model):
     description = models.CharField(max_length=255)
 
     def get_vcs_distro_file_link_url(self):
-        path = self.name+'.conf'
+        path = 'conf/distro/%s.conf' % self.name
         return self.layer_version.get_vcs_file_link_url(path)
 
     def __unicode__(self):

@@ -1070,7 +1070,7 @@ class RunQueueData:
                     msg += "\n%s has unique rprovides:\n  %s" % (provfn, "\n  ".join(rprovide_results[provfn] - commonrprovs))
 
                 if self.warn_multi_bb:
-                    logger.warning(msg)
+                    logger.verbnote(msg)
                 else:
                     logger.error(msg)
 
@@ -1409,6 +1409,12 @@ class RunQueue:
                 bb.event.fire(bb.event.DepTreeGenerated(depgraph), self.cooker.data)
 
         if self.state is runQueueSceneInit:
+            if not self.dm_event_handler_registered:
+                 res = bb.event.register(self.dm_event_handler_name,
+                                         lambda x: self.dm.check(self) if self.state in [runQueueSceneRun, runQueueRunning, runQueueCleanUp] else False,
+                                         ('bb.event.HeartbeatEvent',))
+                 self.dm_event_handler_registered = True
+
             dump = self.cooker.configuration.dump_signatures
             if dump:
                 self.rqdata.init_progress_reporter.finish()
@@ -1425,11 +1431,6 @@ class RunQueue:
                 self.rqexe = RunQueueExecuteScenequeue(self)
 
         if self.state is runQueueSceneRun:
-            if not self.dm_event_handler_registered:
-                 res = bb.event.register(self.dm_event_handler_name,
-                                         lambda x: self.dm.check(self) if self.state in [runQueueSceneRun, runQueueRunning, runQueueCleanUp] else False,
-                                         ('bb.event.HeartbeatEvent',))
-                 self.dm_event_handler_registered = True
             retval = self.rqexe.execute()
 
         if self.state is runQueueRunInit:
@@ -1831,13 +1832,14 @@ class RunQueueExecuteTasks(RunQueueExecute):
             bb.build.del_stamp(taskname, self.rqdata.dataCaches[mc], taskfn)
             self.rq.scenequeue_covered.remove(tid)
 
-        toremove = covered_remove
+        toremove = covered_remove | self.rq.scenequeue_notcovered
         for task in toremove:
             logger.debug(1, 'Not skipping task %s due to setsceneverify', task)
         while toremove:
             covered_remove = []
             for task in toremove:
-                removecoveredtask(task)
+                if task in self.rq.scenequeue_covered:
+                    removecoveredtask(task)
                 for deptask in self.rqdata.runtaskentries[task].depends:
                     if deptask not in self.rq.scenequeue_covered:
                         continue
@@ -2103,6 +2105,7 @@ class RunQueueExecuteScenequeue(RunQueueExecute):
         # If we don't have any setscene functions, skip this step
         if len(self.rqdata.runq_setscene_tids) == 0:
             rq.scenequeue_covered = set()
+            rq.scenequeue_notcovered = set()
             rq.state = runQueueRunInit
             return
 
