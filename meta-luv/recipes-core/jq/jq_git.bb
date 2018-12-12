@@ -8,7 +8,7 @@ inherit autotools-brokensep
 
 PV = "jq-1.5"
 
-DEPENDS = "autoconf libtool automake flex bison"
+DEPENDS = "autoconf libtool automake flex-native bison-native"
 
 EXTRA_AUTORECONF += " -i"
 
