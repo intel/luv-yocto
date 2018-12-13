@@ -24,14 +24,12 @@ DEPENDS = "glib-2.0 glib-2.0-native fontconfig freetype virtual/libiconv cairo h
 PACKAGECONFIG ??= "${@bb.utils.filter('DISTRO_FEATURES', 'x11', d)}"
 PACKAGECONFIG[x11] = "--with-xft,--without-xft,virtual/libx11 libxft"
 
-EXTRA_OECONF = "--disable-debug"
-
 LEAD_SONAME = "libpango-1.0*"
 LIBV = "1.8.0"
 
 # This binary needs to be compiled for the host architecture.  This isn't pretty!
 do_compile_prepend_class-target () {
-	if ${@bb.utils.contains('DISTRO_FEATURES', 'ptest', 'true', 'false', d)}; then
+	if ${@bb.utils.contains('PTEST_ENABLED', '1', 'true', 'false', d)}; then
 		make CC="${BUILD_CC}" CFLAGS="" LDFLAGS="${BUILD_LDFLAGS}" AM_CPPFLAGS="$(pkg-config-native --cflags glib-2.0)" gen_all_unicode_LDADD="$(pkg-config-native --libs glib-2.0)" -C ${B}/tests gen-all-unicode
 	fi
 }

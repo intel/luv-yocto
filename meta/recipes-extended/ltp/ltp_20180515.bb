@@ -31,6 +31,7 @@ CFLAGS_append_mipsarchn64 = " -D__SANE_USERSPACE_TYPES__"
 SRCREV = "96cbf48313afa65ef4d693d3441cbfd60a8d9b27"
 
 SRC_URI = "git://github.com/linux-test-project/ltp.git \
+           file://0001-mmap15-mips64-return-EINVAL.patch \
            file://0004-build-Add-option-to-select-libc-implementation.patch \
            file://0005-kernel-controllers-Link-with-libfts-explicitly-on-mu.patch \
            file://0007-fix-__WORDSIZE-undeclared-when-building-with-musl.patch \
@@ -51,6 +52,10 @@ SRC_URI = "git://github.com/linux-test-project/ltp.git \
            file://0041-cve-2017-5669-shmat-for-0-or-PAGESIZE-with-RND-flag-.patch \
            file://0042-fs-ftest-ftest06.c-Fix-too-small-name-string-and-rel.patch \
            file://0043-open-creat-skip-S_ISGID-check-on-files-created-by-no.patch \
+           file://0001-syscalls-fcntl-make-OFD-command-use-fcntl64-syscall-.patch \
+           file://0001-sigwaitinfo01-recent-glibc-calls-syscall-directly.patch \
+           file://0001-netns_helper.sh-use-ping-6-when-ping6-is-not-avaliab.patch \
+           file://0001-open_posix_testsuite-mmap24-2-Relax-condition-a-bit.patch \
            "
 
 S = "${WORKDIR}/git"

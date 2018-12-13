@@ -144,6 +144,20 @@ class Rootfs(object, metaclass=ABCMeta):
         bb.note("  Install complementary '*-dbg' packages...")
         self.pm.install_complementary('*-dbg')
 
+        if self.d.getVar('PACKAGE_DEBUG_SPLIT_STYLE') == 'debug-with-srcpkg':
+            bb.note("  Install complementary '*-src' packages...")
+            self.pm.install_complementary('*-src')
+
+        """
+        Install additional debug packages. Possibility to install additional packages,
+        which are not automatically installed as complementary package of
+        standard one, e.g. debug package of static libraries.
+        """
+        extra_debug_pkgs = self.d.getVar('IMAGE_INSTALL_DEBUGFS')
+        if extra_debug_pkgs:
+            bb.note("  Install extra debug packages...")
+            self.pm.install(extra_debug_pkgs.split(), True)
+
         bb.note("  Rename debug rootfs...")
         try:
             shutil.rmtree(self.image_rootfs + '-dbg')
@@ -853,9 +867,8 @@ class OpkgRootfs(DpkgOpkgRootfs):
         opkg_pre_process_cmds = self.d.getVar('OPKG_PREPROCESS_COMMANDS')
         opkg_post_process_cmds = self.d.getVar('OPKG_POSTPROCESS_COMMANDS')
 
-        # update PM index files, unless users provide their own feeds
-        if (self.d.getVar('BUILD_IMAGES_FROM_FEEDS') or "") != "1":
-            self.pm.write_index()
+        # update PM index files
+        self.pm.write_index()
 
         execute_pre_post_process(self.d, opkg_pre_process_cmds)
 

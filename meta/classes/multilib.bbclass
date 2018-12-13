@@ -11,8 +11,12 @@ python multilib_virtclass_handler () {
     # There should only be one kernel in multilib configs
     # We also skip multilib setup for module packages.
     provides = (e.data.getVar("PROVIDES") or "").split()
-    if "virtual/kernel" in provides or bb.data.inherits_class('module-base', e.data) or "make-mod-scripts" in e.data.getVar("PN"):
-        raise bb.parse.SkipRecipe("We shouldn't have multilib variants for the kernel")
+    non_ml_recipes = d.getVar('NON_MULTILIB_RECIPES').split()
+    bpn = e.data.getVar("BPN")
+    if "virtual/kernel" in provides or \
+            bb.data.inherits_class('module-base', e.data) or \
+            bpn in non_ml_recipes:
+        raise bb.parse.SkipRecipe("We shouldn't have multilib variants for %s" % bpn)
 
     save_var_name=e.data.getVar("MULTILIB_SAVE_VARNAME") or ""
     for name in save_var_name.split():
@@ -50,7 +54,8 @@ python multilib_virtclass_handler () {
     if bb.data.inherits_class('nativesdk', e.data) or bb.data.inherits_class('crosssdk', e.data):
         raise bb.parse.SkipRecipe("We can't extend nativesdk recipes")
 
-    if bb.data.inherits_class('allarch', e.data) and not bb.data.inherits_class('packagegroup', e.data):
+    if bb.data.inherits_class('allarch', e.data) and not d.getVar('MULTILIB_VARIANTS') \
+        and not bb.data.inherits_class('packagegroup', e.data):
         raise bb.parse.SkipRecipe("Don't extend allarch recipes which are not packagegroups")
 
     # Expand this since this won't work correctly once we set a multilib into place
@@ -134,7 +139,8 @@ python do_package_qa_multilib() {
                 i = i[len('virtual/'):]
             if (not i.startswith('kernel-module')) and (not i.startswith(mlprefix)) and \
                 (not 'cross-canadian' in i) and (not i.startswith("nativesdk-")) and \
-                (not i.startswith("rtld")) and (not i.startswith('kernel-vmlinux')):
+                (not i.startswith("rtld")) and (not i.startswith('kernel-vmlinux')) \
+                and (not i.startswith("kernel-image")):
                 candidates.append(i)
         if len(candidates) > 0:
             msg = "%s package %s - suspicious values '%s' in %s" \
@@ -143,6 +149,10 @@ python do_package_qa_multilib() {
 
     ml = d.getVar('MLPREFIX')
     if not ml:
+        return
+
+    # exception for ${MLPREFIX}target-sdk-provides-dummy
+    if 'target-sdk-provides-dummy' in d.getVar('PN'):
         return
 
     packages = d.getVar('PACKAGES')

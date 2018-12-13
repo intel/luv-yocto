@@ -689,7 +689,11 @@ def create_packages_dir(d, subrepo_dir, deploydir, taskname, filterbydependencie
         with open(manifest, "r") as f:
             for l in f:
                 l = l.strip()
-                dest = l.replace(deploydir, "")
+                deploydir = os.path.normpath(deploydir)
+                if bb.data.inherits_class('packagefeed-stability', d):
+                    dest = l.replace(deploydir + "-prediff", "")
+                else:
+                    dest = l.replace(deploydir, "")
                 dest = subrepo_dir + dest
                 if l.endswith("/"):
                     if dest not in seendirs:
@@ -863,8 +867,9 @@ class RpmPM(PackageManager):
             failed_postinsts_abort(list(failed_scriptlets_pkgnames.keys()), self.d.expand("${T}/log.do_${BB_CURRENTTASK}"))
 
     def remove(self, pkgs, with_dependencies = True):
-        if len(pkgs) == 0:
+        if not pkgs:
             return
+
         self._prepare_pkg_transaction()
 
         if with_dependencies:
@@ -1321,7 +1326,11 @@ class OpkgPM(OpkgDpkgPM):
         if not pkgs:
             return
 
-        cmd = "%s %s install %s" % (self.opkg_cmd, self.opkg_args, ' '.join(pkgs))
+        cmd = "%s %s" % (self.opkg_cmd, self.opkg_args)
+        for exclude in (self.d.getVar("PACKAGE_EXCLUDE") or "").split():
+            cmd += " --add-exclude %s" % exclude
+        cmd += " install "
+        cmd += " ".join(pkgs)
 
         os.environ['D'] = self.target_rootfs
         os.environ['OFFLINE_ROOT'] = self.target_rootfs
@@ -1348,6 +1357,9 @@ class OpkgPM(OpkgDpkgPM):
                                               (cmd, e.returncode, e.output.decode("utf-8")))
 
     def remove(self, pkgs, with_dependencies=True):
+        if not pkgs:
+            return
+
         if with_dependencies:
             cmd = "%s %s --force-remove --force-removal-of-dependent-packages remove %s" % \
                 (self.opkg_cmd, self.opkg_args, ' '.join(pkgs))
@@ -1658,6 +1670,9 @@ class DpkgPM(OpkgDpkgPM):
 
 
     def remove(self, pkgs, with_dependencies=True):
+        if not pkgs:
+            return
+
         if with_dependencies:
             os.environ['APT_CONFIG'] = self.apt_conf_file
             cmd = "%s purge %s" % (self.apt_get_cmd, ' '.join(pkgs))

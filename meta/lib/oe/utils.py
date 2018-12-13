@@ -25,6 +25,13 @@ def conditional(variable, checkvalue, truevalue, falsevalue, d):
     else:
         return falsevalue
 
+def vartrue(var, iftrue, iffalse, d):
+    import oe.types
+    if oe.types.boolean(d.getVar(var)):
+        return iftrue
+    else:
+        return iffalse
+
 def less_or_equal(variable, checkvalue, truevalue, falsevalue, d):
     if float(d.getVar(variable)) <= float(checkvalue):
         return truevalue
@@ -340,7 +347,13 @@ def format_pkg_list(pkg_dict, ret_format=None):
         for pkg in sorted(pkg_dict):
             output.append(pkg)
 
-    return '\n'.join(output)
+    output_str = '\n'.join(output)
+
+    if output_str:
+        # make sure last line is newline terminated
+        output_str += '\n'
+
+    return output_str
 
 def host_gcc_version(d, taskcontextonly=False):
     import re, subprocess
@@ -467,3 +480,4 @@ class ImageQAFailed(bb.build.FuncFailed):
             msg = msg + ' (%s)' % self.description
 
         return msg
+

@@ -112,7 +112,7 @@ ALTERNATIVE_LINK_NAME[mkfs.ext2] = "${base_sbindir}/mkfs.ext2"
 ALTERNATIVE_${PN}-tune2fs = "tune2fs"
 ALTERNATIVE_LINK_NAME[tune2fs] = "${base_sbindir}/tune2fs"
 
-RDEPENDS_${PN}-ptest += "${PN} ${PN}-tune2fs coreutils procps bash"
+RDEPENDS_${PN}-ptest += "${PN} ${PN}-tune2fs coreutils procps bash bzip2 diffutils perl"
 
 do_compile_ptest() {
 	oe_runmake -C ${B}/tests
@@ -129,4 +129,7 @@ do_install_ptest() {
 	find "${D}${PTEST_PATH}" -type f \
 	    \( -name 'Makefile' -o -name 'Makefile.in' -o -name '*.o' -o -name '*.c' -o -name '*.h' \)\
 	    -exec  rm -f {} +
+
+        install -d ${D}${PTEST_PATH}/lib
+        install -m 0644 ${B}/lib/config.h  ${D}${PTEST_PATH}/lib/
 }

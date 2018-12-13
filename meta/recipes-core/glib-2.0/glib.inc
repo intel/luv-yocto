@@ -9,8 +9,7 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=4fbd65380cdd255951079008b364516c \
                     file://glib/glib.h;beginline=4;endline=17;md5=b88abb7f3ad09607e71cb9d530155906 \
                     file://gmodule/COPYING;md5=4fbd65380cdd255951079008b364516c \
                     file://gmodule/gmodule.h;beginline=4;endline=17;md5=b88abb7f3ad09607e71cb9d530155906 \
-                    file://glib/pcre/COPYING;md5=266ebc3ff74ee9ce6fad65577667c0f4 \
-                    file://glib/pcre/pcre.h;beginline=11;endline=35;md5=de27f2bf633d20a2b7af0b1983423283 \
+                    file://glib/pcre/pcre.h;beginline=8;endline=36;md5=3e2977dae4ad05217f58c446237298fc \
                     file://docs/reference/COPYING;md5=f51a5100c17af6bae00735cd791e1fcc"
 BUGTRACKER = "http://bugzilla.gnome.org"
 SECTION = "libs"
@@ -87,10 +86,10 @@ ARM_INSTRUCTION_SET_armv5 = "arm"
 CPPFLAGS_append_class-target_mips16e = " -DNVALGRIND=1"
 
 # GLib generally requires gettext to be present so for USE_NLS to yes.  For
-# native builds as i18n is disabled globally we can tell it to use a fake msgfmt.
+# native builds as i18n is disabled globally we have to add a gettext-native dependency.
 USE_NLS_class-target = "yes"
 USE_NLS_class-nativesdk = "yes"
-CACHED_CONFIGUREVARS_append_class-native = " ac_cv_path_MSGFMT=/bin/false"
+DEPENDS_append_class-native = " gettext-native"
 
 EXEEXT = ""
 EXEEXT_mingw32 = ".exe"
@@ -141,6 +140,8 @@ RDEPENDS_${PN}-ptest += "\
             shared-mime-info \
            "
 
+# When https://gitlab.gnome.org/GNOME/glib/issues/1343 is
+# fixed add locale-base-pl-pl
 RDEPENDS_${PN}-ptest_append_libc-glibc = "\
             glibc-gconv-utf-16 \
             glibc-charmap-utf-8 \
@@ -153,6 +154,17 @@ RDEPENDS_${PN}-ptest_append_libc-glibc = "\
             glibc-gconv-iso8859-15 \
             glibc-charmap-invariant \
             glibc-localedata-translit-cjk-variants \
+            locale-base-tr-tr \
+            locale-base-lt-lt \
+            locale-base-ja-jp.euc-jp \
+            locale-base-fa-ir \
+            locale-base-ru-ru \
+            locale-base-de-de \
+            locale-base-hr-hr \
+            locale-base-el-gr \
+            locale-base-fr-fr \
+            locale-base-es-es \
+            locale-base-en-gb \
            "
 
 INSANE_SKIP_${PN}-ptest += "libdir"

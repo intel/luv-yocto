@@ -6,6 +6,7 @@ import time
 import unittest
 import logging
 import re
+import json
 
 from unittest import TextTestResult as _TestResult
 from unittest import TextTestRunner as _TestRunner
@@ -76,62 +77,60 @@ class OETestResult(_TestResult):
         else:
             msg = "%s - FAIL - Required tests failed" % component
         skipped = len(self.skipped)
-        if skipped: 
+        if skipped:
             msg += " (skipped=%d)" % skipped
         self.tc.logger.info(msg)
 
-    def _getDetailsNotPassed(self, case, type, desc):
-        found = False
+    def _getTestResultDetails(self, case):
+        result_types = {'failures': 'FAILED', 'errors': 'ERROR', 'skipped': 'SKIPPED',
+                        'expectedFailures': 'EXPECTEDFAIL', 'successes': 'PASSED'}
 
-        for (scase, msg) in getattr(self, type):
-            if case.id() == scase.id():
-                found = True
-                break
-            scase_str = str(scase.id())
-
-            # When fails at module or class level the class name is passed as string
-            # so figure out to see if match
-            m = re.search("^setUpModule \((?P<module_name>.*)\)$", scase_str)
-            if m:
-                if case.__class__.__module__ == m.group('module_name'):
+        for rtype in result_types:
+            found = False
+            for (scase, msg) in getattr(self, rtype):
+                if case.id() == scase.id():
                     found = True
                     break
+                scase_str = str(scase.id())
 
-            m = re.search("^setUpClass \((?P<class_name>.*)\)$", scase_str)
-            if m:
-                class_name = "%s.%s" % (case.__class__.__module__,
-                        case.__class__.__name__)
+                # When fails at module or class level the class name is passed as string
+                # so figure out to see if match
+                m = re.search("^setUpModule \((?P<module_name>.*)\)$", scase_str)
+                if m:
+                    if case.__class__.__module__ == m.group('module_name'):
+                        found = True
+                        break
 
-                if class_name == m.group('class_name'):
-                    found = True
-                    break
+                m = re.search("^setUpClass \((?P<class_name>.*)\)$", scase_str)
+                if m:
+                    class_name = "%s.%s" % (case.__class__.__module__,
+                                            case.__class__.__name__)
 
-        if found:
-            return (found, msg)
+                    if class_name == m.group('class_name'):
+                        found = True
+                        break
 
-        return (found, None)
+            if found:
+                return result_types[rtype], msg
+
+        return 'UNKNOWN', None
 
     def addSuccess(self, test):
         #Added so we can keep track of successes too
         self.successes.append((test, None))
         super(OETestResult, self).addSuccess(test)
 
-    def logDetails(self):
+    def logDetails(self, json_file_dir=None, configuration=None, result_id=None):
         self.tc.logger.info("RESULTS:")
+
+        result = {}
+        if hasattr(self.tc, "extraresults"):
+            result = self.tc.extraresults
+
         for case_name in self.tc._registry['cases']:
             case = self.tc._registry['cases'][case_name]
 
-            result_types = ['failures', 'errors', 'skipped', 'expectedFailures', 'successes']
-            result_desc = ['FAILED', 'ERROR', 'SKIPPED', 'EXPECTEDFAIL', 'PASSED']
-
-            fail = False
-            desc = None
-            for idx, name in enumerate(result_types):
-                (fail, msg) = self._getDetailsNotPassed(case, result_types[idx],
-                        result_desc[idx])
-                if fail:
-                    desc = result_desc[idx]
-                    break
+            (status, log) = self._getTestResultDetails(case)
 
             oeid = -1
             if hasattr(case, 'decorators'):
@@ -143,12 +142,19 @@ class OETestResult(_TestResult):
             if case.id() in self.starttime and case.id() in self.endtime:
                 t = " (" + "{0:.2f}".format(self.endtime[case.id()] - self.starttime[case.id()]) + "s)"
 
-            if fail:
-                self.tc.logger.info("RESULTS - %s - Testcase %s: %s%s" % (case.id(),
-                    oeid, desc, t))
+            self.tc.logger.info("RESULTS - %s - Testcase %s: %s%s" % (case.id(), oeid, status, t))
+            if log:
+                result[case.id()] = {'status': status, 'log': log}
             else:
-                self.tc.logger.info("RESULTS - %s - Testcase %s: %s%s" % (case.id(),
-                    oeid, 'UNKNOWN', t))
+                result[case.id()] = {'status': status}
+
+        if json_file_dir:
+            tresultjsonhelper = OETestResultJSONHelper()
+            tresultjsonhelper.dump_testresult_file(json_file_dir, configuration, result_id, result)
+
+    def wasSuccessful(self):
+        # Override as we unexpected successes aren't failures for us
+        return (len(self.failures) == len(self.errors) == 0)
 
 class OEListTestsResult(object):
     def wasSuccessful(self):
@@ -261,3 +267,29 @@ class OETestRunner(_TestRunner):
             self._list_tests_module(suite)
 
         return OEListTestsResult()
+
+class OETestResultJSONHelper(object):
+
+    testresult_filename = 'testresults.json'
+
+    def _get_existing_testresults_if_available(self, write_dir):
+        testresults = {}
+        file = os.path.join(write_dir, self.testresult_filename)
+        if os.path.exists(file):
+            with open(file, "r") as f:
+                testresults = json.load(f)
+        return testresults
+
+    def _write_file(self, write_dir, file_name, file_content):
+        file_path = os.path.join(write_dir, file_name)
+        with open(file_path, 'w') as the_file:
+            the_file.write(file_content)
+
+    def dump_testresult_file(self, write_dir, configuration, result_id, test_result):
+        bb.utils.mkdirhier(write_dir)
+        lf = bb.utils.lockfile(os.path.join(write_dir, 'jsontestresult.lock'))
+        test_results = self._get_existing_testresults_if_available(write_dir)
+        test_results[result_id] = {'configuration': configuration, 'result': test_result}
+        json_testresults = json.dumps(test_results, sort_keys=True, indent=4)
+        self._write_file(write_dir, self.testresult_filename, json_testresults)
+        bb.utils.unlockfile(lf)

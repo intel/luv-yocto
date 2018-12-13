@@ -13,9 +13,6 @@ python () {
             opt_effective = opt
     if opt_effective == "-O0":
         bb.fatal("%s can't be built with %s, try -O1 instead" % (d.getVar('PN'), opt_effective))
-    if opt_effective in ("-O", "-O1", "-Os"):
-        bb.note("%s doesn't build cleanly with %s, adding -Wno-error to SELECTED_OPTIMIZATION" % (d.getVar('PN'), opt_effective))
-        d.appendVar("SELECTED_OPTIMIZATION", " -Wno-error")
 }
 
 # siteconfig.bbclass runs configure which needs a working compiler
@@ -59,6 +56,7 @@ INHIBIT_DEFAULT_DEPS = "1"
 # http://lists.openembedded.org/pipermail/openembedded-core/2015-January/100679.html
 ARM_INSTRUCTION_SET_armv4 = "arm"
 ARM_INSTRUCTION_SET_armv5 = "arm"
+ARM_INSTRUCTION_SET_armv6 = "arm"
 
 # glibc uses PARALLELMFLAGS variable to pass parallel build info so transfer
 # PARALLEL_MAKE into PARALLELMFLAGS and empty out PARALLEL_MAKE

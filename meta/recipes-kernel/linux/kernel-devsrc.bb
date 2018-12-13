@@ -25,7 +25,7 @@ do_unpack[noexec] = "1"
 do_patch[noexec] = "1"
 do_configure[noexec] = "1"
 do_compile[noexec] = "1"
-do_populate_sysroot[noexec] = "1"
+deltask do_populate_sysroot
 
 S = "${STAGING_KERNEL_DIR}"
 B = "${STAGING_KERNEL_BUILDDIR}"
@@ -210,6 +210,9 @@ do_install() {
 	    cp -a --parents kernel/bounds.c $kerneldir/build
 	    cp -a --parents Kbuild $kerneldir/build
 	fi
+
+        # required to build scripts/selinux/genheaders/genheaders
+        cp -a --parents security/selinux/include/* $kerneldir/build/
     )
 
     # Make sure the Makefile and version.h have a matching timestamp so that

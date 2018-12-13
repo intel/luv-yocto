@@ -827,6 +827,7 @@ def runfetchcmd(cmd, d, quiet=False, cleanup=None, log=None, workdir=None):
                   'NO_PROXY', 'no_proxy',
                   'ALL_PROXY', 'all_proxy',
                   'GIT_PROXY_COMMAND',
+                  'GIT_SSH',
                   'GIT_SSL_CAINFO',
                   'GIT_SMART_HTTP',
                   'SSH_AUTH_SOCK', 'SSH_AGENT_PID',
@@ -837,14 +838,16 @@ def runfetchcmd(cmd, d, quiet=False, cleanup=None, log=None, workdir=None):
     if not cleanup:
         cleanup = []
 
-    # If PATH contains WORKDIR which contains PV which contains SRCPV we
+    # If PATH contains WORKDIR which contains PV-PR which contains SRCPV we
     # can end up in circular recursion here so give the option of breaking it
     # in a data store copy.
     try:
         d.getVar("PV")
+        d.getVar("PR")
     except bb.data_smart.ExpansionError:
         d = bb.data.createCopy(d)
         d.setVar("PV", "fetcheravoidrecurse")
+        d.setVar("PR", "fetcheravoidrecurse")
 
     origenv = d.getVar("BB_ORIGENV", False)
     for var in exportvars:
@@ -1016,16 +1019,7 @@ def try_mirror_url(fetch, origud, ud, ld, check = False):
                     origud.method.build_mirror_data(origud, ld)
             return origud.localpath
         # Otherwise the result is a local file:// and we symlink to it
-        if not os.path.exists(origud.localpath):
-            if os.path.islink(origud.localpath):
-                # Broken symbolic link
-                os.unlink(origud.localpath)
-
-            # As per above, in case two tasks end up here simultaneously.
-            try:
-                os.symlink(ud.localpath, origud.localpath)
-            except FileExistsError:
-                pass
+        ensure_symlink(ud.localpath, origud.localpath)
         update_stamp(origud, ld)
         return ud.localpath
 
@@ -1059,6 +1053,22 @@ def try_mirror_url(fetch, origud, ud, ld, check = False):
             bb.utils.unlockfile(lf)
 
 
+def ensure_symlink(target, link_name):
+    if not os.path.exists(link_name):
+        if os.path.islink(link_name):
+            # Broken symbolic link
+            os.unlink(link_name)
+
+        # In case this is executing without any file locks held (as is
+        # the case for file:// URLs), two tasks may end up here at the
+        # same time, in which case we do not want the second task to
+        # fail when the link has already been created by the first task.
+        try:
+            os.symlink(target, link_name)
+        except FileExistsError:
+            pass
+
+
 def try_mirrors(fetch, d, origud, mirrors, check = False):
     """
     Try to use a mirrored version of the sources.
@@ -1088,7 +1098,9 @@ def trusted_network(d, url):
         return True
 
     pkgname = d.expand(d.getVar('PN', False))
-    trusted_hosts = d.getVarFlag('BB_ALLOWED_NETWORKS', pkgname, False)
+    trusted_hosts = None
+    if pkgname:
+        trusted_hosts = d.getVarFlag('BB_ALLOWED_NETWORKS', pkgname, False)
 
     if not trusted_hosts:
         trusted_hosts = d.getVar('BB_ALLOWED_NETWORKS')
