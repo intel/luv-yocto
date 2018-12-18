@@ -68,11 +68,6 @@ do_patch_append() {
 do_install_append() {
     install -d ${D}${bindir}
     install -m 0755 ${WORKDIR}/chipsec ${D}${bindir}
-
-    if [ ! "${TARGET_ARCH}" = "x86_64" ]; then
-        rm ${D}${PYTHON_SITEPACKAGES_DIR}/chipsec_tools/linux/LzmaCompress.bin
-        rm ${D}${PYTHON_SITEPACKAGES_DIR}/chipsec_tools/linux/TianoCompress.bin
-    fi
 }
 
 LUV_TEST_LOG_PARSER="luv-parser-chipsec"
