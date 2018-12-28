@@ -195,9 +195,7 @@ start_reports()
 EOF
 }
 
-create_luv_dirs
-display_luv_version
-start_reports
+first_boot_file="${LUV_STORAGE}/first_boot"
 
 # If first boot file exists on the disk and if the test suites are completed
 # successfully, remove the file.
@@ -205,6 +203,10 @@ if [ -e "$first_boot_file" ]; then
     if grep -q "luv_signature=1" $first_boot_file; then
         rm $first_boot_file
     fi
+else
+    create_luv_dirs
+    display_luv_version
+    start_reports
 fi
 
 # Create the "first_boot" file, only if one of the reboot tests is passed as
