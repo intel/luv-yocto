@@ -14,33 +14,40 @@ import argparse
 import re
 import os
 
-parser = argparse.ArgumentParser()
 start_string = "## Start of luv.cfg ##\n\n"
 end_string = "\n## END of luv.cfg ##"
+# List of parameters which cannot be modified by user #
+do_not_modify = ["LUV_BITS_CAN_RUN"]
+
+parser = argparse.ArgumentParser()
 
 class LUVConfigParam(object):
     """ create objects to all optional, destination and help arguments """
-    def __init__(self,short_option, long_option, dest_varname, help_text):
+    def __init__(self, short_option, long_option, dest_varname, num_args, choices, help_text):
         self.short_option = short_option
         self.long_option = long_option
         self.dest_varname = dest_varname
-        self.help_text =help_text
+        self.num_args = num_args
+        self.choices = choices
+        self.help_text = help_text
 
 """
-list of arguments for each and every parameter in luv.cfg
-file. If new parameter is added to luv.cfg, making changes only in the
-luv_config_params should be sufficient.
+list of arguments for each and every parameter in luv.cfg file. If new parameter
+is added to luv.cfg, making changes only in the luv_config_params should be sufficient.
 
-Note: 'filename' is special as it is the only manadatory parameter
+Note: 'filename' is special as it is the only mandatory parameter
 """
-luv_config_params = [LUVConfigParam("-f", "--file", 'filename',
+luv_config_params = [LUVConfigParam("-f", "--filename", 'filename', None, None,
                      'Read from the file'),
-                     LUVConfigParam("-n", "--netconsole", 'luv_netconsole',
+                     LUVConfigParam("-n", "--netconsole", 'luv_netconsole', None, None,
                      'The format of the netconsole 10.11.12.13,64001'),
-                     LUVConfigParam("-u", "--url", 'luv_storage_url',
+                     LUVConfigParam("-u", "--url", 'luv_storage_url', None, None,
                      'The format of url http://ipaddress/path/to/folder'),
-                     LUVConfigParam("-v", "--verbose", 'verbose',
-                     'press -v for help')]
+                     LUVConfigParam("-d", "--disable_tests", 'luv_tests', '*',
+                     ['bits', 'chipsec', 'fwts', 'ndctl', 'efivarfs-test', 'pstore-tests', 'kernel-efi-warnings'],
+                     "exclude specific test suites while running LUV"),
+                     LUVConfigParam("-r", "--reboot-tests", 'luv_reboot_tests', '*',
+                     ['luv.pstore-tests'], "Reboot tests to run in LUV")]
 
 def read_luv_cfg():
     """ Read the luv.cfg file from .EFI binary and store in a list/array"""
@@ -60,63 +67,50 @@ def read_luv_cfg():
     f.seek(start_index, 0)
     luv_cfg = f.read(p)
     luv_cfg_lines = luv_cfg.split('\n')
-    """
-    keywords is a collection of all the 'key' parameters that user intend to
-    change using this script
-    example: consider a parameter 'set Name=LUV\n', the keyword here is
-    'set Name'. Such keywords are extracted from parameters using split().
 
-    split the line at "=" just once (1) and then retrieve the first
-    element [0] as in get the string just before the "="
-    """
-    keywords = []
+    return luv_cfg_lines, end_index, start_index
+
+def replace_strings():
+    new_rep_str = start_string
     for i in luv_cfg_lines:
         if re.search('^set', i):
-            keyword = i.split('=', 1)[0]
-            keywords.append(keyword)
+            """
+            keywords is a collection of all the 'key' parameters that user intends to
+            change using this script
+            example: consider a parameter 'set Name=LUV\n', the keyword here is
+            'set Name'. Such keywords are extracted from parameters using split().
 
-    return keywords, end_index, start_index
-
-def replace_strings(keywords):
-    """
-    define a new string that will replace the concatenation of strings
-    after we modify the parameters with given values
-    """
-    new_rep_str = start_string
-    """
-    Match for the substrings in luv.cfg with the parameters that are
-    being passed to parser.
-
-    lower() is used to find the match for case insensitive strings and when
-    a substring is found matched it returns the offset which is always greater
-    than 0
-    """
-    for k in keywords:
-        for a in args_lists:
-            if (k.lower().find(a.lower()) > 0):
-                """
-                check if the arguments are passed for each parameter in luv.cfg.
-                If not then replace that parameter with a string "none"
-                """
-                if (args_lists[a]) is None:
-                    replace_str = k + "=" + "none" + "\n"
-                    print ("No " + a + " parameter found! Please provide one "
-                           "if you intend to use the feature")
+            split the line at "=" just once (1) and then retrieve the first
+            element [0] as in get the string just before the "=" as the keyword and
+            the second element[1] as in the string after the "=" as the keyval
+            """
+            keyword= i.split('=', 1)[0]
+            keyval = i.split('=', 1)[1]
+            for a in args_lists:
+                if keyword[4:] == a.upper():
+                    if (str(args_lists[a]).lower() != 'none'):
+                        if keyword[4:] == "LUV_TESTS":
+                            luv_tests = keyval
+                            for d, p in enumerate(args.luv_tests):
+                                if p not in luv_tests:
+                                    print ("Test suite " + p + " is already disabled\n")
+                                luv_tests = luv_tests.replace(args.luv_tests[d], '')
+                            replace_str = keyword + "=" + luv_tests + "\n"
+                        else:
+                            replace_str = keyword + "=" + str(args_lists[a]).lower() + "\n"
+                    else:
+                        replace_str = keyword + "=" + keyval.lower() + "\n"
                     new_rep_str = new_rep_str + replace_str
-                    print ("Modifying .EFI binary without setting the " + a +
-                           " parameter!. If you may want this feature, provide "
-                           "one and rerun the script")
-                else:
-                    replace_str = k + "=" + str(args_lists[a])+"\n"
-                    print (k + " to " + str(args_lists[a]))
-                    new_rep_str = new_rep_str + replace_str
+            if keyword[4:] in do_not_modify:
+                new_rep_str = new_rep_str + i + "\n"
 
     return new_rep_str
 
 def write_to_luv_cfg(start_index, end_index):
     f = open(args_lists['filename'], "rb")
     s = str(f.read())
-    new_rep_str = replace_strings(keywords)
+    new_rep_str = replace_strings()
+
     """ check if the length of the both lines is greater than the file size """
     if len(new_rep_str) > end_index - start_index:
         parser.error("Sorry can't replace the variables as they are too large!")
@@ -143,7 +137,8 @@ def write_to_luv_cfg(start_index, end_index):
 """ Parse the arguments to the parser to populate all the options """
 for obj in luv_config_params:
     parser.add_argument(obj.short_option, obj.long_option,
-                        dest=obj.dest_varname, help=obj.help_text)
+                        dest=obj.dest_varname, nargs=obj.num_args,
+                        choices=obj.choices, help=obj.help_text)
 
 args = parser.parse_args()
 """ convert the namespace args in to a dictionary """
@@ -154,5 +149,5 @@ if not (args_lists['filename']):
     parser.error(" Please provide filename as an argument")
 """ Check if the file exists and then run the script """
 if os.path.exists(args_lists['filename']):
-    keywords, end_index, start_index = read_luv_cfg()
+    luv_cfg_lines, end_index, start_index = read_luv_cfg()
     write_to_luv_cfg(start_index, end_index)
