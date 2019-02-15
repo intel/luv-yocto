@@ -111,7 +111,7 @@ def package_qa_check_rpath(file,name, d, elf, messages):
     phdrs = elf.run_objdump("-p", d)
 
     import re
-    rpath_re = re.compile("\s+RPATH\s+(.*)")
+    rpath_re = re.compile(r"\s+RPATH\s+(.*)")
     for line in phdrs.split("\n"):
         m = rpath_re.match(line)
         if m:
@@ -140,7 +140,7 @@ def package_qa_check_useless_rpaths(file, name, d, elf, messages):
     phdrs = elf.run_objdump("-p", d)
 
     import re
-    rpath_re = re.compile("\s+RPATH\s+(.*)")
+    rpath_re = re.compile(r"\s+RPATH\s+(.*)")
     for line in phdrs.split("\n"):
         m = rpath_re.match(line)
         if m:
@@ -203,8 +203,8 @@ def package_qa_check_libdir(d):
     # The re's are purposely fuzzy, as some there are some .so.x.y.z files
     # that don't follow the standard naming convention. It checks later
     # that they are actual ELF files
-    lib_re = re.compile("^/lib.+\.so(\..+)?$")
-    exec_re = re.compile("^%s.*/lib.+\.so(\..+)?$" % exec_prefix)
+    lib_re = re.compile(r"^/lib.+\.so(\..+)?$")
+    exec_re = re.compile(r"^%s.*/lib.+\.so(\..+)?$" % exec_prefix)
 
     for root, dirs, files in os.walk(pkgdest):
         if root == pkgdest:
@@ -302,15 +302,15 @@ def package_qa_check_arch(path,name,d, elf, messages):
     # Check the architecture and endiannes of the binary
     is_32 = (("virtual/kernel" in provides) or bb.data.inherits_class("module", d)) and \
             (target_os == "linux-gnux32" or target_os == "linux-muslx32" or \
-            target_os == "linux-gnu_ilp32" or re.match('mips64.*32', d.getVar('DEFAULTTUNE')))
+            target_os == "linux-gnu_ilp32" or re.match(r'mips64.*32', d.getVar('DEFAULTTUNE')))
     is_bpf = (oe.qa.elf_machine_to_string(elf.machine()) == "BPF")
     if not ((machine == elf.machine()) or is_32 or is_bpf):
         package_qa_add_message(messages, "arch", "Architecture did not match (%s, expected %s) on %s" % \
                  (oe.qa.elf_machine_to_string(elf.machine()), oe.qa.elf_machine_to_string(machine), package_qa_clean_path(path,d)))
-    elif not ((bits == elf.abiSize()) or is_32):
+    elif not ((bits == elf.abiSize()) or is_32 or is_bpf):
         package_qa_add_message(messages, "arch", "Bit size did not match (%d to %d) %s on %s" % \
                  (bits, elf.abiSize(), bpn, package_qa_clean_path(path,d)))
-    elif not littleendian == elf.isLittleEndian():
+    elif not ((littleendian == elf.isLittleEndian()) or is_bpf):
         package_qa_add_message(messages, "arch", "Endiannes did not match (%d to %d) on %s" % \
                  (littleendian, elf.isLittleEndian(), package_qa_clean_path(path,d)))
 
@@ -342,7 +342,7 @@ def package_qa_textrel(path, name, d, elf, messages):
     sane = True
 
     import re
-    textrel_re = re.compile("\s+TEXTREL\s+")
+    textrel_re = re.compile(r"\s+TEXTREL\s+")
     for line in phdrs.split("\n"):
         if textrel_re.match(line):
             sane = False
@@ -383,7 +383,7 @@ def package_qa_hash_style(path, name, d, elf, messages):
             sane = True
 
     if has_syms and not sane:
-        package_qa_add_message(messages, "ldflags", "No GNU_HASH in the elf binary: '%s'" % path)
+        package_qa_add_message(messages, "ldflags", "No GNU_HASH in the ELF binary %s, didn't pass LDFLAGS?" % path)
 
 
 QAPATHTEST[buildpaths] = "package_qa_check_buildpaths"
@@ -952,7 +952,7 @@ python do_package_qa () {
 
     import re
     # The package name matches the [a-z0-9.+-]+ regular expression
-    pkgname_pattern = re.compile("^[a-z0-9.+-]+$")
+    pkgname_pattern = re.compile(r"^[a-z0-9.+-]+$")
 
     taskdepdata = d.getVar("BB_TASKDEPDATA", False)
     taskdeps = set()
@@ -1016,6 +1016,13 @@ do_package_qa[depends] += "${POPULATESYSROOTDEPS}"
 do_package_qa[vardepsexclude] = "BB_TASKDEPDATA"
 do_package_qa[rdeptask] = "do_packagedata"
 addtask do_package_qa after do_packagedata do_package before do_build
+
+# Add the package specific INSANE_SKIPs to the sstate dependencies
+python() {
+    pkgs = (d.getVar('PACKAGES') or '').split()
+    for pkg in pkgs:
+        d.appendVarFlag("do_package_qa", "vardeps", " INSANE_SKIP_{}".format(pkg))
+}
 
 SSTATETASKS += "do_package_qa"
 do_package_qa[sstate-inputdirs] = ""
@@ -1160,7 +1167,7 @@ python () {
     if pn in overrides:
         msg = 'Recipe %s has PN of "%s" which is in OVERRIDES, this can result in unexpected behaviour.' % (d.getVar("FILE"), pn)
         package_qa_handle_error("pn-overrides", msg, d)
-    prog = re.compile('[A-Z]')
+    prog = re.compile(r'[A-Z]')
     if prog.search(pn):
         package_qa_handle_error("uppercase-pn", 'PN: %s is upper case, this can result in unexpected behavior.' % pn, d)
 

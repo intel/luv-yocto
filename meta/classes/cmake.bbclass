@@ -4,9 +4,6 @@ OECMAKE_SOURCEPATH ??= "${S}"
 DEPENDS_prepend = "cmake-native "
 B = "${WORKDIR}/build"
 
-# We need to unset CCACHE otherwise cmake gets too confused
-CCACHE = ""
-
 # What CMake generator to use.
 # The supported options are "Unix Makefiles" or "Ninja".
 OECMAKE_GENERATOR ?= "Ninja"
@@ -20,13 +17,25 @@ python() {
     elif generator == "Ninja":
         d.appendVar("DEPENDS", " ninja-native")
         d.setVar("OECMAKE_GENERATOR_ARGS", "-G Ninja -DCMAKE_MAKE_PROGRAM=ninja")
-        d.setVarFlag("do_compile", "progress", "outof:^\[(\d+)/(\d+)\]\s+")
+        d.setVarFlag("do_compile", "progress", r"outof:^\[(\d+)/(\d+)\]\s+")
     else:
         bb.fatal("Unknown CMake Generator %s" % generator)
+
+    # C/C++ Compiler (without cpu arch/tune arguments)
+    if not d.getVar('OECMAKE_C_COMPILER'):
+        cc_list = d.getVar('CC').split()
+        if cc_list[0] == 'ccache':
+            d.setVar('OECMAKE_C_COMPILER', '%s %s' % (cc_list[0], cc_list[1]))
+        else:
+            d.setVar('OECMAKE_C_COMPILER', cc_list[0])
+
+    if not d.getVar('OECMAKE_CXX_COMPILER'):
+        cxx_list = d.getVar('CXX').split()
+        if cxx_list[0] == 'ccache':
+            d.setVar('OECMAKE_CXX_COMPILER', '%s %s' % (cxx_list[0], cxx_list[1]))
+        else:
+            d.setVar('OECMAKE_CXX_COMPILER', cxx_list[0])
 }
-# C/C++ Compiler (without cpu arch/tune arguments)
-OECMAKE_C_COMPILER ?= "`echo ${CC} | sed 's/^\([^ ]*\).*/\1/'`"
-OECMAKE_CXX_COMPILER ?= "`echo ${CXX} | sed 's/^\([^ ]*\).*/\1/'`"
 OECMAKE_AR ?= "${AR}"
 
 # Compiler flags
@@ -107,6 +116,10 @@ list(APPEND CMAKE_MODULE_PATH "${STAGING_DATADIR}/cmake/Modules/")
 
 # add for non /usr/lib libdir, e.g. /usr/lib64
 set( CMAKE_LIBRARY_PATH ${libdir} ${base_libdir})
+
+# add include dir to implicit includes in case it differs from /usr/include
+list(APPEND CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES ${includedir})
+list(APPEND CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES ${includedir})
 
 EOF
 }

@@ -3237,30 +3237,22 @@
                 post-installation script to be delayed until the first boot.
                 For example, the script might need to be executed on the
                 device itself.
-                To delay script execution until boot time, use the following
-                structure in the post-installation script:
-                <literallayout class='monospaced'>
-     pkg_postinst_<replaceable>PACKAGENAME</replaceable>() {
-     if [ x"$D" = "x" ]; then
-          # Actions to carry out on the device go here
-     else
-          exit 1
-     fi
-     }
-                </literallayout>
+                To delay script execution until boot time, you must explicitly
+                mark post installs to defer to the target.
+                You can use <filename>pkg_postinst_ontarget()</filename> or
+                call
+                <filename>postinst-intercepts defer_to_first_boot</filename>
+                from <filename>pkg_postinst()</filename>.
+                Any failure of a <filename>pkg_postinst()</filename> script
+                (including exit 1) triggers an error during the
+                <ulink url='&YOCTO_DOCS_REF_URL;#ref-tasks-rootfs'><filename>do_rootfs</filename></ulink>
+                task.
             </para>
 
             <para>
-                The previous example delays execution until the image boots
-                again because the environment variable <filename>D</filename>
-                points to the directory containing the image when
-                the root filesystem is created at build time but is unset
-                when executed on the first boot.
-            </para>
-
-            <para>
-                If you have recipes that use <filename>pkg_postinst</filename>
-                scripts and they require the use of non-standard native
+                If you have recipes that use
+                <filename>pkg_postinst</filename> function
+                and they require the use of non-standard native
                 tools that have dependencies during rootfs construction, you
                 need to use the
                 <ulink url='&YOCTO_DOCS_REF_URL;#var-PACKAGE_WRITE_DEPS'><filename>PACKAGE_WRITE_DEPS</filename></ulink>
@@ -3279,8 +3271,8 @@
                 <filename>pkg_prerm</filename>, and
                 <filename>pkg_postrm</filename>, respectively.
                 These scrips work in exactly the same way as does
-                <filename>pkg_postinst</filename> with the exception that they
-                run at different times.
+                <filename>pkg_postinst</filename> with the exception
+                that they run at different times.
                 Also, because of when they run, they are not applicable to
                 being run at image creation time like
                 <filename>pkg_postinst</filename>.
@@ -5124,15 +5116,15 @@
             So, commands such as the following are useful when exploring the data
             store and running functions:
             <literallayout class='monospaced'>
-     pydevshell> d.getVar("STAGING_DIR", True)
+     pydevshell> d.getVar("STAGING_DIR")
      '/media/build1/poky/build/tmp/sysroots'
-     pydevshell> d.getVar("STAGING_DIR", False)
+     pydevshell> d.getVar("STAGING_DIR")
      '${TMPDIR}/sysroots'
      pydevshell> d.setVar("FOO", "bar")
-     pydevshell> d.getVar("FOO", True)
+     pydevshell> d.getVar("FOO")
      'bar'
      pydevshell> d.delVar("FOO")
-     pydevshell> d.getVar("FOO", True)
+     pydevshell> d.getVar("FOO")
      pydevshell> bb.build.exec_func("do_unpack", d)
      pydevshell>
             </literallayout>
@@ -6900,8 +6892,8 @@
             <literallayout class='monospaced'>
      MACHINE = "qemux86-64"
      DEFAULTTUNE = "x86-64-x32"
-     baselib = "${@d.getVar('BASE_LIB_tune-' + (d.getVar('DEFAULTTUNE', True) \
-        or 'INVALID'), True) or 'lib'}"
+     baselib = "${@d.getVar('BASE_LIB_tune-' + (d.getVar('DEFAULTTUNE') \
+        or 'INVALID')) or 'lib'}"
             </literallayout>
             Once you have set up your configuration file, use BitBake to
             build an image that supports the x32 psABI.
@@ -7270,13 +7262,12 @@
                         easier-to-use and more flexible replacements for an
                         existing functionality in OE-Core's
                         <ulink url='&YOCTO_DOCS_REF_URL;#ref-classes-image-live'><filename>image-live</filename></ulink>
-                        class and <filename>mkefidisk.sh</filename> script.
-                        The difference between
-                        Wic and those examples is
-                        that with Wic the
-                        functionality of those scripts is implemented
-                        by a general-purpose partitioning language, which is
-                        based on Redhat kickstart syntax.</para></listitem>
+                        class.
+                        The difference between Wic and those examples is
+                        that with Wic the functionality of those scripts is
+                        implemented by a general-purpose partitioning language,
+                        which is based on Redhat kickstart syntax.
+                        </para></listitem>
                 </itemizedlist>
             </para>
         </section>
@@ -11798,16 +11789,15 @@
                         To run the tests automatically after the
                         OpenEmbedded build system successfully creates an image,
                         first set the
-                        <ulink url='&YOCTO_DOCS_REF_URL;#var-TEST_IMAGE'><filename>TEST_IMAGE</filename></ulink>
+                        <ulink url='&YOCTO_DOCS_REF_URL;#var-TESTIMAGE_AUTO'><filename>TESTIMAGE_AUTO</filename></ulink>
                         variable to "1" in your <filename>local.conf</filename>
                         file in the
                         <ulink url='&YOCTO_DOCS_REF_URL;#build-directory'>Build Directory</ulink>:
                         <literallayout class='monospaced'>
-     TEST_IMAGE = "1"
+     TESTIMAGE_AUTO = "1"
                         </literallayout>
                         Next, build your image.
-                        If the image successfully builds, the tests will be
-                        run:
+                        If the image successfully builds, the tests run:
                         <literallayout class='monospaced'>
      bitbake core-image-sato
                         </literallayout></para></listitem>

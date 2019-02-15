@@ -448,7 +448,7 @@ def setup_bitbake(configParams, configuration, extrafeatures=None):
                 else:
                     logger.info("Reconnecting to bitbake server...")
                     if not os.path.exists(sockname):
-                        print("Previous bitbake instance shutting down?, waiting to retry...")
+                        logger.info("Previous bitbake instance shutting down?, waiting to retry...")
                         i = 0
                         lock = None
                         # Wait for 5s or until we can get the lock
@@ -475,10 +475,11 @@ def setup_bitbake(configParams, configuration, extrafeatures=None):
                 if not retries:
                     raise
                 retries -= 1
+                tryno = 8 - retries
                 if isinstance(e, (bb.server.process.ProcessTimeout, BrokenPipeError)):
-                    logger.info("Retrying server connection...")
+                    logger.info("Retrying server connection (#%d)..." % tryno)
                 else:
-                    logger.info("Retrying server connection... (%s)" % traceback.format_exc())
+                    logger.info("Retrying server connection (#%d)... (%s)" % (tryno, traceback.format_exc()))
             if not retries:
                 bb.fatal("Unable to connect to bitbake server, or start one")
             if retries < 5:

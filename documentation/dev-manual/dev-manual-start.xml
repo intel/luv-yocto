@@ -44,7 +44,7 @@
             <listitem><para>
                 <emphasis>Determine Who is Going to be Developing:</emphasis>
                 You need to understand who is going to be doing anything
-                related to the Yocto Project and what their roles would be.
+                related to the Yocto Project and determine their roles.
                 Making this determination is essential to completing
                 steps two and three, which are to get your equipment together
                 and set up your development environment's hardware topology.
@@ -408,6 +408,12 @@
         <ulink url='https://git.yoctoproject.org/cgit/cgit.cgi/crops/about/'>CROPS</ulink>,
         which leverages
         <ulink url='https://www.docker.com/'>Docker Containers</ulink>.
+        <note>
+            You cannot use a build host that is using the
+            <ulink url='https://en.wikipedia.org/wiki/Windows_Subsystem_for_Linux'>Windows Subsystem for Linux</ulink>
+            (WSL).
+            The Yocto Project is not compatible with WSL.
+        </note>
     </para>
 
     <para>
@@ -1116,11 +1122,10 @@
         .
         .
         .
-     yocto-2.2
-     yocto-2.2.1
-     yocto-2.3
-     yocto-2.3.1
-     yocto-2.4
+     yocto-2.5
+     yocto-2.5.1
+     yocto-2.5.2
+     yocto-2.6
      yocto_1.5_M5.rc8
                     </literallayout>
                     </para></listitem>

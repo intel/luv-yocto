@@ -4633,7 +4633,12 @@
             <glossdef>
                 <para role="glossdeffirst">
 <!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
-                    Additional <filename>cmake</filename> options.
+                    Additional
+                    <ulink url='https://cmake.org/overview/'>CMake</ulink>
+                    options.
+                    See the
+                    <link linkend='ref-classes-cmake'><filename>cmake</filename></link>
+                    class for additional information.
                 </para>
             </glossdef>
         </glossentry>
@@ -5036,14 +5041,42 @@
             <glossdef>
                 <para role="glossdeffirst">
 <!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
-                    The default set of directories the OpenEmbedded build system
-                    uses when searching for patches and files.
-                    During the build process, BitBake searches each directory in
-                    <filename>FILESPATH</filename> in the specified order when
-                    looking for files and patches specified by each
+                    The default set of directories the OpenEmbedded build
+                    system uses when searching for patches and files.
+                </para>
+
+                <para>
+                    During the build process, BitBake searches each directory
+                    in <filename>FILESPATH</filename> in the specified order
+                    when looking for files and patches specified by each
                     <filename>file://</filename> URI in a recipe's
                     <link linkend='var-SRC_URI'><filename>SRC_URI</filename></link>
                     statements.
+                </para>
+
+                <para>
+                    You can take advantage of this searching behavior in
+                    useful ways.
+                    For example, consider a case where the following
+                    directory structure exists for general and machine-specific
+                    configurations:
+                    <literallayout class='monospaced'>
+     files/defconfig
+     files/MACHINEA/defconfig
+     files/MACHINEB/defconfig
+                    </literallayout>
+                    Also in the example, the <filename>SRC_URI</filename>
+                    statement contains "file://defconfig".
+                    Given this scenario, you can set
+                    <link linkend='var-MACHINE'><filename>MACHINE</filename></link>
+                    to "MACHINEA" and cause the build system to use files
+                    from <filename>files/MACHINEA</filename>.
+                    Set <filename>MACHINE</filename> to "MACHINEB" and the
+                    build system uses files from
+                    <filename>files/MACHINEB</filename>.
+                    Finally, for any machine other than "MACHINEA" and
+                    "MACHINEB", the build system uses files from
+                    <filename>files/defconfig</filename>.
                 </para>
 
                 <para>
@@ -5055,23 +5088,37 @@
      FILESPATH = "${@base_set_filespath(["${FILE_DIRNAME}/${BP}", \
         "${FILE_DIRNAME}/${BPN}", "${FILE_DIRNAME}/files"], d)}"
                     </literallayout>
-                    <note>
-                        Do not hand-edit the <filename>FILESPATH</filename>
-                        variable.
-                        If you want the build system to look in directories
-                        other than the defaults, extend the
-                        <filename>FILESPATH</filename> variable by using the
-                        <link linkend='var-FILESEXTRAPATHS'><filename>FILESEXTRAPATHS</filename></link>
-                        variable.
+                    The <filename>FILESPATH</filename> variable is automatically
+                    extended using the overrides from the
+                    <link linkend='var-FILESOVERRIDES'><filename>FILESOVERRIDES</filename></link>
+                    variable.
+                    <note><title>Notes</title>
+                        <itemizedlist>
+                            <listitem><para>
+                                Do not hand-edit the
+                                <filename>FILESPATH</filename> variable.
+                                If you want the build system to look in
+                                directories other than the defaults, extend the
+                                <filename>FILESPATH</filename> variable by
+                                using the
+                                <link linkend='var-FILESEXTRAPATHS'><filename>FILESEXTRAPATHS</filename></link>
+                                variable.
+                                </para></listitem>
+                            <listitem><para>
+                                Be aware that the default
+                                <filename>FILESPATH</filename> directories do
+                                not map to directories in custom layers
+                                where append files
+                                (<filename>.bbappend</filename>) are used.
+                                If you want the build system to find patches
+                                or files that reside with your append files,
+                                you need to extend the
+                                <filename>FILESPATH</filename> variable by
+                                using the <filename>FILESEXTRAPATHS</filename>
+                                variable.
+                                </para></listitem>
+                        </itemizedlist>
                     </note>
-                    Be aware that the default <filename>FILESPATH</filename>
-                    directories do not map to directories in custom layers
-                    where append files (<filename>.bbappend</filename>)
-                    are used.
-                    If you want the build system to find patches or files
-                    that reside with your append files, you need to extend
-                    the <filename>FILESPATH</filename> variable by using
-                    the <filename>FILESEXTRAPATHS</filename> variable.
                 </para>
 
                 <para>
@@ -5224,6 +5271,28 @@
                     <literallayout class='monospaced'>
      GCCPIE ?= "--enable-default-pie"
                     </literallayout>
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-GCCVERSION'><glossterm>GCCVERSION</glossterm>
+            <info>
+                GCCVERSION[doc] = "Specifies the default version of the GNU C Compiler (GCC) to use."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Specifies the default version of the GNU C Compiler (GCC)
+                    used for compilation.
+                    By default, <filename>GCCVERSION</filename> is set to
+                    "8.x" in the
+                    <filename>meta/conf/distro/include/tcmode-default.inc</filename>
+                    include file:
+                    <literallayout class='monospaced'>
+     GCCVERSION ?= "8.%"
+                    </literallayout>
+                    You can override this value by setting it in a configuration
+                    file such as the <filename>local.conf</filename>.
                 </para>
             </glossdef>
         </glossentry>
@@ -6049,11 +6118,12 @@
                 <note><title>Notes</title>
                     <itemizedlist>
                         <listitem><para>
-                            If you add "live" to
-                            <filename>IMAGE_FSTYPES</filename> inside an image
-                            recipe, be sure that you do so prior to the
-                            "inherit image" line of the recipe or the live
-                            image will not build.
+                            If an image recipe uses the "inherit image" line
+                            and you are setting
+                            <filename>IMAGE_FSTYPES</filename> inside the
+                            recipe, you must set
+                            <filename>IMAGE_FSTYPES</filename> prior to
+                            using the "inherit image" line.
                             </para></listitem>
                         <listitem><para>
                             Due to the way the OpenEmbedded build system
@@ -6670,10 +6740,10 @@
                     revisioning by appending values to the
                     <filename>INC_PR</filename> variable:
                     <literallayout class='monospaced'>
-recipes-graphics/xorg-font/xorg-font-common.inc:INC_PR = "r2"
-recipes-graphics/xorg-font/encodings_1.0.4.bb:PR = "${INC_PR}.1"
-recipes-graphics/xorg-font/font-util_1.3.0.bb:PR = "${INC_PR}.0"
-recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
+     recipes-graphics/xorg-font/xorg-font-common.inc:INC_PR = "r2"
+     recipes-graphics/xorg-font/encodings_1.0.4.bb:PR = "${INC_PR}.1"
+     recipes-graphics/xorg-font/font-util_1.3.0.bb:PR = "${INC_PR}.0"
+     recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     </literallayout>
                     The first line of the example establishes the baseline
                     revision to be used for all recipes that use the
@@ -6998,6 +7068,61 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     Also, for information on creating an initramfs, see the
                     "<ulink url='&YOCTO_DOCS_DEV_URL;#building-an-initramfs-image'>Building an Initial RAM Filesystem (initramfs) Image</ulink>"
                     section in the Yocto Project Development Tasks Manual.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-INITRAMFS_LINK_NAME'><glossterm>INITRAMFS_LINK_NAME</glossterm>
+            <info>
+                INITRAMFS_LINK_NAME[doc] = "The link name of the initial RAM filesystem image."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    The link name of the initial RAM filesystem image.
+                    This variable is set in the
+                    <filename>meta/classes/kernel-artifact-names.bbclass</filename>
+                    file as follows:
+                    <literallayout class='monospaced'>
+     INITRAMFS_LINK_NAME ?= "initramfs-${KERNEL_ARTIFACT_LINK_NAME}"
+                    </literallayout>
+                    The value of the <filename>KERNEL_ARTIFACT_LINK_NAME</filename>
+                    variable, which is set in the same file, has the following
+                    value:
+                    <literallayout class='monospaced'>
+     KERNEL_ARTIFACT_LINK_NAME ?= "${MACHINE}"
+                    </literallayout>
+                </para>
+
+                <para>
+                    See the
+                    <link linkend='var-MACHINE'><filename>MACHINE</filename></link>
+                    variable for additional information.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-INITRAMFS_NAME'><glossterm>INITRAMFS_NAME</glossterm>
+            <info>
+                INITRAMFS_NAME[doc] = "The base name of the initial RAM filesystem image."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    The base name of the initial RAM filesystem image.
+                    This variable is set in the
+                    <filename>meta/classes/kernel-artifact-names.bbclass</filename>
+                    file as follows:
+                    <literallayout class='monospaced'>
+     INITRAMFS_NAME ?= "initramfs-${KERNEL_ARTIFACT_NAME}"
+                    </literallayout>
+                    The value of the
+                    <link linkend='var-KERNEL_ARTIFACT_NAME'><filename>KERNEL_ARTIFACT_NAME</filename></link>
+                    variable, which is set in the same file, has the following
+                    value:
+                    <literallayout class='monospaced'>
+     KERNEL_ARTIFACT_NAME ?= "${PKGE}-${PKGV}-${PKGR}-${MACHINE}${IMAGE_VERSION_SUFFIX}"
+                    </literallayout>
                 </para>
             </glossdef>
         </glossentry>
@@ -7378,6 +7503,45 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
             </glossdef>
         </glossentry>
 
+        <glossentry id='var-KERNEL_ARTIFACT_NAME'><glossterm>KERNEL_ARTIFACT_NAME</glossterm>
+            <info>
+                KERNEL_ARTIFACT_NAME[doc] = "Specifies the name of all of the build artifacts."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Specifies the name of all of the build artifacts.
+                    You can change the name of the artifacts by changing the
+                    <filename>KERNEL_ARTIFACT_NAME</filename> variable.
+                </para>
+
+                <para>
+                    The value of <filename>KERNEL_ARTIFACT_NAME</filename>,
+                    which is set in the
+                    <filename> meta/classes/kernel-artifact-names.bbclass</filename>
+                    file, has the following default value:
+                    <literallayout class='monospaced'>
+     KERNEL_ARTIFACT_NAME ?= "${PKGE}-${PKGV}-${PKGR}-${MACHINE}${IMAGE_VERSION_SUFFIX}"
+                    </literallayout>
+                </para>
+
+                <para>
+                    See the
+                    <link linkend='var-PKGE'><filename>PKGE</filename></link>,
+                    <link linkend='var-PKGV'><filename>PKGV</filename></link>,
+                    <link linkend='var-PKGR'><filename>PKGR</filename></link>,
+                    and
+                    <link linkend='var-MACHINE'><filename>MACHINE</filename></link>
+                    variables for additional information.
+                    <note>
+                        The <filename>IMAGE_VERSION_SUFFIX</filename> variable
+                        is set to
+                        <link linkend='var-DATETIME'><filename>DATETIME</filename></link>.
+                    </note>
+                </para>
+            </glossdef>
+        </glossentry>
+
         <glossentry id='var-KERNEL_CLASSES'><glossterm>KERNEL_CLASSES</glossterm>
             <info>
                 KERNEL_CLASSES[doc] = "A list of classes defining kernel image types that kernel class should inherit."
@@ -7422,6 +7586,61 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     or
                     <literallayout class='monospaced'>
      require recipes-kernel/linux/linux-yocto.inc
+                    </literallayout>
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-KERNEL_DTB_LINK_NAME'><glossterm>KERNEL_DTB_LINK_NAME</glossterm>
+            <info>
+                KERNEL_DTB_LINK_NAME[doc] = "The link name of the kernel device tree binary (DTB)."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    The link name of the kernel device tree binary (DTB).
+                    This variable is set in the
+                    <filename>meta/classes/kernel-artifact-names.bbclass</filename>
+                    file as follows:
+                    <literallayout class='monospaced'>
+     KERNEL_DTB_LINK_NAME ?= "${KERNEL_ARTIFACT_LINK_NAME}"
+                    </literallayout>
+                    The value of the <filename>KERNEL_ARTIFACT_LINK_NAME</filename>
+                    variable, which is set in the same file, has the following
+                    value:
+                    <literallayout class='monospaced'>
+     KERNEL_ARTIFACT_LINK_NAME ?= "${MACHINE}"
+                    </literallayout>
+                </para>
+
+                <para>
+                    See the
+                    <link linkend='var-MACHINE'><filename>MACHINE</filename></link>
+                    variable for additional information.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-KERNEL_DTB_NAME'><glossterm>KERNEL_DTB_NAME</glossterm>
+            <info>
+                KERNEL_DTB_NAME[doc] = "The base name of the kernel device tree binary (DTB)."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    The base name of the kernel device tree binary (DTB).
+                    This variable is set in the
+                    <filename>meta/classes/kernel-artifact-names.bbclass</filename>
+                    file as follows:
+                    <literallayout class='monospaced'>
+     KERNEL_DTB_NAME ?= "${KERNEL_ARTIFACT_NAME}"
+                    </literallayout>
+                    The value of the
+                    <link linkend='var-KERNEL_ARTIFACT_NAME'><filename>KERNEL_ARTIFACT_NAME</filename></link>
+                    variable, which is set in the same file, has the following
+                    value:
+                    <literallayout class='monospaced'>
+     KERNEL_ARTIFACT_NAME ?= "${PKGE}-${PKGV}-${PKGR}-${MACHINE}${IMAGE_VERSION_SUFFIX}"
                     </literallayout>
                 </para>
             </glossdef>
@@ -7484,38 +7703,93 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     <literallayout class='monospaced'>
      KERNEL_EXTRA_FEATURES ?= "features/netfilter/netfilter.scc features/taskstats/taskstats.scc"
      KERNEL_FEATURES_append = " ${KERNEL_EXTRA_FEATURES}"
-     KERNEL_FEATURES_append_qemuall=" cfg/virtio.scc"
-     KERNEL_FEATURES_append_qemux86=" cfg/sound.scc cfg/paravirt_kvm.scc"
-     KERNEL_FEATURES_append_qemux86-64=" cfg/sound.scc"
-                    </literallayout></para>
+     KERNEL_FEATURES_append_qemuall = " cfg/virtio.scc"
+     KERNEL_FEATURES_append_qemux86 = " cfg/sound.scc cfg/paravirt_kvm.scc"
+     KERNEL_FEATURES_append_qemux86-64 = " cfg/sound.scc"                    </literallayout></para>
             </glossdef>
         </glossentry>
 
-        <glossentry id='var-KERNEL_IMAGE_BASE_NAME'><glossterm>KERNEL_IMAGE_BASE_NAME</glossterm>
+        <glossentry id='var-KERNEL_FIT_LINK_NAME'><glossterm>KERNEL_FIT_LINK_NAME</glossterm>
             <info>
-                KERNEL_IMAGE_BASE_NAME[doc] = "The base name of the kernel image."
+                KERNEL_FIT_LINK_NAME[doc] = "The link name of the kernel flattened image tree (FIT) image."
             </info>
             <glossdef>
                 <para role="glossdeffirst">
 <!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
-                    The base name of the kernel image.
+                    The link name of the kernel flattened image tree (FIT) image.
                     This variable is set in the
-                    <link linkend='ref-classes-kernel'>kernel</link> class
-                    as follows:
+                    <filename>meta/classes/kernel-artifact-names.bbclass</filename>
+                    file as follows:
                     <literallayout class='monospaced'>
-     KERNEL_IMAGE_BASE_NAME ?= "${PKGE}-${PKGV}-${PKGR}-${MACHINE}-${DATETIME}"
+     KERNEL_FIT_LINK_NAME ?= "${KERNEL_ARTIFACT_LINK_NAME}"
+                    </literallayout>
+                    The value of the <filename>KERNEL_ARTIFACT_LINK_NAME</filename>
+                    variable, which is set in the same file, has the following
+                    value:
+                    <literallayout class='monospaced'>
+     KERNEL_ARTIFACT_LINK_NAME ?= "${MACHINE}"
                     </literallayout>
                 </para>
 
                 <para>
                     See the
-                    <link linkend='var-PKGE'><filename>PKGE</filename></link>,
-                    <link linkend='var-PKGV'><filename>PKGV</filename></link>,
-                    <link linkend='var-PKGR'><filename>PKGR</filename></link>,
-                    <link linkend='var-MACHINE'><filename>MACHINE</filename></link>,
-                    and
-                    <link linkend='var-DATETIME'><filename>DATETIME</filename></link>
-                    variables for additional information.
+                    <link linkend='var-MACHINE'><filename>MACHINE</filename></link>
+                    variable for additional information.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-KERNEL_FIT_NAME'><glossterm>KERNEL_FIT_NAME</glossterm>
+            <info>
+                KERNEL_FIT_NAME[doc] = "The base name of the kernel flattened image tree (FIT) image."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    The base name of the kernel flattened image tree (FIT) image.
+                    This variable is set in the
+                    <filename>meta/classes/kernel-artifact-names.bbclass</filename>
+                    file as follows:
+                    <literallayout class='monospaced'>
+     KERNEL_FIT_NAME ?= "${KERNEL_ARTIFACT_NAME}"
+                    </literallayout>
+                    The value of the
+                    <link linkend='var-KERNEL_ARTIFACT_NAME'><filename>KERNEL_ARTIFACT_NAME</filename></link>
+                    variable, which is set in the same file, has the following
+                    value:
+                    <literallayout class='monospaced'>
+     KERNEL_ARTIFACT_NAME ?= "${PKGE}-${PKGV}-${PKGR}-${MACHINE}${IMAGE_VERSION_SUFFIX}"
+                    </literallayout>
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-KERNEL_IMAGE_LINK_NAME'><glossterm>KERNEL_IMAGE_LINK_NAME</glossterm>
+            <info>
+                KERNEL_IMAGE_LINK_NAME[doc] = "The link name for the kernel image."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    The link name for the kernel image.
+                    This variable is set in the
+                    <filename>meta/classes/kernel-artifact-names.bbclass</filename>
+                    file as follows:
+                    <literallayout class='monospaced'>
+     KERNEL_IMAGE_LINK_NAME ?= "${KERNEL_ARTIFACT_LINK_NAME}"
+                    </literallayout>
+                    The value of the <filename>KERNEL_ARTIFACT_LINK_NAME</filename>
+                    variable, which is set in the same file, has the following
+                    value:
+                    <literallayout class='monospaced'>
+     KERNEL_ARTIFACT_LINK_NAME ?= "${MACHINE}"
+                    </literallayout>
+                </para>
+
+                <para>
+                    See the
+                    <link linkend='var-MACHINE'><filename>MACHINE</filename></link>
+                    variable for additional information.
                 </para>
             </glossdef>
         </glossentry>
@@ -7547,6 +7821,31 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                 <para>
                     By default, this variable is not set, which means the
                     size of the kernel image is not checked.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-KERNEL_IMAGE_NAME'><glossterm>KERNEL_IMAGE_NAME</glossterm>
+            <info>
+                KERNEL_IMAGE_NAME[doc] = "The base name of the kernel image."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    The base name of the kernel image.
+                    This variable is set in the
+                    <filename>meta/classes/kernel-artifact-names.bbclass</filename>
+                    file as follows:
+                    <literallayout class='monospaced'>
+     KERNEL_IMAGE_NAME ?= "${KERNEL_ARTIFACT_NAME}"
+                    </literallayout>
+                    The value of the
+                    <link linkend='var-KERNEL_ARTIFACT_NAME'><filename>KERNEL_ARTIFACT_NAME</filename></link>
+                    variable, which is set in the same file, has the following
+                    value:
+                    <literallayout class='monospaced'>
+     KERNEL_ARTIFACT_NAME ?= "${PKGE}-${PKGV}-${PKGR}-${MACHINE}${IMAGE_VERSION_SUFFIX}"
+                    </literallayout>
                 </para>
             </glossdef>
         </glossentry>
@@ -8964,35 +9263,6 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
             </glossdef>
         </glossentry>
 
-        <glossentry id='var-MODULE_IMAGE_BASE_NAME'><glossterm>MODULE_IMAGE_BASE_NAME</glossterm>
-            <info>
-                MODULE_IMAGE_BASE_NAME[doc] = "The base name of the kernel modules tarball."
-            </info>
-            <glossdef>
-                <para role="glossdeffirst">
-<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
-                    The base name of the kernel modules tarball.
-                    This variable is set in the
-                    <link linkend='ref-classes-kernel'>kernel</link> class
-                    as follows:
-                    <literallayout class='monospaced'>
-     MODULE_IMAGE_BASE_NAME ?= "modules-${PKGE}-${PKGV}-${PKGR}-${MACHINE}-${DATETIME}"
-                    </literallayout>
-                </para>
-
-                <para>
-                    See the
-                    <link linkend='var-PKGE'><filename>PKGE</filename></link>,
-                    <link linkend='var-PKGV'><filename>PKGV</filename></link>,
-                    <link linkend='var-PKGR'><filename>PKGR</filename></link>,
-                    <link linkend='var-MACHINE'><filename>MACHINE</filename></link>,
-                    and
-                    <link linkend='var-DATETIME'><filename>DATETIME</filename></link>
-                    variables for additional information.
-                </para>
-            </glossdef>
-        </glossentry>
-
         <glossentry id='var-MODULE_TARBALL_DEPLOY'><glossterm>MODULE_TARBALL_DEPLOY</glossterm>
             <info>
                 MODULE_TARBALL_DEPLOY[doc] = "Controls creation of the modules-*.tgz file. Set this variable to "0" to disable creation of this file, which contains all of the kernel modules resulting from a kernel build."
@@ -9005,6 +9275,61 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     Set this variable to "0" to disable creation of this
                     file, which contains all of the kernel modules resulting
                     from a kernel build.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-MODULE_TARBALL_LINK_NAME'><glossterm>MODULE_TARBALL_LINK_NAME</glossterm>
+            <info>
+                MODULE_TARBALL_LINK_NAME[doc] = "The link name of the kernel module tarball."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    The link name of the kernel module tarball.
+                    This variable is set in the
+                    <filename>meta/classes/kernel-artifact-names.bbclass</filename>
+                    file as follows:
+                    <literallayout class='monospaced'>
+     MODULE_TARBALL_LINK_NAME ?= "${KERNEL_ARTIFACT_LINK_NAME}"
+                    </literallayout>
+                    The value of the <filename>KERNEL_ARTIFACT_LINK_NAME</filename>
+                    variable, which is set in the same file, has the following
+                    value:
+                    <literallayout class='monospaced'>
+     KERNEL_ARTIFACT_LINK_NAME ?= "${MACHINE}"
+                    </literallayout>
+                </para>
+
+                <para>
+                    See the
+                    <link linkend='var-MACHINE'><filename>MACHINE</filename></link>
+                    variable for additional information.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-MODULE_TARBALL_NAME'><glossterm>MODULE_TARBALL_NAME</glossterm>
+            <info>
+                MODULE_TARBALL_NAME[doc] = "The base name of the kernel module tarball."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    The base name of the kernel module tarball.
+                    This variable is set in the
+                    <filename>meta/classes/kernel-artifact-names.bbclass</filename>
+                    file as follows:
+                    <literallayout class='monospaced'>
+     MODULE_TARBALL_NAME ?= "${KERNEL_ARTIFACT_NAME}"
+                    </literallayout>
+                    The value of the
+                    <link linkend='var-KERNEL_ARTIFACT_NAME'><filename>KERNEL_ARTIFACT_NAME</filename></link>
+                    variable, which is set in the same file, has the following
+                    value:
+                    <literallayout class='monospaced'>
+     KERNEL_ARTIFACT_NAME ?= "${PKGE}-${PKGV}-${PKGR}-${MACHINE}${IMAGE_VERSION_SUFFIX}"
+                    </literallayout>
                 </para>
             </glossdef>
         </glossentry>
@@ -9237,44 +9562,6 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                 </para>
             </glossdef>
         </glossentry>
-
-        <glossentry id='var-NOHDD'><glossterm>NOHDD</glossterm>
-            <info>
-                NOHDD[doc] = "Causes the OpenEmbedded build system to skip building the .hddimg image."
-            </info>
-            <glossdef>
-                <para role="glossdeffirst">
-<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
-                    Causes the OpenEmbedded build system to skip building the
-                    <filename>.hddimg</filename> image.
-                    The <filename>NOHDD</filename> variable is used with the
-                    <link linkend='ref-classes-image-live'><filename>image-live</filename></link>
-                    class.
-                    Set the variable to "1" to prevent the
-                    <filename>.hddimg</filename> image from being built.
-                </para>
-            </glossdef>
-        </glossentry>
-
-        <glossentry id='var-NOISO'><glossterm>NOISO</glossterm>
-            <info>
-                NOISO[doc] = "Causes the OpenEmbedded build system to skip building the ISO image."
-            </info>
-            <glossdef>
-                <para role="glossdeffirst">
-<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
-                    Causes the OpenEmbedded build system to skip building the
-                    ISO image.
-                    The <filename>NOISO</filename> variable is used with the
-                    <link linkend='ref-classes-image-live'><filename>image-live</filename></link>
-                    class.
-                    Set the variable to "1" to prevent the ISO image from
-                    being built.
-                    To enable building an ISO image, set the variable to "0".
-                </para>
-            </glossdef>
-        </glossentry>
-
     </glossdiv>
 
     <glossdiv id='var-glossary-o'><title>O</title>
@@ -9689,7 +9976,6 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                             <filename>/bin/.debug</filename>.
                             Source files are placed in
                             <filename>/usr/src/debug</filename>.
-                            This is the default behavior.
                             </para></listitem>
                         <listitem><para>
                             "debug-file-directory": Debug symbol files are
@@ -9713,6 +9999,7 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                             ".debug" previously described with the exception
                             that all source files are placed in a separate
                             <filename>*-src</filename> pkg.
+                            This is the default behavior.
                             </para></listitem>
                     </itemizedlist>
                 </para>
@@ -10093,9 +10380,9 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     Here is the basic block structure:
                     <literallayout class='monospaced'>
      PACKAGECONFIG ??= "f1 f2 f3 ..."
-     PACKAGECONFIG[f1] = "--with-f1,--without-f1,build-deps-f1,rt-deps-f1"
-     PACKAGECONFIG[f2] = "--with-f2,--without-f2,build-deps-f2,rt-deps-f2"
-     PACKAGECONFIG[f3] = "--with-f3,--without-f3,build-deps-f3,rt-deps-f3"
+     PACKAGECONFIG[f1] = "--with-f1,--without-f1,build-deps-f1,rt-deps-f1,rt-recs-f1"
+     PACKAGECONFIG[f2] = "--with-f2,--without-f2,build-deps-f2,rt-deps-f2,rt-recs-f2"
+     PACKAGECONFIG[f3] = "--with-f3,--without-f3,build-deps-f3,rt-deps-f3,rt-recs-f3"
                     </literallayout>
                 </para>
 
@@ -10104,7 +10391,7 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     variable itself specifies a space-separated list of the
                     features to enable.
                     Following the features, you can determine the behavior of
-                    each feature by providing up to four order-dependent
+                    each feature by providing up to five order-dependent
                     arguments, which are separated by commas.
                     You can omit any argument you like but must retain the
                     separating commas.
@@ -10128,6 +10415,10 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                             </para></listitem>
                         <listitem><para>Additional runtime dependencies
                             (<link linkend='var-RDEPENDS'><filename>RDEPENDS</filename></link>)
+                            that should be added if the feature is enabled.
+                            </para></listitem>
+                        <listitem><para>Additional runtime recommendations
+                            (<link linkend='var-RRECOMMENDS'><filename>RRECOMMENDS</filename></link>)
                             that should be added if the feature is enabled.
                             </para></listitem>
                     </orderedlist>
@@ -10178,7 +10469,7 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                             <filename>PACKAGECONFIG</filename>.
                             You can either completely override the variable:
                             <literallayout class='monospaced'>
-     PACKAGECONFIG="f4 f5"
+      PACKAGECONFIG = "f4 f5"
                             </literallayout>
                             Or, you can just append the variable:
                             <literallayout class='monospaced'>
@@ -10192,7 +10483,7 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                             As with append files previously described,
                             you can either completely override the variable:
                             <literallayout class='monospaced'>
-     PACKAGECONFIG_pn-<replaceable>recipename</replaceable>="f4 f5"
+     PACKAGECONFIG_pn-<replaceable>recipename</replaceable> = "f4 f5"
                             </literallayout>
                             Or, you can just amend the variable:
                             <literallayout class='monospaced'>
@@ -12754,7 +13045,7 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     <filename>/meta-poky/conf/distro/poky.conf</filename>)
                     defines the <filename>SDK_VERSION</filename> as follows:
                     <literallayout class='monospaced'>
-     SDK_VERSION := "${@'${DISTRO_VERSION}'.replace('snapshot-${DATE}','snapshot')}"
+     SDK_VERSION = "${@d.getVar('DISTRO_VERSION').replace('snapshot-${DATE}','snapshot')}"
                     </literallayout>
                 </para>
 
@@ -15195,41 +15486,6 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
             </glossdef>
         </glossentry>
 
-        <glossentry id='var-TEST_IMAGE'><glossterm>TEST_IMAGE</glossterm>
-            <info>
-                TEST_IMAGE[doc] = "Enables test booting of virtual machine images under the QEMU emulator after any root filesystems are created and runs tests against those images."
-            </info>
-            <glossdef>
-                <para role="glossdeffirst">
-<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
-                    Automatically runs the series of automated tests for
-                    images when an image is successfully built.
-                </para>
-
-                <para>
-                    These tests are written in Python making use of the
-                    <filename>unittest</filename> module, and the majority of
-                    them run commands on the target system over
-                    <filename>ssh</filename>.
-                    You can set this variable to "1" in your
-                    <filename>local.conf</filename> file in the
-                    <link linkend='build-directory'>Build Directory</link>
-                    to have the OpenEmbedded build system automatically run
-                    these tests after an image successfully builds:
-                    <literallayout class='monospaced'>
-     TEST_IMAGE = "1"
-                    </literallayout>
-                    For more information on enabling, running, and writing
-                    these tests, see the
-                    "<ulink url='&YOCTO_DOCS_DEV_URL;#performing-automated-runtime-testing'>Performing Automated Runtime Testing</ulink>"
-                    section in the Yocto Project Development Tasks Manual and
-                    the
-                    "<link linkend='ref-classes-testimage*'><filename>testimage*.bbclass</filename></link>"
-                    section.
-                </para>
-            </glossdef>
-        </glossentry>
-
         <glossentry id='var-TEST_LOG_DIR'><glossterm>TEST_LOG_DIR</glossterm>
             <info>
                 TEST_LOG_DIR[doc] = "Holds the SSH log and the boot log for QEMU machines. The TEST_LOG_DIR variable defaults to "${WORKDIR}/testimage"."
@@ -15526,6 +15782,47 @@ recipes-graphics/xorg-font/font-alias_1.0.3.bb:PR = "${INC_PR}.3"
                     For more information on testing images, see the
                     "<ulink url='&YOCTO_DOCS_DEV_URL;#performing-automated-runtime-testing'>Performing Automated Runtime Testing</ulink>"
                     section in the Yocto Project Development Tasks Manual.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-TESTIMAGE_AUTO'><glossterm>TESTIMAGE_AUTO</glossterm>
+            <info>
+                TESTIMAGE_AUTO[doc] = "Enables automatic testing of an image once it is built."
+            </info>
+            <glossdef>
+                <para role="glossdeffirst">
+<!--                <para role="glossdeffirst"><imagedata fileref="figures/define-generic.png" /> -->
+                    Automatically runs the series of automated tests for
+                    images when an image is successfully built.
+                    Setting <filename>TESTIMAGE_AUTO</filename> to "1"
+                    causes any image that successfully builds to automatically
+                    boot under QEMU.
+                    Using the variable also adds in dependencies so that any
+                    SDK for which testing is requested is automatically built
+                    first.
+                </para>
+
+                <para>
+                    These tests are written in Python making use of the
+                    <filename>unittest</filename> module, and the majority of
+                    them run commands on the target system over
+                    <filename>ssh</filename>.
+                    You can set this variable to "1" in your
+                    <filename>local.conf</filename> file in the
+                    <link linkend='build-directory'>Build Directory</link>
+                    to have the OpenEmbedded build system automatically run
+                    these tests after an image successfully builds:
+                    <literallayout class='monospaced'>
+     TESTIMAGE_AUTO = "1"
+                    </literallayout>
+                    For more information on enabling, running, and writing
+                    these tests, see the
+                    "<ulink url='&YOCTO_DOCS_DEV_URL;#performing-automated-runtime-testing'>Performing Automated Runtime Testing</ulink>"
+                    section in the Yocto Project Development Tasks Manual and
+                    the
+                    "<link linkend='ref-classes-testimage*'><filename>testimage*.bbclass</filename></link>"
+                    section.
                 </para>
             </glossdef>
         </glossentry>

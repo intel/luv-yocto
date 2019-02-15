@@ -256,7 +256,7 @@ class URI(object):
 
         # Identify if the URI is relative or not
         if urlp.scheme in self._relative_schemes and \
-           re.compile("^\w+:(?!//)").match(uri):
+           re.compile(r"^\w+:(?!//)").match(uri):
             self.relative = True
 
         if not self.relative:
@@ -1027,7 +1027,7 @@ def try_mirror_url(fetch, origud, ud, ld, check = False):
         raise
 
     except IOError as e:
-        if e.errno in [os.errno.ESTALE]:
+        if e.errno in [errno.ESTALE]:
             logger.warning("Stale Error Observed %s." % ud.url)
             return False
         raise
@@ -1469,7 +1469,7 @@ class FetchMethod(object):
                 else:
                     cmd = 'rpm2cpio.sh %s | cpio -id' % (file)
             elif file.endswith('.deb') or file.endswith('.ipk'):
-                output = subprocess.check_output('ar -t %s' % file, preexec_fn=subprocess_setup, shell=True)
+                output = subprocess.check_output(['ar', '-t', file], preexec_fn=subprocess_setup)
                 datafile = None
                 if output:
                     for line in output.decode().splitlines():
@@ -1716,7 +1716,7 @@ class Fetch(object):
                 update_stamp(ud, self.d)
 
             except IOError as e:
-                if e.errno in [os.errno.ESTALE]:
+                if e.errno in [errno.ESTALE]:
                     logger.error("Stale Error Observed %s." % u)
                     raise ChecksumError("Stale Error Detected")
 

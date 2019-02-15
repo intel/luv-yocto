@@ -39,9 +39,7 @@ python __anonymous () {
                 break
 
     # try to fix disable charsets/locales/locale-code compile fail
-    if bb.utils.contains('DISTRO_FEATURES', 'libc-charsets', True, False, d) and \
-            bb.utils.contains('DISTRO_FEATURES', 'libc-locales', True, False, d) and \
-            bb.utils.contains('DISTRO_FEATURES', 'libc-locale-code', True, False, d):
+    if bb.utils.contains('DISTRO_FEATURES', 'libc-charsets libc-locales libc-locale-code', True, False, d):
         d.setVar('PACKAGE_NO_GCONV', '0')
     else:
         d.setVar('PACKAGE_NO_GCONV', '1')
@@ -49,13 +47,7 @@ python __anonymous () {
 
 OVERRIDES_append = ":${TARGET_ARCH}-${TARGET_OS}"
 
-locale_base_postinst() {
-#!/bin/sh
-
-if [ "x$D" != "x" ]; then
-	exit 1
-fi
-
+locale_base_postinst_ontarget() {
 localedef --inputfile=${datadir}/i18n/locales/%s --charmap=%s %s
 }
 
@@ -121,8 +113,8 @@ python package_do_split_gconvs () {
     def calc_gconv_deps(fn, pkg, file_regex, output_pattern, group):
         deps = []
         f = open(fn, "rb")
-        c_re = re.compile('^copy "(.*)"')
-        i_re = re.compile('^include "(\w+)".*')
+        c_re = re.compile(r'^copy "(.*)"')
+        i_re = re.compile(r'^include "(\w+)".*')
         for l in f.readlines():
             l = l.decode("latin-1")
             m = c_re.match(l) or i_re.match(l)
@@ -136,15 +128,15 @@ python package_do_split_gconvs () {
         if bpn != 'glibc':
             d.setVar('RPROVIDES_%s' % pkg, pkg.replace(bpn, 'glibc'))
 
-    do_split_packages(d, gconv_libdir, file_regex='^(.*)\.so$', output_pattern=bpn+'-gconv-%s', \
+    do_split_packages(d, gconv_libdir, file_regex=r'^(.*)\.so$', output_pattern=bpn+'-gconv-%s', \
         description='gconv module for character set %s', hook=calc_gconv_deps, \
         extra_depends=bpn+'-gconv')
 
     def calc_charmap_deps(fn, pkg, file_regex, output_pattern, group):
         deps = []
         f = open(fn, "rb")
-        c_re = re.compile('^copy "(.*)"')
-        i_re = re.compile('^include "(\w+)".*')
+        c_re = re.compile(r'^copy "(.*)"')
+        i_re = re.compile(r'^include "(\w+)".*')
         for l in f.readlines():
             l = l.decode("latin-1")
             m = c_re.match(l) or i_re.match(l)
@@ -158,14 +150,14 @@ python package_do_split_gconvs () {
         if bpn != 'glibc':
             d.setVar('RPROVIDES_%s' % pkg, pkg.replace(bpn, 'glibc'))
 
-    do_split_packages(d, charmap_dir, file_regex='^(.*)\.gz$', output_pattern=bpn+'-charmap-%s', \
+    do_split_packages(d, charmap_dir, file_regex=r'^(.*)\.gz$', output_pattern=bpn+'-charmap-%s', \
         description='character map for %s encoding', hook=calc_charmap_deps, extra_depends='')
 
     def calc_locale_deps(fn, pkg, file_regex, output_pattern, group):
         deps = []
         f = open(fn, "rb")
-        c_re = re.compile('^copy "(.*)"')
-        i_re = re.compile('^include "(\w+)".*')
+        c_re = re.compile(r'^copy "(.*)"')
+        i_re = re.compile(r'^include "(\w+)".*')
         for l in f.readlines():
             l = l.decode("latin-1")
             m = c_re.match(l) or i_re.match(l)
@@ -179,13 +171,13 @@ python package_do_split_gconvs () {
         if bpn != 'glibc':
             d.setVar('RPROVIDES_%s' % pkg, pkg.replace(bpn, 'glibc'))
 
-    do_split_packages(d, locales_dir, file_regex='(.*)', output_pattern=bpn+'-localedata-%s', \
+    do_split_packages(d, locales_dir, file_regex=r'(.*)', output_pattern=bpn+'-localedata-%s', \
         description='locale definition for %s', hook=calc_locale_deps, extra_depends='')
     d.setVar('PACKAGES', d.getVar('PACKAGES', False) + ' ' + d.getVar('MLPREFIX', False) + bpn + '-gconv')
 
     use_bin = d.getVar("GLIBC_INTERNAL_USE_BINARY_LOCALE")
 
-    dot_re = re.compile("(.*)\.(.*)")
+    dot_re = re.compile(r"(.*)\.(.*)")
 
     # Read in supported locales and associated encodings
     supported = {}
@@ -215,7 +207,7 @@ python package_do_split_gconvs () {
     def output_locale_source(name, pkgname, locale, encoding):
         d.setVar('RDEPENDS_%s' % pkgname, '%slocaledef %s-localedata-%s %s-charmap-%s' % \
         (mlprefix, mlprefix+bpn, legitimize_package_name(locale), mlprefix+bpn, legitimize_package_name(encoding)))
-        d.setVar('pkg_postinst_%s' % pkgname, d.getVar('locale_base_postinst') \
+        d.setVar('pkg_postinst_ontarget_%s' % pkgname, d.getVar('locale_base_postinst_ontarget') \
         % (locale, encoding, locale))
         d.setVar('pkg_postrm_%s' % pkgname, d.getVar('locale_base_postrm') % \
         (locale, encoding, locale))
@@ -242,6 +234,8 @@ python package_do_split_gconvs () {
         if use_cross_localedef == "1":
             target_arch = d.getVar('TARGET_ARCH')
             locale_arch_options = { \
+                "arc":     " --uint32-align=4 --little-endian ", \
+                "arceb":   " --uint32-align=4 --big-endian ",    \
                 "arm":     " --uint32-align=4 --little-endian ", \
                 "armeb":   " --uint32-align=4 --big-endian ",    \
                 "aarch64": " --uint32-align=4 --little-endian ",    \
@@ -296,7 +290,7 @@ python package_do_split_gconvs () {
         d.setVar('ALLOW_EMPTY_%s' % pkgname, '1')
         d.setVar('PACKAGES', '%s %s' % (pkgname, d.getVar('PACKAGES')))
         rprovides = ' %svirtual-locale-%s' % (mlprefix, legitimize_package_name(name))
-        m = re.match("(.*)_(.*)", name)
+        m = re.match(r"(.*)_(.*)", name)
         if m:
             rprovides += ' %svirtual-locale-%s' % (mlprefix, m.group(1))
         d.setVar('RPROVIDES_%s' % pkgname, rprovides)
@@ -362,12 +356,12 @@ python package_do_split_gconvs () {
     if use_bin in ('compile', 'precompiled'):
         lcsplit = d.getVar('GLIBC_SPLIT_LC_PACKAGES')
         if lcsplit and int(lcsplit):
-            do_split_packages(d, binary_locales_dir, file_regex='^(.*/LC_\w+)', \
+            do_split_packages(d, binary_locales_dir, file_regex=r'^(.*/LC_\w+)', \
                 output_pattern=bpn+'-binary-localedata-%s', \
                 description='binary locale definition for %s', recursive=True,
                 hook=metapkg_hook, extra_depends='', allow_dirs=True, match_path=True)
         else:
-            do_split_packages(d, binary_locales_dir, file_regex='(.*)', \
+            do_split_packages(d, binary_locales_dir, file_regex=r'(.*)', \
                 output_pattern=bpn+'-binary-localedata-%s', \
                 description='binary locale definition for %s', extra_depends='', allow_dirs=True)
     else:

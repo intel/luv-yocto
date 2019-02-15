@@ -2,10 +2,6 @@ require glibc-common.inc
 require glibc-ld.inc
 require glibc-testing.inc
 
-STAGINGCC = "gcc-cross-initial-${TARGET_ARCH}"
-STAGINGCC_class-nativesdk = "gcc-crosssdk-initial-${SDK_SYS}"
-PATH_prepend = "${STAGING_BINDIR_TOOLCHAIN}.${STAGINGCC}:"
-
 python () {
     opt_effective = "-O"
     for opt in d.getVar('SELECTED_OPTIMIZATION').split():
@@ -15,23 +11,9 @@ python () {
         bb.fatal("%s can't be built with %s, try -O1 instead" % (d.getVar('PN'), opt_effective))
 }
 
-# siteconfig.bbclass runs configure which needs a working compiler
-# For the compiler to work we need a working libc yet libc isn't
-# in the sysroots directory at this point. This means the libc.so
-# linker script won't work as the --sysroot setting isn't correct.
-# Here we create a hacked up libc linker script and pass in the right
-# flags to let configure work. Ugly.
-EXTRASITECONFIG = "CFLAGS='${CFLAGS} -Wl,-L${WORKDIR}/site_config_libc -L${WORKDIR}/site_config_libc -L${SYSROOT_DESTDIR}${libdir} -L${SYSROOT_DESTDIR}${base_libdir} -Wl,-L${SYSROOT_DESTDIR}${libdir} -Wl,-L${SYSROOT_DESTDIR}${base_libdir}'"
-siteconfig_do_siteconfig_gencache_prepend = " \
-	mkdir -p ${WORKDIR}/site_config_libc; \
-	cp ${SYSROOT_DESTDIR}${libdir}/libc.so ${WORKDIR}/site_config_libc; \
-	sed -i -e 's# ${base_libdir}# ${SYSROOT_DESTDIR}${base_libdir}#g' -e 's# ${libdir}# ${SYSROOT_DESTDIR}${libdir}#g' ${WORKDIR}/site_config_libc/libc.so; \
-"
+DEPENDS = "virtual/${TARGET_PREFIX}gcc libgcc-initial linux-libc-headers"
 
-# nptl needs unwind support in gcc, which can't be built without glibc.
-DEPENDS = "virtual/${TARGET_PREFIX}gcc-initial libgcc-initial linux-libc-headers virtual/${TARGET_PREFIX}libc-initial"
-
-PROVIDES = "virtual/libc virtual/${TARGET_PREFIX}libc-for-gcc"
+PROVIDES = "virtual/libc"
 PROVIDES += "virtual/libintl virtual/libiconv"
 inherit autotools texinfo distro_features_check systemd
 
@@ -46,6 +28,9 @@ CACHED_CONFIGUREVARS += " \
   libc_cv_ssp_all=no \
   libc_cv_ssp=no \
 "
+
+# ifunc doesn't appear to work on mips, casuses libbfd assertion failures
+CACHED_CONFIGUREVARS_append_mipsarch = " libc_cv_ld_gnu_indirect_function=no"
 
 GLIBC_EXTRA_OECONF ?= ""
 GLIBC_EXTRA_OECONF_class-nativesdk = ""

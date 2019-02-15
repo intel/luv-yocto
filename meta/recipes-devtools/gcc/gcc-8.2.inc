@@ -70,6 +70,8 @@ SRC_URI = "\
            file://0039-Fix-for-testsuite-failure.patch \
            file://0040-Re-introduce-spe-commandline-options.patch \
            file://0041-ARC-fix-spec-gen.patch \
+           file://0042-powerpc-powerpc64-Add-support-for-musl-ldso.patch \
+           file://0043-riscv-Disable-multilib-for-OE.patch \
            ${BACKPORTS} \
 "
 BACKPORTS = "\
@@ -104,20 +106,6 @@ EXTRA_OECONF_BASE = "\
     --enable-checking=release \
     --enable-cheaders=c_global \
     --without-isl \
-"
-
-EXTRA_OECONF_INITIAL = "\
-    --disable-libmudflap \
-    --disable-libgomp \
-    --disable-libitm \
-    --disable-libquadmath \
-    --with-system-zlib \
-    --disable-lto \
-    --disable-plugin \
-    --enable-linker-build-id \
-    --enable-decimal-float=no \
-    --without-isl \
-    --disable-libssp \
 "
 
 EXTRA_OECONF_PATHS = "\

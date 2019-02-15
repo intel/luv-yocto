@@ -1,11 +1,13 @@
 inherit cross
 
 CLASSOVERRIDE = "class-crosssdk"
+NATIVESDKLIBC ?= "libc-glibc"
+LIBCOVERRIDE = ":${NATIVESDKLIBC}"
 MACHINEOVERRIDES = ""
 PACKAGE_ARCH = "${SDK_ARCH}"
 python () {
-	# set TUNE_PKGARCH to SDK_ARCH
-	d.setVar('TUNE_PKGARCH', d.getVar('SDK_ARCH'))
+    # set TUNE_PKGARCH to SDK_ARCH
+    d.setVar('TUNE_PKGARCH', d.getVar('SDK_ARCH'))
 }
 
 STAGING_BINDIR_TOOLCHAIN = "${STAGING_DIR_NATIVE}${bindir_native}/${TARGET_ARCH}${TARGET_VENDOR}-${TARGET_OS}"

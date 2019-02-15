@@ -75,7 +75,7 @@ def legitimize_package_name(s):
             return ('\\u%s' % cp).encode('latin-1').decode('unicode_escape')
 
     # Handle unicode codepoints encoded as <U0123>, as in glibc locale files.
-    s = re.sub('<U([0-9A-Fa-f]{1,4})>', fixutf, s)
+    s = re.sub(r'<U([0-9A-Fa-f]{1,4})>', fixutf, s)
 
     # Remaining package name validity fixes
     return s.lower().replace('_', '-').replace('@', '+').replace(',', '+').replace('/', '-')
@@ -368,7 +368,8 @@ def append_source_info(file, sourcefile, d, fatal=True):
     # is still assuming that.
     debuglistoutput = '\0'.join(debugsources) + '\0'
     lf = bb.utils.lockfile(sourcefile + ".lock")
-    open(sourcefile, 'a').write(debuglistoutput)
+    with open(sourcefile, 'a') as sf:
+        sf.write(debuglistoutput)
     bb.utils.unlockfile(lf)
 
 
@@ -470,7 +471,8 @@ def copydebugsources(debugsrcdir, d):
 
         # cpio seems to have a bug with -lL together and symbolic links are just copied, not dereferenced.
         # Work around this by manually finding and copying any symbolic links that made it through.
-        cmd = "find %s%s -type l -print0 -delete | sed s#%s%s/##g | (cd '%s' ; cpio -pd0mL --no-preserve-owner '%s%s' 2>/dev/null)" % (dvar, debugsrcdir, dvar, debugsrcdir, workparentdir, dvar, debugsrcdir)
+        cmd = "find %s%s -type l -print0 -delete | sed s#%s%s/##g | (cd '%s' ; cpio -pd0mL --no-preserve-owner '%s%s')" % \
+                (dvar, debugsrcdir, dvar, debugsrcdir, workparentdir, dvar, debugsrcdir)
         subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
 
         # The copy by cpio may have resulted in some empty directories!  Remove these
@@ -1437,7 +1439,7 @@ fi
             if fstat.st_ino not in seen:
                 seen.add(fstat.st_ino)
                 total_size += fstat.st_size
-        d.setVar('FILES_INFO', json.dumps(files))
+        d.setVar('FILES_INFO', json.dumps(files, sort_keys=True))
 
         subdata_file = pkgdatadir + "/runtime/%s" % pkg
         sf = open(subdata_file, 'w')
@@ -1560,12 +1562,12 @@ python package_do_filedeps() {
         if pkg not in requires_files:
             requires_files[pkg] = []
 
-        for file in provides:
+        for file in sorted(provides):
             provides_files[pkg].append(file)
             key = "FILERPROVIDES_" + file + "_" + pkg
             d.appendVar(key, " " + " ".join(provides[file]))
 
-        for file in requires:
+        for file in sorted(requires):
             requires_files[pkg].append(file)
             key = "FILERDEPENDS_" + file + "_" + pkg
             d.appendVar(key, " " + " ".join(requires[file]))
@@ -1588,8 +1590,8 @@ python package_do_shlibs() {
         bb.note("not generating shlibs")
         return
 
-    lib_re = re.compile("^.*\.so")
-    libdir_re = re.compile(".*/%s$" % d.getVar('baselib'))
+    lib_re = re.compile(r"^.*\.so")
+    libdir_re = re.compile(r".*/%s$" % d.getVar('baselib'))
 
     packages = d.getVar('PACKAGES')
 
@@ -1630,17 +1632,17 @@ python package_do_shlibs() {
         fd.close()
         rpath = tuple()
         for l in lines:
-            m = re.match("\s+RPATH\s+([^\s]*)", l)
+            m = re.match(r"\s+RPATH\s+([^\s]*)", l)
             if m:
                 rpaths = m.group(1).replace("$ORIGIN", ldir).split(":")
                 rpath = tuple(map(os.path.normpath, rpaths))
         for l in lines:
-            m = re.match("\s+NEEDED\s+([^\s]*)", l)
+            m = re.match(r"\s+NEEDED\s+([^\s]*)", l)
             if m:
                 dep = m.group(1)
                 if dep not in needed:
                     needed.add((dep, file, rpath))
-            m = re.match("\s+SONAME\s+([^\s]*)", l)
+            m = re.match(r"\s+SONAME\s+([^\s]*)", l)
             if m:
                 this_soname = m.group(1)
                 prov = (this_soname, ldir, pkgver)
@@ -1720,7 +1722,7 @@ python package_do_shlibs() {
             out, err = p.communicate()
             # process the output, grabbing all .dll names
             if p.returncode == 0:
-                for m in re.finditer("DLL Name: (.*?\.dll)$", out.decode(), re.MULTILINE | re.IGNORECASE):
+                for m in re.finditer(r"DLL Name: (.*?\.dll)$", out.decode(), re.MULTILINE | re.IGNORECASE):
                     dllname = m.group(1)
                     if dllname:
                         needed[pkg].add((dllname, file, tuple()))
@@ -1866,7 +1868,7 @@ python package_do_shlibs() {
             os.remove(deps_file)
         if len(deps):
             fd = open(deps_file, 'w')
-            for dep in deps:
+            for dep in sorted(deps):
                 fd.write(dep + '\n')
             fd.close()
 }
@@ -1881,9 +1883,9 @@ python package_do_pkgconfig () {
     shlibs_dirs = d.getVar('SHLIBSDIRS').split()
     shlibswork_dir = d.getVar('SHLIBSWORKDIR')
 
-    pc_re = re.compile('(.*)\.pc$')
-    var_re = re.compile('(.*)=(.*)')
-    field_re = re.compile('(.*): (.*)')
+    pc_re = re.compile(r'(.*)\.pc$')
+    var_re = re.compile(r'(.*)=(.*)')
+    field_re = re.compile(r'(.*): (.*)')
 
     pkgconfig_provided = {}
     pkgconfig_needed = {}
@@ -1931,7 +1933,7 @@ python package_do_pkgconfig () {
         if not os.path.exists(dir):
             continue
         for file in os.listdir(dir):
-            m = re.match('^(.*)\.pclist$', file)
+            m = re.match(r'^(.*)\.pclist$', file)
             if m:
                 pkg = m.group(1)
                 fd = open(os.path.join(dir, file))
@@ -1987,7 +1989,7 @@ python read_shlibdeps () {
     packages = d.getVar('PACKAGES').split()
     for pkg in packages:
         rdepends = bb.utils.explode_dep_versions2(d.getVar('RDEPENDS_' + pkg) or "")
-        for dep in pkglibdeps[pkg]:
+        for dep in sorted(pkglibdeps[pkg]):
             # Add the dep if it's not already there, or if no comparison is set
             if dep not in rdepends:
                 rdepends[dep] = []
@@ -2020,7 +2022,7 @@ python package_depchains() {
         #bb.note('depends for %s is %s' % (base, depends))
         rreclist = bb.utils.explode_dep_versions2(d.getVar('RRECOMMENDS_' + pkg) or "")
 
-        for depend in depends:
+        for depend in sorted(depends):
             if depend.find('-native') != -1 or depend.find('-cross') != -1 or depend.startswith('virtual/'):
                 #bb.note("Skipping %s" % depend)
                 continue
@@ -2041,7 +2043,7 @@ python package_depchains() {
         #bb.note('rdepends for %s is %s' % (base, rdepends))
         rreclist = bb.utils.explode_dep_versions2(d.getVar('RRECOMMENDS_' + pkg) or "")
 
-        for depend in rdepends:
+        for depend in sorted(rdepends):
             if depend.find('virtual-locale-') != -1:
                 #bb.note("Skipping %s" % depend)
                 continue
@@ -2121,7 +2123,7 @@ python package_depchains() {
 
 # Since bitbake can't determine which variables are accessed during package
 # iteration, we need to list them here:
-PACKAGEVARS = "FILES RDEPENDS RRECOMMENDS SUMMARY DESCRIPTION RSUGGESTS RPROVIDES RCONFLICTS PKG ALLOW_EMPTY pkg_postinst pkg_postrm INITSCRIPT_NAME INITSCRIPT_PARAMS DEBIAN_NOAUTONAME ALTERNATIVE PKGE PKGV PKGR USERADD_PARAM GROUPADD_PARAM CONFFILES SYSTEMD_SERVICE LICENSE SECTION pkg_preinst pkg_prerm RREPLACES GROUPMEMS_PARAM SYSTEMD_AUTO_ENABLE SKIP_FILEDEPS PRIVATE_LIBS"
+PACKAGEVARS = "FILES RDEPENDS RRECOMMENDS SUMMARY DESCRIPTION RSUGGESTS RPROVIDES RCONFLICTS PKG ALLOW_EMPTY pkg_postinst pkg_postrm pkg_postinst_ontarget INITSCRIPT_NAME INITSCRIPT_PARAMS DEBIAN_NOAUTONAME ALTERNATIVE PKGE PKGV PKGR USERADD_PARAM GROUPADD_PARAM CONFFILES SYSTEMD_SERVICE LICENSE SECTION pkg_preinst pkg_prerm RREPLACES GROUPMEMS_PARAM SYSTEMD_AUTO_ENABLE SKIP_FILEDEPS PRIVATE_LIBS"
 
 def gen_packagevar(d):
     ret = []

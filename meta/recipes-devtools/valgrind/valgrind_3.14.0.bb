@@ -36,6 +36,8 @@ SRC_URI = "http://www.valgrind.org/downloads/valgrind-${PV}.tar.bz2 \
            file://0001-fix-opcode-not-supported-on-mips32-linux.patch \
            file://0001-Guard-against-__GLIBC_PREREQ-for-musl-libc.patch \
            file://0001-Make-local-functions-static-to-avoid-assembler-error.patch \
+           file://0001-tests-amd64-Do-not-clobber-rsp-register.patch \
+           file://0001-Fix-dependencies-between-libcoregrind-.a-and-m_main..patch \
            "
 SRC_URI[md5sum] = "74175426afa280184b62591b58c671b3"
 SRC_URI[sha256sum] = "037c11bfefd477cc6e9ebe8f193bb237fe397f7ce791b4a4ce3fa1c6a520baa5"
@@ -63,7 +65,6 @@ EXTRA_OECONF += "${@['--enable-only32bit','--enable-only64bit'][d.getVar('SITEIN
 
 # valgrind checks host_cpu "armv7*)", so we need to over-ride the autotools.bbclass default --host option
 EXTRA_OECONF_append_arm = " --host=armv7${HOST_VENDOR}-${HOST_OS}"
-TARGET_CC_ARCH_remove_arm = "${@get_mcpu(d)}"
 
 EXTRA_OEMAKE = "-w"
 
@@ -74,14 +75,6 @@ CACHED_CONFIGUREVARS += "ac_cv_path_PERL='/usr/bin/env perl'"
 # (via CFLAGS) means we interfere with that. Only pass DEBUG_FLAGS to it
 # which fixes build path issue in DWARF.
 SELECTED_OPTIMIZATION = "${DEBUG_FLAGS}"
-
-def get_mcpu(d):
-    for arg in (d.getVar('TUNE_CCARGS') or '').split():
-        if arg.startswith('-mcpu='):
-            return arg
-        else:
-            continue
-    return ""
 
 do_configure_prepend () {
     rm -rf ${S}/config.h
@@ -94,7 +87,18 @@ do_install_append () {
     oe_multilib_header valgrind/config.h
 }
 
-TUNE = "${@strip_mcpu(d)}"
+VALGRINDARCH ?= "${TARGET_ARCH}"
+VALGRINDARCH_aarch64 = "arm64"
+VALGRINDARCH_x86-64 = "amd64"
+VALGRINDARCH_x86 = "x86"
+VALGRINDARCH_mips = "mips32"
+VALGRINDARCH_mipsel = "mips32"
+VALGRINDARCH_mips64el = "mips64"
+VALGRINDARCH_powerpc = "ppc"
+VALGRINDARCH_powerpc64 = "ppc64"
+VALGRINDARCH_powerpc64el = "ppc64le"
+
+INHIBIT_PACKAGE_STRIP_FILES = "${PKGD}${libdir}/valgrind/vgpreload_memcheck-${VALGRINDARCH}-linux.so"
 
 RDEPENDS_${PN} += "perl"
 

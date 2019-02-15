@@ -199,7 +199,7 @@ class Git(FetchMethod):
             depth_default = 1
         ud.shallow_depths = collections.defaultdict(lambda: depth_default)
 
-        revs_default = d.getVar("BB_GIT_SHALLOW_REVS", True)
+        revs_default = d.getVar("BB_GIT_SHALLOW_REVS")
         ud.shallow_revs = []
         ud.branches = {}
         for pos, name in enumerate(ud.names):
@@ -488,12 +488,15 @@ class Git(FetchMethod):
                 source_error.append("clone directory not available or not up to date: " + ud.clonedir)
 
         if not source_found:
-            if ud.shallow and os.path.exists(ud.fullshallow):
-                bb.utils.mkdirhier(destdir)
-                runfetchcmd("tar -xzf %s" % ud.fullshallow, d, workdir=destdir)
-                source_found = True
+            if ud.shallow:
+                if os.path.exists(ud.fullshallow):
+                    bb.utils.mkdirhier(destdir)
+                    runfetchcmd("tar -xzf %s" % ud.fullshallow, d, workdir=destdir)
+                    source_found = True
+                else:
+                    source_error.append("shallow clone not available: " + ud.fullshallow)
             else:
-                source_error.append("shallow clone not enabled or not available: " + ud.fullshallow)
+                source_error.append("shallow clone not enabled")
 
         if not source_found:
             raise bb.fetch2.UnpackError("No up to date source found: " + "; ".join(source_error), ud.url)
@@ -612,7 +615,7 @@ class Git(FetchMethod):
         """
         pupver = ('', '')
 
-        tagregex = re.compile(d.getVar('UPSTREAM_CHECK_GITTAGREGEX') or "(?P<pver>([0-9][\.|_]?)+)")
+        tagregex = re.compile(d.getVar('UPSTREAM_CHECK_GITTAGREGEX') or r"(?P<pver>([0-9][\.|_]?)+)")
         try:
             output = self._lsremote(ud, d, "refs/tags/*")
         except (bb.fetch2.FetchError, bb.fetch2.NetworkAccess) as e:
@@ -627,7 +630,7 @@ class Git(FetchMethod):
 
             tag_head = line.split("/")[-1]
             # Ignore non-released branches
-            m = re.search("(alpha|beta|rc|final)+", tag_head)
+            m = re.search(r"(alpha|beta|rc|final)+", tag_head)
             if m:
                 continue
 
