@@ -1,9 +1,12 @@
-SUMMARY = "ImageMagick is an image convertion tools"
+SUMMARY = "ImageMagick is an image convertion toolkit"
 SECTION = "console/utils"
+HOMEPAGE = "https://www.imagemagick.org/"
+DESCRIPTION = "ImageMagick is a collection of tools for displaying, converting, and \
+editing raster and vector image files. It can read and write over 200 image file formats."
 LICENSE = "ImageMagick"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=dad5a98f173fd3fa6958a1a58c6131c1"
 # FIXME: There are many more checked libraries. All should be added or explicitly disabled to get consistent results.
-DEPENDS = "lcms bzip2 jpeg libpng librsvg tiff zlib fftw freetype"
+DEPENDS = "lcms bzip2 jpeg libpng tiff zlib fftw freetype"
 
 BASE_PV := "${PV}"
 PV .= "_7"
@@ -25,6 +28,7 @@ PACKAGECONFIG[jp2] = "--with-jp2,,jasper"
 PACKAGECONFIG[lzma] = "--with-lzma,--without-lzma,xz"
 PACKAGECONFIG[openjpeg] = "--with-openjp2,--without-openjp2,openjpeg"
 PACKAGECONFIG[pango] = "--with-pango,--without-pango,pango cairo"
+PACKAGECONFIG[rsvg] = "--with-rsvg,--without-rsvg,librsvg"
 PACKAGECONFIG[webp] = "--with-webp,--without-webp,libwebp"
 PACKAGECONFIG[wmf] = "--with-wmf,--without-wmf,libwmf"
 PACKAGECONFIG[x11] = "--with-x,--without-x,virtual/libx11 libxext libxt"
