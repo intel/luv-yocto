@@ -74,8 +74,6 @@ SRC_URI += "file://0001-serial-SPCR-check-bit-width-for-the-16550-UART.patch  \
 # EFI_LOADER_CODE/DATA, EFI_BOOT_SERVICES_CODE/DATA) by firmware.
 SRC_URI += "file://0001-PCI-Vulcan-AHCI-PCI-bar-fix-for-Broadcom-Vulcan-earl.patch \
             file://0002-ahci-thunderx2-Fix-for-errata-that-affects-stop-engi.patch \
-            file://0001-efi-Make-efi_rts_work-accessible-to-efi-page-fault-h.patch \
-            file://0001-efi-x86-Handle-page-faults-occurring-while-running-E.patch \
             file://0001-selftests-change-reboot-flag-location.patch \
             file://0001-pstore-test-remove-log-directory.patch \
             file://0001-x86-mttr-Update-only-valid-variable-range-MTRRs.patch \
@@ -127,13 +125,13 @@ KCONFIG_MODE = 'alldefconfig'
 KBUILD_DEFCONFIG = "defconfig"
 KBUILD_DEFCONFIG_x86 = "i386_defconfig"
 KBUILD_DEFCONFIG_x86-64 = "x86_64_defconfig"
-LINUX_VERSION = "4.19"
+LINUX_VERSION = "4.20"
 LINUX_VERSION_EXTENSION = "-luv"
 
 # Override SRCREV to point to a different commit in a bbappend file to
 # build a different release of the Linux kernel.
-# tag: v4.19 84df9525b0c27f3ebc2ebb1864fa62a97fdedb7d
-SRCREV = "84df9525b0c27f3ebc2ebb1864fa62a97fdedb7d"
+# tag: v4.20 8fe28cb58bcb235034b64cbbb7550a8a43fd88be
+SRCREV = "8fe28cb58bcb235034b64cbbb7550a8a43fd88be"
 
 PR = "r5"
 PV = "${LINUX_VERSION}+git${SRCPV}"
