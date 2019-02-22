@@ -1,2 +1,0 @@
-#! /bin/sh
-echo "Intercept $0: $@ -- do nothing"

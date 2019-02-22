@@ -1,8 +1,0 @@
-#!/bin/sh
-
-THIS_SH=/bin/sh
-ln -sf /bin/ed /usr/bin/ed
-/usr/sbin/adduser --disabled-password quilttest
-su -c "${THIS_SH} ./test.sh" quilttest
-/usr/sbin/deluser quilttest
-rm -f /usr/bin/ed
