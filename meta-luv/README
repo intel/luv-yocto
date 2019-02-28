@@ -45,7 +45,7 @@ General Project Administration
 ------------------------------
 M: Megha Dey <megha.dey@intel.com>
 R: Ricardo Neri <ricardo.neri-calderon@linux.intel.com>
-T: https://github.com/01org/luv-yocto.git
+T: https://github.com/intel/luv-yocto.git
 
 x86
 M: Megha Dey <megha.dey@intel.com>
@@ -57,7 +57,7 @@ M: Naresh Bhat <naresh.bhat@linaro.org>
 Table of Contents
 =================
 
-    I. Adding meta-luv and meta-oe layers to your build
+    I. Setting LUV build system
    II. Using GIT with a proxy
   III. Building LUV
    IV. Executing ACPI NFIT destructive tests
@@ -301,7 +301,7 @@ upload.php
 
 If you do not have a server setup or do not have a upload.php script, please
 follow the documentation
-https://github.com/01org/luv-yocto/wiki/Send--LUV-test-results-to-an-HTTP-server
+https://github.com/intel/luv-yocto/wiki/Send--LUV-test-results-to-an-HTTP-server
 
 Configuring a LUV client
 ------------------------
@@ -313,14 +313,14 @@ Note: Editing is possible only in Linux systems as luv.cfg is available in boot
 (second) partiton of the disk.
 
 Netboot: In netboot image, a script is employed to edit as netboot image is an
-EFI binary and is available in meta-luv/utils/modify_luv_netboot_efi.py
+EFI binary and is available in meta-luv/utils/modify_luv_params_efi.py
 
 $ cd luv-yocto/meta-luv/utils/
 luv-yocto/meta-luv/utils$ ls
-modify_luv_netboot_efi.py
+modify_luv_params_efi.py
 
 For the usage of the script please follow the instructions at
-https://github.com/01org/luv-yocto/wiki page.
+https://github.com/intel/luv-yocto/wiki page.
 
 Add parameters to disable/enable the testsuites independently
 -------------------------------------------------------------
@@ -334,3 +334,11 @@ Add a parameter in luv.cfg called "LUV_TESTS" that stores a set of strings,
 each string representing the individual testsuites. All the testsuites are
 enabled by default and disable a testsuite by removing the string that
 represents the testsuite when needed.
+
+Netboot: In netboot image, a script is employed to edit as netboot image is an
+EFI binary and is available in meta-luv/utils/modify_luv_params_efi.py
+
+$ cd luv-yocto/meta-luv/utils/
+luv-yocto/meta-luv/utils$ ls
+modify_luv_params_efi.py
+
