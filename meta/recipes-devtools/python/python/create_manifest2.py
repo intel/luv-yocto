@@ -22,7 +22,7 @@
 #
 #
 # This way we will create a new manifest from the data structure that was built during
-# this process, ont this new manifest each package will contain specifically only
+# this process, on this new manifest each package will contain specifically only
 # what it needs to run.
 #
 # There are some caveats which we try to deal with, such as repeated files on different
@@ -30,7 +30,7 @@
 # Its also important to note that this method only works for python files, and shared
 # libraries. Static libraries, header files and binaries need to be dealt with manually.
 #
-# Author: Alejandro Enedino Hernandez Samaniego "aehs29" <aehs29@gmail.com>
+# Author: Alejandro Enedino Hernandez Samaniego "aehs29" <aehs29 at gmail dot com>
 
 
 import sys
@@ -62,10 +62,21 @@ def isFolder(value):
   else:
     return False
 
+def prepend_comments(comments, json_manifest):
+    with open(json_manifest, 'r+') as manifest:
+        json_contents = manifest.read()
+        manifest.seek(0, 0)
+        manifest.write(comments + json_contents)
+
 # Read existing JSON manifest
 with open('python2-manifest.json') as manifest:
-  old_manifest = json.load(manifest, object_pairs_hook=collections.OrderedDict)
-
+    # The JSON format doesn't allow comments so we hack the call to keep the comments using a marker
+    manifest_str =  manifest.read()
+    json_start = manifest_str.find('# EOC') + 6 # EOC + \n
+    manifest.seek(0)
+    comments = manifest.read(json_start)
+    manifest_str = manifest.read()
+    old_manifest = json.loads(manifest_str, object_pairs_hook=collections.OrderedDict)
 
 # First pass to get core-package functionality, because we base everything on the fact that core is actually working
 # Not exactly the same so it should not be a function
@@ -198,7 +209,13 @@ for key in old_manifest:
 
             inFolders=False
             for folder in allfolders:
-                if folder in item:
+                # The module could have a directory named after it, e.g. xml, if we take out the filename from the path
+                # we'll end up with ${libdir}, and we want ${libdir}/xml
+                if isFolder(item):
+                    check_path = item
+                else:
+                    check_path = os.path.dirname(item)
+                if folder in check_path :
                     inFolders = True # Did we find a folder?
                     folderFound = False # Second flag to break inner for
                     # Loop only through packages which contain folders
@@ -251,16 +268,16 @@ for key in old_manifest:
                                        new_manifest[key]['rdepends'].append(newkey)
                                     break
                     else:
-                      # Debug
-                      print('Adding %s to %s FILES' % (item, key))
-                      # Since it wasnt found on another package, its not an RDEP, so add it to FILES for this package
-                      new_manifest[key]['files'].append(item)
-                      if item.endswith('*'):
-                          wildcards.append(item)
-                      if item not in allfiles:
-                          allfiles.append(item)
-                      else:
-                          repeated.append(item)
+                        # Debug
+                        print('Adding %s to %s FILES' % (item, key))
+                        # Since it wasnt found on another package, its not an RDEP, so add it to FILES for this package
+                        new_manifest[key]['files'].append(item)
+                        if item.endswith('*'):
+                            wildcards.append(item)
+                        if item not in allfiles:
+                            allfiles.append(item)
+                        else:
+                            repeated.append(item)
 
 print ('The following files are repeated (contained in more than one package), please check which package should get it:')
 print (repeated)
@@ -277,3 +294,5 @@ for key in new_manifest:
 # Create the manifest from the data structure that was built
 with open('python2-manifest.json.new','w') as outfile:
     json.dump(new_manifest,outfile, indent=4)
+
+prepend_comments(comments,'python2-manifest.json.new')

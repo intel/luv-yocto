@@ -37,17 +37,30 @@
             hardware.
             You will use Yocto Project to build a reference embedded OS
             called Poky.
-            <note>
-                The examples in this paper assume you are using a native Linux
-                system running a recent Ubuntu Linux distribution.
-                If the machine you want to use
-                Yocto Project on to build an image is not a native Linux
-                system, you can still perform these steps by using CROss
-                PlatformS (CROPS) and setting up a Poky container.
-                See the
-                <ulink url='&YOCTO_DOCS_DEV_URL;#setting-up-to-use-crops'>Setting Up to Use CROss PlatformS (CROPS)</ulink>"
-                section in the Yocto Project Development Tasks Manual for more
-                information.
+            <note><title>Notes</title>
+                <itemizedlist>
+                    <listitem><para>
+                        The examples in this paper assume you are using a
+                        native Linux system running a recent Ubuntu Linux
+                        distribution.
+                        If the machine you want to use Yocto Project on to
+                        build an image
+                        (<ulink url='&YOCTO_DOCS_REF_URL;#hardware-build-system-term'>build host</ulink>)
+                        is not a native Linux system, you can
+                        still perform these steps by using CROss PlatformS
+                        (CROPS) and setting up a Poky container.
+                        See the
+                        <ulink url='&YOCTO_DOCS_DEV_URL;#setting-up-to-use-crops'>Setting Up to Use CROss PlatformS (CROPS)</ulink>"
+                        section in the Yocto Project Development Tasks Manual for more
+                        information.
+                        </para></listitem>
+                    <listitem><para>
+                        You cannot use a build host that is using the
+                        <ulink url='https://en.wikipedia.org/wiki/Windows_Subsystem_for_Linux'>Windows Subsystem for Linux</ulink>
+                        (WSL).
+                        The Yocto Project is not compatible with WSL.
+                        </para></listitem>
+                </itemizedlist>
             </note>
         </para>
 
@@ -75,6 +88,10 @@
                     Linux distributions that support the Yocto Project, see the
                     "<ulink url='&YOCTO_DOCS_REF_URL;#detailed-supported-distros'>Supported Linux Distributions</ulink>"
                     section in the Yocto Project Reference Manual.
+                    For detailed information on preparing your build host, see
+                    the
+                    "<ulink url='&YOCTO_DOCS_DEV_URL;#dev-preparing-the-build-host'>Preparing the Build Host</ulink>"
+                    section in the Yocto Project Development Tasks Manual.
                     </para></listitem>
                 <listitem><para>
                     <itemizedlist>
@@ -114,7 +131,7 @@
                 section in the Yocto Project Reference Manual.
             </note>
             <literallayout class='monospaced'>
-     $ sudo apt-get install &UBUNTU_HOST_PACKAGES_ESSENTIAL; libsdl1.2-dev xterm
+     $ sudo apt-get install &UBUNTU_HOST_PACKAGES_ESSENTIAL;
             </literallayout>
         </para>
     </section>
@@ -127,23 +144,50 @@
             you need to get a copy of the Poky repository on your build
             host.
             Use the following commands to clone the Poky
-            repository and then checkout the &DISTRO_REL_TAG; release:
+            repository.
             <literallayout class='monospaced'>
      $ git clone git://git.yoctoproject.org/poky
      Cloning into 'poky'...
-     remote: Counting objects: 361782, done.
-     remote: Compressing objects: 100% (87100/87100), done.
-     remote: Total 361782 (delta 268619), reused 361439 (delta 268277)
-     Receiving objects: 100% (361782/361782), 131.94 MiB | 6.88 MiB/s, done.
-     Resolving deltas: 100% (268619/268619), done.
+     remote: Counting objects: 432160, done.
+     remote: Compressing objects: 100% (102056/102056), done.
+     remote: Total 432160 (delta 323116), reused 432037 (delta 323000)
+     Receiving objects: 100% (432160/432160), 153.81 MiB | 8.54 MiB/s, done.
+     Resolving deltas: 100% (323116/323116), done.
      Checking connectivity... done.
-     $ git checkout tags/yocto-2.5 -b my-yocto-2.5
+            </literallayout>
+            Move to the <filename>poky</filename> directory and take a look
+            at the tags:
+            <literallayout class='monospaced'>
+     $ cd poky
+     $ git fetch --tags
+     $ git tag
+     1.1_M1.final
+     1.1_M1.rc1
+     1.1_M1.rc2
+     1.1_M2.final
+     1.1_M2.rc1
+        .
+        .
+        .
+     yocto-2.5
+     yocto-2.5.1
+     yocto-2.5.2
+     yocto-2.6
+     yocto-2.6.1
+     yocto-2.7
+     yocto_1.5_M5.rc8
+            </literallayout>
+            For this example, check out the branch based on the
+            &DISTRO_REL_TAG; release:
+            <literallayout class='monospaced'>
+     $ git checkout tags/&DISTRO_REL_TAG; -b my-&DISTRO_REL_TAG;
+     Switched to a new branch 'my-&DISTRO_REL_TAG;'
             </literallayout>
             The previous Git checkout command creates a local branch
             named my-&DISTRO_REL_TAG;. The files available to you in that
             branch exactly match the repository's files in the
             "&DISTRO_NAME_NO_CAP;" development branch at the time of the
-            Yocto Project &DISTRO; release.
+            Yocto Project &DISTRO_REL_TAG; release.
         </para>
 
         <para>
@@ -187,12 +231,41 @@
             <orderedlist>
                 <listitem><para>
                     <emphasis>Initialize the Build Environment:</emphasis>
-                    Run the
+                    From within the <filename>poky</filename> directory, run the
                     <ulink url='&YOCTO_DOCS_REF_URL;#structure-core-script'><filename>&OE_INIT_FILE;</filename></ulink>
                     environment setup script to define Yocto Project's
                     build environment on your build host.
                     <literallayout class='monospaced'>
+     $ cd ~/poky
      $ source &OE_INIT_FILE;
+     You had no conf/local.conf file. This configuration file has therefore been
+     created for you with some default values. You may wish to edit it to, for
+     example, select a different MACHINE (target hardware). See conf/local.conf
+     for more information as common configuration options are commented.
+
+     You had no conf/bblayers.conf file. This configuration file has therefore been
+     created for you with some default values. To add additional metadata layers
+     into your configuration please add entries to conf/bblayers.conf.
+
+     The Yocto Project has extensive documentation about OE including a reference
+     manual which can be found at:
+         http://yoctoproject.org/documentation
+
+     For more information about OpenEmbedded see their website:
+         http://www.openembedded.org/
+
+
+     ### Shell environment set up for builds. ###
+
+     You can now run 'bitbake &lt;target&gt;'
+
+     Common targets are:
+         core-image-minimal
+         core-image-sato
+         meta-toolchain
+         meta-ide-support
+
+     You can also run generated qemu images with a command like 'runqemu qemux86'
                     </literallayout>
                     Among other things, the script creates the
                     <ulink url='&YOCTO_DOCS_REF_URL;#build-directory'>Build Directory</ulink>,

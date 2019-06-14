@@ -11,7 +11,6 @@ DEPENDS = "virtual/crypt"
 UPSTREAM_CHECK_URI = "https://github.com/shadow-maint/shadow/releases"
 SRC_URI = "https://github.com/shadow-maint/shadow/releases/download/${PV}/${BP}.tar.gz \
            file://shadow-4.1.3-dots-in-usernames.patch \
-           file://0001-useradd-copy-extended-attributes-of-home.patch \
            ${@bb.utils.contains('PACKAGECONFIG', 'pam', '${PAM_SRC_URI}', '', d)} \
            "
 
@@ -45,6 +44,8 @@ PAM_SRC_URI = "file://pam.d/chfn \
 
 inherit autotools gettext
 
+export CONFIG_SHELL="/bin/sh"
+
 EXTRA_OECONF += "--without-audit \
                  --without-libcrack \
                  --without-selinux \
@@ -55,7 +56,7 @@ EXTRA_OECONF += "--without-audit \
 NSCDOPT = ""
 NSCDOPT_class-native = "--without-nscd"
 NSCDOPT_class-nativesdk = "--without-nscd"
-NSCDOPT_libc-glibc = "${@bb.utils.contains('DISTRO_FEATURES', 'libc-spawn', '--with-nscd', '--without-nscd', d)}"
+NSCDOPT_libc-glibc = "--with-nscd"
           
 PAM_PLUGINS = "libpam-runtime \
                pam-plugin-faildelay \

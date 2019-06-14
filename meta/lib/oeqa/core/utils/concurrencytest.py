@@ -25,6 +25,7 @@ from itertools import cycle
 from subunit import ProtocolTestCase, TestProtocolClient
 from subunit.test_results import AutoTimingTestResultDecorator
 from testtools import ThreadsafeForwardingResult, iterate_tests
+from oeqa.utils.commands import get_test_layer
 
 import bb.utils
 import oe.path
@@ -115,6 +116,9 @@ class ConcurrentTestSuite(unittest.TestSuite):
             for thread, process_result in threads.values():
                 process_result.stop()
             raise
+        finally:
+            for test in tests:
+                test[0]._stream.close()
 
     def _run_test(self, test, process_result, queue):
         try:
@@ -138,6 +142,9 @@ def removebuilddir(d):
 
 def fork_for_tests(concurrency_num, suite):
     result = []
+    if 'BUILDDIR' in os.environ:
+        selftestdir = get_test_layer()
+
     test_blocks = partition_tests(suite, concurrency_num)
     # Clear the tests from the original suite so it doesn't keep them alive
     suite._tests[:] = []
@@ -163,7 +170,6 @@ def fork_for_tests(concurrency_num, suite):
                 if 'BUILDDIR' in os.environ:
                     builddir = os.environ['BUILDDIR']
                     newbuilddir = builddir + "-st-" + str(ourpid)
-                    selftestdir = os.path.abspath(builddir + "/../meta-selftest")
                     newselftestdir = newbuilddir + "/meta-selftest"
 
                     bb.utils.mkdirhier(newbuilddir)

@@ -2,6 +2,7 @@ import tempfile
 import shutil
 import os
 import glob
+import time
 from oeqa.core.decorator.oeid import OETestID
 from oeqa.selftest.case import OESelftestTestCase
 from oeqa.utils.commands import runCmd, bitbake, get_bb_var, get_bb_vars
@@ -31,7 +32,7 @@ class oeSDKExtSelfTest(OESelftestTestCase):
         if not 'shell' in options:
             options['shell'] = True
 
-        runCmd("cd %s; . %s; %s" % (tmpdir_eSDKQA, env_eSDK, cmd), **options)
+        runCmd("cd %s; unset BBPATH; unset BUILDDIR; . %s; %s" % (tmpdir_eSDKQA, env_eSDK, cmd), **options)
 
     @staticmethod
     def generate_eSDK(image):
@@ -70,11 +71,13 @@ CORE_IMAGE_EXTRA_INSTALL = "perl"
     @classmethod
     def setUpClass(cls):
         super(oeSDKExtSelfTest, cls).setUpClass()
-        cls.tmpdir_eSDKQA = tempfile.mkdtemp(prefix='eSDKQA')
-
-        sstate_dir = get_bb_var('SSTATE_DIR')
-
         cls.image = 'core-image-minimal'
+
+        bb_vars = get_bb_vars(['SSTATE_DIR', 'WORKDIR'], cls.image)
+        bb.utils.mkdirhier(bb_vars["WORKDIR"])
+        cls.tmpdirobj = tempfile.TemporaryDirectory(prefix="selftest-esdk-", dir=bb_vars["WORKDIR"])
+        cls.tmpdir_eSDKQA = cls.tmpdirobj.name
+
         oeSDKExtSelfTest.generate_eSDK(cls.image)
 
         # Install eSDK
@@ -87,14 +90,19 @@ CORE_IMAGE_EXTRA_INSTALL = "perl"
         sstate_config="""
 SDK_LOCAL_CONF_WHITELIST = "SSTATE_MIRRORS"
 SSTATE_MIRRORS =  "file://.* file://%s/PATH"
-            """ % sstate_dir
+            """ % bb_vars["SSTATE_DIR"]
         with open(os.path.join(cls.tmpdir_eSDKQA, 'conf', 'local.conf'), 'a+') as f:
             f.write(sstate_config)
 
     @classmethod
     def tearDownClass(cls):
-        shutil.rmtree(cls.tmpdir_eSDKQA, ignore_errors=True)
-        super(oeSDKExtSelfTest, cls).tearDownClass()
+        for i in range(0, 10):
+            if os.path.exists(os.path.join(cls.tmpdir_eSDKQA, 'bitbake.lock')):
+                time.sleep(1)
+            else:
+                break
+        cls.tmpdirobj.cleanup()
+        super().tearDownClass()
 
     @OETestID(1602)
     def test_install_libraries_headers(self):

@@ -10,6 +10,7 @@ SRC_URI = "${GNU_MIRROR}/cpio/cpio-${PV}.tar.gz \
            file://0001-Unset-need_charset_alias-when-building-for-musl.patch \
            file://0001-Fix-CVE-2015-1197.patch \
            file://0001-CVE-2016-2037-1-byte-out-of-bounds-write.patch \
+           file://0001-Fix-segfault-with-append.patch \
            "
 
 SRC_URI[md5sum] = "fc207561a86b63862eea4b8300313e86"
@@ -26,6 +27,9 @@ do_install () {
         mv "${D}${bindir}/cpio" "${D}${base_bindir}/cpio"
         rmdir ${D}${bindir}/
     fi
+
+    # Avoid conflicts with the version from tar
+    mv "${D}${mandir}/man8/rmt.8" "${D}${mandir}/man8/rmt-cpio.8"
 }
 
 PACKAGES =+ "${PN}-rmt"

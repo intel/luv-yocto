@@ -32,11 +32,12 @@ python license_create_manifest() {
 
     rootfs_license_manifest = os.path.join(d.getVar('LICENSE_DIRECTORY'),
                         d.getVar('IMAGE_NAME'), 'license.manifest')
-    write_license_files(d, rootfs_license_manifest, pkg_dic)
+    write_license_files(d, rootfs_license_manifest, pkg_dic, rootfs=True)
 }
 
-def write_license_files(d, license_manifest, pkg_dic):
+def write_license_files(d, license_manifest, pkg_dic, rootfs=True):
     import re
+    import stat
 
     bad_licenses = (d.getVar("INCOMPATIBLE_LICENSE") or "").split()
     bad_licenses = map(lambda l: canonical_license(d, l), bad_licenses)
@@ -52,8 +53,8 @@ def write_license_files(d, license_manifest, pkg_dic):
                 except oe.license.LicenseError as exc:
                     bb.fatal('%s: %s' % (d.getVar('P'), exc))
             else:
-                pkg_dic[pkg]["LICENSES"] = re.sub('[|&()*]', ' ', pkg_dic[pkg]["LICENSE"])
-                pkg_dic[pkg]["LICENSES"] = re.sub('  *', ' ', pkg_dic[pkg]["LICENSES"])
+                pkg_dic[pkg]["LICENSES"] = re.sub(r'[|&()*]', ' ', pkg_dic[pkg]["LICENSE"])
+                pkg_dic[pkg]["LICENSES"] = re.sub(r'  *', ' ', pkg_dic[pkg]["LICENSES"])
                 pkg_dic[pkg]["LICENSES"] = pkg_dic[pkg]["LICENSES"].split()
 
             if not "IMAGE_MANIFEST" in pkg_dic[pkg]:
@@ -78,7 +79,7 @@ def write_license_files(d, license_manifest, pkg_dic):
             for lic in pkg_dic[pkg]["LICENSES"]:
                 lic_file = os.path.join(d.getVar('LICENSE_DIRECTORY'),
                                         pkg_dic[pkg]["PN"], "generic_%s" % 
-                                        re.sub('\+', '', lic))
+                                        re.sub(r'\+', '', lic))
                 # add explicity avoid of CLOSED license because isn't generic
                 if lic == "CLOSED":
                    continue
@@ -94,7 +95,7 @@ def write_license_files(d, license_manifest, pkg_dic):
     # With both options set we see a .5 M increase in core-image-minimal
     copy_lic_manifest = d.getVar('COPY_LIC_MANIFEST')
     copy_lic_dirs = d.getVar('COPY_LIC_DIRS')
-    if copy_lic_manifest == "1":
+    if rootfs and copy_lic_manifest == "1":
         rootfs_license_dir = os.path.join(d.getVar('IMAGE_ROOTFS'), 
                                 'usr', 'share', 'common-licenses')
         bb.utils.mkdirhier(rootfs_license_dir)
@@ -119,14 +120,14 @@ def write_license_files(d, license_manifest, pkg_dic):
                     pkg_license = os.path.join(pkg_license_dir, lic)
                     pkg_rootfs_license = os.path.join(pkg_rootfs_license_dir, lic)
 
-                    if re.match("^generic_.*$", lic):
+                    if re.match(r"^generic_.*$", lic):
                         generic_lic = canonical_license(d,
-                                re.search("^generic_(.*)$", lic).group(1))
+                                re.search(r"^generic_(.*)$", lic).group(1))
 
                         # Do not copy generic license into package if isn't
                         # declared into LICENSES of the package.
-                        if not re.sub('\+$', '', generic_lic) in \
-                                [re.sub('\+', '', lic) for lic in \
+                        if not re.sub(r'\+$', '', generic_lic) in \
+                                [re.sub(r'\+', '', lic) for lic in \
                                  pkg_manifest_licenses]:
                             continue
 
@@ -146,6 +147,18 @@ def write_license_files(d, license_manifest, pkg_dic):
                             continue
 
                         os.link(pkg_license, pkg_rootfs_license)
+            # Fixup file ownership and permissions
+            for walkroot, dirs, files in os.walk(rootfs_license_dir):
+                for f in files:
+                    p = os.path.join(walkroot, f)
+                    os.lchown(p, 0, 0)
+                    if not os.path.islink(p):
+                        os.chmod(p, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
+                for dir in dirs:
+                    p = os.path.join(walkroot, dir)
+                    os.lchown(p, 0, 0)
+                    os.chmod(p, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
+
 
 
 def license_deployed_manifest(d):
@@ -176,7 +189,7 @@ def license_deployed_manifest(d):
                                     d.getVar('IMAGE_NAME'))
     bb.utils.mkdirhier(lic_manifest_dir)
     image_license_manifest = os.path.join(lic_manifest_dir, 'image_license.manifest')
-    write_license_files(d, image_license_manifest, man_dic)
+    write_license_files(d, image_license_manifest, man_dic, rootfs=False)
 
 def get_deployed_dependencies(d):
     """

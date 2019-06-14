@@ -199,7 +199,7 @@ class Git(FetchMethod):
             depth_default = 1
         ud.shallow_depths = collections.defaultdict(lambda: depth_default)
 
-        revs_default = d.getVar("BB_GIT_SHALLOW_REVS", True)
+        revs_default = d.getVar("BB_GIT_SHALLOW_REVS")
         ud.shallow_revs = []
         ud.branches = {}
         for pos, name in enumerate(ud.names):
@@ -318,7 +318,7 @@ class Git(FetchMethod):
     def try_premirror(self, ud, d):
         # If we don't do this, updating an existing checkout with only premirrors
         # is not possible
-        if d.getVar("BB_FETCH_PREMIRRORONLY") is not None:
+        if bb.utils.to_boolean(d.getVar("BB_FETCH_PREMIRRORONLY")):
             return True
         if os.path.exists(ud.clonedir):
             return False
@@ -488,12 +488,15 @@ class Git(FetchMethod):
                 source_error.append("clone directory not available or not up to date: " + ud.clonedir)
 
         if not source_found:
-            if ud.shallow and os.path.exists(ud.fullshallow):
-                bb.utils.mkdirhier(destdir)
-                runfetchcmd("tar -xzf %s" % ud.fullshallow, d, workdir=destdir)
-                source_found = True
+            if ud.shallow:
+                if os.path.exists(ud.fullshallow):
+                    bb.utils.mkdirhier(destdir)
+                    runfetchcmd("tar -xzf %s" % ud.fullshallow, d, workdir=destdir)
+                    source_found = True
+                else:
+                    source_error.append("shallow clone not available: " + ud.fullshallow)
             else:
-                source_error.append("shallow clone not enabled or not available: " + ud.fullshallow)
+                source_error.append("shallow clone not enabled")
 
         if not source_found:
             raise bb.fetch2.UnpackError("No up to date source found: " + "; ".join(source_error), ud.url)
@@ -519,9 +522,17 @@ class Git(FetchMethod):
     def clean(self, ud, d):
         """ clean the git directory """
 
-        bb.utils.remove(ud.localpath, True)
-        bb.utils.remove(ud.fullmirror)
-        bb.utils.remove(ud.fullmirror + ".done")
+        to_remove = [ud.localpath, ud.fullmirror, ud.fullmirror + ".done"]
+        # The localpath is a symlink to clonedir when it is cloned from a
+        # mirror, so remove both of them.
+        if os.path.islink(ud.localpath):
+            clonedir = os.path.realpath(ud.localpath)
+            to_remove.append(clonedir)
+
+        for r in to_remove:
+            if os.path.exists(r):
+                bb.note('Removing %s' % r)
+                bb.utils.remove(r, True)
 
     def supports_srcrev(self):
         return True
@@ -612,7 +623,7 @@ class Git(FetchMethod):
         """
         pupver = ('', '')
 
-        tagregex = re.compile(d.getVar('UPSTREAM_CHECK_GITTAGREGEX') or "(?P<pver>([0-9][\.|_]?)+)")
+        tagregex = re.compile(d.getVar('UPSTREAM_CHECK_GITTAGREGEX') or r"(?P<pver>([0-9][\.|_]?)+)")
         try:
             output = self._lsremote(ud, d, "refs/tags/*")
         except (bb.fetch2.FetchError, bb.fetch2.NetworkAccess) as e:
@@ -627,7 +638,7 @@ class Git(FetchMethod):
 
             tag_head = line.split("/")[-1]
             # Ignore non-released branches
-            m = re.search("(alpha|beta|rc|final)+", tag_head)
+            m = re.search(r"(alpha|beta|rc|final)+", tag_head)
             if m:
                 continue
 

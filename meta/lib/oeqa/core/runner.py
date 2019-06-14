@@ -76,9 +76,7 @@ class OETestResult(_TestResult):
             msg = "%s - OK - All required tests passed" % component
         else:
             msg = "%s - FAIL - Required tests failed" % component
-        skipped = len(self.skipped)
-        if skipped:
-            msg += " (skipped=%d)" % skipped
+        msg += " (successes=%d, skipped=%d, failures=%d, errors=%d)" % (len(self.successes), len(self.skipped), len(self.failures), len(self.errors))
         self.tc.logger.info(msg)
 
     def _getTestResultDetails(self, case):
@@ -95,13 +93,13 @@ class OETestResult(_TestResult):
 
                 # When fails at module or class level the class name is passed as string
                 # so figure out to see if match
-                m = re.search("^setUpModule \((?P<module_name>.*)\)$", scase_str)
+                m = re.search(r"^setUpModule \((?P<module_name>.*)\)$", scase_str)
                 if m:
                     if case.__class__.__module__ == m.group('module_name'):
                         found = True
                         break
 
-                m = re.search("^setUpClass \((?P<class_name>.*)\)$", scase_str)
+                m = re.search(r"^setUpClass \((?P<class_name>.*)\)$", scase_str)
                 if m:
                     class_name = "%s.%s" % (case.__class__.__module__,
                                             case.__class__.__name__)
@@ -124,6 +122,7 @@ class OETestResult(_TestResult):
         self.tc.logger.info("RESULTS:")
 
         result = {}
+        logs = {}
         if hasattr(self.tc, "extraresults"):
             result = self.tc.extraresults
 
@@ -142,11 +141,19 @@ class OETestResult(_TestResult):
             if case.id() in self.starttime and case.id() in self.endtime:
                 t = " (" + "{0:.2f}".format(self.endtime[case.id()] - self.starttime[case.id()]) + "s)"
 
-            self.tc.logger.info("RESULTS - %s - Testcase %s: %s%s" % (case.id(), oeid, status, t))
+            if status not in logs:
+                logs[status] = []
+            logs[status].append("RESULTS - %s - Testcase %s: %s%s" % (case.id(), oeid, status, t))
             if log:
                 result[case.id()] = {'status': status, 'log': log}
             else:
                 result[case.id()] = {'status': status}
+
+        for i in ['PASSED', 'SKIPPED', 'EXPECTEDFAIL', 'ERROR', 'FAILED', 'UNKNOWN']:
+            if i not in logs:
+                continue
+            for l in logs[i]:
+                self.tc.logger.info(l)
 
         if json_file_dir:
             tresultjsonhelper = OETestResultJSONHelper()
