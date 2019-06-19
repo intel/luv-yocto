@@ -1,6 +1,6 @@
-From b17a666f15e73a85a35daf8b38dd3a680601475e Mon Sep 17 00:00:00 2001
+From 20be7be295c21a4f6f18547b1d717087a0f942f6 Mon Sep 17 00:00:00 2001
 From: Megha Dey <megha.dey@linux.intel.com>
-Date: Thu, 16 Feb 2017 11:34:51 -0800
+Date: Mon, 24 Jun 2019 11:34:52 -0700
 Subject: [PATCH] plymouth: modify the script theme
 
 plymouth script theme is modified add the luv splash image and the
@@ -10,16 +10,16 @@ center of any screen it runs on.
 
 To display the progress of the test suites, we increment the progress
 bar by 1/(number of test suites) every time a new test suits starts to
-run so that when the last test ssuite ends the progreaa bar is complete
+run so that when the last test suite ends the progress bar is complete
 100%.
 
 Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
 ---
- themes/script/script.script | 71 ++++++++++++++++++++++++++++++---------------
- 1 file changed, 47 insertions(+), 24 deletions(-)
+ themes/script/script.script | 70 ++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 50 insertions(+), 20 deletions(-)
 
 diff --git a/themes/script/script.script b/themes/script/script.script
-index 7ea9d5e..46671be 100644
+index 25a2f2b..3cfb9f5 100644
 --- a/themes/script/script.script
 +++ b/themes/script/script.script
 @@ -1,7 +1,7 @@
@@ -67,19 +67,23 @@ index 7ea9d5e..46671be 100644
  
  fun progress_callback (duration, progress)
    {
-@@ -139,7 +130,6 @@ fun progress_callback (duration, progress)
+@@ -139,8 +130,6 @@ fun progress_callback (duration, progress)
        }
    }
  
 -Plymouth.SetBootProgressFunction(progress_callback);
- 
+-
  #----------------------------------------- Quit --------------------------------
  
-@@ -154,25 +144,58 @@ Plymouth.SetQuitFunction(quit_callback);
+ fun quit_callback ()
+@@ -152,19 +141,60 @@ Plymouth.SetQuitFunction(quit_callback);
  
- message_sprites = [];
- message_sprite_count = 0;
--message_sprite_y = 10;
+ #----------------------------------------- Message --------------------------------
+ 
+-message_sprite = Sprite();
+-message_sprite.SetPosition(10, 10, 10000);
++message_sprites = [];
++message_sprite_count = 0;
 +message_sprite_y = progress_bar.y-30;
 +num_test_suites = 6;
 +count = 0;
@@ -87,13 +91,10 @@ index 7ea9d5e..46671be 100644
  fun display_message_callback (text)
  {
 -  my_image = Image.Text(text, 1, 1, 1);
+-  message_sprite.SetImage(my_image);
 +  str = String(text);
 +  my_image = Image.Text(str, 1, 1, 1);
-   message_sprites[message_sprite_count] = Sprite(my_image);
--  message_sprites[message_sprite_count].SetPosition(10, message_sprite_y, 10000);
--  message_sprites[message_sprite_count].text = text;
--  message_sprite_count++;
--  message_sprite_y += my_image.GetHeight();
++  message_sprites[message_sprite_count] = Sprite(my_image);
 +  message_sprites[message_sprite_count].text = str;
 +
 +  if (str.SubString(0,7) == "Running")
@@ -130,11 +131,8 @@ index 7ea9d5e..46671be 100644
  
  fun hide_message_callback (text)
  {
--  for (i = 0; i < message_sprite_count; i++)
--    {
--      if (message_sprites[i].text == text)
--        message_sprites[i] = NULL;
--    }
+-  message_sprite = Sprite();
+-  message_sprite.SetPosition(10, 10, 10000);
 +  if (message_sprites[message_sprite_count - 1].text == text)
 +      message_sprites[message_sprite_count - 1] = NULL;
 +  if (message_sprite_count == num_test_suites)
@@ -146,4 +144,5 @@ index 7ea9d5e..46671be 100644
  
  Plymouth.SetDisplayMessageFunction (display_message_callback);
 -- 
-1.9.1
+2.7.4
+
