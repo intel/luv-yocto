@@ -1,6 +1,6 @@
-From e828fb6d958b2c463f208ad30ab39a1b18be14d2 Mon Sep 17 00:00:00 2001
+From 612ecc2ccd149349d8f59d5297f45c2d4cd25dd2 Mon Sep 17 00:00:00 2001
 From: Megha Dey <megha.dey@linux.intel.com>
-Date: Thu, 18 Jan 2018 23:50:17 -0800
+Date: Mon, 24 Jun 2019 15:31:09 -0700
 Subject: [PATCH] plymouth: prevent overwriting of messages
 
 Certain messages displayed on plymouth screen get overwritten as their
@@ -14,10 +14,10 @@ Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
  1 file changed, 2 insertions(+)
 
 diff --git a/themes/script/script.script b/themes/script/script.script
-index b1e0ab9..8dd9009 100644
+index a645c1e..d15af58 100644
 --- a/themes/script/script.script
 +++ b/themes/script/script.script
-@@ -183,6 +183,8 @@ fun display_message_callback (text)
+@@ -182,6 +182,8 @@ fun display_message_callback (text)
      {
 	message_sprites[message_sprite_count].SetPosition(Window.GetWidth()  / 2 - my_image.GetWidth()  / 2, message_sprite_y, 10000);
 	message_sprite_count++;
@@ -27,5 +27,5 @@ index b1e0ab9..8dd9009 100644
    }
  }
 --
-1.9.1
+2.7.4
 
