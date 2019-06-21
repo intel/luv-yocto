@@ -1,7 +1,7 @@
-From 3e286835347cfbe01fca80496f4c767c2bdc2094 Mon Sep 17 00:00:00 2001
-From: Ashok Kumar Sekar <asekar@redhat.com>
-Date: Fri, 23 Sep 2016 04:16:19 -0700
-Subject: [PATCH 1/2] PCI: Vulcan: AHCI PCI bar fix for Broadcom Vulcan early
+From 168ecfd78be6f4eb018c8d8c147a7841fc99ddbe Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Mon, 24 Jun 2019 17:42:06 -0700
+Subject: [PATCH] PCI: Vulcan: AHCI PCI bar fix for Broadcom Vulcan early
  silicon
 
 PCI BAR 5 is not setup correctly for the on-board AHCI
@@ -16,11 +16,11 @@ Signed-off-by: Jayachandran C <jchandra@broadcom.com>
  1 file changed, 24 insertions(+)
 
 diff --git a/drivers/pci/quirks.c b/drivers/pci/quirks.c
-index 6736836..4565800 100644
+index a077f67..291bd05 100644
 --- a/drivers/pci/quirks.c
 +++ b/drivers/pci/quirks.c
-@@ -3958,6 +3958,30 @@ static void quirk_mic_x200_dma_alias(struct pci_dev *pdev)
- DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_INTEL, 0x2264, quirk_mic_x200_dma_alias);
+@@ -4025,6 +4025,30 @@ DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_BROADCOM, 0x9084,
+ 				quirk_bridge_cavm_thrx2_pcie_root);
  
  /*
 + * PCI BAR 5 is not setup correctly for the on-board AHCI controller
@@ -51,5 +51,5 @@ index 6736836..4565800 100644
   * class code.  Fix it.
   */
 -- 
-1.8.3.1
+2.7.4
 
