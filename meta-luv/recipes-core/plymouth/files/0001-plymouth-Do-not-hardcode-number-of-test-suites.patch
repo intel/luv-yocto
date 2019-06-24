@@ -1,0 +1,31 @@
+From eadfa486943a2cf10fc27dee27bf1b4b33343fa4 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Mon, 24 Jun 2019 15:46:47 -0700
+Subject: [PATCH] Plymouth: Do not hardcode number of test-suites
+
+The plymouth recipe introduces a placeholder 'LUV_NUM_TEST_SUITES' to
+indicate the number of test suites LUV will run for that platform.
+The script.script file currently hardcodes the number of test-suites to
+6, which is incorrect. Use this placeholder instead.
+
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
+---
+ themes/script/script.script | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/themes/script/script.script b/themes/script/script.script
+index d15af58..f366e26 100644
+--- a/themes/script/script.script
++++ b/themes/script/script.script
+@@ -144,7 +144,7 @@ Plymouth.SetQuitFunction(quit_callback);
+ message_sprites = [];
+ message_sprite_count = 0;
+ message_sprite_y = progress_bar.y-30;
+-num_test_suites = 6;
++num_test_suites = LUV_NUM_TEST_SUITES;
+ count = 0;
+
+ fun display_message_callback (text)
+--
+2.7.4
+
