@@ -48,7 +48,7 @@ do_install() {
     install -m 0644 ${B}/toybox.links ${D}${sysconfdir}
 }
 
-inherit update-alternatives
+inherit cml1 update-alternatives
 
 # If you've chosen to install toybox you probably want it to take precedence
 # over busybox where possible but not over other packages
@@ -60,7 +60,7 @@ python do_package_prepend () {
 
     dvar = d.getVar('D')
     pn = d.getVar('PN')
-    target = "/bin/toybox"
+    target = d.expand("${base_bindir}/toybox")
 
     f = open('%s/etc/toybox.links' % (dvar), 'r')
     for alt_link_name in f:
