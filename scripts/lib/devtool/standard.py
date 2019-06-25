@@ -2,18 +2,8 @@
 #
 # Copyright (C) 2014-2017 Intel Corporation
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as
-# published by the Free Software Foundation.
+# SPDX-License-Identifier: GPL-2.0-only
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 """Devtool standard plugins"""
 
 import os
@@ -509,6 +499,11 @@ def _extract_source(srctree, keep_temp, devbranch, sync, config, basepath, works
             if not 'flag' in event:
                 if event['op'].startswith(('_append[', '_prepend[')):
                     extra_overrides.append(event['op'].split('[')[1].split(']')[0])
+        # We want to remove duplicate overrides. If a recipe had multiple
+        # SRC_URI_override += values it would cause mulitple instances of
+        # overrides. This doesn't play nicely with things like creating a
+        # branch for every instance of DEVTOOL_EXTRA_OVERRIDES.
+        extra_overrides = list(set(extra_overrides))
         if extra_overrides:
             logger.info('SRC_URI contains some conditional appends/prepends - will create branches to represent these')
 
@@ -769,9 +764,13 @@ def modify(args, config, basepath, workspace):
             check_commits = True
         else:
             if os.path.exists(os.path.join(srctree, '.git')):
-                # Check if it's a tree previously extracted by us
+                # Check if it's a tree previously extracted by us. This is done
+                # by ensuring that devtool-base and args.branch (devtool) exist.
+                # The check_commits logic will cause an exception if either one
+                # of these doesn't exist
                 try:
                     (stdout, _) = bb.process.run('git branch --contains devtool-base', cwd=srctree)
+                    bb.process.run('git rev-parse %s' % args.branch, cwd=srctree)
                 except bb.process.ExecutionError:
                     stdout = ''
                 if stdout:
@@ -840,9 +839,7 @@ def modify(args, config, basepath, workspace):
             if bb.data.inherits_class('kernel', rd):
                 f.write('SRCTREECOVEREDTASKS = "do_validate_branches do_kernel_checkout '
                         'do_fetch do_unpack do_kernel_configme do_kernel_configcheck"\n')
-                f.write('\ndo_patch() {\n'
-                        '    :\n'
-                        '}\n')
+                f.write('\ndo_patch[noexec] = "1"\n')
                 f.write('\ndo_configure_append() {\n'
                         '    cp ${B}/.config ${S}/.config.baseline\n'
                         '    ln -sfT ${B}/.config ${S}/.config.new\n'
@@ -1320,6 +1317,20 @@ def _export_local_files(srctree, rd, destdir, srctreebase):
                 # Remove fragment from local-files
                 if os.path.exists(os.path.join(local_files_dir, fragment_fn)):
                     os.unlink(os.path.join(local_files_dir, fragment_fn))
+
+    # Special handling for cml1, ccmake, etc bbclasses that generated
+    # configuration fragment files that are consumed as source files
+    for frag_class, frag_name in [("cml1", "fragment.cfg"), ("ccmake", "site-file.cmake")]:
+        if bb.data.inherits_class(frag_class, rd):
+            srcpath = os.path.join(rd.getVar('WORKDIR'), frag_name)
+            if os.path.exists(srcpath):
+                if frag_name not in new_set:
+                    new_set.append(frag_name)
+                # copy fragment into destdir
+                shutil.copy2(srcpath, destdir)
+                # copy fragment into local files if exists
+                if os.path.isdir(local_files_dir):
+                    shutil.copy2(srcpath, local_files_dir)
 
     if new_set is not None:
         for fname in new_set:

@@ -10,6 +10,7 @@ SRC_URI = "${GNU_MIRROR}/cpio/cpio-${PV}.tar.gz \
            file://0001-Unset-need_charset_alias-when-building-for-musl.patch \
            file://0001-Fix-CVE-2015-1197.patch \
            file://0001-CVE-2016-2037-1-byte-out-of-bounds-write.patch \
+           file://0001-Fix-segfault-with-append.patch \
            "
 
 SRC_URI[md5sum] = "fc207561a86b63862eea4b8300313e86"
@@ -17,7 +18,7 @@ SRC_URI[sha256sum] = "08a35e92deb3c85d269a0059a27d4140a9667a6369459299d08c17f713
 
 inherit autotools gettext texinfo
 
-EXTRA_OECONF += "DEFAULT_RMT_DIR=${base_sbindir}"
+EXTRA_OECONF += "DEFAULT_RMT_DIR=${sbindir}"
 
 do_install () {
     autotools_do_install
@@ -26,11 +27,14 @@ do_install () {
         mv "${D}${bindir}/cpio" "${D}${base_bindir}/cpio"
         rmdir ${D}${bindir}/
     fi
+
+    # Avoid conflicts with the version from tar
+    mv "${D}${mandir}/man8/rmt.8" "${D}${mandir}/man8/rmt-cpio.8"
 }
 
 PACKAGES =+ "${PN}-rmt"
 
-FILES_${PN}-rmt = "${base_sbindir}/rmt*"
+FILES_${PN}-rmt = "${sbindir}/rmt*"
 
 inherit update-alternatives
 
@@ -42,6 +46,6 @@ ALTERNATIVE_${PN}-rmt = "rmt"
 ALTERNATIVE_LINK_NAME[cpio] = "${base_bindir}/cpio"
 
 ALTERNATIVE_PRIORITY[rmt] = "50"
-ALTERNATIVE_LINK_NAME[rmt] = "${base_sbindir}/rmt"
+ALTERNATIVE_LINK_NAME[rmt] = "${sbindir}/rmt"
 
 BBCLASSEXTEND = "native"

@@ -6,18 +6,7 @@
 # Copyright (C) 2010 Chris Larson
 # Copyright (C) 2012 Richard Purdie
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as
-# published by the Free Software Foundation.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+# SPDX-License-Identifier: GPL-2.0-only
 #
 
 import unittest
@@ -123,6 +112,13 @@ ${D}${libdir}/pkgconfig/*.pc
         self.parseExpression("sed -i -e 's:IP{:I${:g' $pc")
         self.assertExecs(set(["sed"]))
 
+    def test_parameter_expansion_modifiers(self):
+        # - and + are also valid modifiers for parameter expansion, but are
+        # valid characters in bitbake variable names, so are not included here
+        for i in ('=', ':-', ':=', '?', ':?', ':+', '#', '%', '##', '%%'):
+            name = "foo%sbar" % i
+            self.parseExpression("${%s}" % name)
+            self.assertNotIn(name, self.references)
 
     def test_until(self):
         self.parseExpression("until false; do echo true; done")

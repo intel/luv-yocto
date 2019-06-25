@@ -1,14 +1,7 @@
 #
 # Copyright (c) 2017, Intel Corporation.
 #
-# This program is free software; you can redistribute it and/or modify it
-# under the terms and conditions of the GNU General Public License,
-# version 2, as published by the Free Software Foundation.
-#
-# This program is distributed in the hope it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-# more details.
+# SPDX-License-Identifier: GPL-2.0-only
 #
 """Functionality for analyzing buildstats"""
 import json
@@ -263,7 +256,7 @@ class BuildStats(dict):
         """Aggregate other buildstats into this"""
         if set(self.keys()) != set(buildstats.keys()):
             raise ValueError("Refusing to aggregate buildstats, set of "
-                             "recipes is different")
+                             "recipes is different: %s" % (set(self.keys()) ^ set(buildstats.keys())))
         for pkg, data in buildstats.items():
             self[pkg].aggregate(data)
 

@@ -6,7 +6,9 @@
 # script to avoid a contaminated environment.
 #
 # Copyright (C) 2017 Intel Corporation
-# Released under the MIT license (see COPYING.MIT)
+#
+# SPDX-License-Identifier: MIT
+#
 
 if [ -z "$BUILDDIR" ]; then
 	echo "Please source oe-init-build-env before run this script."
@@ -30,7 +32,9 @@ cd $base_dir
 
 build_dir=$(mktemp -p $base_dir -d -t build-XXXX)
 
-source oe-init-build-env $build_dir
+this_dir=$(dirname $(readlink -f $0))
+
+source $this_dir/../oe-init-build-env $build_dir
 if [[ $output_log != '' ]]; then
 	yocto-check-layer -o "$output_log" "$*"
 else

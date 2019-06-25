@@ -1,9 +1,12 @@
+#
+# SPDX-License-Identifier: MIT
+#
+
 import os
 import time
 
 from oeqa.runtime.case import OERuntimeTestCase
 from oeqa.core.decorator.depends import OETestDepends
-from oeqa.core.decorator.oeid import OETestID
 from oeqa.core.decorator.data import skipIfNotFeature
 
 # need some kernel fragments
@@ -21,6 +24,12 @@ class KSample(OERuntimeTestCase):
             msg = output
             self.assertTrue(result, msg)
             self.assertEqual(status, 0, cmd)
+
+    def check_arch(self, archset=''):
+        status, output = self.target.run("uname -m")
+        result = ("%s" % output) in archset
+        if not result:
+            self.skipTest("This case doesn't support %s" % output)
 
     def check_config(self, config_opt=''):
         cmd = "zcat /proc/config.gz | grep %s" % config_opt
@@ -99,6 +108,7 @@ class KSampleTest(KSample):
     # kprobe
     @OETestDepends(['ssh.SSHTest.test_ssh'])
     def test_kprobe_test(self):
+        self.check_arch("x86_64 i686 ppc")
         index = ["kprobe", "kretprobe"]
         for i in index:
             self.kprobe_func(i)
@@ -166,9 +176,9 @@ class KSampleTest(KSample):
     def test_hw_breakpoint_example(self):
         # check arch
         status, output = self.target.run("uname -m")
-        result = ("x86" in output) or ("aarch64" in output)
+        result = ("x86_64" in output) or ("aarch64" in output)
         if not result:
-            self.skipTest("the arch doesn't support hw breakpoint" % output)
+            self.skipTest("the arch %s doesn't support hw breakpoint" % output)
         # check config
         self.check_config("CONFIG_KALLSYMS_ALL")
         # make sure if module exists

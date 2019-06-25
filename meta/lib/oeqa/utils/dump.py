@@ -1,3 +1,7 @@
+#
+# SPDX-License-Identifier: MIT
+#
+
 import os
 import sys
 import errno
@@ -12,7 +16,7 @@ class BaseDumper(object):
         self.cmds = []
         # Some testing doesn't inherit testimage, so it is needed
         # to set some defaults.
-        self.parent_dir = parent_dir or "/tmp/oe-saved-tests"
+        self.parent_dir = parent_dir
         dft_cmds = """  top -bn1
                         iostat -x -z -N -d -p ALL 20 2
                         ps -ef

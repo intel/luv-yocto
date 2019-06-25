@@ -1,3 +1,7 @@
+#
+# SPDX-License-Identifier: GPL-2.0-only
+#
+
 from abc import ABCMeta, abstractmethod
 from oe.utils import execute_pre_post_process
 from oe.manifest import *
@@ -95,8 +99,8 @@ class Sdk(object, metaclass=ABCMeta):
             if linguas == "all":
                 pm.install_glob("nativesdk-glibc-binary-localedata-*.utf-8", sdk=True)
             else:
-                for lang in linguas.split():
-                    pm.install("nativesdk-glibc-binary-localedata-%s.utf-8" % lang)
+                pm.install(["nativesdk-glibc-binary-localedata-%s.utf-8" % \
+                           lang for lang in linguas.split()])
             # Generate a locale archive of them
             target_arch = self.d.getVar('SDK_ARCH')
             rootfs = oe.path.join(self.sdk_host_sysroot, self.sdk_native_path)

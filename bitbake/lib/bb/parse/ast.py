@@ -8,19 +8,8 @@
 # Copyright (C) 2003, 2004 Phil Blundell
 # Copyright (C) 2009 Holger Hans Peter Freyther
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as
-# published by the Free Software Foundation.
+# SPDX-License-Identifier: GPL-2.0-only
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-
 
 import re
 import string
@@ -178,7 +167,7 @@ class MethodNode(AstNode):
             funcname = ("__anon_%s_%s" % (self.lineno, self.filename.translate(MethodNode.tr_tbl)))
             self.python = True
             text = "def %s(d):\n" % (funcname) + text
-            bb.methodpool.insert_method(funcname, text, self.filename, self.lineno - len(self.body))
+            bb.methodpool.insert_method(funcname, text, self.filename, self.lineno - len(self.body) - 1)
             anonfuncs = data.getVar('__BBANONFUNCS', False) or []
             anonfuncs.append(funcname)
             data.setVar('__BBANONFUNCS', anonfuncs)

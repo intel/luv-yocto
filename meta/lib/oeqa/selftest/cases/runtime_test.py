@@ -1,11 +1,15 @@
+#
+# SPDX-License-Identifier: MIT
+#
+
 from oeqa.selftest.case import OESelftestTestCase
 from oeqa.utils.commands import runCmd, bitbake, get_bb_var, get_bb_vars, runqemu
 from oeqa.utils.sshcontrol import SSHControl
-from oeqa.core.decorator.oeid import OETestID
 import os
 import re
 import tempfile
 import shutil
+import oe.lsb
 
 class TestExport(OESelftestTestCase):
 
@@ -14,7 +18,6 @@ class TestExport(OESelftestTestCase):
         runCmd("rm -rf /tmp/sdk")
         super(TestExport, cls).tearDownClass()
 
-    @OETestID(1499)
     def test_testexport_basic(self):
         """
         Summary: Check basic testexport functionality with only ping test enabled.
@@ -54,7 +57,6 @@ class TestExport(OESelftestTestCase):
             # Verify ping test was succesful
             self.assertEqual(0, result.status, 'oe-test runtime returned a non 0 status')
 
-    @OETestID(1641)
     def test_testexport_sdk(self):
         """
         Summary: Check sdk functionality for testexport.
@@ -109,7 +111,6 @@ class TestExport(OESelftestTestCase):
 
 class TestImage(OESelftestTestCase):
 
-    @OETestID(1644)
     def test_testimage_install(self):
         """
         Summary: Check install packages functionality for testimage/testexport.
@@ -130,7 +131,6 @@ class TestImage(OESelftestTestCase):
         bitbake('core-image-full-cmdline socat')
         bitbake('-c testimage core-image-full-cmdline')
 
-    @OETestID(1883)
     def test_testimage_dnf(self):
         """
         Summary: Check package feeds functionality for dnf
@@ -168,9 +168,70 @@ class TestImage(OESelftestTestCase):
         # remove the oeqa-feed-sign temporal directory
         shutil.rmtree(self.gpg_home, ignore_errors=True)
 
+    def test_testimage_virgl_gtk(self):
+        """
+        Summary: Check host-assisted accelerate OpenGL functionality in qemu with gtk frontend
+        Expected: 1. Check that virgl kernel driver is loaded and 3d acceleration is enabled
+                  2. Check that kmscube demo runs without crashing.
+        Product: oe-core
+        Author: Alexander Kanavin <alex.kanavin@gmail.com>
+        """
+        if "DISPLAY" not in os.environ:
+            self.skipTest("virgl gtk test must be run inside a X session")
+        distro = oe.lsb.distro_identifier()
+        if distro and distro == 'debian-8':
+            self.skipTest('virgl isn\'t working with Debian 8')
+
+        qemu_packageconfig = get_bb_var('PACKAGECONFIG', 'qemu-system-native')
+        features = 'INHERIT += "testimage"\n'
+        if 'gtk+' not in qemu_packageconfig:
+            features += 'PACKAGECONFIG_append_pn-qemu-system-native = " gtk+"\n'
+        if 'virglrenderer' not in qemu_packageconfig:
+            features += 'PACKAGECONFIG_append_pn-qemu-system-native = " virglrenderer"\n'
+        if 'glx' not in qemu_packageconfig:
+            features += 'PACKAGECONFIG_append_pn-qemu-system-native = " glx"\n'
+        features += 'TEST_SUITES = "ping ssh virgl"\n'
+        features += 'IMAGE_FEATURES_append = " ssh-server-dropbear"\n'
+        features += 'IMAGE_INSTALL_append = " kmscube"\n'
+        features += 'TEST_RUNQEMUPARAMS = "gtk-gl"\n'
+        self.write_config(features)
+        bitbake('core-image-minimal')
+        bitbake('-c testimage core-image-minimal')
+
+    def test_testimage_virgl_headless(self):
+        """
+        Summary: Check host-assisted accelerate OpenGL functionality in qemu with egl-headless frontend
+        Expected: 1. Check that virgl kernel driver is loaded and 3d acceleration is enabled
+                  2. Check that kmscube demo runs without crashing.
+        Product: oe-core
+        Author: Alexander Kanavin <alex.kanavin@gmail.com>
+        """
+        import subprocess, os
+        try:
+            content = os.listdir("/dev/dri")
+            if len([i for i in content if i.startswith('render')]) == 0:
+                self.skipTest("No render nodes found in /dev/dri: %s" %(content))
+        except FileNotFoundError:
+            self.skipTest("/dev/dri directory does not exist; no render nodes available on this machine.")
+        try:
+            dripath = subprocess.check_output("pkg-config --variable=dridriverdir dri", shell=True)
+        except subprocess.CalledProcessError as e:
+            self.skipTest("Could not determine the path to dri drivers on the host via pkg-config.\nPlease install Mesa development files (particularly, dri.pc) on the host machine.")
+        qemu_packageconfig = get_bb_var('PACKAGECONFIG', 'qemu-system-native')
+        features = 'INHERIT += "testimage"\n'
+        if 'virglrenderer' not in qemu_packageconfig:
+            features += 'PACKAGECONFIG_append_pn-qemu-system-native = " virglrenderer"\n'
+        if 'glx' not in qemu_packageconfig:
+            features += 'PACKAGECONFIG_append_pn-qemu-system-native = " glx"\n'
+        features += 'TEST_SUITES = "ping ssh virgl"\n'
+        features += 'IMAGE_FEATURES_append = " ssh-server-dropbear"\n'
+        features += 'IMAGE_INSTALL_append = " kmscube"\n'
+        features += 'TEST_RUNQEMUPARAMS = "egl-headless"\n'
+        self.write_config(features)
+        bitbake('core-image-minimal')
+        bitbake('-c testimage core-image-minimal')
+
 class Postinst(OESelftestTestCase):
-    @OETestID(1540)
-    @OETestID(1545)
     def test_postinst_rootfs_and_boot(self):
         """
         Summary:        The purpose of this test case is to verify Post-installation

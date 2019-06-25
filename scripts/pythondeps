@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 #
+# SPDX-License-Identifier: GPL-2.0-only
+#
 # Determine dependencies of python scripts or available python modules in a search path.
 #
 # Given the -d argument and a filename/filenames, returns the modules imported by those files.
@@ -9,7 +11,8 @@
 
 import argparse
 import ast
-import imp
+import importlib
+from importlib import machinery
 import logging
 import os.path
 import sys
@@ -17,10 +20,7 @@ import sys
 
 logger = logging.getLogger('pythondeps')
 
-suffixes = []
-for triple in imp.get_suffixes():
-    suffixes.append(triple[0])
-
+suffixes = importlib.machinery.all_suffixes()
 
 class PythonDepError(Exception):
     pass

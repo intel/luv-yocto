@@ -1,4 +1,6 @@
-# vi:sts=4:sw=4:et
+#
+# SPDX-License-Identifier: GPL-2.0-only
+#
 """Code for parsing OpenEmbedded license strings"""
 
 import ast
@@ -13,8 +15,8 @@ def license_ok(license, dont_want_licenses):
         # will exclude a trailing '+' character from LICENSE in
         # case INCOMPATIBLE_LICENSE is not a 'X+' license.
         lic = license
-        if not re.search('\+$', dwl):
-            lic = re.sub('\+', '', license)
+        if not re.search(r'\+$', dwl):
+            lic = re.sub(r'\+', '', license)
         if fnmatch(lic, dwl):
             return False
     return True
@@ -40,8 +42,8 @@ class InvalidLicense(LicenseError):
         return "invalid characters in license '%s'" % self.license
 
 license_operator_chars = '&|() '
-license_operator = re.compile('([' + license_operator_chars + '])')
-license_pattern = re.compile('[a-zA-Z0-9.+_\-]+$')
+license_operator = re.compile(r'([' + license_operator_chars + '])')
+license_pattern = re.compile(r'[a-zA-Z0-9.+_\-]+$')
 
 class LicenseVisitor(ast.NodeVisitor):
     """Get elements based on OpenEmbedded license strings"""

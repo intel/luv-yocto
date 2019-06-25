@@ -66,6 +66,14 @@
                         below.
                         </para></listitem>
                     <listitem><para>
+                        The Yocto Project is not compatible with the
+                        <ulink url='https://en.wikipedia.org/wiki/Windows_Subsystem_for_Linux'>Windows Subsystem for Linux</ulink>
+                        (WSL).
+                        You cannot use a
+                        <link linkend='hardware-build-system-term'>build host</link>
+                        that is running WSL.
+                        </para></listitem>
+                    <listitem><para>
                         If you encounter problems, please go to
                         <ulink url='&YOCTO_BUGZILLA_URL;'>Yocto Project Bugzilla</ulink>
                         and submit a bug.
@@ -80,48 +88,64 @@
                 </itemizedlist>
             </note>
             <itemizedlist>
-<!--
-                <listitem><para>Ubuntu 10.04</para></listitem>
+                <listitem><para>Ubuntu 16.04 (LTS)</para></listitem>
+                <listitem><para>Ubuntu 18.04</para></listitem>
+                <listitem><para>Fedora 28</para></listitem>
+                <listitem><para>Fedora 29</para></listitem>
+                <listitem><para>CentOS 7.x</para></listitem>
+                <listitem><para>Debian GNU/Linux 8.x (Jessie)</para></listitem>
+                <listitem><para>Debian GNU/Linux 9.x (Stretch)</para></listitem>
+                <listitem><para>OpenSUSE 42.3</para></listitem>
+            </itemizedlist>
+        </para>
+
+
+<!--            <listitem><para>Ubuntu 10.04</para></listitem>
                 <listitem><para>Ubuntu 11.10</para></listitem>
                 <listitem><para>Ubuntu 12.04 (LTS)</para></listitem>
                 <listitem><para>Ubuntu 13.10</para></listitem>
-                <listitem><para>Ubuntu 14.04 (LTS)</para></listitem> -->
+                <listitem><para>Ubuntu 14.04 (LTS)</para></listitem>
                 <listitem><para>Ubuntu 14.10</para></listitem>
                 <listitem><para>Ubuntu 15.04</para></listitem>
                 <listitem><para>Ubuntu 15.10</para></listitem>
                 <listitem><para>Ubuntu 16.04 (LTS)</para></listitem>
-<!--                <listitem><para>Fedora 16 (Verne)</para></listitem>
+                <listitem><para>Ubuntu 16.10 (LTS)</para></listitem>
+                <listitem><para>Ubuntu 17.04</para></listitem>
+                <listitem><para>Fedora 16 (Verne)</para></listitem>
                 <listitem><para>Fedora 17 (Spherical)</para></listitem>
-                <listitem><para>Fedora release 19 (Schrödinger's Cat)</para></listitem>
-                <listitem><para>Fedora release 20 (Heisenbug)</para></listitem> -->
+                <listitem><para>Fedora 19 (Schrödinger's Cat)</para></listitem>
+                <listitem><para>Fedora release 20 (Heisenbug)</para></listitem>
                 <listitem><para>Fedora release 22</para></listitem>
                 <listitem><para>Fedora release 23</para></listitem>
-<!--                <listitem><para>Fedora release 24</para></listitem>
+                <listitem><para>Fedora release 24</para></listitem>
+                <listitem><para>Fedora release 26</para></listitem>
                 <listitem><para>CentOS release 5.6 (Final)</para></listitem>
                 <listitem><para>CentOS release 5.7 (Final)</para></listitem>
                 <listitem><para>CentOS release 5.8 (Final)</para></listitem>
                 <listitem><para>CentOS release 6.3 (Final)</para></listitem>
-                <listitem><para>CentOS release 6.x</para></listitem> -->
+                <listitem><para>CentOS release 6.x</para></listitem>
                 <listitem><para>CentOS release 7.x</para></listitem>
-<!--                <listitem><para>Debian GNU/Linux 6.0 (Squeeze)</para></listitem>
-                <listitem><para>Debian GNU/Linux 7.x (Wheezy)</para></listitem> -->
+                <listitem><para>Debian GNU/Linux 6.0 (Squeeze)</para></listitem>
+                <listitem><para>Debian GNU/Linux 7.x (Wheezy)</para></listitem>
                 <listitem><para>Debian GNU/Linux 8.x (Jessie)</para></listitem>
                 <listitem><para>Debian GNU/Linux 9.x (Stretch)</para></listitem>
-<!--                <listitem><para>Debian GNU/Linux 7.1 (Wheezy)</para></listitem>
+                <listitem><para>Debian GNU/Linux 7.1 (Wheezy)</para></listitem>
                 <listitem><para>Debian GNU/Linux 7.2 (Wheezy)</para></listitem>
                 <listitem><para>Debian GNU/Linux 7.3 (Wheezy)</para></listitem>
                 <listitem><para>Debian GNU/Linux 7.4 (Wheezy)</para></listitem>
                 <listitem><para>Debian GNU/Linux 7.5 (Wheezy)</para></listitem>
-                <listitem><para>Debian GNU/Linux 7.6 (Wheezy)</para></listitem> -->
-<!--                <listitem><para>openSUSE 11.4</para></listitem>
+                <listitem><para>Debian GNU/Linux 7.6 (Wheezy)</para></listitem>
+                <listitem><para>openSUSE 11.4</para></listitem>
                 <listitem><para>openSUSE 12.1</para></listitem>
                 <listitem><para>openSUSE 12.2</para></listitem>
                 <listitem><para>openSUSE 12.3</para></listitem>
-                <listitem><para>openSUSE 13.1</para></listitem> -->
+                <listitem><para>openSUSE 13.1</para></listitem>
                 <listitem><para>openSUSE 13.2</para></listitem>
                 <listitem><para>openSUSE 42.1</para></listitem>
+                <listitem><para>openSUSE 42.2</para></listitem>
             </itemizedlist>
-        </para>
+-->
+
 
         <note>
             While the Yocto Project Team attempts to ensure all Yocto Project
@@ -169,26 +193,12 @@
                         <literallayout class='monospaced'>
      $ sudo apt-get install &UBUNTU_HOST_PACKAGES_ESSENTIAL;
                         </literallayout></para></listitem>
-                    <listitem><para><emphasis>Graphical and Eclipse Plug-In Extras:</emphasis>
-                        Packages recommended if the host system has graphics
-                        support or if you are going to use the Eclipse
-                        IDE:
-                        <literallayout class='monospaced'>
-     $ sudo apt-get install libsdl1.2-dev xterm
-                        </literallayout></para></listitem>
                     <listitem><para><emphasis>Documentation:</emphasis>
                         Packages needed if you are going to build out the
                         Yocto Project documentation manuals:
                         <literallayout class='monospaced'>
      $ sudo apt-get install make xsltproc docbook-utils fop dblatex xmlto
                         </literallayout></para></listitem>
-                    <listitem><para><emphasis>OpenEmbedded Self-Test (<filename>oe-selftest</filename>):</emphasis>
-                        Packages needed if you are going to run
-                        <filename>oe-selftest</filename>:
-                        <literallayout class='monospaced'>
-     $ sudo apt-get install python-git
-                        </literallayout>
-                        </para></listitem>
                 </itemizedlist>
             </para>
         </section>
@@ -206,27 +216,13 @@
                         <literallayout class='monospaced'>
      $ sudo dnf install &FEDORA_HOST_PACKAGES_ESSENTIAL;
                         </literallayout></para></listitem>
-                    <listitem><para><emphasis>Graphical and Eclipse Plug-In Extras:</emphasis>
-                        Packages recommended if the host system has graphics
-                        support or if you are going to use the Eclipse
-                        IDE:
-                        <literallayout class='monospaced'>
-     $ sudo dnf install SDL-devel xterm
-                        </literallayout></para></listitem>
                     <listitem><para><emphasis>Documentation:</emphasis>
                         Packages needed if you are going to build out the
                         Yocto Project documentation manuals:
                         <literallayout class='monospaced'>
-     $ sudo dnf install make docbook-style-dsssl docbook-style-xsl \
+     $ sudo dnf install docbook-style-dsssl docbook-style-xsl \
      docbook-dtds docbook-utils fop libxslt dblatex xmlto
                         </literallayout></para></listitem>
-                    <listitem><para><emphasis>OpenEmbedded Self-Test (<filename>oe-selftest</filename>):</emphasis>
-                        Packages needed if you are going to run
-                        <filename>oe-selftest</filename>:
-                        <literallayout class='monospaced'>
-     $ sudo dnf install python3-GitPython
-                        </literallayout>
-                        </para></listitem>
                 </itemizedlist>
             </para>
         </section>
@@ -244,33 +240,13 @@
                         <literallayout class='monospaced'>
      $ sudo zypper install &OPENSUSE_HOST_PACKAGES_ESSENTIAL;
                         </literallayout></para></listitem>
-                    <listitem><para><emphasis>Graphical and Eclipse Plug-In Extras:</emphasis>
-                        Packages recommended if the host system has graphics
-                        support or if you are going to use the Eclipse
-                        IDE:
-                        <literallayout class='monospaced'>
-     $ sudo zypper install libSDL-devel xterm
-                        </literallayout></para></listitem>
                     <listitem><para><emphasis>Documentation:</emphasis>
                         Packages needed if you are going to build out the
                         Yocto Project documentation manuals:
                         <literallayout class='monospaced'>
-     $ sudo zypper install make dblatex xmlto
-                        </literallayout></para></listitem>
-                    <listitem><para><emphasis>OpenEmbedded Self-Test (<filename>oe-selftest</filename>):</emphasis>
-                        Packages needed if you are going to run
-                        <filename>oe-selftest</filename>:
-                        <literallayout class='monospaced'>
-     $ sudo zypper install python-GitPython
+     $ sudo zypper install dblatex xmlto
                         </literallayout></para></listitem>
                 </itemizedlist>
-                <note>
-                    Sanity testing, through the
-                    <link linkend='ref-classes-testimage*'>testimage</link>
-                    classes, does not work on systems using the
-                    <ulink url='https://en.opensuse.org/Portal:Wicked'>Wicked</ulink>
-                    network manager.
-                </note>
             </para>
         </section>
 
@@ -285,7 +261,7 @@
                         Packages needed to build an image for a headless
                         system:
                         <literallayout class='monospaced'>
-     $ sudo yum install &CENTOS_HOST_PACKAGES_ESSENTIAL; SDL-devel xterm
+     $ sudo yum install &CENTOS_HOST_PACKAGES_ESSENTIAL;
                         </literallayout>
                         <note><title>Notes</title>
                             <itemizedlist>
@@ -307,27 +283,13 @@
                             </itemizedlist>
                         </note>
                         </para></listitem>
-                    <listitem><para><emphasis>Graphical and Eclipse Plug-In Extras:</emphasis>
-                        Packages recommended if the host system has graphics
-                        support or if you are going to use the Eclipse
-                        IDE:
-                        <literallayout class='monospaced'>
-     $ sudo yum install SDL-devel xterm
-                        </literallayout></para></listitem>
                     <listitem><para><emphasis>Documentation:</emphasis>
                         Packages needed if you are going to build out the
                         Yocto Project documentation manuals:
                         <literallayout class='monospaced'>
-     $ sudo yum install make docbook-style-dsssl docbook-style-xsl \
+     $ sudo yum install docbook-style-dsssl docbook-style-xsl \
      docbook-dtds docbook-utils fop libxslt dblatex xmlto
                         </literallayout></para></listitem>
-                    <listitem><para><emphasis>OpenEmbedded Self-Test (<filename>oe-selftest</filename>):</emphasis>
-                        Packages needed if you are going to run
-                        <filename>oe-selftest</filename>:
-                        <literallayout class='monospaced'>
-     $ sudo yum install GitPython
-                        </literallayout>
-                        </para></listitem>
                 </itemizedlist>
             </para>
         </section>

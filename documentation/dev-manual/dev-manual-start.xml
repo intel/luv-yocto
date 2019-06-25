@@ -44,7 +44,7 @@
             <listitem><para>
                 <emphasis>Determine Who is Going to be Developing:</emphasis>
                 You need to understand who is going to be doing anything
-                related to the Yocto Project and what their roles would be.
+                related to the Yocto Project and determine their roles.
                 Making this determination is essential to completing
                 steps two and three, which are to get your equipment together
                 and set up your development environment's hardware topology.
@@ -174,14 +174,6 @@
                         stack.
                         This method works well for small numbers of relatively
                         isolated applications.
-                        </para></listitem>
-                    <listitem><para>
-                        When possible, use the Yocto Project plug-in for the
-                        <trademark class='trade'>Eclipse</trademark> IDE
-                        and SDK development practices.
-                        For more information, see the
-                        <ulink url='&YOCTO_DOCS_SDK_URL;'>Yocto Project Application Development and the Extensible Software Development Kit (eSDK)</ulink>
-                        manual.
                         </para></listitem>
                     <listitem><para>
                         Keep your cross-development toolchains updated.
@@ -408,6 +400,12 @@
         <ulink url='https://git.yoctoproject.org/cgit/cgit.cgi/crops/about/'>CROPS</ulink>,
         which leverages
         <ulink url='https://www.docker.com/'>Docker Containers</ulink>.
+        <note>
+            You cannot use a build host that is using the
+            <ulink url='https://en.wikipedia.org/wiki/Windows_Subsystem_for_Linux'>Windows Subsystem for Linux</ulink>
+            (WSL).
+            The Yocto Project is not compatible with WSL.
+        </note>
     </para>
 
     <para>
@@ -415,8 +413,7 @@
         further steps are necessary depending on what you want to
         accomplish.
         See the following references for information on how to prepare for
-        Board Support Package (BSP) development, kernel development, and
-        development using the <trademark class='trade'>Eclipse</trademark> IDE:
+        Board Support Package (BSP) development and kernel development:
         <itemizedlist>
             <listitem><para>
                 <emphasis>BSP Development:</emphasis>
@@ -430,13 +427,6 @@
                 See the
                 "<ulink url='&YOCTO_DOCS_KERNEL_DEV_URL;#preparing-the-build-host-to-work-on-the-kernel'>Preparing the Build Host to Work on the Kernel</ulink>"
                 section in the Yocto Project Linux Kernel Development Manual.
-                </para></listitem>
-            <listitem><para>
-                <emphasis>Eclipse Development:</emphasis>
-                See the
-                "<ulink url='&YOCTO_DOCS_SDK_URL;#sdk-eclipse-project'>Developing Applications Using <trademark class='trade'>Eclipse</trademark></ulink>"
-                Chapter in the Yocto Project Application Development and the
-                Extensible Software Development Kit (eSDK) manual.
                 </para></listitem>
         </itemizedlist>
     </para>
@@ -761,7 +751,7 @@
                     <ulink url='&YOCTO_DL_URL;/releases'></ulink> to access the
                     Index of Releases.
                     The list represents released components (e.g.
-                    <filename>eclipse-plugin</filename>,
+                    <filename>bitbake</filename>,
                     <filename>sato</filename>, and so on).
                     <note>
                         The <filename>yocto</filename> directory contains the
@@ -858,8 +848,7 @@
             Yocto Project maintains an area for nightly builds that contains
             tarball releases at <ulink url='&YOCTO_AB_NIGHTLY_URL;'/>.
             These builds include Yocto Project releases ("poky"),
-            toolchains, Yocto Project plugins for Eclipse, and builds for
-            supported machines.
+            toolchains, and builds for supported machines.
         </para>
 
         <para>
@@ -945,11 +934,11 @@
                     <literallayout class='monospaced'>
      $ git clone git://git.yoctoproject.org/poky
      Cloning into 'poky'...
-     remote: Counting objects: 416542, done.
-     remote: Compressing objects: 100% (98611/98611), done.
-     remote: Total 416542 (delta 311104), reused 416377 (delta 310939)
-     Receiving objects: 100% (416542/416542), 150.39 MiB | 15.77 MiB/s, done.
-     Resolving deltas: 100% (311104/311104), done.
+     remote: Counting objects: 432160, done.
+     remote: Compressing objects: 100% (102056/102056), done.
+     remote: Total 432160 (delta 323116), reused 432037 (delta 323000)
+     Receiving objects: 100% (432160/432160), 153.81 MiB | 8.54 MiB/s, done.
+     Resolving deltas: 100% (323116/323116), done.
      Checking connectivity... done.
                     </literallayout>
                     Unless you specify a specific development branch or
@@ -1031,13 +1020,15 @@
            .
            .
            .
-       remotes/origin/master-next
-       remotes/origin/master-next2
-       remotes/origin/morty
-       remotes/origin/pinky
-       remotes/origin/purple
        remotes/origin/pyro
+       remotes/origin/pyro-next
        remotes/origin/rocko
+       remotes/origin/rocko-next
+       remotes/origin/sumo
+       remotes/origin/sumo-next
+       remotes/origin/thud
+       remotes/origin/thud-next
+       remotes/origin/warrior
                     </literallayout>
                     </para></listitem>
                 <listitem><para>
@@ -1116,11 +1107,14 @@
         .
         .
         .
-     yocto-2.2
-     yocto-2.2.1
-     yocto-2.3
-     yocto-2.3.1
-     yocto-2.4
+     yocto-2.5
+     yocto-2.5.1
+     yocto-2.5.2
+     yocto-2.5.3
+     yocto-2.6
+     yocto-2.6.1
+     yocto-2.6.2
+     yocto-2.7
      yocto_1.5_M5.rc8
                     </literallayout>
                     </para></listitem>

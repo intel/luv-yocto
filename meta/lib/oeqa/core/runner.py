@@ -1,5 +1,8 @@
+#
 # Copyright (C) 2016 Intel Corporation
-# Released under the MIT license (see COPYING.MIT)
+#
+# SPDX-License-Identifier: MIT
+#
 
 import os
 import time
@@ -7,6 +10,7 @@ import unittest
 import logging
 import re
 import json
+import sys
 
 from unittest import TextTestResult as _TestResult
 from unittest import TextTestRunner as _TestRunner
@@ -45,6 +49,9 @@ class OETestResult(_TestResult):
 
         self.tc = tc
 
+        # stdout and stderr for each test case
+        self.logged_output = {}
+
     def startTest(self, test):
         # May have been set by concurrencytest
         if test.id() not in self.starttime:
@@ -53,6 +60,9 @@ class OETestResult(_TestResult):
 
     def stopTest(self, test):
         self.endtime[test.id()] = time.time()
+        if self.buffer:
+            self.logged_output[test.id()] = (
+                    sys.stdout.getvalue(), sys.stderr.getvalue())
         super(OETestResult, self).stopTest(test)
         if test.id() in self.progressinfo:
             self.tc.logger.info(self.progressinfo[test.id()])
@@ -76,18 +86,22 @@ class OETestResult(_TestResult):
             msg = "%s - OK - All required tests passed" % component
         else:
             msg = "%s - FAIL - Required tests failed" % component
-        skipped = len(self.skipped)
-        if skipped:
-            msg += " (skipped=%d)" % skipped
+        msg += " (successes=%d, skipped=%d, failures=%d, errors=%d)" % (len(self.successes), len(self.skipped), len(self.failures), len(self.errors))
         self.tc.logger.info(msg)
 
     def _getTestResultDetails(self, case):
         result_types = {'failures': 'FAILED', 'errors': 'ERROR', 'skipped': 'SKIPPED',
-                        'expectedFailures': 'EXPECTEDFAIL', 'successes': 'PASSED'}
+                        'expectedFailures': 'EXPECTEDFAIL', 'successes': 'PASSED',
+                        'unexpectedSuccesses' : 'PASSED'}
 
         for rtype in result_types:
             found = False
-            for (scase, msg) in getattr(self, rtype):
+            for resultclass in getattr(self, rtype):
+                # unexpectedSuccesses are just lists, not lists of tuples
+                if isinstance(resultclass, tuple):
+                    scase, msg = resultclass
+                else:
+                    scase, msg = resultclass, None
                 if case.id() == scase.id():
                     found = True
                     break
@@ -95,13 +109,13 @@ class OETestResult(_TestResult):
 
                 # When fails at module or class level the class name is passed as string
                 # so figure out to see if match
-                m = re.search("^setUpModule \((?P<module_name>.*)\)$", scase_str)
+                m = re.search(r"^setUpModule \((?P<module_name>.*)\).*$", scase_str)
                 if m:
                     if case.__class__.__module__ == m.group('module_name'):
                         found = True
                         break
 
-                m = re.search("^setUpClass \((?P<class_name>.*)\)$", scase_str)
+                m = re.search(r"^setUpClass \((?P<class_name>.*)\).*$", scase_str)
                 if m:
                     class_name = "%s.%s" % (case.__class__.__module__,
                                             case.__class__.__name__)
@@ -120,10 +134,12 @@ class OETestResult(_TestResult):
         self.successes.append((test, None))
         super(OETestResult, self).addSuccess(test)
 
-    def logDetails(self, json_file_dir=None, configuration=None, result_id=None):
+    def logDetails(self, json_file_dir=None, configuration=None, result_id=None,
+            dump_streams=False):
         self.tc.logger.info("RESULTS:")
 
         result = {}
+        logs = {}
         if hasattr(self.tc, "extraresults"):
             result = self.tc.extraresults
 
@@ -132,21 +148,27 @@ class OETestResult(_TestResult):
 
             (status, log) = self._getTestResultDetails(case)
 
-            oeid = -1
-            if hasattr(case, 'decorators'):
-                for d in case.decorators:
-                    if hasattr(d, 'oeid'):
-                        oeid = d.oeid
-
             t = ""
             if case.id() in self.starttime and case.id() in self.endtime:
                 t = " (" + "{0:.2f}".format(self.endtime[case.id()] - self.starttime[case.id()]) + "s)"
 
-            self.tc.logger.info("RESULTS - %s - Testcase %s: %s%s" % (case.id(), oeid, status, t))
+            if status not in logs:
+                logs[status] = []
+            logs[status].append("RESULTS - %s: %s%s" % (case.id(), status, t))
+            report = {'status': status}
             if log:
-                result[case.id()] = {'status': status, 'log': log}
-            else:
-                result[case.id()] = {'status': status}
+                report['log'] = log
+            if dump_streams and case.id() in self.logged_output:
+                (stdout, stderr) = self.logged_output[case.id()]
+                report['stdout'] = stdout
+                report['stderr'] = stderr
+            result[case.id()] = report
+
+        for i in ['PASSED', 'SKIPPED', 'EXPECTEDFAIL', 'ERROR', 'FAILED', 'UNKNOWN']:
+            if i not in logs:
+                continue
+            for l in logs[i]:
+                self.tc.logger.info(l)
 
         if json_file_dir:
             tresultjsonhelper = OETestResultJSONHelper()
@@ -183,38 +205,19 @@ class OETestRunner(_TestRunner):
                 self._walked_cases = self._walked_cases + 1
 
     def _list_tests_name(self, suite):
-        from oeqa.core.decorator.oeid import OETestID
         from oeqa.core.decorator.oetag import OETestTag
 
         self._walked_cases = 0
 
-        def _list_cases_without_id(logger, case):
-
-            found_id = False
-            if hasattr(case, 'decorators'):
-                for d in case.decorators:
-                    if isinstance(d, OETestID):
-                        found_id = True
-
-            if not found_id:
-                logger.info('oeid missing for %s' % case.id())
-
         def _list_cases(logger, case):
-            oeid = None
             oetag = None
 
             if hasattr(case, 'decorators'):
                 for d in case.decorators:
-                    if isinstance(d, OETestID):
-                        oeid = d.oeid
-                    elif isinstance(d, OETestTag):
+                    if isinstance(d, OETestTag):
                         oetag = d.oetag
 
-            logger.info("%s\t%s\t\t%s" % (oeid, oetag, case.id()))
-
-        self.tc.logger.info("Listing test cases that don't have oeid ...")
-        self._walk_suite(suite, _list_cases_without_id)
-        self.tc.logger.info("-" * 80)
+            logger.info("%s\t\t%s" % (oetag, case.id()))
 
         self.tc.logger.info("Listing all available tests:")
         self._walked_cases = 0

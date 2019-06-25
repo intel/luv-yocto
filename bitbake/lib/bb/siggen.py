@@ -1,3 +1,7 @@
+#
+# SPDX-License-Identifier: GPL-2.0-only
+#
+
 import hashlib
 import logging
 import os
@@ -40,6 +44,9 @@ class SignatureGenerator(object):
 
     def finalise(self, fn, d, varient):
         return
+
+    def get_unihash(self, task):
+        return self.taskhash[task]
 
     def get_taskhash(self, fn, task, deps, dataCache):
         return "0"
@@ -87,7 +94,7 @@ class SignatureGeneratorBasic(SignatureGenerator):
         self.taints = {}
         self.gendeps = {}
         self.lookupcache = {}
-        self.pkgnameextract = re.compile("(?P<fn>.*)\..*")
+        self.pkgnameextract = re.compile(r"(?P<fn>.*)\..*")
         self.basewhitelist = set((data.getVar("BB_HASHBASE_WHITELIST") or "").split())
         self.taskwhitelist = None
         self.init_rundepcheck(data)
@@ -181,12 +188,14 @@ class SignatureGeneratorBasic(SignatureGenerator):
                 depmc = pkgname.split(':')[1]
                 if mc != depmc:
                     continue
+            if dep.startswith("multiconfig:") and not mc:
+                continue
             depname = dataCache.pkg_fn[pkgname]
             if not self.rundep_check(fn, recipename, task, dep, depname, dataCache):
                 continue
             if dep not in self.taskhash:
                 bb.fatal("%s is not in taskhash, caller isn't calling in dependency order?" % dep)
-            data = data + self.taskhash[dep]
+            data = data + self.get_unihash(dep)
             self.runtaskdeps[k].append(dep)
 
         if task in dataCache.file_checksums[fn]:
@@ -213,7 +222,7 @@ class SignatureGeneratorBasic(SignatureGenerator):
             self.taints[k] = taint
             logger.warning("%s is tainted from a forced run" % k)
 
-        h = hashlib.md5(data.encode("utf-8")).hexdigest()
+        h = hashlib.sha256(data.encode("utf-8")).hexdigest()
         self.taskhash[k] = h
         #d.setVar("BB_TASKHASH_task-%s" % task, taskhash[task])
         return h
@@ -261,7 +270,7 @@ class SignatureGeneratorBasic(SignatureGenerator):
             data['file_checksum_values'] = [(os.path.basename(f), cs) for f,cs in self.file_checksum_values[k]]
             data['runtaskhashes'] = {}
             for dep in data['runtaskdeps']:
-                data['runtaskhashes'][dep] = self.taskhash[dep]
+                data['runtaskhashes'][dep] = self.get_unihash(dep)
             data['taskhash'] = self.taskhash[k]
 
         taint = self.read_taint(fn, task, referencestamp)
@@ -311,6 +320,13 @@ class SignatureGeneratorBasic(SignatureGenerator):
 class SignatureGeneratorBasicHash(SignatureGeneratorBasic):
     name = "basichash"
 
+    def get_stampfile_hash(self, task):
+        if task in self.taskhash:
+            return self.taskhash[task]
+
+        # If task is not in basehash, then error
+        return self.basehash[task]
+
     def stampfile(self, stampbase, fn, taskname, extrainfo, clean=False):
         if taskname != "do_setscene" and taskname.endswith("_setscene"):
             k = fn + "." + taskname[:-9]
@@ -318,11 +334,9 @@ class SignatureGeneratorBasicHash(SignatureGeneratorBasic):
             k = fn + "." + taskname
         if clean:
             h = "*"
-        elif k in self.taskhash:
-            h = self.taskhash[k]
         else:
-            # If k is not in basehash, then error
-            h = self.basehash[k]
+            h = self.get_stampfile_hash(k)
+
         return ("%s.%s.%s.%s" % (stampbase, taskname, h, extrainfo)).rstrip('.')
 
     def stampcleanmask(self, stampbase, fn, taskname, extrainfo):
@@ -342,10 +356,10 @@ def dump_this_task(outfile, d):
 def init_colors(enable_color):
     """Initialise colour dict for passing to compare_sigfiles()"""
     # First set up the colours
-    colors = {'color_title':   '\033[1;37;40m',
-              'color_default': '\033[0;37;40m',
-              'color_add':     '\033[1;32;40m',
-              'color_remove':  '\033[1;31;40m',
+    colors = {'color_title':   '\033[1m',
+              'color_default': '\033[0m',
+              'color_add':     '\033[0;32m',
+              'color_remove':  '\033[0;31m',
              }
     # Leave all keys present but clear the values
     if not enable_color:
@@ -642,7 +656,7 @@ def calc_basehash(sigdata):
         if val is not None:
             basedata = basedata + str(val)
 
-    return hashlib.md5(basedata.encode("utf-8")).hexdigest()
+    return hashlib.sha256(basedata.encode("utf-8")).hexdigest()
 
 def calc_taskhash(sigdata):
     data = sigdata['basehash']
@@ -660,7 +674,7 @@ def calc_taskhash(sigdata):
         else:
             data = data + sigdata['taint']
 
-    return hashlib.md5(data.encode("utf-8")).hexdigest()
+    return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
 
 def dump_sigfile(a):

@@ -13,7 +13,8 @@
 # ALL_PROXY=https://proxy.example.com:8080
 #
 # Copyright (c) 2013, Intel Corporation.
-# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # AUTHORS
 # Darren Hart <dvhart@linux.intel.com>
@@ -131,8 +132,8 @@ if [ -z "$ALL_PROXY" ]; then
 fi
 
 # Connect directly to hosts in NO_PROXY
-for H in ${NO_PROXY//,/ }; do
-	if match_host $1 $H; then
+for H in "${NO_PROXY//,/ }"; do
+	if match_host $1 "$H"; then
 		exec $SOCAT STDIO $METHOD
 	fi
 done

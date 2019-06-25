@@ -2,18 +2,8 @@
 #
 # Copyright (C) 2014 Intel Corporation
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as
-# published by the Free Software Foundation.
+# SPDX-License-Identifier: GPL-2.0-only
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import argparse
 import glob
@@ -26,6 +16,8 @@ import string
 import subprocess
 import sys
 import tempfile
+import importlib
+from importlib import machinery
 
 def logger_create(name, stream=None):
     logger = logging.getLogger(name)
@@ -37,12 +29,12 @@ def logger_create(name, stream=None):
 
 def logger_setup_color(logger, color='auto'):
     from bb.msg import BBLogFormatter
-    console = logging.StreamHandler(sys.stdout)
-    formatter = BBLogFormatter("%(levelname)s: %(message)s")
-    console.setFormatter(formatter)
-    logger.handlers = [console]
-    if color == 'always' or (color=='auto' and console.stream.isatty()):
-        formatter.enable_color()
+
+    for handler in logger.handlers:
+        if (isinstance(handler, logging.StreamHandler) and
+            isinstance(handler.formatter, BBLogFormatter)):
+            if color == 'always' or (color == 'auto' and handler.stream.isatty()):
+                handler.formatter.enable_color()
 
 
 def load_plugins(logger, plugins, pluginpath):
@@ -50,12 +42,9 @@ def load_plugins(logger, plugins, pluginpath):
 
     def load_plugin(name):
         logger.debug('Loading plugin %s' % name)
-        fp, pathname, description = imp.find_module(name, [pluginpath])
-        try:
-            return imp.load_module(name, fp, pathname, description)
-        finally:
-            if fp:
-                fp.close()
+        spec = importlib.machinery.PathFinder.find_spec(name, path=[pluginpath] )
+        if spec:
+            return spec.loader.load_module()
 
     def plugin_name(filename):
         return os.path.splitext(os.path.basename(filename))[0]
@@ -69,6 +58,7 @@ def load_plugins(logger, plugins, pluginpath):
             if hasattr(plugin, 'plugin_init'):
                 plugin.plugin_init(plugins)
             plugins.append(plugin)
+
 
 def git_convert_standalone_clone(repodir):
     """If specified directory is a git repository, ensure it's a standalone clone"""

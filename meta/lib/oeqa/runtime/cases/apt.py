@@ -1,3 +1,7 @@
+#
+# SPDX-License-Identifier: MIT
+#
+
 import os
 from oeqa.utils.httpserver import HTTPService
 from oeqa.runtime.case import OERuntimeTestCase
@@ -18,7 +22,7 @@ class AptRepoTest(AptTest):
     @classmethod
     def setUpClass(cls):
         service_repo = os.path.join(cls.tc.td['DEPLOY_DIR_DEB'], 'all')
-        cls.repo_server = HTTPService(service_repo, cls.tc.target.server_ip)
+        cls.repo_server = HTTPService(service_repo, cls.tc.target.server_ip, logger=cls.tc.logger)
         cls.repo_server.start()
 
     @classmethod

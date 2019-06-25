@@ -1,3 +1,7 @@
+#
+# SPDX-License-Identifier: GPL-2.0-only
+#
+
 import stat
 import mmap
 import subprocess
@@ -255,7 +259,7 @@ def read_shlib_providers(d):
 
     shlib_provider = {}
     shlibs_dirs = d.getVar('SHLIBSDIRS').split()
-    list_re = re.compile('^(.*)\.list$')
+    list_re = re.compile(r'^(.*)\.list$')
     # Go from least to most specific since the last one found wins
     for dir in reversed(shlibs_dirs):
         bb.debug(2, "Reading shlib providers in %s" % (dir))

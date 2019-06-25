@@ -6,18 +6,8 @@ BitBake Utility Functions
 
 # Copyright (C) 2004 Michael Lauer
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as
-# published by the Free Software Foundation.
+# SPDX-License-Identifier: GPL-2.0-only
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import re, fcntl, os, string, stat, shutil, time
 import sys
@@ -27,7 +17,8 @@ import bb
 import bb.msg
 import multiprocessing
 import fcntl
-import imp
+import importlib
+from importlib import machinery
 import itertools
 import subprocess
 import glob
@@ -43,7 +34,7 @@ from contextlib import contextmanager
 from ctypes import cdll
 
 logger = logging.getLogger("BitBake.Util")
-python_extensions = [e for e, _, _ in imp.get_suffixes()]
+python_extensions = importlib.machinery.all_suffixes()
 
 
 def clean_context():
@@ -68,8 +59,8 @@ class VersionStringException(Exception):
 
 def explode_version(s):
     r = []
-    alpha_regexp = re.compile('^([a-zA-Z]+)(.*)$')
-    numeric_regexp = re.compile('^(\d+)(.*)$')
+    alpha_regexp = re.compile(r'^([a-zA-Z]+)(.*)$')
+    numeric_regexp = re.compile(r'^(\d+)(.*)$')
     while (s != ''):
         if s[0] in string.digits:
             m = numeric_regexp.match(s)
@@ -119,6 +110,10 @@ def vercmp_part(a, b):
         if oa < ob:
             return -1
         elif oa > ob:
+            return 1
+        elif ca is None:
+            return -1
+        elif cb is None:
             return 1
         elif ca < cb:
             return -1
@@ -317,10 +312,13 @@ def better_compile(text, file, realfile, mode = "exec", lineno = 0):
         error = []
         # split the text into lines again
         body = text.split('\n')
-        error.append("Error in compiling python function in %s, line %s:\n" % (realfile, lineno))
+        error.append("Error in compiling python function in %s, line %s:\n" % (realfile, e.lineno))
         if hasattr(e, "lineno"):
             error.append("The code lines resulting in this error were:")
-            error.extend(_print_trace(body, e.lineno))
+            # e.lineno: line's position in reaflile
+            # lineno: function name's "position -1" in realfile
+            # e.lineno - lineno: line's relative position in function
+            error.extend(_print_trace(body, e.lineno - lineno))
         else:
             error.append("The function causing this error was:")
             for line in body:
@@ -704,15 +702,7 @@ def prunedir(topdir):
     # CAUTION:  This is dangerous!
     if _check_unsafe_delete_path(topdir):
         raise Exception('bb.utils.prunedir: called with dangerous path "%s", refusing to delete!' % topdir)
-    for root, dirs, files in os.walk(topdir, topdown = False):
-        for name in files:
-            os.remove(os.path.join(root, name))
-        for name in dirs:
-            if os.path.islink(os.path.join(root, name)):
-                os.remove(os.path.join(root, name))
-            else:
-                os.rmdir(os.path.join(root, name))
-    os.rmdir(topdir)
+    remove(topdir, recurse=True)
 
 #
 # Could also use return re.compile("(%s)" % "|".join(map(re.escape, suffixes))).sub(lambda mo: "", var)
@@ -722,8 +712,8 @@ def prune_suffix(var, suffixes, d):
     # See if var ends with any of the suffixes listed and
     # remove it if found
     for suffix in suffixes:
-        if var.endswith(suffix):
-            return var.replace(suffix, "")
+        if suffix and var.endswith(suffix):
+            return var[:-len(suffix)]
     return var
 
 def mkdirhier(directory):
@@ -734,7 +724,7 @@ def mkdirhier(directory):
     try:
         os.makedirs(directory)
     except OSError as e:
-        if e.errno != errno.EEXIST:
+        if e.errno != errno.EEXIST or not os.path.isdir(directory):
             raise e
 
 def movefile(src, dest, newmtime = None, sstat = None):
@@ -1157,14 +1147,14 @@ def edit_metadata(meta_lines, variables, varfunc, match_overrides=False):
 
     var_res = {}
     if match_overrides:
-        override_re = '(_[a-zA-Z0-9-_$(){}]+)?'
+        override_re = r'(_[a-zA-Z0-9-_$(){}]+)?'
     else:
         override_re = ''
     for var in variables:
         if var.endswith('()'):
-            var_res[var] = re.compile('^(%s%s)[ \\t]*\([ \\t]*\)[ \\t]*{' % (var[:-2].rstrip(), override_re))
+            var_res[var] = re.compile(r'^(%s%s)[ \\t]*\([ \\t]*\)[ \\t]*{' % (var[:-2].rstrip(), override_re))
         else:
-            var_res[var] = re.compile('^(%s%s)[ \\t]*[?+:.]*=[+.]*[ \\t]*(["\'])' % (var, override_re))
+            var_res[var] = re.compile(r'^(%s%s)[ \\t]*[?+:.]*=[+.]*[ \\t]*(["\'])' % (var, override_re))
 
     updated = False
     varset_start = ''
@@ -1501,6 +1491,8 @@ def ioprio_set(who, cls, value):
       NR_ioprio_set = 251
     elif _unamearch[0] == "i" and _unamearch[2:3] == "86":
       NR_ioprio_set = 289
+    elif _unamearch == "aarch64":
+      NR_ioprio_set = 30
 
     if NR_ioprio_set:
         ioprio = value | (cls << IOPRIO_CLASS_SHIFT)
@@ -1544,12 +1536,9 @@ def export_proxies(d):
 def load_plugins(logger, plugins, pluginpath):
     def load_plugin(name):
         logger.debug(1, 'Loading plugin %s' % name)
-        fp, pathname, description = imp.find_module(name, [pluginpath])
-        try:
-            return imp.load_module(name, fp, pathname, description)
-        finally:
-            if fp:
-                fp.close()
+        spec = importlib.machinery.PathFinder.find_spec(name, path=[pluginpath] )
+        if spec:
+            return spec.loader.load_module()
 
     logger.debug(1, 'Loading plugins from %s...' % pluginpath)
 

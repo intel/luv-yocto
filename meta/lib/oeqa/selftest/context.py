@@ -1,16 +1,20 @@
+#
 # Copyright (C) 2017 Intel Corporation
-# Released under the MIT license (see COPYING.MIT)
+#
+# SPDX-License-Identifier: MIT
+#
 
 import os
 import time
 import glob
 import sys
-import imp
+import importlib
 import signal
 from shutil import copyfile
 from random import choice
 
 import oeqa
+import oe
 
 from oeqa.core.context import OETestContext, OETestContextExecutor
 from oeqa.core.exception import OEQAPreRun, OEQATestNotFound
@@ -100,9 +104,15 @@ class OESelftestTestContextExecutor(OETestContextExecutor):
 
     def _process_args(self, logger, args):
         args.test_start_time = time.strftime("%Y%m%d%H%M%S")
-        args.output_log = '%s-results-%s.log' % (self.name, args.test_start_time)
         args.test_data_file = None
         args.CASES_PATHS = None
+
+        bbvars = get_bb_vars()
+        logdir = os.environ.get("BUILDDIR")
+        if 'LOG_DIR' in bbvars:
+            logdir = bbvars['LOG_DIR']
+        bb.utils.mkdirhier(logdir)
+        args.output_log = logdir + '/%s-results-%s.log' % (self.name, args.test_start_time)
 
         super(OESelftestTestContextExecutor, self)._process_args(logger, args)
 
@@ -113,7 +123,7 @@ class OESelftestTestContextExecutor(OETestContextExecutor):
         elif args.list_tests:
             args.list_tests = 'name'
 
-        self.tc_kwargs['init']['td'] = get_bb_vars()
+        self.tc_kwargs['init']['td'] = bbvars
         self.tc_kwargs['init']['machines'] = self._get_available_machines()
 
         builddir = os.environ.get("BUILDDIR")
@@ -178,7 +188,7 @@ class OESelftestTestContextExecutor(OETestContextExecutor):
                     self.tc.logger.info("\t%s" % l)
 
                 sys.path.extend(layer_libdirs)
-                imp.reload(oeqa.selftest)
+                importlib.reload(oeqa.selftest)
 
         _check_required_env_variables(["BUILDDIR"])
         _check_presence_meta_selftest()
@@ -218,7 +228,7 @@ class OESelftestTestContextExecutor(OETestContextExecutor):
         configuration = {'TEST_TYPE': 'oeselftest',
                         'STARTTIME': args.test_start_time,
                         'MACHINE': self.tc.td["MACHINE"],
-                        'HOST_DISTRO': ('-'.join(platform.linux_distribution())).replace(' ', '-'),
+                        'HOST_DISTRO': oe.lsb.distro_identifier().replace(' ', '-'),
                         'HOST_NAME': metadata['hostname'],
                         'LAYERS': metadata['layers']}
         return configuration
@@ -303,7 +313,7 @@ class OESelftestTestContextExecutor(OETestContextExecutor):
 
             output_link = os.path.join(os.path.dirname(args.output_log),
                     "%s-results.log" % self.name)
-            if os.path.exists(output_link):
+            if os.path.lexists(output_link):
                 os.remove(output_link)
             os.symlink(args.output_log, output_link)
 

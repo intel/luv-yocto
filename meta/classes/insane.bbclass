@@ -27,13 +27,14 @@ WARN_QA ?= "ldflags useless-rpaths rpaths staticdev libdir xorg-driver-abi \
             installed-vs-shipped compile-host-path install-host-path \
             pn-overrides infodir build-deps \
             unknown-configure-option symlink-to-sysroot multilib \
-            invalid-packageconfig host-user-contaminated uppercase-pn \
+            invalid-packageconfig host-user-contaminated uppercase-pn patch-fuzz \
             "
 ERROR_QA ?= "dev-so debug-deps dev-deps debug-files arch pkgconfig la \
             perms dep-cmp pkgvarcheck perm-config perm-line perm-link \
             split-strip packages-list pkgv-undefined var-undefined \
             version-going-backwards expanded-d invalid-chars \
-            license-checksum dev-elf file-rdeps \
+            license-checksum dev-elf file-rdeps configure-unsafe \
+            configure-gettext \
             "
 # Add usrmerge QA check based on distro feature
 ERROR_QA_append = "${@bb.utils.contains('DISTRO_FEATURES', 'usrmerge', ' usrmerge', '', d)}"
@@ -111,7 +112,7 @@ def package_qa_check_rpath(file,name, d, elf, messages):
     phdrs = elf.run_objdump("-p", d)
 
     import re
-    rpath_re = re.compile("\s+RPATH\s+(.*)")
+    rpath_re = re.compile(r"\s+RPATH\s+(.*)")
     for line in phdrs.split("\n"):
         m = rpath_re.match(line)
         if m:
@@ -140,7 +141,7 @@ def package_qa_check_useless_rpaths(file, name, d, elf, messages):
     phdrs = elf.run_objdump("-p", d)
 
     import re
-    rpath_re = re.compile("\s+RPATH\s+(.*)")
+    rpath_re = re.compile(r"\s+RPATH\s+(.*)")
     for line in phdrs.split("\n"):
         m = rpath_re.match(line)
         if m:
@@ -203,8 +204,8 @@ def package_qa_check_libdir(d):
     # The re's are purposely fuzzy, as some there are some .so.x.y.z files
     # that don't follow the standard naming convention. It checks later
     # that they are actual ELF files
-    lib_re = re.compile("^/lib.+\.so(\..+)?$")
-    exec_re = re.compile("^%s.*/lib.+\.so(\..+)?$" % exec_prefix)
+    lib_re = re.compile(r"^/lib.+\.so(\..+)?$")
+    exec_re = re.compile(r"^%s.*/lib.+\.so(\..+)?$" % exec_prefix)
 
     for root, dirs, files in os.walk(pkgdest):
         if root == pkgdest:
@@ -302,15 +303,15 @@ def package_qa_check_arch(path,name,d, elf, messages):
     # Check the architecture and endiannes of the binary
     is_32 = (("virtual/kernel" in provides) or bb.data.inherits_class("module", d)) and \
             (target_os == "linux-gnux32" or target_os == "linux-muslx32" or \
-            target_os == "linux-gnu_ilp32" or re.match('mips64.*32', d.getVar('DEFAULTTUNE')))
+            target_os == "linux-gnu_ilp32" or re.match(r'mips64.*32', d.getVar('DEFAULTTUNE')))
     is_bpf = (oe.qa.elf_machine_to_string(elf.machine()) == "BPF")
     if not ((machine == elf.machine()) or is_32 or is_bpf):
         package_qa_add_message(messages, "arch", "Architecture did not match (%s, expected %s) on %s" % \
                  (oe.qa.elf_machine_to_string(elf.machine()), oe.qa.elf_machine_to_string(machine), package_qa_clean_path(path,d)))
-    elif not ((bits == elf.abiSize()) or is_32):
+    elif not ((bits == elf.abiSize()) or is_32 or is_bpf):
         package_qa_add_message(messages, "arch", "Bit size did not match (%d to %d) %s on %s" % \
                  (bits, elf.abiSize(), bpn, package_qa_clean_path(path,d)))
-    elif not littleendian == elf.isLittleEndian():
+    elif not ((littleendian == elf.isLittleEndian()) or is_bpf):
         package_qa_add_message(messages, "arch", "Endiannes did not match (%d to %d) on %s" % \
                  (littleendian, elf.isLittleEndian(), package_qa_clean_path(path,d)))
 
@@ -342,7 +343,7 @@ def package_qa_textrel(path, name, d, elf, messages):
     sane = True
 
     import re
-    textrel_re = re.compile("\s+TEXTREL\s+")
+    textrel_re = re.compile(r"\s+TEXTREL\s+")
     for line in phdrs.split("\n"):
         if textrel_re.match(line):
             sane = False
@@ -383,7 +384,7 @@ def package_qa_hash_style(path, name, d, elf, messages):
             sane = True
 
     if has_syms and not sane:
-        package_qa_add_message(messages, "ldflags", "No GNU_HASH in the elf binary: '%s'" % path)
+        package_qa_add_message(messages, "ldflags", "No GNU_HASH in the ELF binary %s, didn't pass LDFLAGS?" % path)
 
 
 QAPATHTEST[buildpaths] = "package_qa_check_buildpaths"
@@ -457,7 +458,6 @@ python populate_lic_qa_checksum() {
     """
     Check for changes in the license files.
     """
-    import tempfile
     sane = True
 
     lic_files = d.getVar('LIC_FILES_CHKSUM') or ''
@@ -495,61 +495,45 @@ python populate_lic_qa_checksum() {
 
         if (not beginline) and (not endline):
             md5chksum = bb.utils.md5_file(srclicfile)
-            with open(srclicfile, 'rb') as f:
-                license = f.read()
+            with open(srclicfile, 'r', errors='replace') as f:
+                license = f.read().splitlines()
         else:
-            fi = open(srclicfile, 'rb')
-            fo = tempfile.NamedTemporaryFile(mode='wb', prefix='poky.', suffix='.tmp', delete=False)
-            tmplicfile = fo.name;
-            lineno = 0
-            linesout = 0
-            license = []
-            for line in fi:
-                lineno += 1
-                if (lineno >= beginline):
-                    if ((lineno <= endline) or not endline):
-                        fo.write(line)
-                        license.append(line)
-                        linesout += 1
-                    else:
-                        break
-            fo.flush()
-            fo.close()
-            fi.close()
-            md5chksum = bb.utils.md5_file(tmplicfile)
-            license = b''.join(license)
-            os.unlink(tmplicfile)
-
+            with open(srclicfile, 'rb') as f:
+                import hashlib
+                lineno = 0
+                license = []
+                m = hashlib.md5()
+                for line in f:
+                    lineno += 1
+                    if (lineno >= beginline):
+                        if ((lineno <= endline) or not endline):
+                            m.update(line)
+                            license.append(line.decode('utf-8', errors='replace').rstrip())
+                        else:
+                            break
+                md5chksum = m.hexdigest()
         if recipemd5 == md5chksum:
             bb.note (pn + ": md5 checksum matched for ", url)
         else:
             if recipemd5:
                 msg = pn + ": The LIC_FILES_CHKSUM does not match for " + url
                 msg = msg + "\n" + pn + ": The new md5 checksum is " + md5chksum
-                try:
-                    license_lines = license.decode('utf-8').split('\n')
-                except:
-                    # License text might not be valid UTF-8, in which
-                    # case we don't know how to include it in our output
-                    # and have to skip it.
-                    pass
-                else:
-                    max_lines = int(d.getVar('QA_MAX_LICENSE_LINES') or 20)
-                    if not license_lines or license_lines[-1] != '':
-                        # Ensure that our license text ends with a line break
-                        # (will be added with join() below).
-                        license_lines.append('')
-                    remove = len(license_lines) - max_lines
-                    if remove > 0:
-                        start = max_lines // 2
-                        end = start + remove - 1
-                        del license_lines[start:end]
-                        license_lines.insert(start, '...')
-                    msg = msg + "\n" + pn + ": Here is the selected license text:" + \
-                          "\n" + \
-                          "{:v^70}".format(" beginline=%d " % beginline if beginline else "") + \
-                          "\n" + "\n".join(license_lines) + \
-                          "{:^^70}".format(" endline=%d " % endline if endline else "")
+                max_lines = int(d.getVar('QA_MAX_LICENSE_LINES') or 20)
+                if not license or license[-1] != '':
+                    # Ensure that our license text ends with a line break
+                    # (will be added with join() below).
+                    license.append('')
+                remove = len(license) - max_lines
+                if remove > 0:
+                    start = max_lines // 2
+                    end = start + remove - 1
+                    del license[start:end]
+                    license.insert(start, '...')
+                msg = msg + "\n" + pn + ": Here is the selected license text:" + \
+                        "\n" + \
+                        "{:v^70}".format(" beginline=%d " % beginline if beginline else "") + \
+                        "\n" + "\n".join(license) + \
+                        "{:^^70}".format(" endline=%d " % endline if endline else "")
                 if beginline:
                     if endline:
                         srcfiledesc = "%s (lines %d through to %d)" % (srclicfile, beginline, endline)
@@ -570,7 +554,7 @@ python populate_lic_qa_checksum() {
         bb.fatal("Fatal QA errors found, failing task.")
 }
 
-def package_qa_check_staged(path,d):
+def qa_check_staged(path,d):
     """
     Check staged la and pc files for common problems like references to the work
     directory.
@@ -589,20 +573,31 @@ def package_qa_check_staged(path,d):
     else:
         pkgconfigcheck = tmpdir
 
+    skip = (d.getVar('INSANE_SKIP') or "").split()
+    skip_la = False
+    if 'la' in skip:
+        bb.note("Recipe %s skipping qa checking: la" % d.getVar('PN'))
+        skip_la = True
+
+    skip_pkgconfig = False
+    if 'pkgconfig' in skip:
+        bb.note("Recipe %s skipping qa checking: pkgconfig" % d.getVar('PN'))
+        skip_pkgconfig = True
+
     # find all .la and .pc files
     # read the content
     # and check for stuff that looks wrong
     for root, dirs, files in os.walk(path):
         for file in files:
             path = os.path.join(root,file)
-            if file.endswith(".la"):
+            if file.endswith(".la") and not skip_la:
                 with open(path) as f:
                     file_content = f.read()
                     file_content = file_content.replace(recipesysroot, "")
                     if workdir in file_content:
                         error_msg = "%s failed sanity test (workdir) in path %s" % (file,root)
                         sane &= package_qa_handle_error("la", error_msg, d)
-            elif file.endswith(".pc"):
+            elif file.endswith(".pc") and not skip_pkgconfig:
                 with open(path) as f:
                     file_content = f.read()
                     file_content = file_content.replace(recipesysroot, "")
@@ -952,7 +947,7 @@ python do_package_qa () {
 
     import re
     # The package name matches the [a-z0-9.+-]+ regular expression
-    pkgname_pattern = re.compile("^[a-z0-9.+-]+$")
+    pkgname_pattern = re.compile(r"^[a-z0-9.+-]+$")
 
     taskdepdata = d.getVar("BB_TASKDEPDATA", False)
     taskdeps = set()
@@ -1017,6 +1012,13 @@ do_package_qa[vardepsexclude] = "BB_TASKDEPDATA"
 do_package_qa[rdeptask] = "do_packagedata"
 addtask do_package_qa after do_packagedata do_package before do_build
 
+# Add the package specific INSANE_SKIPs to the sstate dependencies
+python() {
+    pkgs = (d.getVar('PACKAGES') or '').split()
+    for pkg in pkgs:
+        d.appendVarFlag("do_package_qa", "vardeps", " INSANE_SKIP_{}".format(pkg))
+}
+
 SSTATETASKS += "do_package_qa"
 do_package_qa[sstate-inputdirs] = ""
 do_package_qa[sstate-outputdirs] = ""
@@ -1027,9 +1029,56 @@ addtask do_package_qa_setscene
 
 python do_qa_staging() {
     bb.note("QA checking staging")
-
-    if not package_qa_check_staged(d.expand('${SYSROOT_DESTDIR}${libdir}'), d):
+    if not qa_check_staged(d.expand('${SYSROOT_DESTDIR}${libdir}'), d):
         bb.fatal("QA staging was broken by the package built above")
+}
+
+python do_qa_patch() {
+    import subprocess
+
+    ###########################################################################
+    # Check patch.log for fuzz warnings
+    #
+    # Further information on why we check for patch fuzz warnings:
+    # http://lists.openembedded.org/pipermail/openembedded-core/2018-March/148675.html
+    # https://bugzilla.yoctoproject.org/show_bug.cgi?id=10450
+    ###########################################################################
+
+    logdir = d.getVar('T')
+    patchlog = os.path.join(logdir,"log.do_patch")
+
+    if os.path.exists(patchlog):
+        fuzzheader = '--- Patch fuzz start ---'
+        fuzzfooter = '--- Patch fuzz end ---'
+        statement = "grep -e '%s' %s > /dev/null" % (fuzzheader, patchlog)
+        if subprocess.call(statement, shell=True) == 0:
+            msg = "Fuzz detected:\n\n"
+            fuzzmsg = ""
+            inFuzzInfo = False
+            f = open(patchlog, "r")
+            for line in f:
+                if fuzzheader in line:
+                    inFuzzInfo = True
+                    fuzzmsg = ""
+                elif fuzzfooter in line:
+                    fuzzmsg = fuzzmsg.replace('\n\n', '\n')
+                    msg += fuzzmsg
+                    msg += "\n"
+                    inFuzzInfo = False
+                elif inFuzzInfo and not 'Now at patch' in line:
+                    fuzzmsg += line
+            f.close()
+            msg += "The context lines in the patches can be updated with devtool:\n"
+            msg += "\n"
+            msg += "    devtool modify %s\n" % d.getVar('PN')
+            msg += "    devtool finish --force-patch-refresh %s <layer_path>\n\n" % d.getVar('PN')
+            msg += "Don't forget to review changes done by devtool!\n"
+            if 'patch-fuzz' in d.getVar('ERROR_QA'):
+                bb.error(msg)
+            elif 'patch-fuzz' in d.getVar('WARN_QA'):
+                bb.warn(msg)
+            msg = "Patch log indicates that patches do not apply cleanly."
+            package_qa_handle_error("patch-fuzz", msg, d)
 }
 
 python do_qa_configure() {
@@ -1042,15 +1091,22 @@ python do_qa_configure() {
     configs = []
     workdir = d.getVar('WORKDIR')
 
-    if bb.data.inherits_class('autotools', d):
+    skip = (d.getVar('INSANE_SKIP') or "").split()
+    skip_configure_unsafe = False
+    if 'configure-unsafe' in skip:
+        bb.note("Recipe %s skipping qa checking: configure-unsafe" % d.getVar('PN'))
+        skip_configure_unsafe = True
+
+    if bb.data.inherits_class('autotools', d) and not skip_configure_unsafe:
         bb.note("Checking autotools environment for common misconfiguration")
         for root, dirs, files in os.walk(workdir):
             statement = "grep -q -F -e 'CROSS COMPILE Badness:' -e 'is unsafe for cross-compilation' %s" % \
                         os.path.join(root,"config.log")
             if "config.log" in files:
                 if subprocess.call(statement, shell=True) == 0:
-                    bb.fatal("""This autoconf log indicates errors, it looked at host include and/or library paths while determining system capabilities.
-Rerun configure task after fixing this.""")
+                    error_msg = """This autoconf log indicates errors, it looked at host include and/or library paths while determining system capabilities.
+Rerun configure task after fixing this."""
+                    package_qa_handle_error("configure-unsafe", error_msg, d)
 
             if "configure.ac" in files:
                 configs.append(os.path.join(root,"configure.ac"))
@@ -1061,8 +1117,14 @@ Rerun configure task after fixing this.""")
     # Check gettext configuration and dependencies are correct
     ###########################################################################
 
+    skip_configure_gettext = False
+    if 'configure-gettext' in skip:
+        bb.note("Recipe %s skipping qa checking: configure-gettext" % d.getVar('PN'))
+        skip_configure_gettext = True
+
     cnf = d.getVar('EXTRA_OECONF') or ""
-    if "gettext" not in d.getVar('P') and "gcc-runtime" not in d.getVar('P') and "--disable-nls" not in cnf:
+    if not ("gettext" in d.getVar('P') or "gcc-runtime" in d.getVar('P') or \
+            "--disable-nls" in cnf or skip_configure_gettext):
         ml = d.getVar("MLPREFIX") or ""
         if bb.data.inherits_class('cross-canadian', d):
             gt = "nativesdk-gettext"
@@ -1073,18 +1135,22 @@ Rerun configure task after fixing this.""")
             for config in configs:
                 gnu = "grep \"^[[:space:]]*AM_GNU_GETTEXT\" %s >/dev/null" % config
                 if subprocess.call(gnu, shell=True) == 0:
-                    bb.fatal("""%s required but not in DEPENDS for file %s.
-Missing inherit gettext?""" % (gt, config))
+                    error_msg = "AM_GNU_GETTEXT used but no inherit gettext"
+                    package_qa_handle_error("configure-gettext", error_msg, d)
 
     ###########################################################################
     # Check unrecognised configure options (with a white list)
     ###########################################################################
-    if bb.data.inherits_class("autotools", d):
+    if bb.data.inherits_class("autotools", d) or bb.data.inherits_class("meson", d):
         bb.note("Checking configure output for unrecognised options")
         try:
-            flag = "WARNING: unrecognized options:"
-            log = os.path.join(d.getVar('B'), 'config.log')
-            output = subprocess.check_output(['grep', '-F', flag, log]).decode("utf-8").replace(', ', ' ')
+            if bb.data.inherits_class("autotools", d):
+                flag = "WARNING: unrecognized options:"
+                log = os.path.join(d.getVar('B'), 'config.log')
+            if bb.data.inherits_class("meson", d):
+                flag = "WARNING: Unknown options:"
+                log = os.path.join(d.getVar('T'), 'log.do_configure')
+            output = subprocess.check_output(['grep', '-F', flag, log]).decode("utf-8").replace(', ', ' ').replace('"', '')
             options = set()
             for line in output.splitlines():
                 options |= set(line.partition(flag)[2].split())
@@ -1123,6 +1189,9 @@ python do_qa_unpack() {
 #addtask qa_staging after do_populate_sysroot before do_build
 do_populate_sysroot[postfuncs] += "do_qa_staging "
 
+# Check for patch fuzz
+do_patch[postfuncs] += "do_qa_patch "
+
 # Check broken config.log files, for packages requiring Gettext which
 # don't have it in DEPENDS.
 #addtask qa_configure after do_configure before do_compile
@@ -1160,7 +1229,7 @@ python () {
     if pn in overrides:
         msg = 'Recipe %s has PN of "%s" which is in OVERRIDES, this can result in unexpected behaviour.' % (d.getVar("FILE"), pn)
         package_qa_handle_error("pn-overrides", msg, d)
-    prog = re.compile('[A-Z]')
+    prog = re.compile(r'[A-Z]')
     if prog.search(pn):
         package_qa_handle_error("uppercase-pn", 'PN: %s is upper case, this can result in unexpected behavior.' % pn, d)
 

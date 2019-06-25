@@ -1,6 +1,8 @@
+#
 # Copyright (C) 2013 Intel Corporation
 #
-# Released under the MIT license (see COPYING.MIT)
+# SPDX-License-Identifier: MIT
+#
 
 # Provides a class for automating build tests for projects
 
@@ -20,8 +22,9 @@ class BuildProject(metaclass=ABCMeta):
         if not tmpdir:
             tmpdir = self.d.getVar('WORKDIR')
             if not tmpdir:
-                tmpdir = tempfile.mkdtemp(prefix='buildproject')
-        self.localarchive = os.path.join(tmpdir,self.archive)
+                self.tempdirobj = tempfile.TemporaryDirectory(prefix='buildproject-')
+                tmpdir = self.tempdirobj.name
+        self.localarchive = os.path.join(tmpdir, self.archive)
         if foldername:
             self.fname = foldername
         else:

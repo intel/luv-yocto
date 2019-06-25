@@ -338,7 +338,7 @@ def check_path_length(filepath, pathname, limit):
 def get_filesystem_id(path):
     import subprocess
     try:
-        return subprocess.check_output(["stat", "-f", "-c", "%t", path]).decode('utf-8')
+        return subprocess.check_output(["stat", "-f", "-c", "%t", path]).decode('utf-8').strip()
     except subprocess.CalledProcessError:
         bb.warn("Can't get filesystem id of: %s" % path)
         return None
@@ -511,6 +511,16 @@ def check_make_version(sanity_data):
     return None
 
 
+# Check if we're running on WSL (Windows Subsystem for Linux). Its known not to
+# work but we should tell the user that upfront.
+def check_wsl(d):
+    with open("/proc/version", "r") as f:
+        verdata = f.readlines()
+    for l in verdata:
+        if "Microsoft" in l:
+            return "OpenEmbedded doesn't work under WSL at this time, sorry"
+    return None
+
 # Tar version 1.24 and onwards handle overwriting symlinks correctly
 # but earlier versions do not; this needs to work properly for sstate
 def check_tar_version(sanity_data):
@@ -550,7 +560,7 @@ def check_perl_modules(sanity_data):
         try:
             subprocess.check_output(["perl", "-e", "use %s" % m])
         except subprocess.CalledProcessError as e:
-            errresult += e.output
+            errresult += bytes.decode(e.output)
             ret += "%s " % m
     if ret:
         return "Required perl module(s) not found: %s\n\n%s\n" % (ret, errresult)
@@ -625,6 +635,7 @@ def check_sanity_version_change(status, d):
     status.addresult(check_tar_version(d))
     status.addresult(check_git_version(d))
     status.addresult(check_perl_modules(d))
+    status.addresult(check_wsl(d))
 
     missing = ""
 
@@ -865,7 +876,7 @@ def check_sanity_everybuild(status, d):
         with open(checkfile, "r") as f:
             saved_tmpdir = f.read().strip()
             if (saved_tmpdir != tmpdir):
-                status.addresult("Error, TMPDIR has changed location. You need to either move it back to %s or rebuild\n" % saved_tmpdir)
+                status.addresult("Error, TMPDIR has changed location. You need to either move it back to %s or delete it and rebuild\n" % saved_tmpdir)
     else:
         bb.utils.mkdirhier(tmpdir)
         # Remove setuid, setgid and sticky bits from TMPDIR

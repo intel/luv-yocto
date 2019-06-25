@@ -280,6 +280,8 @@ python copy_buildsystem () {
 
     # Create local.conf
     builddir = d.getVar('TOPDIR')
+    if derivative and os.path.exists(builddir + '/conf/site.conf'):
+        shutil.copyfile(builddir + '/conf/site.conf', baseoutpath + '/conf/site.conf')
     if derivative and os.path.exists(builddir + '/conf/auto.conf'):
         shutil.copyfile(builddir + '/conf/auto.conf', baseoutpath + '/conf/auto.conf')
     if derivative:
@@ -297,6 +299,9 @@ python copy_buildsystem () {
                 return origvalue, op, 0, True
         varlist = ['[^#=+ ]*']
         oldlines = []
+        if os.path.exists(builddir + '/conf/site.conf'):
+            with open(builddir + '/conf/site.conf', 'r') as f:
+                oldlines += f.readlines()
         if os.path.exists(builddir + '/conf/auto.conf'):
             with open(builddir + '/conf/auto.conf', 'r') as f:
                 oldlines += f.readlines()
@@ -584,11 +589,8 @@ sdk_ext_preinst() {
 		exit 1
 	fi
 	SDK_EXTENSIBLE="1"
-	if [ "$publish" = "1" ] ; then
-		EXTRA_TAR_OPTIONS="$EXTRA_TAR_OPTIONS --exclude=ext-sdk-prepare.py"
-		if [ "${SDK_EXT_TYPE}" = "minimal" ] ; then
-			EXTRA_TAR_OPTIONS="$EXTRA_TAR_OPTIONS --exclude=sstate-cache"
-		fi
+	if [ "$publish" = "1" ] && [ "${SDK_EXT_TYPE}" = "minimal" ] ; then
+		EXTRA_TAR_OPTIONS="$EXTRA_TAR_OPTIONS --exclude=sstate-cache"
 	fi
 }
 SDK_PRE_INSTALL_COMMAND_task-populate-sdk-ext = "${sdk_ext_preinst}"
@@ -630,6 +632,8 @@ sdk_ext_postinst() {
 		# sourcing a script. That is why this has to look so ugly.
 		LOGFILE="$target_sdk_dir/preparing_build_system.log"
 		sh -c ". buildtools/environment-setup* > $LOGFILE && cd $target_sdk_dir/`dirname ${oe_init_build_env_path}` && set $target_sdk_dir && . $target_sdk_dir/${oe_init_build_env_path} $target_sdk_dir >> $LOGFILE && python $target_sdk_dir/ext-sdk-prepare.py $LOGFILE '${SDK_INSTALL_TARGETS}'" || { echo "printf 'ERROR: this SDK was not fully installed and needs reinstalling\n'" >> $env_setup_script ; exit 1 ; }
+	fi
+	if [ -e $target_sdk_dir/ext-sdk-prepare.py ]; then
 		rm $target_sdk_dir/ext-sdk-prepare.py
 	fi
 	echo done

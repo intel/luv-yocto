@@ -155,7 +155,7 @@
                 </para></listitem>
             <listitem><para>
                 <emphasis>
-                <ulink url='&YOCTO_DOCS_BB_URL;'>BitBake User Manual:</ulink>
+                <ulink url='&YOCTO_DOCS_BB_URL;'>BitBake User Manual</ulink>:
                 </emphasis>
                 A comprehensive guide to the BitBake tool.
                 If you want information on BitBake, see this manual.
@@ -244,14 +244,6 @@
                 web-based interface to the
                 <link linkend='build-system-term'>OpenEmbedded Build System</link>,
                 which uses BitBake, that reports build information.
-                </para></listitem>
-            <listitem><para>
-                <emphasis>
-                <ulink url='&YOCTO_DOCS_SDK_URL;#adt-eclipse'>Eclipse IDE Yocto Plug-in</ulink>:
-                </emphasis>
-                Instructions that demonstrate how an application developer
-                uses the Eclipse Yocto Project Plug-in feature within
-                the Eclipse IDE.
                 </para></listitem>
             <listitem><para>
                 <emphasis>

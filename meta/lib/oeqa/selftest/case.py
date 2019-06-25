@@ -1,5 +1,8 @@
+#
 # Copyright (C) 2013-2017 Intel Corporation
-# Released under the MIT license (see COPYING.MIT)
+#
+# SPDX-License-Identifier: MIT
+#
 
 import sys
 import os
@@ -11,6 +14,8 @@ from unittest.util import safe_repr
 import oeqa.utils.ftools as ftools
 from oeqa.utils.commands import runCmd, bitbake, get_bb_var
 from oeqa.core.case import OETestCase
+
+import bb.utils
 
 class OESelftestTestCase(OETestCase):
     def __init__(self, methodName="runTest"):
@@ -167,7 +172,7 @@ to ensure accurate results.")
         if self._track_for_cleanup:
             for path in self._track_for_cleanup:
                 if os.path.isdir(path):
-                    shutil.rmtree(path)
+                    bb.utils.remove(path, recurse=True)
                 if os.path.isfile(path):
                     os.remove(path)
             self._track_for_cleanup = []
