@@ -7,7 +7,9 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=155db86cdbafa7532b41f390409283eb \
 
 DEPENDS = "expat glib-2.0 intltool-native mozjs"
 
-inherit autotools gtk-doc pkgconfig useradd systemd gobject-introspection
+inherit autotools gtk-doc pkgconfig useradd systemd gobject-introspection distro_features_check
+
+REQUIRED_DISTRO_FEATURES = "polkit"
 
 PACKAGECONFIG = "${@bb.utils.filter('DISTRO_FEATURES', 'pam', d)} \
                  ${@bb.utils.contains('DISTRO_FEATURES', 'systemd', 'systemd', \
