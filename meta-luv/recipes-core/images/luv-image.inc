@@ -16,12 +16,10 @@ CMDLINE_USERSPACE = "systemd.log_target=null plymouth.ignore-serial-consoles"
 
 # Kernel commandline for luv live image boot
 # Nomodeset will not allow kernel to load video drivers, helps retaining splash screen.
-CMDLINE_BASE = "${CMDLINE_USERSPACE} debug crashkernel=512M,high log_buf_len=1M efi=debug splash nomodeset"
+# Make sure kdump runs before kexec after a crash and not vice-versa
+CMDLINE_BASE = "${CMDLINE_USERSPACE} debug crashkernel=512M,high log_buf_len=1M efi=debug splash nomodeset crash_kexec_post_notifiers"
 
 COMMON_CMDLINE_x86 = " console=ttyS0,115200 console=ttyPCH0,115200"
-
-# Make sure kdump runs before kexec after a crash and not vice-versa
-COMMON_CMDLINE_x86 += " crash_kexec_post_notifiers"
 
 # Unlike the += operand, _append's do not insert a space between the current value
 # and the appended string. Thus, we add them.
