@@ -335,7 +335,6 @@ for r in $runner_list; do
         parser="/bin/cat"
     }
 
-    # Make /dev/console silent to avoid the results being printed twice
     $runner |& tee -a ${LUV_SAVE_RAW_DIR}/$r | $parser | \
               tee -a ${LUV_SAVE_PARSED_DIR}/$r | ${LUV_PARSER_DIR}/test-manager | \
               print_line | \
