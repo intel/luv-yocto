@@ -3,6 +3,20 @@
 # Copyright 2018 Intel Corporation; author Megha Dey
 #
 
+print_line()
+{
+    while read line ; do
+    case $line in
+        *+* )
+        echo "[    `cut -d " " -f 1 /proc/uptime`0000]  $line"
+        ;;
+        * )
+        echo "[    `cut -d " " -f 1 /proc/uptime`0000] $line"
+        ;;
+    esac
+    done
+}
+
 luv_msg_write() {
     /bin/plymouth display-message --text="$1"
 

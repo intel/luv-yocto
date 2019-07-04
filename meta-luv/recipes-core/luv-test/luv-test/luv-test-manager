@@ -250,19 +250,6 @@ luv_msg_write "Running tests..."
 LUV_TESTS_DIR=/etc/luv/tests/
 LUV_PARSER_DIR=/etc/luv/parsers/
 
-parse_line()
-{
-    while read line ; do
-    case $line in
-        *+* )
-        echo "[    `cut -d " " -f 1 /proc/uptime`0000]  $line"
-        ;;
-        * )
-        echo "[    `cut -d " " -f 1 /proc/uptime`0000] $line"
-        ;;
-    esac
-    done
-}
 
 # Checks if the size of the results file is always greater than it's size 3 secs
 # ago until the testsuite is finished executing. Otherwise, its a sign that the
@@ -351,7 +338,7 @@ for r in $runner_list; do
     # Make /dev/console silent to avoid the results being printed twice
     $runner |& tee -a ${LUV_SAVE_RAW_DIR}/$r | $parser | \
               tee -a ${LUV_SAVE_PARSED_DIR}/$r | ${LUV_PARSER_DIR}/test-manager | \
-              parse_line | \
+              print_line | \
               tee -a /tmp/luv.results ${LUV_SAVE_RESULTS_DIR}/luv.results
 
     detect_hang ${LUV_SAVE_RAW_DIR}/$r $process_runner_id
