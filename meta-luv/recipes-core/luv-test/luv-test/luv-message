@@ -2,6 +2,31 @@
 #
 # Copyright 2018 Intel Corporation; author Megha Dey
 #
+LUVDEBUG_LOG=/tmp/luv-debug.log
+
+setup_debug_log()
+{
+    grep -q luv\.debug /proc/cmdline
+    if [ $? -eq 0 ]; then
+        echo "Enable LUV debug mode..."
+        LUVDEBUG="1"
+        set -x
+        set -v
+    fi
+}
+
+setup_output()
+{
+    thistty=$(tty)
+
+    if [ ! -z ${LUVDEBUG} ]; then
+        logfiles="${thistty} ${LUVDEBUG_LOG}"
+    else
+        logfiles="${thistty}"
+    fi
+
+    exec &> >(tee -a ${logfiles})
+}
 
 print_line()
 {
@@ -25,13 +50,12 @@ luv_msg_write() {
          luv_msg_hide $1
     fi
 
-    echo "$1" | print_line >&2
-
-    if [ ! -z ${LUVDEBUG} ]; then
-        echo LUV_MESSAGE-$1>> ${LUV_SAVE_RESULTS_DIR}luv-debug.log
-    fi
+    echo "$1" | print_line
 }
 
 luv_msg_hide() {
     /bin/plymouth hide-message --text="$1"
 }
+
+setup_debug_log
+setup_output

@@ -33,14 +33,6 @@ if [ $? -eq 0 ]; then
     LUVNETBOOT="1"
 fi
 
-grep -q luv\.debug /proc/cmdline
-if [ $? -eq 0 ]; then
-    echo "Enable LUV debug mode..."
-    export LUVDEBUG="1"
-    set -x
-    set -v
-fi
-
 html_start()
 {
     html=$1
@@ -232,11 +224,6 @@ if ! grep -q "luv_reboot_tests=none" /proc/cmdline; then
     fi
 fi
 
-if [ ! -z ${LUVDEBUG} ]; then
-    # once we know where our storage is, redirect output to a file there
-    exec &> >(tee -a ${LUV_SAVE_RESULTS_DIR}/luv-debug.log)
-fi
-
 luv_msg_write "Running tests..."
 
 #
@@ -389,6 +376,10 @@ fi
 
 # dump dmesg, cpuinfo and acpi tables to luv results folder
 luv-dmesg-acpi-tables-dump ${LUV_SAVE_RESULTS_DIR}
+
+if [ -e ${LUVDEBUG_LOG} ]; then
+    cp ${LUVDEBUG_LOG} ${LUV_SAVE_RESULTS_DIR}
+fi
 
 # invoke the script that saves/submits the results to a webserver.
 submit_results ${LUV_SAVE_RESULTS_DIR}
