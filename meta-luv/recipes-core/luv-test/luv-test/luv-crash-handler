@@ -33,17 +33,38 @@ if [ $? -eq 1 ]; then
     LUV_BOOT_PARTITION=/mnt/boot/
     LUV_BOOT_PARTITION_UUID=423C-C2C8
     LUV_DISK_DEVICE=/dev/disk/by-uuid/${LUV_BOOT_PARTITION_UUID}
+    EXIT_STATUS=0
 
     mkdir -p ${LUV_BOOT_PARTITION}
-    if [ $? -eq 0 ]; then
-        mount ${LUV_DISK_DEVICE} ${LUV_BOOT_PARTITION}
-        if [ $? -eq 0 ]; then
-            kexec -p --initrd=${LUV_BOOT_PARTITION}initrd --append="${KEXEC_APPEND}" \
-                  ${LUV_BOOT_PARTITION}kernel_image
-            umount ${LUV_BOOT_PARTITION}
-        fi
+    if [ $? -ne 0 ]; then
+        luv_msg_write "Crash handler failed to create mount point!"
+        exit 1
     fi
+
+    mount ${LUV_DISK_DEVICE} ${LUV_BOOT_PARTITION}
+    if [ $? -ne 0 ]; then
+        luv_msg_write "Crash handler failed to mount disk!"
+        exit 1
+    fi
+
+    kexec -p --initrd=${LUV_BOOT_PARTITION}initrd --append="${KEXEC_APPEND}" \
+          ${LUV_BOOT_PARTITION}bzImage
+    if [ $? -ne 0 ]; then
+        luv_msg_write "Crash handler failed to load rescue kernel!"
+	EXIT_STATUS=1
+    fi
+
+    LOADED=$(cat /sys/kernel/kexec_crash_loaded)
+    if [ $LOADED -ne "1" ]; then
+        luv_msg_write "Crash handler failed to detect rescue kernel!"
+	EXIT_STATUS=1
+    fi
+
+    umount ${LUV_BOOT_PARTITION}
+
     luv_msg_hide "Preparing crash handler..."
+    exit $EXIT_STATUS
+
 else
 # If we have the luv.crash kernel parameter, we just recovered from a crash.
 # We need to dump the /proc/vmcore file.
