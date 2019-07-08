@@ -390,11 +390,6 @@ fi
 # dump dmesg, cpuinfo and acpi tables to luv results folder
 luv-dmesg-acpi-tables-dump ${LUV_SAVE_RESULTS_DIR}
 
-# close debug log file before unmounting LUV_STORAGE.
-if [ ! -z ${LUVDEBUG} ]; then
-    exec &> /dev/console
-fi
-
 # invoke the script that saves/submits the results to a webserver.
 submit_results ${LUV_SAVE_RESULTS_DIR}
 
@@ -411,5 +406,3 @@ if [ $? -ne 1 ]; then
     halt
 fi
 
-set +x
-set +v
