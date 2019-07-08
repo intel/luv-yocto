@@ -4,6 +4,23 @@
 #
 LUVDEBUG_LOG=/tmp/luv-debug.log
 
+setup_netconsole()
+{
+    # Check if user requested netconsole
+    net_param=$(luv-netconsole-params)
+    net_param_port=$(echo $net_param | tail -1 | awk '{print $2}')
+    net_param_ip=$(echo $net_param | tail -1 | awk '{print $1}')
+
+    if [[ $net_param_port =~ ^[0-9]+$ ]] && ! [[ $net_param_ip =~ ^[0-9]+$ ]] ; then
+        echo "$0 is testing network for netconsole" > /dev/udp/$net_param_ip/$net_param_port
+        if [ $? -eq 0 ]; then
+	    NETWORK_READY="1"
+        else
+            luv_msg_write "Netconsole failed, skipping..."
+       fi
+    fi
+}
+
 setup_debug_log()
 {
     debug=`grep -o "luv.debug=[1-3]" /proc/cmdline`
@@ -26,7 +43,12 @@ setup_output()
         logfiles="${thistty}"
     fi
 
-    exec &> >(tee -a ${logfiles})
+    if [ ! -z ${NETWORK_READY} ]; then
+        exec 3>/dev/udp/$net_param_ip/$net_param_port
+        exec &> >(tee -a ${logfiles} >&3)
+    else
+        exec &> >(tee -a ${logfiles})
+    fi
 }
 
 print_line()
@@ -59,4 +81,5 @@ luv_msg_hide() {
 }
 
 setup_debug_log
+setup_netconsole
 setup_output
