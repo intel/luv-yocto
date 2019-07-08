@@ -6,12 +6,13 @@ LUVDEBUG_LOG=/tmp/luv-debug.log
 
 setup_debug_log()
 {
-    grep -q luv\.debug /proc/cmdline
-    if [ $? -eq 0 ]; then
-        echo "Enable LUV debug mode..."
-        LUVDEBUG="1"
-        set -x
-        set -v
+    debug=`grep -o "luv.debug=[1-3]" /proc/cmdline`
+    if [ ! -z $debug ]; then
+        dbg_lvl=`echo $debug | cut -d'=' -f 2`
+        luv_msg_write "Enable LUV debug level $dbg_lvl..."
+        LUVDEBUG="$dbg_lvl"
+        [ $dbg_lvl -ge 2 ] && set -v
+        [ $dbg_lvl -eq 3 ] && set -x
     fi
 }
 
