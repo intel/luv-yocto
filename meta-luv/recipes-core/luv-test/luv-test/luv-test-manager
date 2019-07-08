@@ -165,7 +165,7 @@ display_luv_version()
 {
     luv_version=$(cut -d\\ -f1 /etc/issue)
 
-    cat <<EOF
+    cat <<EOF | print_line
     Welcome to ${luv_version}
 
     Running tests...
