@@ -33,6 +33,8 @@ do_patch_append() {
     bb.build.exec_func('patch', d)
 }
 
+do_patch[depends] += "virtual/kernel:do_patch"
+
 do_configure_prepend() {
     # We need to ensure the --sysroot option in CC is preserved
     if [ -e "${STAGING_KERNEL_DIR}/tools/testing/selftests/pstore/Makefile" ]; then
