@@ -7,6 +7,7 @@ SRC_URI+= "file://0001-plymouth-Add-the-retain-splash-option.patch \
 	   file://0001-plymouth-modify-the-script-theme.patch \
            file://0001-plymouth-Prevent-overwriting-of-messages.patch \
            file://0001-plymouth-Do-not-hardcode-number-of-test-suites.patch \
+           file://0001-Plymouth-Revert-commit-that-uses-device-timeout.patch \
 	   ${SPLASH_IMAGES}"
 
 SPLASH_IMAGES = "file://luv-splash.png;outsuffix=default"

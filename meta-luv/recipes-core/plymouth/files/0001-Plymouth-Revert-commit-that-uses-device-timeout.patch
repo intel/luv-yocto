@@ -1,0 +1,236 @@
+From 79c17fe6b8dd9564a13b0283bfe1a0fe8d0a19e1 Mon Sep 17 00:00:00 2001
+From: Megha Dey <megha.dey@linux.intel.com>
+Date: Fri, 19 Jul 2019 11:16:26 -0700
+Subject: [PATCH] Plymouth: Revert commit that uses device timeout
+
+After updating to plymouth 0.9.4, we see that if we execute the reboot
+tests (and reboot through kexec), the splash screen does not come up.
+All we see is the penguins (indicating Linux boot) and a blinking cursor.
+On doing a git bisect, commit 7e37d58 "device-manager: use device timeout
+instead of udev coldplug monitor" is the offending patch.
+
+For now revert this patch (not a clean revert), as we are not sure why
+this patch causes this behavior.
+
+Signed-off-by: Megha Dey <megha.dey@linux.intel.com>
+---
+ src/libply-splash-core/ply-device-manager.c | 80 ++++++++++++++++++++++++-----
+ src/libply-splash-core/ply-device-manager.h |  1 -
+ src/main.c                                  | 19 +------
+ 3 files changed, 67 insertions(+), 33 deletions(-)
+
+diff --git a/src/libply-splash-core/ply-device-manager.c b/src/libply-splash-core/ply-device-manager.c
+index 55248ac..d1b6f8e 100644
+--- a/src/libply-splash-core/ply-device-manager.c
++++ b/src/libply-splash-core/ply-device-manager.c
+@@ -62,6 +62,9 @@ struct _ply_device_manager
+         ply_list_t                *text_displays;
+         ply_list_t                *pixel_displays;
+         struct udev               *udev_context;
++        struct udev_queue         *udev_queue;
++        int                       udev_queue_fd;
++        ply_fd_watch_t            *udev_queue_fd_watch;
+         struct udev_monitor       *udev_monitor;
+         ply_fd_watch_t            *fd_watch;
+ 
+@@ -353,16 +356,18 @@ on_udev_event (ply_device_manager_t *manager)
+ 
+         if (strcmp (action, "add") == 0) {
+                 const char *subsystem;
++                bool coldplug_complete = manager->udev_queue_fd_watch == NULL;
+ 
+                 subsystem = udev_device_get_subsystem (device);
+ 
+-                if (strcmp (subsystem, SUBSYSTEM_DRM) == 0) {
+-                        if (manager->local_console_managed && manager->local_console_is_text)
++                if (strcmp (subsystem, SUBSYSTEM_DRM) == 0 ||
++                        coldplug_complete) {
++                        if (coldplug_complete && manager->local_console_managed && manager->local_console_is_text)
+                                 ply_trace ("ignoring since we're already using text splash for local console");
+                         else
+                                 create_devices_for_udev_device (manager, device);
+                 } else {
+-                        ply_trace ("ignoring since we only handle subsystem %s devices after timeout", subsystem);
++                        ply_trace ("ignoring since we only handle subsystem %s devices after coldplug completes", subsystem);
+                 }
+         } else if (strcmp (action, "remove") == 0) {
+                 free_devices_for_udev_device (manager, device);
+@@ -524,11 +529,6 @@ ply_device_manager_free (ply_device_manager_t *manager)
+         if (manager == NULL)
+                 return;
+ 
+-        ply_event_loop_stop_watching_for_exit (manager->loop,
+-                                               (ply_event_loop_exit_handler_t)
+-                                               detach_from_event_loop,
+-                                               manager);
+-
+         free_terminals (manager);
+         ply_hashtable_free (manager->terminals);
+ 
+@@ -827,7 +827,7 @@ create_devices_from_udev (ply_device_manager_t *manager)
+                 return;
+         }
+ 
+-        ply_trace ("Timeout elapsed, looking for devices from udev");
++        ply_trace ("Looking for devices from udev");
+ 
+         found_drm_device = create_devices_for_subsystem (manager, SUBSYSTEM_DRM);
+         found_fb_device = create_devices_for_subsystem (manager, SUBSYSTEM_FRAME_BUFFER);
+@@ -849,9 +849,64 @@ create_fallback_devices (ply_device_manager_t *manager)
+                                                        PLY_RENDERER_TYPE_AUTO);
+ }
+ 
++static void
++on_udev_queue_changed (ply_device_manager_t *manager)
++{
++        if (!udev_queue_get_queue_is_empty (manager->udev_queue))
++                return;
++
++        ply_trace ("udev coldplug complete");
++        ply_event_loop_stop_watching_fd (manager->loop, manager->udev_queue_fd_watch);
++        manager->udev_queue_fd_watch = NULL;
++        udev_queue_unref (manager->udev_queue);
++
++        close (manager->udev_queue_fd);
++        manager->udev_queue_fd = -1;
++
++        manager->udev_queue = NULL;
++
++        create_devices_from_udev (manager);
++}
++
++static void
++watch_for_coldplug_completion (ply_device_manager_t *manager)
++{
++        int fd;
++        int result;
++
++        manager->udev_queue = udev_queue_new (manager->udev_context);
++
++        if (udev_queue_get_queue_is_empty (manager->udev_queue)) {
++                ply_trace ("udev coldplug completed already ");
++                create_devices_from_udev (manager);
++                return;
++        }
++
++        fd = inotify_init1 (IN_CLOEXEC);
++        result = inotify_add_watch (fd, "/run/udev", IN_MOVED_TO| IN_DELETE);
++
++        if (result < 0) {
++                ply_trace ("could not watch for udev to show up: %m");
++                close (fd);
++
++                create_fallback_devices (manager);
++                return;
++        }
++
++        manager->udev_queue_fd = fd;
++
++        manager->udev_queue_fd_watch = ply_event_loop_watch_fd (manager->loop,
++                                                                fd,
++                                                                PLY_EVENT_LOOP_FD_STATUS_HAS_DATA,
++                                                                (ply_event_handler_t)
++                                                                on_udev_queue_changed,
++                                                                NULL,
++                                                                manager);
++}
++
++
+ void
+ ply_device_manager_watch_devices (ply_device_manager_t                *manager,
+-                                  double                               device_timeout,
+                                   ply_keyboard_added_handler_t         keyboard_added_handler,
+                                   ply_keyboard_removed_handler_t       keyboard_removed_handler,
+                                   ply_pixel_display_added_handler_t    pixel_display_added_handler,
+@@ -892,10 +947,7 @@ ply_device_manager_watch_devices (ply_device_manager_t                *manager,
+ #ifdef HAVE_UDEV
+         watch_for_udev_events (manager);
+         create_devices_for_subsystem (manager, SUBSYSTEM_DRM);
+-        ply_event_loop_watch_for_timeout (manager->loop,
+-                                         device_timeout,
+-                                         (ply_event_loop_timeout_handler_t)
+-                                         create_devices_from_udev, manager);
++        watch_for_coldplug_completion (manager);
+ #endif
+ }
+ 
+diff --git a/src/libply-splash-core/ply-device-manager.h b/src/libply-splash-core/ply-device-manager.h
+index 389b636..f0c72d3 100644
+--- a/src/libply-splash-core/ply-device-manager.h
++++ b/src/libply-splash-core/ply-device-manager.h
+@@ -47,7 +47,6 @@ typedef void (* ply_text_display_removed_handler_t) (void *, ply_text_display_t
+ ply_device_manager_t *ply_device_manager_new (const char                *default_tty,
+                                               ply_device_manager_flags_t flags);
+ void ply_device_manager_watch_devices (ply_device_manager_t                *manager,
+-                                       double                               device_timeout,
+                                        ply_keyboard_added_handler_t         keyboard_added_handler,
+                                        ply_keyboard_removed_handler_t       keyboard_removed_handler,
+                                        ply_pixel_display_added_handler_t    pixel_display_added_handler,
+diff --git a/src/main.c b/src/main.c
+index ddc1883..58ca7bb 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -102,7 +102,6 @@ typedef struct
+ 
+         double                  start_time;
+         double                  splash_delay;
+-        double                  device_timeout;
+ 
+         uint32_t                no_boot_log : 1;
+         uint32_t                showing_details : 1;
+@@ -288,6 +287,7 @@ load_settings (state_t    *state,
+                char      **theme_path)
+ {
+         ply_key_file_t *key_file = NULL;
++        const char *delay_string;
+         bool settings_loaded = false;
+         char *scale_string = NULL;
+         char *splash_string = NULL;
+@@ -316,8 +316,6 @@ load_settings (state_t    *state,
+         }
+ 
+         if (isnan (state->splash_delay)) {
+-                char *delay_string;
+-
+                 delay_string = ply_key_file_get_value (key_file, "Daemon", "ShowDelay");
+ 
+                 if (delay_string != NULL) {
+@@ -327,19 +325,6 @@ load_settings (state_t    *state,
+                 }
+         }
+ 
+-        if (isnan (state->device_timeout)) {
+-                char *timeout_string;
+-
+-                timeout_string = ply_key_file_get_value (key_file, "Daemon", "DeviceTimeout");
+-
+-                if (timeout_string != NULL) {
+-                        state->device_timeout = atof (timeout_string);
+-                        ply_trace ("Device timeout is set to %lf", state->device_timeout);
+-
+-                        free (timeout_string);
+-                }
+-        }
+-
+         scale_string = ply_key_file_get_value (key_file, "Daemon", "DeviceScale");
+ 
+         if (scale_string != NULL) {
+@@ -1100,7 +1085,6 @@ load_devices (state_t                   *state,
+         state->local_console_terminal = ply_device_manager_get_default_terminal (state->device_manager);
+ 
+         ply_device_manager_watch_devices (state->device_manager,
+-                                          state->device_timeout,
+                                           (ply_keyboard_added_handler_t)
+                                           on_keyboard_added,
+                                           (ply_keyboard_removed_handler_t)
+@@ -2268,7 +2252,6 @@ main (int    argc,
+ 
+         state.progress = ply_progress_new ();
+         state.splash_delay = NAN;
+-        state.device_timeout = NAN;
+ 
+         ply_progress_load_cache (state.progress,
+                                  get_cache_file_for_mode (state.mode));
+-- 
+2.7.4
+
