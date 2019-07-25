@@ -55,6 +55,8 @@ do_install() {
     install -m 0755 ${WORKDIR}/efivarfs ${D}${bindir}
 }
 
+do_populate_lic[depends] += "virtual/kernel:do_shared_workdir"
+
 LUV_TEST_LOG_PARSER="luv-parser-efivarfs"
 LUV_TEST_JSON="efivarfs.json"
 LUV_TEST="efivarfs"
