@@ -10,6 +10,7 @@
 #include "umip_test_defs.h"
 
 extern int test_passed, test_failed, test_errors;
+static int step_add=0;
 void (*cleanup)(void) = NULL;
 sig_atomic_t got_signal, got_sigcode;
 
@@ -145,8 +146,21 @@ void signal_handler(int signum, siginfo_t *info, void *ctx_void)
 	 * safely in case we overestimate the size of the instruction.
 	 */
 #ifdef __x86_64__
+	pr_info("Before add 10: ctx->uc_mcontext.gregs[REG_RIP:%d]:%lld\n",
+		REG_RIP, ctx->uc_mcontext.gregs[REG_RIP]);
 	ctx->uc_mcontext.gregs[REG_RIP] += 10;
+	pr_info("ctx->uc_mcontext.gregs[REG_RIP:%d]:%lld\n",
+		REG_RIP, ctx->uc_mcontext.gregs[REG_RIP]);
 #else
+	pr_info("Before add 10: ctx->uc_mcontext.gregs[REG_EIP:%d]:%d\n",
+		REG_EIP, ctx->uc_mcontext.gregs[REG_EIP]);
 	ctx->uc_mcontext.gregs[REG_EIP] += 10;
+	pr_info("REG_EIP:%d, ctx->uc_mcontext.gregs[REG_EIP]:%d\n",
+		REG_EIP, ctx->uc_mcontext.gregs[REG_EIP]);
 #endif
+	step_add++;
+	if(step_add > 1000) {
+		pr_fail(test_failed,"uc_mcontext.gregs[REG_R/EIP] add 1000 times!\n");
+		exit(1);
+	}
 }
