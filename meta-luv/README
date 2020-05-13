@@ -334,3 +334,8 @@ Add a parameter in luv.cfg called "LUV_TESTS" that stores a set of strings,
 each string representing the individual testsuites. All the testsuites are
 enabled by default and disable a testsuite by removing the string that
 represents the testsuite when needed.
+
+NOTE:
+----
+This project is not being actively maintained. For any questions or concerns,
+please reach out at luv@lists.01.org or megha.dey@intel.com
